@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://bxfp0hgm5ofjq"]
+
+[ext_resource type="Shader" path="res://face_shader.gdshader" id="1_fjxk5"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_fjxk5")
+shader_parameter/modelColor = Color(0.861948, 0.313133, 0.570445, 1)
+shader_parameter/wireframeColor = null
+shader_parameter/width = 2.193
+shader_parameter/modelOpacity = 0.193
+shader_parameter/filtered = true
