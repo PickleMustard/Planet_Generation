@@ -22,7 +22,7 @@ public partial class DelauneyTriangulator2D : MeshInstance3D
         {
             DrawPoint(p.ToVector3(), 0.03f, Colors.Pink);
         }
-        DelaunatorNew dl = new DelaunatorNew(points.ToArray());
+        Delaunator3D dl = new Delaunator3D(points.ToArray());
         //Delaunator dl = new Delaunator(points.ToArray());
         if (DisplayTriangles)
         {
@@ -46,7 +46,7 @@ public partial class DelauneyTriangulator2D : MeshInstance3D
     {
         for (int i = 0; i < NumPoints; i++)
         {
-            Point newPoint = new Point(rand.NextSingle() * 10, rand.NextSingle() * 10);
+            Point newPoint = new Point(rand.NextSingle() * 10, rand.NextSingle() * 10, 0.0f);
             points.Add(newPoint);
         }
     }

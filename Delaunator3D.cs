@@ -1,11 +1,11 @@
+using Godot;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using DelaunatorSharp;
 
-public class DelaunatorNew
+public class Delaunator3D
 {
-    private readonly double EPSILON = Math.Pow(2, -52);
+    private readonly float EPSILON = Mathf.Pow(2, -52);
     private readonly int[] EDGE_STACK = new int[512];
 
     /// <summary>
@@ -34,15 +34,16 @@ public class DelaunatorNew
     private readonly int[] hullTri;
     private readonly int[] hullHash;
 
-    private double cx;
-    private double cy;
+    private float cx;
+    private float cy;
+    private float cz;
 
     private int trianglesLen;
-    private readonly double[] coords;
+    private readonly float[] coords;
     private readonly int hullStart;
     private readonly int hullSize;
 
-    public DelaunatorNew(IPoint[] points)
+    public Delaunator3D(IPoint[] points)
     {
         if (points.Length < 3)
         {
@@ -50,13 +51,15 @@ public class DelaunatorNew
         }
 
         Points = points;
-        coords = new double[Points.Length * 2];
+        coords = new float[Points.Length * 3];
+        GD.Print(coords.Length);
 
         for (var i = 0; i < Points.Length; i++)
         {
             var p = Points[i];
-            coords[2 * i] = p.X;
-            coords[2 * i + 1] = p.Y;
+            coords[3 * i] = p.X;
+            coords[3 * i + 1] = p.Y;
+            coords[3 * i + 2] = p.Z;
         }
 
         var n = points.Length;
@@ -65,7 +68,8 @@ public class DelaunatorNew
         Triangles = new int[maxTriangles * 3];
 
         Halfedges = new int[maxTriangles * 3];
-        hashSize = (int)Math.Ceiling(Math.Sqrt(n));
+        //hashSize = (int)Math.Ceiling(Math.Sqrt(n));
+        hashSize = n*n;
 
         hullPrev = new int[n];
         hullNext = new int[n];
@@ -74,26 +78,32 @@ public class DelaunatorNew
 
         var ids = new int[n];
 
-        var minX = double.PositiveInfinity;
-        var minY = double.PositiveInfinity;
-        var maxX = double.NegativeInfinity;
-        var maxY = double.NegativeInfinity;
+        var minX = float.PositiveInfinity;
+        var minY = float.PositiveInfinity;
+        var minZ = float.PositiveInfinity;
+        var maxX = float.NegativeInfinity;
+        var maxY = float.NegativeInfinity;
+        var maxZ = float.NegativeInfinity;
 
         for (var i = 0; i < n; i++)
         {
             var x = coords[2 * i];
             var y = coords[2 * i + 1];
+            var z = coords[2 * i + 2];
             if (x < minX) minX = x;
             if (y < minY) minY = y;
+            if (z < minZ) minZ = z;
             if (x > maxX) maxX = x;
             if (y > maxY) maxY = y;
+            if (z > maxZ) maxZ = z;
             ids[i] = i;
         }
 
         var cx = (minX + maxX) / 2;
         var cy = (minY + maxY) / 2;
+        var cz = (minZ + maxZ) / 2;
 
-        var minDist = double.PositiveInfinity;
+        var minDist = float.PositiveInfinity;
         var i0 = 0;
         var i1 = 0;
         var i2 = 0;
@@ -101,7 +111,7 @@ public class DelaunatorNew
         // pick a seed point close to the center
         for (int i = 0; i < n; i++)
         {
-            var d = Dist(cx, cy, coords[2 * i], coords[2 * i + 1]);
+            var d = Dist(cx, cy, cz, coords[2 * i], coords[2 * i + 1], coords[2 * i + 2]);
             if (d < minDist)
             {
                 i0 = i;
@@ -110,14 +120,15 @@ public class DelaunatorNew
         }
         var i0x = coords[2 * i0];
         var i0y = coords[2 * i0 + 1];
+        var i0z = coords[2 * i0 + 2];
 
-        minDist = double.PositiveInfinity;
+        minDist = float.PositiveInfinity;
 
         // find the point closest to the seed
         for (int i = 0; i < n; i++)
         {
             if (i == i0) continue;
-            var d = Dist(i0x, i0y, coords[2 * i], coords[2 * i + 1]);
+            var d = Dist(i0x, i0y, i0z, coords[2 * i], coords[2 * i + 1], coords[2 * i + 2]);
             if (d < minDist && d > 0)
             {
                 i1 = i;
@@ -127,14 +138,15 @@ public class DelaunatorNew
 
         var i1x = coords[2 * i1];
         var i1y = coords[2 * i1 + 1];
+        var i1z = coords[2 * i1 + 2];
 
-        var minRadius = double.PositiveInfinity;
+        var minRadius = float.PositiveInfinity;
 
         // find the third point which forms the smallest circumcircle with the first two
         for (int i = 0; i < n; i++)
         {
             if (i == i0 || i == i1) continue;
-            var r = Circumradius(i0x, i0y, i1x, i1y, coords[2 * i], coords[2 * i + 1]);
+            var r = Circumradius(i0x, i0y, i0z, i1x, i1y, i1z, coords[2 * i], coords[2 * i + 1], coords[2 * i + 2]);
             if (r < minRadius)
             {
                 i2 = i;
@@ -143,13 +155,14 @@ public class DelaunatorNew
         }
         var i2x = coords[2 * i2];
         var i2y = coords[2 * i2 + 1];
+        var i2z = coords[2 * i2 + 2];
 
-        if (minRadius == double.PositiveInfinity)
+        if (minRadius == float.PositiveInfinity)
         {
             throw new Exception("No Delaunay triangulation exists for this input.");
         }
 
-        if (Orient(i0x, i0y, i1x, i1y, i2x, i2y))
+        /*if (Orient(i0x, i0y, i1x, i1y, i2x, i2y))
         {
             var i = i1;
             var x = i1x;
@@ -160,16 +173,16 @@ public class DelaunatorNew
             i2 = i;
             i2x = x;
             i2y = y;
-        }
+        }*/
 
-        var center = Circumcenter(i0x, i0y, i1x, i1y, i2x, i2y);
+        var center = Circumcenter(i0x, i0y, i0z, i1x, i1y, i1z, i2x, i2y, i2z);
         this.cx = center.X;
         this.cy = center.Y;
 
-        var dists = new double[n];
+        var dists = new float[n];
         for (var i = 0; i < n; i++)
         {
-            dists[i] = Dist(coords[2 * i], coords[2 * i + 1], center.X, center.Y);
+            dists[i] = Dist(coords[2 * i], coords[2 * i + 1], coords[2 * i + 2], center.X, center.Y, center.Z);
         }
 
         // sort the points by distance from the seed triangle circumcenter
@@ -187,26 +200,31 @@ public class DelaunatorNew
         hullTri[i1] = 1;
         hullTri[i2] = 2;
 
-        hullHash[HashKey(i0x, i0y)] = i0;
-        hullHash[HashKey(i1x, i1y)] = i1;
-        hullHash[HashKey(i2x, i2y)] = i2;
+        GD.Print($"{i0x},{i0y},{i0z}");
+        GD.Print(HashKey(i0x, i0y, i0z));
+        hullHash[HashKey(i0x, i0y, i0z)] = i0;
+        hullHash[HashKey(i1x, i1y, i1z)] = i1;
+        hullHash[HashKey(i2x, i2y, i2z)] = i2;
 
         trianglesLen = 0;
         AddTriangle(i0, i1, i2, -1, -1, -1);
 
-        double xp = 0;
-        double yp = 0;
+        float xp = 0;
+        float yp = 0;
+        float zp = 0;
 
         for (var k = 0; k < ids.Length; k++)
         {
             var i = ids[k];
             var x = coords[2 * i];
             var y = coords[2 * i + 1];
+            var z = coords[2 * i + 2];
 
             // skip near-duplicate points
-            if (k > 0 && Math.Abs(x - xp) <= EPSILON && Math.Abs(y - yp) <= EPSILON) continue;
+            if (k > 0 && Math.Abs(x - xp) <= EPSILON && Math.Abs(y - yp) <= EPSILON && Math.Abs(z - zp) <= EPSILON) continue;
             xp = x;
             yp = y;
+            zp = z;
 
             // skip seed triangle points
             if (i == i0 || i == i1 || i == i2) continue;
@@ -215,7 +233,9 @@ public class DelaunatorNew
             var start = 0;
             for (var j = 0; j < hashSize; j++)
             {
-                var key = HashKey(x, y);
+                var key = HashKey(x, y, z);
+                GD.Print(key);
+                GD.Print(j);
                 start = hullHash[(key + j) % hashSize];
                 if (start != -1 && start != hullNext[start]) break;
             }
@@ -286,8 +306,8 @@ public class DelaunatorNew
             hullNext[i] = next;
 
             // save the two new edges in the hash table
-            hullHash[HashKey(x, y)] = i;
-            hullHash[HashKey(coords[2 * e], coords[2 * e + 1])] = e;
+            hullHash[HashKey(x, y, z)] = i;
+            hullHash[HashKey(coords[2 * e], coords[2 * e + 1], coords[2 * e + 2])] = e;
         }
 
 
@@ -438,13 +458,16 @@ public class DelaunatorNew
         Halfedges[a] = b;
         if (b != -1) Halfedges[b] = a;
     }
-    private int HashKey(double x, double y) => (int)(Math.Floor(PseudoAngle(x - cx, y - cy) * hashSize) % hashSize);
-    private static double PseudoAngle(double dx, double dy)
+    private int HashKey(float x, float y, float z) => (int)(Math.Floor(PseudoAngle(x - cx, y - cy, z - cz) * hashSize) % hashSize);
+    private static float PseudoAngle(float dx, float dy, float dz)
     {
-        var p = dx / (Math.Abs(dx) + Math.Abs(dy));
-        return (dy > 0 ? 3 - p : 1 + p) / 4; // [0..1]
+        //var p = dx / (Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz));
+        //return (dy > 0 ? 3 - p : 1 + p) / 4; // [0..1]
+        var v3 = new Vector3(dx, dy, dz);
+        return v3.Dot(Vector3.Back);
+
     }
-    private static void Quicksort(int[] ids, double[] dists, int left, int right)
+    private static void Quicksort(int[] ids, float[] dists, int left, int right)
     {
         if (right - left <= 20)
         {
@@ -497,39 +520,34 @@ public class DelaunatorNew
         arr[i] = arr[j];
         arr[j] = tmp;
     }
-    private static Point Circumcenter(double ax, double ay, double bx, double by, double cx, double cy)
+    private static Point Circumcenter(float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz)
     {
-        var dx = bx - ax;
-        var dy = by - ay;
-        var ex = cx - ax;
-        var ey = cy - ay;
-        var bl = dx * dx + dy * dy;
-        var cl = ex * ex + ey * ey;
-        var d = 0.5 / (dx * ey - dy * ex);
-        var x = ax + (ey * bl - dy * cl) * d;
-        var y = ay + (dx * cl - ex * bl) * d;
+        var a = new Vector3(ax, ay, az);
+        var b = new Vector3(bx, by, bz);
+        var c = new Vector3(cx, cy, cz);
 
-        return new Point(x, y);
+        var cc = (b - a).Cross(c - a).Normalized();
+
+        return new Point(a + cc);
     }
-    private static double Dist(double ax, double ay, double bx, double by)
+    private static float Dist(float ax, float ay, float az, float bx, float by, float bz)
     {
         var dx = ax - bx;
         var dy = ay - by;
-        return dx * dx + dy * dy;
+        var dz = az - bz;
+        return dx * dx + dy * dy + dz * dz;
     }
-    private static bool Orient(double px, double py, double qx, double qy, double rx, double ry) => (qy - py) * (rx - qx) - (qx - px) * (ry - qy) < 0;
-    private static double Circumradius(double ax, double ay, double bx, double by, double cx, double cy)
+    //Sum over edges (x2-x1)(y2-y1), if result is positive -> curve is anticlockwise
+    private static bool Orient(float px, float py, float qx, float qy, float rx, float ry) => (qy - py) * (rx - qx) - (qx - px) * (ry - qy) < 0;
+    private static float Circumradius(float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz)
     {
-        var dx = bx - ax;
-        var dy = by - ay;
-        var ex = cx - ax;
-        var ey = cy - ay;
-        var bl = dx * dx + dy * dy;
-        var cl = ex * ex + ey * ey;
-        var d = 0.5 / (dx * ey - dy * ex);
-        var x = (ey * bl - dy * cl) * d;
-        var y = (dx * cl - ex * bl) * d;
-        return x * x + y * y;
+        var a = new Vector3(ax, ay, az);
+        var b = new Vector3(bx, by, bz);
+        var c = new Vector3(cx, cy, cz);
+
+        var cc = (b - a).Cross(c - a).Normalized();
+
+        return cc.X * cc.X + cc.Y * cc.Y + cc.Z * cc.Z;
     }
     public IEnumerable<ITriangle> GetTriangles()
     {
@@ -575,23 +593,26 @@ public class DelaunatorNew
     }
     public static IPoint GetCentroid(IPoint[] points)
     {
-        double accumulatedArea = 0.0f;
-        double centerX = 0.0f;
-        double centerY = 0.0f;
+        float accumulatedArea = 0.0f;
+        float centerX = 0.0f;
+        float centerY = 0.0f;
+        float centerZ = 0.0f;
 
         for (int i = 0, j = points.Length - 1; i < points.Length; j = i++)
         {
-            var temp = points[i].X * points[j].Y - points[j].X * points[i].Y;
+            //var temp = points[i].X * points[j].Y - points[j].X * points[i].Y;
+            var temp = points[i].ToVector3().Cross(points[j].ToVector3()).Length();
             accumulatedArea += temp;
             centerX += (points[i].X + points[j].X) * temp;
             centerY += (points[i].Y + points[j].Y) * temp;
+            centerZ += (points[i].Z + points[j].Z) * temp;
         }
 
         if (Math.Abs(accumulatedArea) < 1E-7f)
             return new Point();
 
         accumulatedArea *= 3f;
-        return new Point(centerX / accumulatedArea, centerY / accumulatedArea);
+        return new Point(centerX / accumulatedArea, centerY / accumulatedArea, centerZ / accumulatedArea);
     }
     public static int TriangleOfEdge(int e) { return e / 3; }
     public void ForEachTriangle(Action<ITriangle> callback)
