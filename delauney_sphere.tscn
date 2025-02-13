@@ -1,7 +1,5 @@
-[gd_scene load_steps=10 format=3 uid="uid://dt8sw4jlumdml"]
+[gd_scene load_steps=8 format=3 uid="uid://dt8sw4jlumdml"]
 
-[ext_resource type="Script" path="res://GenerateDodecahedron.cs" id="1_2257h"]
-[ext_resource type="Material" uid="uid://bxfp0hgm5ofjq" path="res://face_shader.tres" id="2_fptyx"]
 [ext_resource type="Script" path="res://camera_control.gd" id="2_pc5x5"]
 [ext_resource type="Script" path="res://GenerateDocArrayMesh.cs" id="2_xj8s3"]
 
@@ -26,16 +24,13 @@ radius = 0.1
 height = 0.1
 
 [node name="root" type="Node3D"]
-script = ExtResource("1_2257h")
 
 [node name="Delauney Sphere" type="Node3D" parent="."]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Delauney Sphere"]
-material_override = ExtResource("2_fptyx")
 mesh = SubResource("ArrayMesh_81xnv")
-skeleton = NodePath("")
 script = ExtResource("2_xj8s3")
-subdivide = 2
+ProjectToSphere = false
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)
@@ -45,6 +40,7 @@ script = ExtResource("2_pc5x5")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00016582, 0, -0.664038)
 
 [node name="Node3D" type="Node3D" parent="."]
+visible = false
 
 [node name="UpRight" type="MeshInstance3D" parent="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.019, 2, -2)

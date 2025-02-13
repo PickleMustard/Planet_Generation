@@ -40,5 +40,4 @@ void fragment() {
 	float closestEdge = min(min(remap.z, remap.y), remap.x);
 
 	ALBEDO = mix(wireframeColor, modelColor, closestEdge).xyz;
-	ALPHA = mix(1., modelOpacity, closestEdge);
 }

@@ -7,6 +7,7 @@ public static class Extension
 {
     public static Vector3[] ToVectors3(this IEnumerable<IPoint> points) => points.Select(point => point.ToVector3()).ToArray();
     public static Vector3 ToVector3(this IPoint point) => new Vector3((float)point.X, (float)point.Y, (float)point.Z);
+    public static Vector2 ToVector2(this IPoint point) => new Vector2((float)point.X, (float)point.Y);
     public static IPoint[] ToPoints(this IEnumerable<Vector3> vertices) => vertices.Select(vertex => vertex.ToPoint()).ToArray();
     public static IPoint ToPoint(this Vector3 vertex) => new Point(vertex);
 }
@@ -43,6 +44,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public List<Edge> edges = new List<Edge>();
     public List<Triangle> tris = new List<Triangle>();
     public List<Face> dualFaces = new List<Face>();
+    public List<Point> circumcenters = new List<Point>();
 
     [Export]
     public int subdivide = 1;
@@ -53,7 +55,15 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     [Export]
     public bool ProjectToSphere = true;
 
+    [Export]
+    public ulong Seed = 5001;
+
+    int ahh = 0;
+
     int triangleIndex = 0;
+    bool animationFlag = false;
+    float animationWeight = 0;
+    public List<MeshInstance3D> animatedPoints = new List<MeshInstance3D>();
 
 
     public void PreviousTriangle()
@@ -111,7 +121,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
         foreach (Point p in tri.Points)
         {
-            GD.Print($"{p.Index} at {p.ToVector3()}");
+            //GD.Print($"{p.Index} at {p.ToVector3()}");
             if (ProjectToSphere)
                 DrawPoint(p.ToVector3().Normalized(), 0.05f, Colors.Black);
             else
@@ -120,13 +130,67 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         triangleIndex = (triangleIndex + 1) % tris.Count;
 
     }
+
+
+    public void GenerateAnimatedPoints()
+    {
+        for (int i = 0; i < circumcenters.Count; i++)
+        {
+            var v1 = circumcenters[1].ToVector3() - circumcenters[0].ToVector3();
+            var v2 = circumcenters[circumcenters.Count - 1].ToVector3() - circumcenters[0].ToVector3();
+            var UnitNorm = v1.Cross(v2);
+            UnitNorm = UnitNorm.Normalized();
+            UnitNorm.X = Mathf.Round(UnitNorm.X);
+            UnitNorm.Y = Mathf.Round(UnitNorm.Y);
+            UnitNorm.Z = Mathf.Round(UnitNorm.Z);
+            var alpha = MathF.Atan2(UnitNorm.X, UnitNorm.Y);
+            var ccs = circumcenters.Cast<IPoint>().ToVectors3();
+            animatedPoints.Add(DrawPoint(ccs[i].Normalized(), 0.05f, Colors.Snow));
+        }
+    }
+    public void animateMovement()
+    {
+        for (int i = 0; i < circumcenters.Count; i++)
+        {
+            var v1 = circumcenters[1].ToVector3() - circumcenters[0].ToVector3();
+            var v2 = circumcenters[circumcenters.Count - 1].ToVector3() - circumcenters[0].ToVector3();
+            var UnitNorm = v1.Cross(v2);
+            UnitNorm = UnitNorm.Normalized();
+            //UnitNorm.X = Mathf.Round(UnitNorm.X);
+            //UnitNorm.Y = Mathf.Round(UnitNorm.Y);
+            //UnitNorm.Z = Mathf.Round(UnitNorm.Z);
+            var alpha = MathF.Atan2(UnitNorm.X, UnitNorm.Y);
+            var ccs = circumcenters.Cast<IPoint>().ToVectors3();
+
+            var inbetween = new Vector3(
+            //                ccs[i].X * Mathf.Cos(alpha) + ccs[i].Y * -Mathf.Sin(alpha),
+            //                 ccs[i].X * Mathf.Sin(alpha) + ccs[i].Y * Mathf.Cos(alpha),
+            //                ccs[i].Z
+            ccs[i].X * (UnitNorm.Y * UnitNorm.Y) / (1 + UnitNorm.Z) + ccs[i].X * UnitNorm.Z + ccs[i].Y * (-UnitNorm.X * UnitNorm.Y) / (1 + UnitNorm.Z) + ccs[i].Z * UnitNorm.X,
+            ccs[i].X * (-UnitNorm.X * UnitNorm.Y) / (1 + UnitNorm.Z) + ccs[i].Y * (UnitNorm.X * UnitNorm.X) / (1 + UnitNorm.Z) + ccs[i].Y * UnitNorm.Z + ccs[i].Z * UnitNorm.Y,
+            ccs[i].X * -UnitNorm.X + ccs[i].Y * UnitNorm.Y + ccs[i].Z * UnitNorm.Z
+                );
+
+            animatedPoints[i].Position = ccs[i].Normalized().Lerp(inbetween.Normalized(), Mathf.Clamp(animationWeight, 0.0f, 1.0f));
+            //DrawPoint(ccs[i], 0.05f, Colors.Snow);
+        }
+    }
+    public override void _Process(double delta)
+    {
+        if (animationFlag)
+        {
+            animateMovement();
+            animationWeight += .01f;
+        }
+    }
     public override void _Ready()
     {
+        RandomNumberGenerator rand = new RandomNumberGenerator();
         DrawPoint(new Vector3(0, 0, 0), 0.1f, Colors.White);
+        //Generate the starting dodecahedron
         PopulateArrays();
-        GD.Print(faces.Count);
+        //Split the faces n times
         GenerateNonDeformedFaces();
-        GD.Print(faces.Count);
         List<MeshInstance3D> meshInstances = new List<MeshInstance3D>();
         foreach (Point point in VertexPoints)
         {
@@ -134,161 +198,412 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
 
 
+        //Construct Adjacency Matrices for all triangles and edges given all points
         GenerateTriangleList();
+        //RenderTriangleAndConnections(tris[0]);
 
-        var p = VertexPoints[4];
-        //foreach (Point p in VertexPoints)
-        //{
-        var triangleOfP = tris.Where(e => e.Points.Any(a => a.Index == p.Index));
-        List<Point> circumcenters = new List<Point>();
-        foreach (var tri in triangleOfP)
-        {
-            var v3 = tri.Points.ToVectors3();
-            /*for(int i = 0; i < tri.Points.ToArray().Length; i++)
-            {
-              GD.Print(i);
-              if(i < 2){
-                DrawPoint(v3[i].Normalized(), 0.05f, Colors.Gold);
-              } else {
-                DrawPoint(v3[i].Normalized(), 0.05f, Colors.Lime);
-              }
-            }*/
-            var ac = v3[2] - v3[0];
-            var ab = v3[1] - v3[0];
-            var abXac = ab.Cross(ac);
-            var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
-            float circumsphereRadius = vToCircumsphereCenter.Length();
-            var cc = v3[0] + vToCircumsphereCenter;
-            if (circumcenters.Any(cir => Mathf.Equals(cir.ToVector3(), cc))) continue;
-            circumcenters.Add(new Point(cc, circumcenters.Count));
+        //var p = VertexPoints[300];
+        List<VoronoiCell> VoronoiPoints = new List<VoronoiCell>();
+        GD.Print(VertexPoints.Count);
+        var randomTri = tris[rand.RandiRange(0, tris.Count-1)];
+        var randomTriPoint = randomTri.Points.ToArray()[rand.RandiRange(0, 2)];
+        //var edgesFromTri = edges.Where(e => tri.Points.Any(a => a.Index == e.P.Index || a.Index == e.Q.Index));
+        var edgesWithPoint = edges.Where(e => e.Q.Index == randomTri.Points.ToArray()[0].Index && e.P.Index == randomTri.Points.ToArray()[1].Index ||
+            e.Q.Index == randomTri.Points.ToArray()[1].Index && e.P.Index == randomTri.Points.ToArray()[0].Index);
+        var edgesWithPointList = edgesWithPoint.ToList();
+        var trisWithEdge = tris.Where(tri => tri.Points.ToArray()[0].Index == edgesWithPointList[0].P.Index && tri.Points.ToArray()[1].Index == edgesWithPointList[0].Q.Index ||
+            tri.Points.ToArray()[0].Index == edgesWithPointList[0].P.Index && tri.Points.ToArray()[2].Index == edgesWithPointList[0].Q.Index ||
+            tri.Points.ToArray()[1].Index == edgesWithPointList[0].P.Index && tri.Points.ToArray()[2].Index == edgesWithPointList[0].Q.Index ||
+            tri.Points.ToArray()[0].Index == edgesWithPointList[0].Q.Index && tri.Points.ToArray()[1].Index == edgesWithPointList[0].P.Index ||
+            tri.Points.ToArray()[0].Index == edgesWithPointList[0].Q.Index && tri.Points.ToArray()[2].Index == edgesWithPointList[0].P.Index ||
+            tri.Points.ToArray()[1].Index == edgesWithPointList[0].Q.Index && tri.Points.ToArray()[2].Index == edgesWithPointList[0].P.Index );
+        GD.Print(trisWithEdge.ToList().Count);
+        RenderTriangleAndConnections(trisWithEdge.ToArray()[0]);
+        RenderTriangleAndConnections(trisWithEdge.ToArray()[1]);
+
+        foreach(var edge in edgesWithPoint) {
+          GD.Print($"Edge: {edge.Index} from {edge.P.ToVector3()} to {edge.Q.ToVector3()}");
         }
-        Face dualFace = new Face(circumcenters.ToList());
-        dualFaces.Add(dualFace);
-        Vector3 center = new Vector3(0, 0, 0);
-        DrawLine(center, new Vector3(1,0,0), Colors.Red);
-        DrawLine(center, new Vector3(0,1,0), Colors.Green);
-        DrawLine(center, new Vector3(0,0,1), Colors.Blue);
-        for (int i = 0; i < circumcenters.Count; i++)
+        foreach (Point p in VertexPoints)
         {
-            center += circumcenters[i].ToVector3();
-            if (i < 2 || i == circumcenters.Count -1)
+            GD.Print($"Index: {p.Index}");
+            //Find all triangles that contain the current point
+            var triangleOfP = tris.Where(e => e.Points.Any(a => a.Index == p.Index));
+            List<Point> triCircumcenters = new List<Point>();
+            GD.Print($"Triangles: {triangleOfP.ToList().Count}");
+            //Go through all the triangles containing current point p
+            //Find the circumcenter of the triangle and add it to the list
+            foreach (var tri in triangleOfP)
             {
-                DrawPoint(circumcenters[i].ToVector3().Normalized(), 0.05f, Colors.Gold);
+                var v3 = tri.Points.ToVectors3();
+                for (int i = 0; i < tri.Points.ToArray().Length; i++)
+                {
+                    if (i < 2)
+                    {
+                        //DrawPoint(v3[i].Normalized(), 0.05f, Colors.Gold);
+                    }
+                    else
+                    {
+                        //DrawPoint(v3[i].Normalized(), 0.05f, Colors.Lime);
+                    }
+                }
+                var ac = v3[2] - v3[0];
+                var ab = v3[1] - v3[0];
+                var abXac = ab.Cross(ac);
+                var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
+                float circumsphereRadius = vToCircumsphereCenter.Length();
+                var cc = v3[0] + vToCircumsphereCenter;
+                if (triCircumcenters.Any(cir => Mathf.Equals(cir.ToVector3(), cc))) continue;
+                if (circumcenters.Any(cir => Mathf.Equals(cir.ToVector3(), cc)))
+                {
+                    var usedCC = circumcenters.Where(cir => Mathf.Equals(cir.ToVector3(), cc));
+                    //GD.Print(usedCC.ToList().Count);
+                    circumcenters.Add(new Point(cc, circumcenters.Count));
+                    triCircumcenters.Add(circumcenters[circumcenters.Count - 1]);
+                }
+                else
+                {
+                    circumcenters.Add(new Point(cc, circumcenters.Count));
+                    triCircumcenters.Add(circumcenters[circumcenters.Count - 1]);
+                }
+                //GD.Print(triCircumcenters.Count);
             }
-            else
+            Face dualFace = new Face(triCircumcenters.ToList());
+            dualFaces.Add(dualFace);
+            Vector3 center = new Vector3(0, 0, 0);
+            for (int i = 0; i < triCircumcenters.Count; i++) center += triCircumcenters[i].ToVector3();
+            center /= triCircumcenters.Count;
+            center = center.Normalized();
+
+            var centroid = new Vector3(0, 0, 0);
+            foreach (Point cc in triCircumcenters) { centroid += cc.ToVector3(); }
+            centroid /= triCircumcenters.Count;
+            //Translate points by vector (Origin, Circumcenter)
+            for (int i = 0; i < triCircumcenters.Count; i++) { triCircumcenters[i] = new Point(triCircumcenters[i].ToVector3() - centroid, triCircumcenters[i].Index); }
+            var v1 = triCircumcenters[1].ToVector3() - triCircumcenters[0].ToVector3();
+            var v2 = triCircumcenters[triCircumcenters.Count - 1].ToVector3() - triCircumcenters[0].ToVector3();
+            var UnitNorm = v1.Cross(v2);
+            UnitNorm = UnitNorm.Normalized();
+
+            var alpha = MathF.Atan2(UnitNorm.X, UnitNorm.Y);
+            var beta = Mathf.Atan(UnitNorm.Y / Mathf.Sqrt(UnitNorm.X * UnitNorm.X + UnitNorm.Z * UnitNorm.Z));
+            var ccs = triCircumcenters.Cast<IPoint>().ToVectors3();
+            //GenerateAnimatedPoints();
+            VoronoiPoints.Add(TriangulatePoints(UnitNorm, triCircumcenters, circumcenters, VoronoiPoints.Count));
+            rand.Seed = Seed;
+            //for (int i = 0; i < VoronoiPoints.Count / 3; i++)
+            //{
+            //    DrawTriangle(circumcenters[VoronoiPoints[3 * i]].ToVector3().Normalized(),
+            //        circumcenters[VoronoiPoints[3 * i + 1]].ToVector3().Normalized(),
+            //        circumcenters[VoronoiPoints[3 * i + 2]].ToVector3().Normalized(), new Color(rand.RandfRange(0.0f, 100.0f) / 100f, rand.RandfRange(0.0f, 100.0f) / 100f, rand.RandfRange(0.0f, 100.0f) / 100f));
+            //}
+
+            //Attempt to construct a matrix to translate and rotate the points onto the World Plane XY
+            //Would be able to orient them around the camera that way
             {
-                DrawPoint(circumcenters[i].ToVector3().Normalized(), 0.05f, Colors.Lime);
+                /*for (int i = 0; i < circumcenters.Count; i++)
+                {
+                    //DrawPoint(ccs[i], 0.05f, Colors.Gold);
+                    var inbetween = new Vector3(
+                        ccs[i].X * Mathf.Cos(alpha) + ccs[i].Y * -Mathf.Sin(alpha),
+                        ccs[i].X * Mathf.Sin(alpha) + ccs[i].Y * Mathf.Cos(alpha),
+                        ccs[i].Z
+                        );
+                    var inbetween2 = new Vector3(
+                        inbetween.X * Mathf.Cos(beta) + inbetween.Y * Mathf.Sin(beta),
+                        inbetween.X * -Mathf.Sin(beta) + inbetween.Y * Mathf.Cos(beta),
+                        inbetween.Z
+                        );
+                    //DrawPoint(inbetween, 0.05f, Colors.Teal);
+                    //DrawPoint(inbetween, 0.05f, Colors.Brown);
+                    var tempVec = new Vector3(
+                        UnitNorm.X,
+                        UnitNorm.Y * Mathf.Cos(alpha) + UnitNorm.Z * -Mathf.Sin(alpha),
+                        UnitNorm.Y * Mathf.Sin(alpha) + UnitNorm.Z * Mathf.Cos(alpha)
+                        );
+                    //DrawPoint(tempVec, 0.05f, Colors.DarkBlue);
+                    var tempVec2 = new Vector3(
+                        tempVec.X * Mathf.Cos(beta) + tempVec.Y * Mathf.Sin(beta),
+                        tempVec.X * -Mathf.Sin(beta) + tempVec.Y * Mathf.Cos(beta),
+                        tempVec.Z
+                        );
+                    //ccs[i].X = ccs[i].X * Mathf.Cos(beta) * Mathf.Cos(alpha) + ccs[i].Y * Mathf.Cos(beta) * Mathf.Sin(alpha) + ccs[i].Z * Mathf.Sin(beta);
+                    //ccs[i].Y = ccs[i].X * -Mathf.Sin(alpha) + ccs[i].Y * Mathf.Cos(alpha);
+                    //ccs[i].Z = ccs[i].X * -Mathf.Sin(beta) * Mathf.Cos(alpha) + ccs[i].Z * Mathf.Cos(beta);
+                    ccs[i].X = ccs[i].X * (UnitNorm.Y * UnitNorm.Y) / (1 + UnitNorm.Z) + ccs[i].X * UnitNorm.Z + ccs[i].Y * (-UnitNorm.X * UnitNorm.Y) / (1 + UnitNorm.Z) + ccs[i].Z * UnitNorm.X;
+                    ccs[i].Y = ccs[i].X * (-UnitNorm.X * UnitNorm.Y) / (1 + UnitNorm.Z) + ccs[i].Y * (UnitNorm.X * UnitNorm.X) / (1 + UnitNorm.Z) + ccs[i].Y * UnitNorm.Z + ccs[i].Z * UnitNorm.Y;
+                    ccs[i].Z = ccs[i].X * -UnitNorm.X + ccs[i].Y * UnitNorm.Y + ccs[i].Z * UnitNorm.Z;
+                    //DrawPoint(ccs[i], 0.05f, Colors.DarkSalmon);
+                }*/
+
+
+
+                /* Attempt using the rotation matrices for the Perspective Transform
+                var rho = Mathf.Sqrt(center.X * center.X + center.Y * center.Y + center.Z * center.Z);
+                var theta = Mathf.Atan2(center.Y, center.X);
+                var phi = Mathf.Acos(center.Z / rho);
+                var ccs = circumcenters.Cast<IPoint>().ToVectors3();
+                for(int i = 0; i < circumcenters.Count; i++) {
+                  ccs[i].X = ccs[i].X * -Mathf.Sin(theta) + ccs[i].Y * Mathf.Cos(theta);
+                  ccs[i].Y = ccs[i].X * Mathf.Cos(phi) * Mathf.Cos(theta) + ccs[i].Y * -Mathf.Cos(phi) * Mathf.Sin(theta) + ccs[i].Z * Mathf.Sin(phi);
+                  ccs[i].Z = Mathf.Round(ccs[i].X * -Mathf.Sin(phi) * Mathf.Cos(theta) + ccs[i].Y * -Mathf.Sin(phi) * Mathf.Sin(theta) + ccs[i].Z * Mathf.Cos(phi) + 1.0f * -rho);
+                 // ccs[i].X = ccs[i].X * -Mathf.Cos(theta) + ccs[i].Y * -Mathf.Cos(phi) * Mathf.Sin(theta) + ccs[i].Z * Mathf.Sin(phi) * Mathf.Sin(theta);
+                 // ccs[i].Y = ccs[i].X * Mathf.Sin(theta) + ccs[i].Y * -Mathf.Cos(phi) * Mathf.Cos(theta) + ccs[i].Z * Mathf.Sin(phi) * Mathf.Cos(theta);
+                 // ccs[i].Z = ccs[i].Y * Mathf.Sin(phi) + ccs[i].Z * Mathf.Cos(phi);
+                  DrawPoint(ccs[i], 0.05f, Colors.DarkSalmon);
+                }
+                //
+                //DrawFace(Colors.Peru, circumcenters.Cast<IPoint>().ToVectors3());
+                //*/
+
             }
-        }
-        center /= circumcenters.Count;
-        center = center.Normalized();
-        DrawPoint(center, 0.05f, Colors.MediumSlateBlue);
-
-        //Attempt using Rodrigues' Rotation Formula
-        //Calculate Centroid
-        var centroid = new Vector3(0, 0, 0);
-        foreach (Point cc in circumcenters) { centroid += cc.ToVector3(); }
-        centroid /= circumcenters.Count;
-        //Translate points by vector (Origin, Circumcenter)
-        for (int i = 0; i < circumcenters.Count; i++) { circumcenters[i] = new Point(circumcenters[i].ToVector3() - centroid, circumcenters[i].Index); }
-        var v1 = circumcenters[1].ToVector3() - circumcenters[0].ToVector3();
-        var v2 = circumcenters[circumcenters.Count-1].ToVector3() - circumcenters[0].ToVector3();
-        var UnitNorm = v1.Cross(v2);
-        UnitNorm = UnitNorm.Normalized();
-        UnitNorm.X = Mathf.Round(UnitNorm.X);
-        UnitNorm.Y = Mathf.Round(UnitNorm.Y);
-        UnitNorm.Z = Mathf.Round(UnitNorm.Z);
-
-        DrawPoint(new Vector3(UnitNorm.X, 0,0), 0.05f, Colors.Red);
-        DrawPoint(new Vector3(0, UnitNorm.Y, 0), 0.05f, Colors.Green);
-        DrawPoint(new Vector3(0,0, UnitNorm.Z), 0.05f, Colors.Blue);
-        DrawLine(new Vector3(0,0,0), UnitNorm);
-        var alpha = MathF.Atan(UnitNorm.Y / UnitNorm.Z);
-        GD.Print(alpha);
-        //var alpha = Mathf.Acos(UnitNorm.Dot(Vector3.Right) / (UnitNorm.Length() * Vector3.Right.Length()));
-        //var beta = Mathf.Acos(UnitNorm.Dot(Vector3.Back) / (UnitNorm.Length() * Vector3.Back.Length()));
-        var beta = Mathf.Atan(-UnitNorm.X / MathF.Sqrt(UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z));
-        var ccs = circumcenters.Cast<IPoint>().ToVectors3();
-        for (int i = 0; i < circumcenters.Count; i++)
-        {
-            DrawPoint(ccs[i], 0.05f, Colors.Gold);
-            var inbetween = new Vector3(
-                ccs[i].X,
-                ccs[i].Y * Mathf.Cos(alpha) + ccs[i].Z * -Mathf.Sin(alpha),
-                ccs[i].Y * Mathf.Sin(alpha) + ccs[i].Z * Mathf.Cos(alpha)
-                );
-            DrawPoint(inbetween, 0.05f, Colors.Teal);
-            var tempVec = new Vector3(
-                UnitNorm.X,
-                UnitNorm.Y * Mathf.Cos(alpha) + UnitNorm.Z * -Mathf.Sin(alpha),
-                UnitNorm.Y * Mathf.Sin(alpha) + UnitNorm.Z * Mathf.Cos(alpha)
-                );
-            DrawPoint(tempVec, 0.05f, Colors.DarkBlue);
-            var tempVec2 = new Vector3(
-                tempVec.X * Mathf.Cos(beta) + tempVec.Z * Mathf.Sin(beta),
-                tempVec.Y,
-                tempVec.X * -Mathf.Sin(beta) + tempVec.Z * Mathf.Cos(beta)
-                );
-            DrawPoint(tempVec2, 0.05f, Colors.DarkGreen);
-            DrawLine(new Vector3(0,0,0), tempVec);
-            DrawLine(new Vector3(0,0,0), tempVec2);
-            ccs[i].X = ccs[i].X * Mathf.Cos(beta) * Mathf.Cos(alpha) + ccs[i].Y * Mathf.Cos(beta) * Mathf.Sin(alpha) + ccs[i].Z * Mathf.Sin(beta);
-            ccs[i].Y = ccs[i].X * -Mathf.Sin(alpha) + ccs[i].Y * Mathf.Cos(alpha);
-            ccs[i].Z = ccs[i].X * -Mathf.Sin(beta) * Mathf.Cos(alpha) + ccs[i].Z * Mathf.Cos(beta);
-            DrawPoint(ccs[i], 0.05f, Colors.DarkSalmon);
+            GD.Print("Done with Point");
         }
 
-
-
-        /* Attempt using the rotation matrices for the Perspective Transform
-        var rho = Mathf.Sqrt(center.X * center.X + center.Y * center.Y + center.Z * center.Z);
-        var theta = Mathf.Atan2(center.Y, center.X);
-        var phi = Mathf.Acos(center.Z / rho);
-        var ccs = circumcenters.Cast<IPoint>().ToVectors3();
-        for(int i = 0; i < circumcenters.Count; i++) {
-          ccs[i].X = ccs[i].X * -Mathf.Sin(theta) + ccs[i].Y * Mathf.Cos(theta);
-          ccs[i].Y = ccs[i].X * Mathf.Cos(phi) * Mathf.Cos(theta) + ccs[i].Y * -Mathf.Cos(phi) * Mathf.Sin(theta) + ccs[i].Z * Mathf.Sin(phi);
-          ccs[i].Z = Mathf.Round(ccs[i].X * -Mathf.Sin(phi) * Mathf.Cos(theta) + ccs[i].Y * -Mathf.Sin(phi) * Mathf.Sin(theta) + ccs[i].Z * Mathf.Cos(phi) + 1.0f * -rho);
-         // ccs[i].X = ccs[i].X * -Mathf.Cos(theta) + ccs[i].Y * -Mathf.Cos(phi) * Mathf.Sin(theta) + ccs[i].Z * Mathf.Sin(phi) * Mathf.Sin(theta);
-         // ccs[i].Y = ccs[i].X * Mathf.Sin(theta) + ccs[i].Y * -Mathf.Cos(phi) * Mathf.Cos(theta) + ccs[i].Z * Mathf.Sin(phi) * Mathf.Cos(theta);
-         // ccs[i].Z = ccs[i].Y * Mathf.Sin(phi) + ccs[i].Z * Mathf.Cos(phi);
-          DrawPoint(ccs[i], 0.05f, Colors.DarkSalmon);
-        }
-        //
-        //DrawFace(Colors.Peru, circumcenters.Cast<IPoint>().ToVectors3());
-        */
-        //}
-
-        GenerateSurfaceMesh();
+        //GenerateSurfaceMesh(VoronoiPoints, circumcenters);
 
     }
 
-    public void RenderTriangleAndConnections()
+    public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, List<Point> TrueCircumcenters, int index)
     {
-        var tri = tris[0];
+        var u = new Vector3(0, 0, 0);
+        if (!Mathf.Equals(unitNorm.X, 0.0f))
+        {
+            u = new Vector3(-unitNorm.Y, unitNorm.X, 0.0f);
+        }
+        else if (!Mathf.Equals(unitNorm.Y, 0.0f))
+        {
+            u = new Vector3(-unitNorm.Z, 0, unitNorm.Y);
+        }
+        else
+        {
+            u = new Vector3(1, 0, 0);
+        }
+        u = u.Normalized();
+        var v = unitNorm.Cross(u);
+
+        List<Point> projectedPoints = new List<Point>();
+        var ccs = TriCircumcenters.Cast<IPoint>().ToVectors3();
+        for (int i = 0; i < TriCircumcenters.Count; i++)
+        {
+            var projection = new Vector2((ccs[i] - ccs[0]).Dot(u), (ccs[i] - ccs[0]).Dot(v));
+            projectedPoints.Add(new Point(new Vector3(projection.X, projection.Y, 0.0f), TriCircumcenters[i].Index));
+        }
+
+        //Order List of 2D points in clockwise order
+        var orderedPoints = ReorderPoints(projectedPoints);
+        var orderedPointsReversed = new List<Point>(orderedPoints);
+        orderedPointsReversed.Reverse();
+
+        List<Point> TriangulatedIndices = new List<Point>();
+        List<Triangle> Triangles = new List<Triangle>();
+        while (orderedPoints.Count > 3)
+        {
+            for (int i = 0; i < orderedPoints.Count; i++)
+            {
+                //Console.WriteLine($"Triangulating Polygon {i}");
+                var a = GetOrderedPoint(orderedPoints, i);
+                var b = GetOrderedPoint(orderedPoints, i - 1);
+                var c = GetOrderedPoint(orderedPoints, i + 1);
+
+                Vector3 tab = b.ToVector3() - a.ToVector3();
+                Vector3 tac = c.ToVector3() - a.ToVector3();
+                Vector2 ab = new Vector2(tab.X, tab.Y);
+                Vector2 ac = new Vector2(tac.X, tac.Y);
+
+                if (ab.Cross(ac) < 0.0f)
+                {
+                    //Console.WriteLine("Continue");
+                    continue;
+                }
+
+                bool isEar = true;
+                for (int j = 0; j < orderedPoints.Count; j++)
+                {
+                    if (orderedPoints[j].Index == a.Index || orderedPoints[j].Index == b.Index || orderedPoints[j].Index == c.Index)
+                    {
+                        continue;
+                    }
+                    Vector2 p = new Vector2(orderedPoints[j].X, orderedPoints[j].Y);
+                    if (IsPointInTriangle(p, new Vector2(a.X, a.Y), new Vector2(b.X, b.Y), new Vector2(c.X, c.Y), false))
+                    {
+                        isEar = false;
+                        break;
+                    }
+                }
+                if (isEar)
+                {
+                    Triangles.Add(new Triangle(Triangles.Count, new List<IPoint>() { TrueCircumcenters[b.Index], TrueCircumcenters[a.Index], TrueCircumcenters[c.Index] }));
+                    TriangulatedIndices.Add(TrueCircumcenters[b.Index]);
+                    TriangulatedIndices.Add(TrueCircumcenters[a.Index]);
+                    TriangulatedIndices.Add(TrueCircumcenters[c.Index]);
+
+                    orderedPoints.RemoveAt(i);
+                    break;
+                }
+            }
+        }
+        Triangles.Add(new Triangle(Triangles.Count, new List<IPoint>() { TrueCircumcenters[orderedPoints[0].Index], TrueCircumcenters[orderedPoints[1].Index], TrueCircumcenters[orderedPoints[2].Index] }));
+        TriangulatedIndices.Add(TrueCircumcenters[orderedPoints[0].Index]);
+        TriangulatedIndices.Add(TrueCircumcenters[orderedPoints[1].Index]);
+        TriangulatedIndices.Add(TrueCircumcenters[orderedPoints[2].Index]);
+
+
+        while (orderedPointsReversed.Count > 3)
+        {
+            for (int i = 0; i < orderedPointsReversed.Count; i++)
+            {
+                //Console.WriteLine($"Triangulating Polygon {i}");
+                var a = GetOrderedPoint(orderedPointsReversed, i);
+                var b = GetOrderedPoint(orderedPointsReversed, i - 1);
+                var c = GetOrderedPoint(orderedPointsReversed, i + 1);
+
+                Vector3 tab = b.ToVector3() - a.ToVector3();
+                Vector3 tac = c.ToVector3() - a.ToVector3();
+                Vector2 ab = new Vector2(tab.X, tab.Y);
+                Vector2 ac = new Vector2(tac.X, tac.Y);
+
+                if (ab.Cross(ac) > 0.0f)
+                {
+                    continue;
+                }
+
+                bool isEar = true;
+                for (int j = 0; j < orderedPointsReversed.Count; j++)
+                {
+                    if (orderedPointsReversed[j].Index == a.Index || orderedPointsReversed[j].Index == b.Index || orderedPointsReversed[j].Index == c.Index)
+                    {
+                        continue;
+                    }
+                    Vector2 p = new Vector2(orderedPointsReversed[j].X, orderedPointsReversed[j].Y);
+                    if (IsPointInTriangle(p, new Vector2(a.X, a.Y), new Vector2(b.X, b.Y), new Vector2(c.X, c.Y), true))
+                    {
+                        isEar = false;
+                        break;
+                    }
+                }
+                if (isEar)
+                {
+                    Triangles.Add(new Triangle(Triangles.Count, new List<IPoint>() {TrueCircumcenters[b.Index],TrueCircumcenters[a.Index],TrueCircumcenters[c.Index]    }));
+                    TriangulatedIndices.Add(TrueCircumcenters[b.Index]);
+                    TriangulatedIndices.Add(TrueCircumcenters[a.Index]);
+                    TriangulatedIndices.Add(TrueCircumcenters[c.Index]);
+
+                    orderedPointsReversed.RemoveAt(i);
+                    break;
+                }
+            }
+
+        }
+        Triangles.Add(new Triangle(Triangles.Count, new List<IPoint>() { TrueCircumcenters[orderedPointsReversed[0].Index], TrueCircumcenters[orderedPointsReversed[1].Index], TrueCircumcenters[orderedPointsReversed[2].Index] }));
+        TriangulatedIndices.Add(TrueCircumcenters[orderedPointsReversed[0].Index]);
+        TriangulatedIndices.Add(TrueCircumcenters[orderedPointsReversed[1].Index]);
+        TriangulatedIndices.Add(TrueCircumcenters[orderedPointsReversed[2].Index]);
+
+        VoronoiCell GeneratedCell = new VoronoiCell(index, TriangulatedIndices.Cast<IPoint>().ToArray(), Triangles.Cast<ITriangle>().ToArray());
+        return GeneratedCell;
+    }
+
+    public bool IsPointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c, bool reversed)
+    {
+        var ab = b - a;
+        var bc = c - b;
+        var ca = a - c;
+
+        var ap = p - a;
+        var bp = p - b;
+        var cp = p - c;
+
+        if (reversed)
+        {
+
+            if (ab.Cross(ap) < 0f || bc.Cross(bp) < 0f || ca.Cross(cp) < 0f)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (ab.Cross(ap) > 0f || bc.Cross(bp) > 0f || ca.Cross(cp) > 0f)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public Point GetOrderedPoint(List<Point> points, int index)
+    {
+        if (index >= points.Count)
+        {
+            return points[index % points.Count];
+        }
+        else if (index < 0)
+        {
+            return points[index % points.Count + points.Count];
+        }
+        else
+        {
+            return points[index];
+        }
+    }
+
+    public List<Point> ReorderPoints(List<Point> points)
+    {
+        var average = new Vector3(0, 0, 0);
+        foreach (Point p in points)
+        {
+            average += p.ToVector3();
+        }
+        average /= points.Count;
+        var center = new Vector2(average.X, average.Y);
+        //if (center.X <= 0f) { shouldInvertX = true; }
+        List<Point> orderedPoints = new List<Point>();
+        for (int i = 0; i < points.Count; i++)
+        {
+            orderedPoints.Add(new Point(new Vector3(points[i].X, points[i].Y, less(center, new Vector2(points[i].X, points[i].Y))), points[i].Index));
+        }
+        orderedPoints = orderedPoints.OrderBy(p => p.Z).ToList();
+        for (int i = 0; i < orderedPoints.Count; i++)
+        {
+            points[i] = new Point(new Vector3(orderedPoints[i].X, orderedPoints[i].Y, 0.0f), orderedPoints[i].Index);
+        }
+        return points;
+    }
+    public float less(Vector2 center, Vector2 a)
+    {
+        float a1 = (Mathf.RadToDeg(Mathf.Atan2(a.X - center.X, a.Y - center.Y)) + 360) % 360;
+        return a1;
+    }
+
+    public void RenderTriangleAndConnections(Triangle tri)
+    {
         foreach (var p in tri.Points)
         {
             //GD.Print($"{p.ToVector3()}");
         }
         var edgesFromTri = edges.Where(e => tri.Points.Any(a => a.Index == e.P.Index || a.Index == e.Q.Index));
+        DrawLine(tri.Points.ToArray()[0].ToVector3(), tri.Points.ToArray()[1].ToVector3());
+        DrawLine(tri.Points.ToArray()[1].ToVector3(), tri.Points.ToArray()[2].ToVector3());
+        DrawLine(tri.Points.ToArray()[2].ToVector3(), tri.Points.ToArray()[0].ToVector3());
         foreach (Point p in tri.Points)
         {
+            GD.Print(p.ToVector3());
             if (ProjectToSphere)
-                DrawPoint(p.ToVector3().Normalized(), 0.05f, Colors.Black);
+                DrawPoint(p.ToVector3().Normalized(), 0.1f, Colors.Black);
             else
-                DrawPoint(p.ToVector3(), 0.05f, Colors.Black);
+                DrawPoint(p.ToVector3(), 0.1f, Colors.Black);
         }
         foreach (var edge in edgesFromTri)
         {
             //GD.Print($"Edge: {edge.Index} from {edge.P.ToVector3()} to {edge.Q.ToVector3()}");
-            //DrawLine(edge.P.ToVector3().Normalized(), edge.Q.ToVector3().Normalized());
         }
 
 
         //foreach(Triangle tri in tris) {
 
         //}
-        foreach (Edge edge in edges)
+        /*foreach (Edge edge in edges)
         {
             foreach (var p in tri.Points)
             {
@@ -302,7 +617,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             //DrawLine(edge.P.ToVector3().Normalized(), edge.Q.ToVector3().Normalized());
 
-        }
+        }*/
     }
 
     public override void _Input(InputEvent @event)
@@ -316,6 +631,11 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             else if (eventKey.Pressed && eventKey.Keycode == Key.T)
             {
                 PreviousTriangle();
+            }
+            else if (eventKey.Pressed && eventKey.Keycode == Key.P)
+            {
+                animationFlag = true;
+                animationWeight = 0.0f;
             }
         }
     }
@@ -344,78 +664,13 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         foreach (Face f in faces)
         {
-            tris.Add(new Triangle(tris.Count, f.v.Cast<IPoint>()));
+            Edge[] triEdges = new Edge[3];
             for (int i = 0, j = f.v.Length - 1; i < f.v.Length; j = i++)
             {
-                //GD.Print($"{i} | {j}");
-                edges.Add(new Edge(edges.Count, f.v[j], f.v[i]));
-                // if (!finalPoints.Contains(f.v[i].ToVector3()))
-                // {
-                //     bool shouldAdd = true;
-                //     foreach (var v in finalPoints)
-                //     {
-                //         if (Mathf.Abs((v - f.v[i].ToVector3()).Length()) <= Mathf.Pow(2, -52)) shouldAdd = false;
-                //     }
-                //     var ver = f.v[i].ToVector3();
-                //     ver = ConvertToSpherical(ver.Normalized());
-
-                //     if (shouldAdd) finalPoints.Add(ver);
-                // }
+                triEdges[i] = new Edge(edges.Count, f.v[j], f.v[i]);
+                edges.Add(triEdges[i]);
             }
-        }
-        /*
-        Vector3 normal = (f.v[1].ToVector3() - f.v[0].ToVector3()).Cross(f.v[2].ToVector3() - f.v[0].ToVector3()).Normalized();
-        //DrawPoint(normal, 0.05f, Colors.Plum);
-        if (!circumcenters.Contains(normal))
-        {
-            bool shouldAdd = true;
-            foreach (var cc in circumcenters)
-            {
-                GD.Print((cc - normal).Length());
-                GD.Print(Mathf.Abs((cc - normal).Length()) <= Mathf.Pow(2, -52));
-                if (Mathf.Abs((cc - normal).Length()) <= Mathf.Pow(2, -52)) shouldAdd = false;
-            }
-            if (shouldAdd)
-            {
-                circumcenters.Add(normal);
-                Vector3 sphericalPosition = ConvertToSpherical(normal);
-                sphericalPoints.Add(sphericalPosition);
-            }
-        }
-    }
-    sphericalPoints.Sort(delegate (Vector3 x, Vector3 y)
-    {
-        if (x.Z > y.Z) return 1;
-        else if (x.Z == y.Z) return 0;
-        else return -1;
-    });
-    foreach (Vector3 v in sphericalPoints)
-    {
-        DrawPoint(ConvertToCartesian(v), 0.05f, Colors.Plum);
-    }
-    //DrawLine(ConvertToCartesian(sphericalPoints[0]), ConvertToCartesian(sphericalPoints[1]), Colors.Red);
-
-    /*Delaunator3D dl = new Delaunator3D(sphericalPoints.ToPoints());
-    dl.ForEachTriangle(tri =>
-        {
-            Vector3[] ps = tri.Points.ToVectors3();
-            DrawLine(ps[0], ps[1], Colors.Red);
-            DrawLine(ps[0], ps[2], Colors.Red);
-            DrawLine(ps[2], ps[1], Colors.Red);
-        });
-    dl.ForEachVoronoiEdge(edge =>
-            {
-                DrawPoint(edge.P.ToVector3(), 0.03f, Colors.SeaGreen);
-                DrawLine(edge.P.ToVector3(), edge.Q.ToVector3(), Colors.Gold);
-            });*/
-
-    }
-
-    public void ComputerVoronoiCells()
-    {
-        foreach (Face f in faces)
-        {
-
+            tris.Add(new Triangle(tris.Count, f.v.Cast<IPoint>().ToList(), triEdges.Cast<IEdge>().ToList()));
         }
     }
 
@@ -432,46 +687,57 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
     }
 
-    public void GenerateSurfaceMesh()
+    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, List<Point> circumcenters)
     {
+        RandomNumberGenerator randy = new RandomNumberGenerator();
+        randy.Seed = Seed;
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
-        GD.Print(faces.Count);
-        foreach (Face face in faces)
+        var material = new StandardMaterial3D();
+        material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
+        material.VertexColorUseAsAlbedo = true;
+        //material.AlbedoColor = Colors.Pink;
+        st.SetMaterial(material);
+        foreach (VoronoiCell vor in VoronoiList)
         {
-            var centroid = Vector3.Zero;
-            centroid += face.v[0].ToVector3();
-            centroid += face.v[1].ToVector3();
-            centroid += face.v[2].ToVector3();
-            centroid /= 3.0f;
-
-            var normal = (face.v[1].ToVector3() - face.v[0].ToVector3()).Cross(face.v[2].ToVector3() - face.v[0].ToVector3()).Normalized();
-            var tangent = (face.v[0].ToVector3() - centroid).Normalized();
-            var bitangent = normal.Cross(tangent).Normalized();
-            var min_u = Mathf.Inf;
-            var min_v = Mathf.Inf;
-            var max_u = -Mathf.Inf;
-            var max_v = -Mathf.Inf;
-            for (int j = 0; j < 3; j++)
+            //st.SetColor(new Color((float)vor.Index / (float)VoronoiList.Count,(float)vor.Index / (float)VoronoiList.Count ,(float)vor.Index / (float)VoronoiList.Count));
+            st.SetColor(new Color(randy.Randf(), randy.Randf(), randy.Randf()));
+            for (int i = 0; i < vor.Points.Length / 3; i++)
             {
-                var rel_pos = face.v[j].ToVector3() - centroid;
-                var u = rel_pos.Dot(tangent);
-                var v = rel_pos.Dot(bitangent);
-                min_u = Mathf.Min(min_u, u);
-                min_v = Mathf.Min(min_v, v);
-                max_u = Mathf.Max(max_u, u);
-                max_v = Mathf.Max(max_v, v);
+                var centroid = Vector3.Zero;
+                centroid += vor.Points[3 * i].ToVector3();
+                centroid += vor.Points[3 * i + 1].ToVector3();
+                centroid += vor.Points[3 * i + 2].ToVector3();
+                centroid /= 3.0f;
 
-                var uv = new Vector2((u - min_u) / (max_u - min_u), (v - min_v) / (max_v - min_v));
-                st.SetUV(uv);
-                if (ProjectToSphere)
-                    st.AddVertex(face.v[j].ToVector3().Normalized() * size);
-                else
-                    st.AddVertex(face.v[j].ToVector3() * size);
+                var normal = (vor.Points[3 * i + 1].ToVector3() - vor.Points[3 * i].ToVector3()).Cross(vor.Points[3 * i + 2].ToVector3() - vor.Points[3 * i].ToVector3()).Normalized();
+                var tangent = (vor.Points[3 * i].ToVector3() - centroid).Normalized();
+                var bitangent = normal.Cross(tangent).Normalized();
+                var min_u = Mathf.Inf;
+                var min_v = Mathf.Inf;
+                var max_u = -Mathf.Inf;
+                var max_v = -Mathf.Inf;
+                for (int j = 0; j < 3; j++)
+                {
+                    var rel_pos = vor.Points[3 * i + j].ToVector3() - centroid;
+                    var u = rel_pos.Dot(tangent);
+                    var v = rel_pos.Dot(bitangent);
+                    min_u = Mathf.Min(min_u, u);
+                    min_v = Mathf.Min(min_v, v);
+                    max_u = Mathf.Max(max_u, u);
+                    max_v = Mathf.Max(max_v, v);
+
+                    var uv = new Vector2((u - min_u) / (max_u - min_u), (v - min_v) / (max_v - min_v));
+                    st.SetUV(uv);
+                    st.SetNormal(tangent);
+                    if (ProjectToSphere)
+                        st.AddVertex(vor.Points[3 * i + j].ToVector3().Normalized() * size);
+                    else
+                        st.AddVertex(vor.Points[3 * i + j].ToVector3() * size);
+                }
             }
         }
-
         st.Commit(arrMesh);
     }
 
@@ -491,6 +757,13 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         subfaces.Add(new Face(subVector3, subVector1, subVector2));
 
         return subfaces.ToArray();
+    }
+
+    public void AddJitter(Point original, Point jitter)
+    {
+        var tempVector = (jitter.ToVector3() + original.ToVector3()) / 2.0f;
+        tempVector = tempVector.Normalized();
+        original.Position = tempVector;
     }
 
     public Point GetMiddle(Point v1, Point v2)
@@ -598,9 +871,11 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         var meshInstance = new MeshInstance3D();
         var immediateMesh = new ImmediateMesh();
-        var material = ResourceLoader.Load("res://face_shader.tres") as ShaderMaterial;
-        material.Set("base_color", new Color(Math.Abs(pos1.X), Math.Abs(pos2.Y), Math.Abs(pos3.Z)));
-        material.Set("border_thickness", 0.01);
+        //var material = ResourceLoader.Load("res://face_shader.tres") as ShaderMaterial;
+        var material = new StandardMaterial3D();
+        material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
+        material.AlbedoColor = color ?? Colors.Pink;
+
 
         meshInstance.Mesh = immediateMesh;
         meshInstance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
