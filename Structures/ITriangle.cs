@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 public interface ITriangle
 {
-    IEnumerable<IPoint> Points { get; }
-    IEnumerable<IEdge> Edges { get; }
+    IList<Point> Points { get; }
+    IList<Edge> Edges { get; }
     int Index { get; }
 }

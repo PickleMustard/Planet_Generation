@@ -34,7 +34,7 @@ void fragment() {
 		dBaryCoord,
 		baryCoord
 	);
-	
+
 	remap = filtered ? remap : step(.1, remap);
 
 	float closestEdge = min(min(remap.z, remap.y), remap.x);

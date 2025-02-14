@@ -21,7 +21,7 @@ public class Delaunator3D
     /// <summary>
     /// The initial points Delaunator was constructed with.
     /// </summary>
-    public IPoint[] Points { get; private set; }
+    public Point[] Points { get; private set; }
 
     /// <summary>
     /// A list of point indices that traverses the hull of the points.
@@ -43,7 +43,7 @@ public class Delaunator3D
     private readonly int hullStart;
     private readonly int hullSize;
 
-    public Delaunator3D(IPoint[] points)
+    public Delaunator3D(Point[] points)
     {
         if (points.Length < 3)
         {
@@ -553,12 +553,12 @@ public class Delaunator3D
     {
         for (var t = 0; t < Triangles.Length / 3; t++)
         {
-            yield return new Triangle(t, GetTrianglePoints(t));
+            yield return new Triangle(t, GetTrianglePoints(t).ToList(), new List<Edge>());
         }
     }
-    public IPoint[] GetTrianglePoints(int t)
+    public Point[] GetTrianglePoints(int t)
     {
-        var points = new List<IPoint>();
+        var points = new List<Point>();
         foreach (var p in PointsOfTriangle(t))
         {
             points.Add(Points[p]);
@@ -573,7 +573,7 @@ public class Delaunator3D
         }
     }
     public static int[] EdgesOfTriangle(int t) => new int[] { 3 * t, 3 * t + 1, 3 * t + 2 };
-    public IEnumerable<IEdge> GetVoronoiEdges(Func<int, IPoint> triangleVerticeSelector = null)
+    public IEnumerable<IEdge> GetVoronoiEdges(Func<int, Point> triangleVerticeSelector = null)
     {
         if (triangleVerticeSelector == null) triangleVerticeSelector = x => GetCentroid(x);
         for (var e = 0; e < Triangles.Length; e++)
@@ -586,12 +586,12 @@ public class Delaunator3D
             }
         }
     }
-    public IPoint GetCentroid(int t)
+    public Point GetCentroid(int t)
     {
         var vertices = GetTrianglePoints(t);
         return GetCentroid(vertices);
     }
-    public static IPoint GetCentroid(IPoint[] points)
+    public static Point GetCentroid(Point[] points)
     {
         float accumulatedArea = 0.0f;
         float centerX = 0.0f;

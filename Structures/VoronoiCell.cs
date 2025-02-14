@@ -1,9 +1,9 @@
-public struct VoronoiCell : IVoronoiCell
+public class VoronoiCell : IVoronoiCell
 {
-    public IPoint[] Points { get; set; }
-    public ITriangle[] Triangles { get; set; }
+    public Point[] Points { get; set; }
+    public Triangle[] Triangles { get; set; }
     public int Index { get; set; }
-    public VoronoiCell(int triangleIndex, IPoint[] points, ITriangle[] triangles)
+    public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles)
     {
         Triangles = triangles;
         Points = points;
