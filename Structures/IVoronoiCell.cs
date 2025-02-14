@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 public interface IVoronoiCell
 {
-    IPoint[] Points { get; }
-    ITriangle[] Triangles { get; }
+    Point[] Points { get; }
+    Triangle[] Triangles { get; }
     int Index { get; }
 }

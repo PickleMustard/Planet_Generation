@@ -7,7 +7,7 @@ public partial class DelauneyTriangulator2D : MeshInstance3D
 {
 
     Random rand;
-    public List<IPoint> points = new List<IPoint>();
+    public List<Point> points = new List<Point>();
     [Export]
     public int NumPoints = 50;
     [Export]

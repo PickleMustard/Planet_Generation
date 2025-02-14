@@ -1,5 +1,6 @@
+using System;
 using Godot;
-public struct Point : IPoint
+public class Point : IPoint, IEquatable<Point>
 {
     public Vector3 Position
     {
@@ -10,6 +11,37 @@ public struct Point : IPoint
     public float Y { get; set; }
     public float Z { get; set; }
     public int Index { get; set; }
+
+    public bool Equals(Point other)
+    {
+        return other.Index == Index && other.X == X && other.Y == Y && other.Z == Z;
+    }
+
+    public override bool Equals(Object obj)
+    {
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return this.Index.GetHashCode();
+    }
+
+    public static bool operator ==(Point p1, Point p2)
+    {
+        return p1.Equals(p2);
+    }
+
+    public static bool operator !=(Point p1, Point p2)
+    {
+        return !p1.Equals(p2);
+    }
+
+    public void Move(Vector3 newLocation) {
+      X = newLocation.X;
+      Y = newLocation.Y;
+      Z = newLocation.Z;
+    }
 
     public Point(float x, float y, float z, int i = 0)
     {
@@ -27,5 +59,20 @@ public struct Point : IPoint
         Index = i;
     }
 
-    public override string ToString() => $"{X},{Y},{Z}";
+    public Point() {
+      X = 0;
+      Y = 0;
+      Z = 0;
+      Index = 0;
+    }
+
+    public Point(IPoint copy)
+    {
+        X = copy.X;
+        Y = copy.Y;
+        Z = copy.Z;
+        Index = copy.Index;
+    }
+
+    public override string ToString() => $"Point: ({Index},{X},{Y},{Z})";
 }
