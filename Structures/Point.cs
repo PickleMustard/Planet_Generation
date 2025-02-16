@@ -7,6 +7,7 @@ public class Point : IPoint, IEquatable<Point>
         get { return new Vector3(X, Y, Z); }
         set { X = value.X; Y = value.Y; Z = value.Z; }
     }
+    public Vector3 Velocity { get; set; }
     public float X { get; set; }
     public float Y { get; set; }
     public float Z { get; set; }
@@ -37,10 +38,11 @@ public class Point : IPoint, IEquatable<Point>
         return !p1.Equals(p2);
     }
 
-    public void Move(Vector3 newLocation) {
-      X = newLocation.X;
-      Y = newLocation.Y;
-      Z = newLocation.Z;
+    public void Move(Vector3 newLocation)
+    {
+        X = newLocation.X;
+        Y = newLocation.Y;
+        Z = newLocation.Z;
     }
 
     public Point(float x, float y, float z, int i = 0)
@@ -59,11 +61,12 @@ public class Point : IPoint, IEquatable<Point>
         Index = i;
     }
 
-    public Point() {
-      X = 0;
-      Y = 0;
-      Z = 0;
-      Index = 0;
+    public Point()
+    {
+        X = 0;
+        Y = 0;
+        Z = 0;
+        Index = 0;
     }
 
     public Point(IPoint copy)
