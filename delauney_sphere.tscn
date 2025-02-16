@@ -14,9 +14,10 @@ blend_shape_mode = 0
 gi_mode = 2
 mesh = SubResource("ArrayMesh_81xnv")
 script = ExtResource("2_xj8s3")
-subdivide = 3
+subdivide = 4
 NumAbberations = 20
 NumDeformationCycles = 6
+NumContinents = 30
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)
