@@ -9,4 +9,17 @@ public class VoronoiCell : IVoronoiCell
         Points = points;
         Index = triangleIndex;
     }
+
+    public override string ToString() {
+      string output = "";
+      output += $"VoronoiCell: ({Index}, ";
+      //foreach(Point p in Points) {
+      //  output += $"{p}, ";
+      //}
+      //foreach(Triangle t in Triangles) {
+      //  output += $"{t}, ";
+      //}
+      output += ")";
+      return output;
+    }
 }

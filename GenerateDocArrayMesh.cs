@@ -33,14 +33,16 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
     }
 
-    public struct Continent {
-      public List<VoronoiCell> cells;
+    public struct Continent
+    {
+        public int StartingIndex;
+        public List<VoronoiCell> cells;
 
-      public Vector2 movementDirection;
-      public float rotation;
+        public Vector2 movementDirection;
+        public float rotation;
 
-      public float averageHeight;
-      public float averageMoisture;
+        public float averageHeight;
+        public float averageMoisture;
     }
     public DelaunatorSharp.Delaunator dl;
     static float TAU = (1 + (float)Math.Sqrt(5)) / 2;
@@ -59,6 +61,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public List<Edge> generatedEdges = new List<Edge>();
     public List<Triangle> generatedTris = new List<Triangle>();
     public List<VoronoiCell> VoronoiCells = new List<VoronoiCell>();
+    RandomNumberGenerator rand = new RandomNumberGenerator();
 
     [Export]
     public int subdivide = 1;
@@ -83,7 +86,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
     public override void _Ready()
     {
-        RandomNumberGenerator rand = new RandomNumberGenerator();
         rand.Seed = Seed;
         DrawPoint(new Vector3(0, 0, 0), 0.1f, Colors.White);
         //Generate the starting dodecahedron
@@ -213,7 +215,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
 
             GD.Print("Relaxing");
-            for (int index = 0; index < (12 * (1 + deforms)); index++)
+            for (int index = 0; index < 12; index++)
             {
                 foreach (Point p in VertexPoints)
                 {
@@ -227,27 +229,10 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                         triCenter += t.Points[2].ToVector3();
                         triCenter /= 3f;
                         average += triCenter;
-                        //foreach (Point p in t.Points)
-                        //{
-                        //    //p.Position = p.Position.Normalized();
-                        //    lengthValue = (triCenter - p.Position).Length();
-                        //    lengthDifference = lengthValue - OptimalCentroidLength;
-                        //    movementVector = triCenter - p.Position;
-                        //    movementVector *= lengthDifference * (2f + (deforms + 1) / (deforms + 1));
-                        //    p.Position = (p.Position + movementVector);
-                        //    //p.Position = p.Position.Normalized();
-                        //}
                     }
                     average /= trianglesWithPoint.ToList().Count;
                     p.Position = average;
                     var pointEdges = baseEdges.Where(e => e.P == p || e.Q == p);
-                    //mean /= vertexCounter;
-                    //mean = Mathf.Sqrt(mean);
-                    //centroid /= vertexCounter;
-                    //Vector3 displacementVector = centroid - p.Position;
-                    //Vector3 projectedDisplacementVector = displacementVector - (displacementVector.Dot(p.Position) / Mathf.Pow((p.Position.Length()), 2) * p.Position);
-                    //p.Position = p.Position.Lerp(projectedDisplacementVector, mean);
-                    //p.Position = p.Position.Lerp(centroid, mean);
                 }
             }
         }
@@ -303,14 +288,108 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
         }
 
+        var continents = FloodFillContinentGeneration(VoronoiCells);
+
         GD.Print($"Number of Cells in mesh: {VoronoiCells.Count}");
         GD.Print("Generating Mesh");
-        GenerateSurfaceMesh(VoronoiCells, circumcenters);
+        //GenerateSurfaceMesh(VoronoiCells, circumcenters);
+        GenerateFromContinents(continents, circumcenters);
 
     }
 
-    public List<Continent> FloodFillContinentGeneration(List<VoronoiCell> cells) {
+    public int[] GetCellNeighbors(List<VoronoiCell> cells, int index)
+    {
+        var currentCell = cells[index];
+        HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
+        foreach (Point p in currentCell.Points)
+        {
+            var neighboringCells = cells.Where(vc => vc.Points.Any(vcp => vcp == p));
+            foreach (VoronoiCell vc in neighboringCells)
+            {
+                neighbors.Add(vc);
+            }
+        }
+        List<int> neighborIndices = new List<int>();
+        foreach (VoronoiCell vc in neighbors)
+        {
+            neighborIndices.Add(vc.Index);
+        }
+        return neighborIndices.ToArray();
+    }
 
+    public HashSet<int> GenerateStartingCells(List<VoronoiCell> cells)
+    {
+        HashSet<int> startingCells = new HashSet<int>();
+        while (startingCells.Count < NumContinents && startingCells.Count < cells.Count)
+        {
+            int position = rand.RandiRange(0, cells.Count - 1);
+            startingCells.Add(position);
+        }
+        return startingCells;
+    }
+    public Dictionary<int, Continent> FloodFillContinentGeneration(List<VoronoiCell> cells)
+    {
+        Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
+        HashSet<int> startingCells = GenerateStartingCells(cells);
+        var queue = startingCells.ToList();
+        int[] neighborChart = new int[cells.Count];
+        for (int i = 0; i < neighborChart.Length; i++)
+        {
+            neighborChart[i] = -1;
+        }
+        foreach (int i in startingCells)
+        {
+            var continent = new Continent();
+            continent.cells = new List<VoronoiCell>();
+            continent.averageHeight = rand.RandfRange(-10f, 10f);
+            continent.averageMoisture = rand.RandfRange(1.0f, 5.0f);
+            neighborChart[i] = i;
+            continent.StartingIndex = i;
+            continent.cells.Add(cells[i]);
+            continents[i] = continent;
+
+            var neighborIndices = GetCellNeighbors(cells, i);
+            foreach (var nb in neighborIndices)
+            {
+                if (neighborChart[nb] == -1)
+                {
+                    neighborChart[nb] = neighborChart[i];
+                    queue.Add(nb);
+                }
+            }
+        }
+        for (int i = 0; i < queue.Count; i++)
+        {
+            var pos = rand.RandiRange(i, (queue.Count - 1));
+            var currentRegion = queue[pos];
+            queue[pos] = queue[i];
+            var neighborIndices = GetCellNeighbors(cells, currentRegion);
+            foreach (var nb in neighborIndices)
+            {
+                if (neighborChart[nb] == -1)
+                {
+                    neighborChart[nb] = neighborChart[currentRegion];
+                    queue.Add(nb);
+                }
+            }
+        }
+
+        for (int i = 0; i < neighborChart.Length; i++)
+        {
+            if (neighborChart[i] != -1)
+            {
+                continents[neighborChart[i]].cells.Add(cells[i]);
+            }
+        }
+
+        foreach (var keyValuePair in continents)
+        {
+            GD.Print("Meow");
+            GD.Print(keyValuePair.Value.StartingIndex);
+            GD.Print(keyValuePair.Value.cells.Count);
+        }
+
+        return continents;
     }
 
     public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, List<Point> TrueCircumcenters, int index)
@@ -666,7 +745,20 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
     }
 
-    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, List<Point> circumcenters)
+    public void GenerateFromContinents(Dictionary<int, Continent> continents, List<Point> circumcenters)
+    {
+        foreach (var keyValuePair in continents)
+        {
+            Color continentColor = new Color(rand.RandfRange(.3f, 1f), rand.RandfRange(.3f, 1f), rand.RandfRange(0f, .5f));
+            if (keyValuePair.Value.averageHeight < 0f)
+            {
+                continentColor = new Color(0.0f, rand.RandfRange(0f, .4f), rand.RandfRange(.7f, 1f));
+            }
+            GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters, continentColor);
+        }
+    }
+
+    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, List<Point> circumcenters, Color? color = null)
     {
         RandomNumberGenerator randy = new RandomNumberGenerator();
         randy.Seed = Seed;
@@ -685,7 +777,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             //    RenderTriangleAndConnections(t);
             //}
             //st.SetColor(new Color((float)vor.Index / (float)VoronoiList.Count,(float)vor.Index / (float)VoronoiList.Count ,(float)vor.Index / (float)VoronoiList.Count));
-            st.SetColor(new Color(randy.Randf(), randy.Randf(), randy.Randf()));
+            st.SetColor(color ?? new Color(randy.Randf(), randy.Randf(), randy.Randf()));
             for (int i = 0; i < vor.Points.Length / 3; i++)
             {
                 var centroid = Vector3.Zero;
