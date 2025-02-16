@@ -1,28 +1,10 @@
-[gd_scene load_steps=8 format=3 uid="uid://dt8sw4jlumdml"]
+[gd_scene load_steps=4 format=3 uid="uid://dt8sw4jlumdml"]
 
 [ext_resource type="Script" path="res://camera_control.gd" id="2_pc5x5"]
 [ext_resource type="Script" path="res://GenerateDocArrayMesh.cs" id="2_xj8s3"]
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_81xnv"]
 blend_shape_mode = 0
-
-[sub_resource type="SphereMesh" id="SphereMesh_kewvn"]
-radius = 0.1
-height = 0.1
-is_hemisphere = true
-
-[sub_resource type="SphereMesh" id="SphereMesh_e870e"]
-radius = 0.1
-height = 0.1
-
-[sub_resource type="SphereMesh" id="SphereMesh_8e5cl"]
-radius = 0.1
-height = 0.1
-is_hemisphere = true
-
-[sub_resource type="SphereMesh" id="SphereMesh_kr2bc"]
-radius = 0.1
-height = 0.1
 
 [node name="root" type="Node3D"]
 
@@ -32,9 +14,9 @@ height = 0.1
 gi_mode = 2
 mesh = SubResource("ArrayMesh_81xnv")
 script = ExtResource("2_xj8s3")
-subdivide = 4
-NumAbberations = 30
-NumDeformationCycles = 8
+subdivide = 3
+NumAbberations = 20
+NumDeformationCycles = 6
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)
@@ -47,25 +29,3 @@ script = ExtResource("2_pc5x5")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00016582, 0, -0.664038)
 light_bake_mode = 1
 sky_mode = 1
-
-[node name="Node3D" type="Node3D" parent="."]
-visible = false
-
-[node name="UpRight" type="MeshInstance3D" parent="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.019, 2, -2)
-mesh = SubResource("SphereMesh_kewvn")
-
-[node name="UpLeft" type="MeshInstance3D" parent="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 2)
-mesh = SubResource("SphereMesh_e870e")
-skeleton = NodePath("../UpRight")
-
-[node name="DownLeft" type="MeshInstance3D" parent="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 2)
-mesh = SubResource("SphereMesh_8e5cl")
-skeleton = NodePath("../UpLeft")
-
-[node name="DownRight" type="MeshInstance3D" parent="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -2)
-mesh = SubResource("SphereMesh_kr2bc")
-skeleton = NodePath("../DownLeft")
