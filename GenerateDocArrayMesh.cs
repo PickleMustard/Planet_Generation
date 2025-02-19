@@ -15,6 +15,11 @@ public static class Extension
 
 public partial class GenerateDocArrayMesh : MeshInstance3D
 {
+    public enum CrustType
+    {
+        Continental = 0,
+        Oceanic = 1
+    };
     public struct Face
     {
         public Point[] v;
@@ -37,10 +42,14 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         public int StartingIndex;
         public List<VoronoiCell> cells;
+        public HashSet<Point> points;
+        public List<Point> ConvexHull;
+        public Vector3 averagedCenter;
 
         public Vector2 movementDirection;
         public float rotation;
 
+        public CrustType elevation;
         public float averageHeight;
         public float averageMoisture;
     }
@@ -341,11 +350,19 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         {
             var continent = new Continent();
             continent.cells = new List<VoronoiCell>();
+            continent.points = new HashSet<Point>();
             continent.averageHeight = rand.RandfRange(-10f, 10f);
             continent.averageMoisture = rand.RandfRange(1.0f, 5.0f);
+            continent.movementDirection = new Vector2(rand.RandfRange(-1f, 1f), rand.RandfRange(-1f, 1f));
+            continent.rotation = rand.RandiRange(-360, 360);
+            continent.averagedCenter = new Vector3(0f, 0f, 0f);
             neighborChart[i] = i;
             continent.StartingIndex = i;
             continent.cells.Add(cells[i]);
+            foreach (Point p in cells[i].Points)
+            {
+                continent.points.Add(p);
+            }
             continents[i] = continent;
 
             var neighborIndices = GetCellNeighbors(cells, i);
@@ -361,14 +378,14 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         for (int i = 0; i < queue.Count; i++)
         {
             var pos = rand.RandiRange(i, (queue.Count - 1));
-            var currentRegion = queue[pos];
+            var currentVCell = queue[pos];
             queue[pos] = queue[i];
-            var neighborIndices = GetCellNeighbors(cells, currentRegion);
+            var neighborIndices = GetCellNeighbors(cells, currentVCell);
             foreach (var nb in neighborIndices)
             {
                 if (neighborChart[nb] == -1)
                 {
-                    neighborChart[nb] = neighborChart[currentRegion];
+                    neighborChart[nb] = neighborChart[currentVCell];
                     queue.Add(nb);
                 }
             }
@@ -378,15 +395,34 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         {
             if (neighborChart[i] != -1)
             {
-                continents[neighborChart[i]].cells.Add(cells[i]);
+                var continent = continents[neighborChart[i]];
+                continent.cells.Add(cells[i]);
+                foreach (Point p in cells[i].Points)
+                {
+                    continent.points.Add(p);
+                }
             }
         }
 
         foreach (var keyValuePair in continents)
         {
-            GD.Print("Meow");
-            GD.Print(keyValuePair.Value.StartingIndex);
-            GD.Print(keyValuePair.Value.cells.Count);
+            var continent = keyValuePair.Value;
+            foreach (Point p in continent.points)
+            {
+                continent.averagedCenter += p.Position;
+            }
+            continent.averagedCenter /= continent.points.Count;
+            continent.averagedCenter = continent.averagedCenter.Normalized();
+            foreach(VoronoiCell vc in continent.cells) {
+              Vector3 average = Vector3.Zero;
+              foreach(Point p in vc.Points) {
+                average += p.Position;
+              }
+              average /= vc.Points.Length;
+              average = average.Normalized();
+              float radius = (continent.averagedCenter - average).Length();
+              vc.MovementDirection = continent.movementDirection + new Vector2(radius * Mathf.Cos(continent.rotation), radius * Mathf.Sin(continent.rotation));
+            }
         }
 
         return continents;
@@ -749,11 +785,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         foreach (var keyValuePair in continents)
         {
-            Color continentColor = new Color(rand.RandfRange(.3f, 1f), rand.RandfRange(.3f, 1f), rand.RandfRange(0f, .5f));
-            if (keyValuePair.Value.averageHeight < 0f)
-            {
-                continentColor = new Color(0.0f, rand.RandfRange(0f, .4f), rand.RandfRange(.7f, 1f));
-            }
+            var continent = keyValuePair.Value;
+            var HeightHue = -6f * continent.averageHeight + 180f;
+            var MoistureCoefficient = 2f * (240f - HeightHue) / 240f;
+            var Hue = ((17.5f * continent.averageMoisture * MoistureCoefficient) - (77.5f * MoistureCoefficient) + HeightHue) / 360f;
+            var Saturation = 1f - Mathf.Log(.12f * continent.averageHeight) * 12f;
+            Color continentColor = Color.FromHsv(Hue, Saturation, 1f, 1f);
             GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters, continentColor);
         }
     }
