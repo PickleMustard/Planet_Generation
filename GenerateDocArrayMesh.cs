@@ -413,15 +413,46 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             continent.averagedCenter /= continent.points.Count;
             continent.averagedCenter = continent.averagedCenter.Normalized();
-            foreach(VoronoiCell vc in continent.cells) {
-              Vector3 average = Vector3.Zero;
-              foreach(Point p in vc.Points) {
-                average += p.Position;
-              }
-              average /= vc.Points.Length;
-              average = average.Normalized();
-              float radius = (continent.averagedCenter - average).Length();
-              vc.MovementDirection = continent.movementDirection + new Vector2(radius * Mathf.Cos(continent.rotation), radius * Mathf.Sin(continent.rotation));
+            foreach (VoronoiCell vc in continent.cells)
+            {
+                Vector3 average = Vector3.Zero;
+                foreach (Point p in vc.Points)
+                {
+                    average += p.Position;
+                }
+                average /= vc.Points.Length;
+                average = average.Normalized();
+                float radius = (continent.averagedCenter - average).Length();
+                vc.MovementDirection = continent.movementDirection + new Vector2(radius * Mathf.Cos(continent.rotation), radius * Mathf.Sin(continent.rotation));
+
+                if (vc.Index == 100)
+                {
+                    foreach (var tri in vc.Triangles)
+                    {
+                        RenderTriangleAndConnections(tri);
+                    }
+
+                    //Find Plane Equation
+                    var v1 = vc.Points[1].ToVector3() - vc.Points[0].ToVector3();
+                    var v2 = vc.Points[vc.Points.Length - 1].ToVector3() - vc.Points[0].ToVector3();
+                    var UnitNorm = v1.Cross(v2);
+                    //UnitNorm = UnitNorm / size;
+                    UnitNorm = UnitNorm.Normalized();
+                    if (UnitNorm.Dot(vc.Points[0].ToVector3()) < 0f)
+                    {
+                        UnitNorm = -UnitNorm;
+                    }
+
+                    var d = UnitNorm.X * (vc.Points[0].X) + UnitNorm.Y * (vc.Points[0].Y) + UnitNorm.Z * (vc.Points[0].Z);
+                    var newZ = (d - (UnitNorm.X * vc.Points[0].X) - (UnitNorm.Y * vc.Points[0].Y)) / UnitNorm.Z;
+                    var newZ2 = (d / UnitNorm.Z);
+
+                    GD.Print($"Plane Equation for {vc} is {d} = {UnitNorm.X}a + {UnitNorm.Y}b + {UnitNorm.Z}c");
+                    //DrawPoint(new Vector3(UnitNorm.X * (vc.Points[0].X + 1) - d, UnitNorm.Y * vc.Points[0].Y - d, (UnitNorm.Z * (-UnitNorm.X / UnitNorm.Z))), 0.05f, Colors.Black);
+                    DrawPoint(new Vector3(vc.Points[0].X, vc.Points[0].Y, newZ).Normalized(), 0.05f, Colors.Black);
+                    DrawPoint(UnitNorm, 0.05f, Colors.Plum);
+
+                }
             }
         }
 
@@ -883,7 +914,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         //var tempVector = (v1 + v2) / 2.0f;
         var tempVector = (v2.ToVector3() - v1.ToVector3()) * 0.5f + v1.ToVector3();
-        tempVector.Normalized();
+        //tempVector.Normalized();
 
         if (VertexPoints.Any(p => p.ToVector3() == tempVector))
         {
