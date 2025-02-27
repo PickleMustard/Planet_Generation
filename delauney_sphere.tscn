@@ -15,6 +15,7 @@ gi_mode = 2
 mesh = SubResource("ArrayMesh_81xnv")
 script = ExtResource("2_xj8s3")
 subdivide = 4
+GenerateRealistic = false
 Seed = 8927467
 NumAbberations = 20
 NumDeformationCycles = 6
