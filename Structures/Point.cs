@@ -7,6 +7,7 @@ public class Point : IPoint, IEquatable<Point>
         get { return new Vector3(X, Y, Z); }
         set { X = value.X; Y = value.Y; Z = value.Z; }
     }
+    public float Height { get; set; }
     public Vector3 Velocity { get; set; }
     public float X { get; set; }
     public float Y { get; set; }
