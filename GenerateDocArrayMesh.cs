@@ -42,6 +42,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         public int StartingIndex;
         public List<VoronoiCell> cells;
+        public HashSet<VoronoiCell> boundaryCells;
         public HashSet<Point> points;
         public List<Point> ConvexHull;
         public Vector3 averagedCenter;
@@ -101,16 +102,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public override void _Ready()
     {
         rand.Seed = Seed;
-        DrawPoint(new Vector3(0, 0, 0), 0.1f, Colors.White);
+        PolygonRendererSDL.DrawPoint(this, size, new Vector3(0, 0, 0), 0.1f, Colors.White);
         //Generate the starting dodecahedron
         PopulateArrays();
         //Split the faces n times
         GenerateNonDeformedFaces();
         List<MeshInstance3D> meshInstances = new List<MeshInstance3D>();
-        foreach (Point point in VertexPoints)
-        {
-            //meshInstances.Add(DrawPoint(point.ToVector3(), 0.05f, new Color(Math.Abs(point.ToVector3().X), Math.Abs(point.ToVector3().Y), Math.Abs(point.ToVector3().Z))));
-        }
 
 
         //Construct Adjacency Matrices for all triangles and edges given all points
@@ -292,6 +289,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 UnitNorm = -UnitNorm;
             }
             VoronoiCell calculated = TriangulatePoints(UnitNorm, triCircumcenters, circumcenters, VoronoiCells.Count);
+            calculated.IsBorderTile = false;
             if (calculated != null)
             {
                 VoronoiCells.Add(calculated);
@@ -299,11 +297,56 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
 
         var continents = FloodFillContinentGeneration(VoronoiCells);
+        foreach (VoronoiCell vc in VoronoiCells)
+        {
+            var cellNeighbors = GetCellNeighbors(VoronoiCells, vc.Index);
+            float averageHeight = vc.Height;
+            foreach (int neighbor in cellNeighbors)
+            {
+                GD.Print($"VC: {vc.Index}, {vc.ContinentIndex} | Neighbor: {VoronoiCells[neighbor].Index}, {VoronoiCells[neighbor].ContinentIndex}");
+                if (VoronoiCells[neighbor].ContinentIndex != vc.ContinentIndex)
+                {
+                    vc.IsBorderTile = true;
+                    continents[vc.ContinentIndex].boundaryCells.Add(vc);
+                    VoronoiCells[neighbor].IsBorderTile = true;
+                }
+                averageHeight += VoronoiCells[neighbor].Height;
+            }
+            vc.Height = averageHeight / (cellNeighbors.Length + 1);
+            foreach (Point p in vc.Points)
+            {
+                p.Height = vc.Height;
+            }
+        }
 
         GD.Print($"Number of Cells in mesh: {VoronoiCells.Count}");
         GD.Print("Generating Mesh");
+        GD.Print($"Cell Height: {circumcenters[0].Height}");
         //GenerateSurfaceMesh(VoronoiCells, circumcenters);
+        foreach (Point p in circumcenters)
+        {
+            var trianglesWithPoint = generatedTris.Where(t => t.Points.Contains(p));
+            float height = p.Height;
+            int counter = 1;
+            foreach (Triangle t in trianglesWithPoint)
+            {
+                foreach (Point p2 in t.Points)
+                {
+                    height += p2.Height;
+                    counter++;
+                }
+            }
+            height /= counter;
+            p.Height = height;
+            var pointEdges = baseEdges.Where(e => e.P == p || e.Q == p);
+        }
+        CalculateBoundaryStress(continents, VoronoiCells, circumcenters);
         GenerateFromContinents(continents, circumcenters);
+
+    }
+
+    public void CalculateBoundaryStress(Dictionary<int, Continent> continents, List<VoronoiCell> cells, List<Point> points) {
+      //
 
     }
 
@@ -398,8 +441,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             {
                 var continent = continents[neighborChart[i]];
                 continent.cells.Add(cells[i]);
+                cells[i].Height = continent.averageHeight;
+                cells[i].ContinentIndex = continent.StartingIndex;
                 foreach (Point p in cells[i].Points)
                 {
+                    p.Position = p.Position.Normalized();
+                    p.Height = continent.averageHeight;
                     continent.points.Add(p);
                 }
             }
@@ -431,13 +478,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             vAxis = vAxis.Normalized();
             foreach (VoronoiCell vc in continent.cells)
             {
-                //if (continent.StartingIndex == 966)
-                //{
-                //    foreach (Triangle tri in vc.Triangles)
-                //    {
-                //        RenderTriangleAndConnections(tri);
-                //    }
-                //}
                 Vector3 average = Vector3.Zero;
                 foreach (Point p in vc.Points)
                 {
@@ -447,35 +487,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 average = average.Normalized();
                 float radius = (continent.averagedCenter - average).Length();
                 vc.MovementDirection = continent.movementDirection + new Vector2(radius * Mathf.Cos(continent.rotation), radius * Mathf.Sin(continent.rotation));
-                //vc.MovementDirection = continent.movementDirection;
-
-                //if (vc.Index == 100 || vc.Index == 110 || vc.Index == 120)
-                //{
-                //foreach (var tri in vc.Triangles)
-                //{
-                //    RenderTriangleAndConnections(tri);
-                //}
-
                 //Find Plane Equation
                 var vcRadius = (average - vc.Points[0].ToVector3().Normalized()).Length() * .9f;
-                //var v1 = (vc.Points[1].ToVector3().Normalized() - vc.Points[0].ToVector3().Normalized());
-                //var v2 = (vc.Points[2].ToVector3().Normalized() - vc.Points[0].ToVector3().Normalized());
                 var vcUnitNorm = v1.Cross(v2);
-                ////UnitNorm = UnitNorm / size;
-                //if (UnitNorm.Dot(average) < 0f)
-                //{
-                //    UnitNorm = -UnitNorm;
-                //}
-                ////UnitNorm *= (float)size;
-                //var uAxis = v1;// * (float)size;
-                //var vAxis = UnitNorm.Cross(uAxis);// * (float)size;
                 var projectionRatio = (uAxis - UnitNorm).Length() / vcRadius;
                 vcUnitNorm /= projectionRatio;
-                //uAxis /= projectionRatio;
-                //vAxis /= projectionRatio;
                 vcUnitNorm = vcUnitNorm.Normalized();
-                //uAxis = uAxis.Normalized();
-                //vAxis = vAxis.Normalized();
 
 
                 var d = UnitNorm.X * (vc.Points[0].X) + UnitNorm.Y * (vc.Points[0].Y) + UnitNorm.Z * (vc.Points[0].Z);
@@ -490,7 +507,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
                 //GD.Print($"Plane Equation for {vc} is {d} = {UnitNorm.X}a + {UnitNorm.Y}b + {UnitNorm.Z}c");
 
-                DrawArrow(average, directionPoint, UnitNorm, vcRadius, Colors.Black);
+                PolygonRendererSDL.DrawArrow(this, size + (continent.averageHeight / 100f), average, directionPoint, UnitNorm, vcRadius, Colors.Black);
 
 
                 //}
@@ -739,9 +756,9 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         var edgesFromTri = baseEdges.Where(e => tri.Points.Any(a => a == e.P || a == e.Q));
         if (!ProjectToSphere)
         {
-            DrawLine(tri.Points[0].ToVector3(), tri.Points[1].ToVector3());
-            DrawLine(tri.Points[1].ToVector3(), tri.Points[2].ToVector3());
-            DrawLine(tri.Points[2].ToVector3(), tri.Points[0].ToVector3());
+            PolygonRendererSDL.DrawLine(this, size, tri.Points[0].ToVector3(), tri.Points[1].ToVector3());
+            PolygonRendererSDL.DrawLine(this, size, tri.Points[1].ToVector3(), tri.Points[2].ToVector3());
+            PolygonRendererSDL.DrawLine(this, size, tri.Points[2].ToVector3(), tri.Points[0].ToVector3());
             foreach (Point p in tri.Points)
             {
                 //GD.Print(p);
@@ -749,13 +766,13 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 switch (i)
                 {
                     case 0:
-                        DrawPoint(p.ToVector3(), 0.05f, Colors.Red);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Red);
                         break;
                     case 1:
-                        DrawPoint(p.ToVector3(), 0.05f, Colors.Green);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Green);
                         break;
                     case 2:
-                        DrawPoint(p.ToVector3(), 0.05f, Colors.Blue);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Blue);
                         break;
                 }
                 i++;
@@ -763,9 +780,9 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
         else
         {
-            DrawLine(tri.Points[0].ToVector3().Normalized(), tri.Points[1].ToVector3().Normalized());
-            DrawLine(tri.Points[1].ToVector3().Normalized(), tri.Points[2].ToVector3().Normalized());
-            DrawLine(tri.Points[2].ToVector3().Normalized(), tri.Points[0].ToVector3().Normalized());
+            PolygonRendererSDL.DrawLine(this, size, tri.Points[0].ToVector3().Normalized(), tri.Points[1].ToVector3().Normalized());
+            PolygonRendererSDL.DrawLine(this, size, tri.Points[1].ToVector3().Normalized(), tri.Points[2].ToVector3().Normalized());
+            PolygonRendererSDL.DrawLine(this, size, tri.Points[2].ToVector3().Normalized(), tri.Points[0].ToVector3().Normalized());
             foreach (Point p in tri.Points)
             {
                 //GD.Print(p);
@@ -773,13 +790,13 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 switch (i)
                 {
                     case 0:
-                        DrawPoint(p.ToVector3().Normalized(), 0.05f, Colors.Red);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), 0.05f, Colors.Red);
                         break;
                     case 1:
-                        DrawPoint(p.ToVector3().Normalized(), 0.05f, Colors.Green);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), 0.05f, Colors.Green);
                         break;
                     case 2:
-                        DrawPoint(p.ToVector3().Normalized(), 0.05f, Colors.Blue);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), 0.05f, Colors.Blue);
                         break;
                 }
                 i++;
@@ -883,22 +900,25 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             var HeightHue = -6f * continent.averageHeight + 180f;
             var MoistureCoefficient = 2f * (240f - HeightHue) / 240f;
             var Hue = ((17.5f * continent.averageMoisture * MoistureCoefficient) - (77.5f * MoistureCoefficient) + HeightHue) / 360f;
-            var Saturation = 1f - Mathf.Log(.12f * continent.averageHeight) * 12f;
-            Color continentColor = Color.FromHsv(Hue, Saturation, 1f, 1f);
+            var Saturation = (1f - Mathf.Log(.12f * (continent.averageHeight + Mathf.Abs(continent.averageHeight) + .01f) / 2)) / 10f;
+            GD.Print($"Continent Color: Hue: {Hue} | Sat: {Saturation}");
+            Color continentColor = Color.FromHsv(Hue, 1f, 1f, 1f);
             if (GenerateRealistic)
             {
-                GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters, continentColor);
+                GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters, continent.averageHeight, continent.averageMoisture, continentColor);
             }
             else
             {
-                GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters, new Color(rand.Randf(), rand.Randf(), rand.Randf()));
+                GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters, continent.averageHeight, continent.averageMoisture, new Color(rand.Randf(), rand.Randf(), rand.Randf()));
             }
         }
     }
 
-    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, List<Point> circumcenters, Color? color = null)
+    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, List<Point> circumcenters, float averageHeight, float moisture, Color? color = null)
     {
         RandomNumberGenerator randy = new RandomNumberGenerator();
+        float height = (averageHeight / 100.0f);
+        //float height = averageHeight;
         randy.Seed = Seed;
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
@@ -915,6 +935,23 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             //    RenderTriangleAndConnections(t);
             //}
             //st.SetColor(new Color((float)vor.Index / (float)VoronoiList.Count,(float)vor.Index / (float)VoronoiList.Count ,(float)vor.Index / (float)VoronoiList.Count));
+            if (vor.Height < 0f)
+            {
+                var depthRatio = Mathf.Min(1.0f, Mathf.Abs(vor.Height) / 10f);
+                var Hue = (180 + (60 * depthRatio)) / 360f;
+                var Saturation = .7f + (.3f * depthRatio);
+                var Value = .6f - (.3f * depthRatio);
+                color = Color.FromHsv(Hue, Saturation, Value, 1f);
+            }
+            else
+            {
+                var normalizedMoisture = (moisture - 1f) / 4f;
+                var normalizedHeight = Mathf.Min(1f, vor.Height / 10f);
+                var Hue = (60 + (60 * normalizedMoisture)) / 360f;
+                var Saturation = .4f + (.5f * normalizedMoisture);
+                var Value = .5f + (.3f * normalizedHeight) - (.1f * normalizedMoisture);
+                color = Color.FromHsv(Hue, Saturation, Value, 1f);
+            }
             st.SetColor(color ?? new Color(randy.Randf(), randy.Randf(), randy.Randf()));
             for (int i = 0; i < vor.Points.Length / 3; i++)
             {
@@ -945,9 +982,9 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                     st.SetUV(uv);
                     //st.SetNormal(tangent);
                     if (ProjectToSphere)
-                        st.AddVertex(vor.Points[3 * i + j].ToVector3().Normalized() * size);
+                        st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 100f));
                     else
-                        st.AddVertex(vor.Points[3 * i + j].ToVector3() * size);
+                        st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 10f));
                 }
             }
         }
@@ -1053,136 +1090,5 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
     }
 
-    public MeshInstance3D DrawFace(Color? color = null, params Vector3[] vertices)
-    {
-        var meshInstance = new MeshInstance3D();
-        var immediateMesh = new ImmediateMesh();
-        var material = ResourceLoader.Load("res://face_shader.tres") as ShaderMaterial;
-        material.Set("base_color", new Color(Math.Abs(50), Math.Abs(70), Math.Abs(50)));
-        material.Set("border_thickness", 0.01);
-
-        meshInstance.Mesh = immediateMesh;
-        meshInstance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-
-
-        immediateMesh.SurfaceBegin(Mesh.PrimitiveType.Triangles, material);
-        foreach (Vector3 vertex in vertices)
-        {
-            immediateMesh.SurfaceAddVertex(vertex * size);
-        }
-        immediateMesh.SurfaceEnd();
-
-        //material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
-        //material.AlbedoColor = color ?? Colors.WhiteSmoke;
-        this.AddChild(meshInstance);
-
-        return meshInstance;
-    }
-
-    public MeshInstance3D DrawTriangle(Vector3 pos1, Vector3 pos2, Vector3 pos3, Color? color = null)
-    {
-        var meshInstance = new MeshInstance3D();
-        var immediateMesh = new ImmediateMesh();
-        //var material = ResourceLoader.Load("res://face_shader.tres") as ShaderMaterial;
-        var material = new StandardMaterial3D();
-        material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
-        material.AlbedoColor = color ?? Colors.Pink;
-
-
-        meshInstance.Mesh = immediateMesh;
-        meshInstance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-
-
-        immediateMesh.SurfaceBegin(Mesh.PrimitiveType.Triangles, material);
-        immediateMesh.SurfaceAddVertex(pos1 * size);
-        immediateMesh.SurfaceAddVertex(pos2 * size);
-        immediateMesh.SurfaceAddVertex(pos3 * size);
-        immediateMesh.SurfaceEnd();
-
-        //material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
-        //material.AlbedoColor = color ?? Colors.WhiteSmoke;
-        this.AddChild(meshInstance);
-
-        return meshInstance;
-    }
-
-    public MeshInstance3D DrawArrow(Vector3 arrowBase, Vector3 arrowTip, Vector3 normal, float height, Color? color = null)
-    {
-        var meshInstance = new MeshInstance3D();
-        var immediateMesh = new ImmediateMesh();
-        var material = new StandardMaterial3D();
-
-        meshInstance.Mesh = immediateMesh;
-        meshInstance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-
-
-        immediateMesh.SurfaceBegin(Mesh.PrimitiveType.Lines, material);
-        immediateMesh.SurfaceAddVertex(arrowBase * size);
-        immediateMesh.SurfaceAddVertex(arrowTip * size);
-        immediateMesh.SurfaceEnd();
-
-
-        material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
-        material.AlbedoColor = color ?? Colors.Aqua;
-        this.AddChild(meshInstance);
-
-        var coneInstance = new MeshInstance3D();
-        CylinderMesh pointer = new CylinderMesh();
-        pointer.BottomRadius = 0.0f;
-        pointer.TopRadius = height;
-        pointer.Height = height;
-
-        coneInstance.Mesh = pointer;
-        this.AddChild(coneInstance);
-        coneInstance.LookAtFromPosition(arrowBase.Lerp(arrowTip, .75f) * size, arrowTip * size, normal);
-        coneInstance.RotateObjectLocal(Vector3.Right, 90);
-
-        return meshInstance;
-
-    }
-
-    public MeshInstance3D DrawLine(Vector3 pos1, Vector3 pos2, Color? color = null)
-    {
-        var meshInstance = new MeshInstance3D();
-        var immediateMesh = new ImmediateMesh();
-        var material = new StandardMaterial3D();
-
-        meshInstance.Mesh = immediateMesh;
-        meshInstance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-
-
-        immediateMesh.SurfaceBegin(Mesh.PrimitiveType.Lines, material);
-        immediateMesh.SurfaceAddVertex(pos1 * size);
-        immediateMesh.SurfaceAddVertex(pos2 * size);
-        immediateMesh.SurfaceEnd();
-
-        material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
-        material.AlbedoColor = color ?? Colors.Aqua;
-        this.AddChild(meshInstance);
-
-        return meshInstance;
-    }
-
-    public MeshInstance3D DrawPoint(Vector3 pos, float radius = 0.05f, Color? color = null)
-    {
-        var meshInstance = new MeshInstance3D();
-        var sphereMesh = new SphereMesh();
-        var material = new StandardMaterial3D();
-
-        meshInstance.Mesh = sphereMesh;
-        meshInstance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-        meshInstance.Position = pos * size;
-
-        sphereMesh.Radius = radius;
-        sphereMesh.Height = radius * 2f;
-        sphereMesh.Material = material;
-
-        material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
-        material.AlbedoColor = color ?? Colors.WhiteSmoke;
-
-        this.AddChild(meshInstance);
-
-        return meshInstance;
-    }
 }
 
