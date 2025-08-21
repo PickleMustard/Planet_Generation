@@ -13,6 +13,7 @@ public class Point : IPoint, IEquatable<Point>
     public float Y { get; set; }
     public float Z { get; set; }
     public int Index { get; set; }
+    public bool continentBorder { get; set; }
 
     public bool Equals(Point other)
     {
