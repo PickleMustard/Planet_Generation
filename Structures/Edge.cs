@@ -14,7 +14,11 @@ public class Edge : IEdge, IEquatable<Edge>
 
     public bool Equals(Edge other)
     {
-        return other.Index == Index && P == other.P && Q == other.Q;
+        return P == other.P && Q == other.Q;
+    }
+
+    public Edge ReverseEdge() {
+        return new Edge(Index, Q, P);
     }
 
     public static bool operator ==(Edge e1, Edge e2)
