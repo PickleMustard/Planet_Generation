@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Godot;
 
 
+namespace Structures;
 public class Continent
 {
     public enum CRUST_TYPE
@@ -40,7 +41,11 @@ public class Continent
     public Dictionary<int, float> neighborStress; // Stress per neighboring continent
     public Dictionary<int, BOUNDARY_TYPE> boundaryTypes; // Type of boundary with neighbors
 
-    public Continent(int StartingIndex, List<VoronoiCell> cells, HashSet<VoronoiCell> boundaryCells, HashSet<Point> points, List<Point> ConvexHull, Vector3 averagedCenter, Vector3 uAxis, Vector3 vAxis, Vector2 movementDirection, float rotation, CRUST_TYPE elevation, float averageHeight, float averageMoisture, HashSet<int> neighborContinents, float stressAccumulation, Dictionary<int, float> neighborStress, Dictionary<int, BOUNDARY_TYPE> boundaryTypes)
+    public Continent(int StartingIndex, List<VoronoiCell> cells, HashSet<VoronoiCell> boundaryCells,
+            HashSet<Point> points, List<Point> ConvexHull, Vector3 averagedCenter,
+            Vector3 uAxis, Vector3 vAxis, Vector2 movementDirection,
+            float rotation, CRUST_TYPE elevation, float averageHeight, float averageMoisture,
+            HashSet<int> neighborContinents, float stressAccumulation, Dictionary<int, float> neighborStress, Dictionary<int, BOUNDARY_TYPE> boundaryTypes)
     {
         this.StartingIndex = StartingIndex;
         this.cells = cells;

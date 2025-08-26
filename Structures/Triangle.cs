@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+namespace Structures;
 public class Triangle : ITriangle
 {
     public int Index { get; set; }

@@ -1,7 +1,16 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Godot;
+namespace Structures;
 public class Point : IPoint, IEquatable<Point>
 {
+    public static int DetermineIndex(float x, float y, float z) {
+        int ix = BitConverter.SingleToInt32Bits(MathF.Round(x, 6));
+        int iy = BitConverter.SingleToInt32Bits(MathF.Round(y, 6));
+        int iz = BitConverter.SingleToInt32Bits(MathF.Round(z, 6));
+        return HashCode.Combine(ix, iy, iz);
+    }
     public Vector3 Position
     {
         get { return new Vector3(X, Y, Z); }
@@ -14,10 +23,12 @@ public class Point : IPoint, IEquatable<Point>
     public float Z { get; set; }
     public int Index { get; set; }
     public bool continentBorder { get; set; }
+    public float Radius { get; set; }
 
     public bool Equals(Point other)
     {
-        return other.Index == Index && other.X == X && other.Y == Y && other.Z == Z;
+        if((Object)other == null) return false;
+        return other.X == X && other.Y == Y && other.Z == Z;
     }
 
     public override bool Equals(Object obj)
@@ -32,11 +43,15 @@ public class Point : IPoint, IEquatable<Point>
 
     public static bool operator ==(Point p1, Point p2)
     {
+        if((Object)p1 == null || (Object)p2 == null)
+            return false;
         return p1.Equals(p2);
     }
 
     public static bool operator !=(Point p1, Point p2)
     {
+        if((Object)p1 == null || (Object)p2 == null)
+            return true;
         return !p1.Equals(p2);
     }
 
@@ -45,22 +60,33 @@ public class Point : IPoint, IEquatable<Point>
         X = newLocation.X;
         Y = newLocation.Y;
         Z = newLocation.Z;
+        Radius = 0;
     }
 
-    public Point(float x, float y, float z, int i = 0)
+    public Point(float x, float y, float z)
     {
         X = x;
         Y = y;
         Z = z;
-        Index = i;
+        Index = DetermineIndex(x, y, z);
+        Radius = 0;
     }
 
-    public Point(Vector3 v, int i = 0)
+    public Point(Vector3 v) {
+        X = v.X;
+        Y = v.Y;
+        Z = v.Z;
+        Index = DetermineIndex(v.X, v.Y, v.Z);
+        Radius = 0;
+    }
+
+    public Point(Vector3 v, int i)
     {
         X = v.X;
         Y = v.Y;
         Z = v.Z;
         Index = i;
+        Radius = 0;
     }
 
     public Point()
@@ -68,7 +94,8 @@ public class Point : IPoint, IEquatable<Point>
         X = 0;
         Y = 0;
         Z = 0;
-        Index = 0;
+        Index = DetermineIndex(0, 0, 0);
+        Radius = 0;
     }
 
     public Point(IPoint copy)
@@ -77,7 +104,15 @@ public class Point : IPoint, IEquatable<Point>
         Y = copy.Y;
         Z = copy.Z;
         Index = copy.Index;
+        Radius = 0;
     }
+
+    public static Vector3[] ToVectors3(IEnumerable<Point> points) => points.Select(point => point.ToVector3()).ToArray();
+    public static Point[] ToPoints(IEnumerable<Vector3> vertices) => vertices.Select(vertex => ToPoint(vertex)).ToArray();
+    public static Point ToPoint(Vector3 vertex) => new Point(vertex);
+    public Vector3 ToVector3() => new Vector3(X, Y, Z);
+    public Vector2 ToVector2() => new Vector2(X, Y);
+    public Edge ReverseEdge(Edge e) { var t = e.Q; e.Q = e.P; e.P = t; return e; }
 
     public override string ToString() => $"Point: ({Index},{X},{Y},{Z})";
 }

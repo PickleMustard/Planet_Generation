@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+namespace Structures;
 
 public interface IVoronoiCell
 {
