@@ -1,18 +1,30 @@
 using Godot;
+namespace Structures;
 public class VoronoiCell : IVoronoiCell
 {
+    public enum BiomeType
+    {
+        Tundra, Icecap, Desert, Grassland, Forest, Rainforest, Taiga, Ocean, Coastal, Swamp, Mountain
+    }
     public Point[] Points { get; set; }
     public Triangle[] Triangles { get; set; }
     public Edge[] Edges { get; set; }
     public Edge[] OutsideEdges { get; set; } //Edges that lie on the border of a continent
     public int Index { get; set; }
-    public int ContinentIndex {get; set;}
-    public bool IsBorderTile {get; set;}
-    public int[] BoundingContinentIndex {get; set;}
+    public int ContinentIndex { get; set; }
+    public bool IsBorderTile { get; set; }
+    public int[] BoundingContinentIndex { get; set; }
     public Vector2 MovementDirection { get; set; }
-    public float Height {get; set;}
-    public Vector3 Center {
-        get {
+    public float Height { get; set; }
+    public BiomeType Biome
+    {
+        get;
+        set;
+    }
+    public Vector3 Center
+    {
+        get
+        {
             if (Points == null || Points.Length == 0)
                 return new Vector3(0, 0, 0);
 
@@ -31,7 +43,7 @@ public class VoronoiCell : IVoronoiCell
         Edges = edges;
         Index = triangleIndex;
         ContinentIndex = -1;
-        BoundingContinentIndex = new int[]{};
+        BoundingContinentIndex = new int[] { };
         IsBorderTile = false;
     }
 
