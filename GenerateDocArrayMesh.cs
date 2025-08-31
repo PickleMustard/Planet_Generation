@@ -4,10 +4,12 @@ using Structures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static Structures.Point;
 
 
 public partial class GenerateDocArrayMesh : MeshInstance3D
 {
+    public static GenericPercent percent;
     public DelaunatorSharp.Delaunator dl;
     static float TAU = (1 + (float)Math.Sqrt(5)) / 2;
     Vector3 origin = new Vector3(0, 0, 0);
@@ -34,6 +36,8 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public static Dictionary<Edge, HashSet<VoronoiCell>> EdgeMap = new Dictionary<Edge, HashSet<VoronoiCell>>();
     public static Dictionary<Point, HashSet<Triangle>> VoronoiTriMap = new Dictionary<Point, HashSet<Triangle>>();
     public static Dictionary<Edge, HashSet<Triangle>> VoronoiEdgeTriMap = new Dictionary<Edge, HashSet<Triangle>>();
+    public static int VoronoiCellCount = 0;
+    public static int CurrentlyProcessingVoronoiCount = 0;
 
     //public List<Edge> baseEdges = new List<Edge>();
     public List<Triangle> baseTris = new List<Triangle>();
@@ -98,181 +102,33 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public override void _Ready()
     {
         //instance = this;
+        percent = new GenericPercent();
         rand.Seed = Seed;
         PolygonRendererSDL.DrawPoint(this, size, new Vector3(0, 0, 0), 0.1f, Colors.White);
         //Generate the starting dodecahedron
-        PopulateArrays();
-        //Split the faces n times
-        GenerateNonDeformedFaces();
         List<MeshInstance3D> meshInstances = new List<MeshInstance3D>();
+        GenericPercent emptyPercent = new GenericPercent();
+        emptyPercent.PercentTotal = 0;
+        var function = FunctionTimer.TimeFunction<int>(
+            "Base Mesh Generation",
+            () =>
+            {
+                PopulateArrays();
+                GenerateNonDeformedFaces();
+                GenerateTriangleList();
+                return 0;
+            }, emptyPercent);
 
 
-        //Construct Adjacency Matrices for all triangles and edges given all points
-        GenerateTriangleList();
-
-        //RenderTriangleAndConnections(tris[0]);
-
-        //var p = VertexPoints[300];
-        //List<VoronoiCell> VoronoiPoints = new List<VoronoiCell>();
-        //GD.Print(VertexPoints.Count);
-        //GD.Print(baseTris.Count);
         var OptimalArea = (4.0f * Mathf.Pi * size * size) / baseTris.Count;
-        //GD.Print($"Optimal Area of Triangle: {OptimalArea}");
-        var OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
-        //GD.Print($"Optimal Side Length of Triangle: {OptimalSideLength}");
-        var OptimalCentroidLength = Mathf.Cos(Mathf.DegToRad(30.0f)) * .5f * OptimalSideLength;
-        //GD.Print($"Optimal Length from Vertex of Triangle to Centroid: {OptimalCentroidLength}");
-        int alteredIndex = 0;
-        //var randomTri = baseTris[baseTris.Count - baseTris.Count / 2];
-        for (int deforms = 0; deforms < NumDeformationCycles; deforms++)
+        float OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
+        function = FunctionTimer.TimeFunction<int>("Deformed Mesh Generation", () =>
         {
-            //GD.Print($"Deformation Cycle: {deforms} | Deform Amount: {(2f + deforms) / (deforms + 1)}");
-            for (int i = 0; i < NumAbberations; i++)
-            {
-                var randomTri = baseTris[rand.RandiRange(0, baseTris.Count - 1)];
-                var randomTriPoint = randomTri.Points[rand.RandiRange(0, 2)];
-                testPoint = randomTriPoint;
-                //var edgesWithPoint = baseEdges.Where(e => randomTri.Points.Contains(e.Q) && randomTri.Points.Contains(e.P));
-                HashSet<Edge> edgesWithPointFrom = HalfEdgesFrom[randomTriPoint];
-                HashSet<Edge> edgesWithPointTo = HalfEdgesTo[randomTriPoint];
-                HashSet<Edge> allEdgesWithPoint = new HashSet<Edge>(edgesWithPointFrom);
-                foreach (Edge e in edgesWithPointTo)
-                {
-                    allEdgesWithPoint.Add(e);
-                }
-                foreach (Edge e in edgesWithPointFrom)
-                {
-                    allEdgesWithPoint.Add(e);
-                }
-                //List<Edge> edgesFromPoint = baseEdges.Where(e => e.P == randomTriPoint).ToList();
-                //List<Edge> edgesToPoint = baseEdges.Where(e => e.Q == randomTriPoint).ToList();
-                //List<Edge> allEdges = new List<Edge>(edgesFromPoint);
-                //allEdges.AddRange(edgesToPoint);
-                List<Edge> allEdges = allEdgesWithPoint.ToList();
-                bool shouldRedo = false;
-                //foreach (Edge e in edgesFromPoint)
-                //{
-                //    List<Edge> fromPoint = baseEdges.Where(ed => ed.P == e.Q).ToList();
-                //    List<Edge> ToPoint = baseEdges.Where(ed => ed.Q == e.Q).ToList();
+            DeformMesh(OptimalSideLength);
+            return 0;
+        }, emptyPercent);
 
-                //    //GD.Print($"Edges from Point: {fromPoint.Count + ToPoint.Count}");
-                //    if (fromPoint.Count + ToPoint.Count < 5) shouldRedo = true;
-
-                //}
-                //foreach (Edge e in edgesToPoint)
-                //{
-                //    List<Edge> fromPoint = baseEdges.Where(ed => ed.P == e.P).ToList();
-                //    List<Edge> ToPoint = baseEdges.Where(ed => ed.Q == e.P).ToList();
-
-                //    //GD.Print($"Edges from Point: {fromPoint.Count + ToPoint.Count}");
-                //    if (fromPoint.Count + ToPoint.Count < 5) shouldRedo = true;
-
-                //}
-                //GD.Print($"Edges from Point: {edgesToPoint.Count + edgesFromPoint.Count}");
-                bool EnoughEdges = allEdgesWithPoint.Count > 5;
-
-                if (EnoughEdges && !shouldRedo)
-                //if (edgesFromPoint.Count + edgesToPoint.Count > 5 && edgesToPoint.Count + edgesFromPoint.Count < 7)
-                {
-                    if (allEdgesWithPoint.Count > 0)
-                    {
-                        foreach (Edge e in allEdgesWithPoint)
-                        {
-                            List<Triangle> trisWithEdge = EdgeTriangles[e];
-                            if (trisWithEdge.Count < 2) continue;
-                            //var trisWithEdge = baseTris.Where(tri => tri.Points.Contains(edgesWithPointList[0].P) && tri.Points.Contains(edgesWithPointList[0].Q));
-                            Triangle tempTris1 = trisWithEdge.ElementAt(0);
-                            Triangle tempTris2 = trisWithEdge.ElementAt(1);
-                            alteredIndex = tempTris1.Index;
-                            var points1 = tempTris1.Points;
-                            var points2 = tempTris2.Points;
-
-                            var sharedPoint1 = e.Q;
-                            var sharedPoint2 = e.P;
-                            var t1UnsharedPoint = tempTris1.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
-                            var t2UnsharedPoint = tempTris2.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
-                            var sharedEdgeLength = (e.P.ToVector3() - e.Q.ToVector3()).Length();
-                            var newEdgeLength = (t1UnsharedPoint.ToVector3() - t2UnsharedPoint.ToVector3()).Length();
-                            if (Mathf.Abs(sharedEdgeLength - newEdgeLength) > OptimalSideLength / .5f)
-                            {
-                                i--;
-                                continue;
-                            }
-                            points1[0] = sharedPoint1;
-                            points1[2] = t1UnsharedPoint;
-                            points1[1] = t2UnsharedPoint;
-
-                            points2[0] = sharedPoint2;
-                            points2[1] = t1UnsharedPoint;
-                            points2[2] = t2UnsharedPoint;
-                            e.Q = t1UnsharedPoint;
-                            e.P = t2UnsharedPoint;
-
-                            //var index = tempTris1.Index;
-                            //tempTris1.Index = tempTris2.Index;
-                            //tempTris2.Index = index;
-
-                            var otherEdgesT1 = tempTris1.Edges.Where(edge => edge != e).ToList();
-                            otherEdgesT1[0].P = sharedPoint1;
-                            otherEdgesT1[0].Q = t1UnsharedPoint;
-                            otherEdgesT1[1].Q = sharedPoint1;
-                            otherEdgesT1[1].P = t2UnsharedPoint;
-
-                            var otherEdgesT2 = tempTris2.Edges.Where(edge => edge != e).ToList();
-                            otherEdgesT2[0].Q = sharedPoint2;
-                            otherEdgesT2[0].P = t2UnsharedPoint;
-                            otherEdgesT2[1].P = sharedPoint2;
-                            otherEdgesT2[1].Q = t1UnsharedPoint;
-                        }
-                    }
-                }
-                else
-                {
-                    i--;
-                    continue;
-                }
-            }
-
-
-            //GD.Print("Relaxing");
-            for (int index = 0; index < 12; index++)
-            {
-                foreach (Point p in VertexPoints.Values)
-                {
-                    //var trianglesWithPoint = baseTris.Where(t => t.Points.Contains(p));
-                    HashSet<Edge> edgesWithPoint = HalfEdgesFrom[p];
-                    HashSet<Edge> edgesWithPointTo = HalfEdgesTo[p];
-                    HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
-                    foreach (Edge e in edgesWithPoint)
-                    {
-                        foreach (Triangle t in EdgeTriangles[e])
-                        {
-                            trianglesWithPoint.Add(t);
-                        }
-                    }
-                    foreach (Edge e in edgesWithPointTo)
-                    {
-                        foreach (Triangle t in EdgeTriangles[e])
-                        {
-                            trianglesWithPoint.Add(t);
-                        }
-                    }
-                    Vector3 average = new Vector3(0, 0, 0);
-                    foreach (Triangle t in trianglesWithPoint)
-                    {
-                        Vector3 triCenter = new Vector3(0, 0, 0);
-                        triCenter = t.Points[0].ToVector3();
-                        triCenter += t.Points[1].ToVector3();
-                        triCenter += t.Points[2].ToVector3();
-                        triCenter /= 3f;
-                        average += triCenter;
-                    }
-                    average /= trianglesWithPoint.Count;
-                    p.Position = average;
-                }
-            }
-        }
-
+        GD.Print("Deformed Base Mesh");
         if (AllTriangles)
         {
             foreach (var triangle in baseTris)
@@ -282,114 +138,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
 
         //GD.Print("Triangulating");
-        foreach (Point p in VertexPoints.Values)
+        percent.PercentTotal = VertexPoints.Count;
+        function = FunctionTimer.TimeFunction<int>("Voronoi Cell Generation", () =>
         {
-            //GD.Print($"Triangulating Point: {p}\r");
-            //Find all triangles that contain the current point
-            HashSet<Edge> edgesWithPoint = HalfEdgesFrom[p];
-            HashSet<Edge> edgesWithPointTo = HalfEdgesTo[p];
-            HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
-            foreach (Edge e in edgesWithPoint)
-            {
-                foreach (Triangle t in EdgeTriangles[e])
-                {
-                    trianglesWithPoint.Add(t);
-                }
-            }
-            foreach (Edge e in edgesWithPointTo)
-            {
-                foreach (Triangle t in EdgeTriangles[e])
-                {
-                    trianglesWithPoint.Add(t);
-                }
-            }
-            var triangleOfP = baseTris.Where(e => e.Points.Any(a => a == p));
-            List<Triangle> trianglesWithPointOld = triangleOfP.ToList();
-            List<Point> triCircumcenters = new List<Point>();
-            //GD.Print($"Number of Triangles: {trianglesWithPoint.Count}");
-            //GD.Print($"Old Method Triangles: {trianglesWithPointOld.Count}");
-            foreach (var tri in trianglesWithPoint)
-            {
-                if (testPoint == p)
-                {
-                    RenderTriangleAndConnections(tri, false);
-                }
-                var v3 = Point.ToVectors3(tri.Points);
-                var ac = v3[2] - v3[0];
-                var ab = v3[1] - v3[0];
-                var abXac = ab.Cross(ac);
-                var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
-                float circumsphereRadius = vToCircumsphereCenter.Length();
-                Point cc = new Point(v3[0] + vToCircumsphereCenter);
-                //if (triCircumcenters.Any(cir => Mathf.Equals(cir.ToVector3(), cc))) continue;
-                if (triCircumcenters.Contains(cc)){
-                    //GD.Print($"Triangulation Point: {cc} already in list");
-                    continue;
-                }
-                                 //if (circumcenters.Any(cir => Mathf.Equals(cir.ToVector3(), cc)))
-                if (circumcenters.ContainsKey(cc.Index))
-                {
-                    //var usedCC = circumcenters.Where(cir => Mathf.Equals(cir.ToVector3(), cc));
-                    Point usedCC = circumcenters[cc.Index];
-                    triCircumcenters.Add(usedCC);
-                }
-                else
-                {
-                    circumcenters.Add(cc.Index, cc);
-                    triCircumcenters.Add(cc);
-                    //circumcenters.Add(new Point(cc, circumcenters.Count));
-                    //triCircumcenters.Add(circumcenters[circumcenters.Count - 1]);
-                }
-            }
-            Face dualFace = new Face(triCircumcenters.ToList());
-            dualFaces.Add(dualFace);
-            Vector3 center = new Vector3(0, 0, 0);
-            //for (int i = 0; i < triCircumcenters.Count; i++) center += triCircumcenters[i].ToVector3();
-            foreach (Point triCenter in triCircumcenters)
-            {
-                center += triCenter.ToVector3();
-            }
-            //GD.Print($"Number of Triangulated Points: {triCircumcenters.Count}");
-            center /= triCircumcenters.Count;
-            center = center.Normalized();
-
-            var centroid = new Vector3(0, 0, 0);
-            var v1 = triCircumcenters[1].ToVector3() - triCircumcenters[0].ToVector3();
-            var v2 = triCircumcenters[2].ToVector3() - triCircumcenters[0].ToVector3();
-            var UnitNorm = v1.Cross(v2);
-            UnitNorm = UnitNorm.Normalized();
-            if (UnitNorm.Dot(triCircumcenters[0].ToVector3()) < 0f)
-            {
-                UnitNorm = -UnitNorm;
-            }
-            //GD.Print($"Triagulating Point, {triCircumcenters.Count}");
-            VoronoiCell calculated = TriangulatePoints(UnitNorm, triCircumcenters, VoronoiCells.Count);
-            //GD.Print("Finished Triagulating Point");
-            calculated.IsBorderTile = false;
-            if (calculated != null)
-            {
-                VoronoiCells.Add(calculated);
-            }
-        }
-        //foreach (VoronoiCell vc in VoronoiCells)
-        //{
-        //    List<Vector3> Points = new List<Vector3>();
-        //    foreach (Point p in vc.Points)
-        //    {
-        //        Points.Add(p.ToVector3().Normalized());
-        //    }
-        //    PolygonRendererSDL.DrawFace(this, 1.0005f * (float)size, Colors.White, Points.ToArray());
-        //}
-
-        /*Edge testEdge = generatedEdges[0];
-        GD.Print($"Number of Edges: {generatedEdges.Count}, Number of World Edges: {worldEdgeMap.Count}");
-        foreach (var edges in generatedEdges)
-        {
-            if ((edges.P == testEdge.P && edges.Q == testEdge.Q) || (edges.P == testEdge.Q && edges.Q == testEdge.P))
-            {
-                GD.Print($"Original Edge {testEdge} has duplicate edge {edges}");
-            }
-        }*/
+            GenerateVoronoiCells();
+            return 0;
+        }, percent);
         var continents = FloodFillContinentGeneration(VoronoiCells);
         foreach (VoronoiCell vc in VoronoiCells)
         {
@@ -436,17 +190,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             vc.BoundingContinentIndex = BoundingContinentIndex.ToArray();
             vc.OutsideEdges = OutsideEdges.ToArray();
-            //vc.Height = averageHeight / (cellNeighbors.Length + 1);
-            //foreach (Point p in vc.Points)
-            //{
-            //    p.Height = vc.Height;
-            //}
+            vc.Height = averageHeight / (cellNeighbors.Length + 1);
+            foreach (Point p in vc.Points)
+            {
+                p.Height = vc.Height;
+            }
         }
-
-        //GD.Print($"Number of Cells in mesh: {VoronoiCells.Count}");
-        //GD.Print("Generating Mesh");
-        //GD.Print($"Cell Height: {circumcenters[0].Height}");
-        //GenerateSurfaceMesh(VoronoiCells, circumcenters);
         foreach (Point p in circumcenters.Values)
         {
             //var trianglesWithPoint = generatedTris.Where(t => t.Points.Contains(p));
@@ -488,23 +237,205 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         AssignBiomes(continents, VoronoiCells);
         GenerateFromContinents(continents, circumcenters);
         DrawContinentBorders(continents);
-        //foreach (var continent in continents)
-        //{
-        //    GD.Print(continent.Value.ToString());
-        //}
-        //var randomTriTest = baseTris[baseTris.Count - baseTris.Count / 2];
-        //var randomTriPointTest = randomTriTest.Points[rand.RandiRange(0, 2)];
-        //var otherPointInTri = randomTriTest.Points.Where(p => p != randomTriPointTest).ElementAt(rand.RandiRange(0, randomTriTest.Points.Count - 1));
-        //Point testP1 = new Point(randomTriPointTest.X, randomTriPointTest.Y, randomTriPointTest.Z);
-        //Point testP2 = new Point(otherPointInTri.X, otherPointInTri.Y, otherPointInTri.Z);
-        //Edge testEdge = new Edge(testP1, testP2);
-        //Edge inverseTestEdge = new Edge(testP2, testP1);
-        //GD.Print($"Test Edge: {testEdge}");
-        //GD.Print($"Inverse Test Edge: {inverseTestEdge}");
 
         GD.Print($"Number of Vertices: {circumcenters.Values.Count}");
+    }
+
+    private void GenerateVoronoiCells()
+    {
+        foreach (Point p in VertexPoints.Values)
+        {
+            //GD.Print($"Triangulating Point: {p}\r");
+            //Find all triangles that contain the current point
+            HashSet<Edge> edgesWithPoint = HalfEdgesFrom[p];
+            HashSet<Edge> edgesWithPointTo = HalfEdgesTo[p];
+            HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+            foreach (Edge e in edgesWithPoint)
+            {
+                foreach (Triangle t in EdgeTriangles[e])
+                {
+                    trianglesWithPoint.Add(t);
+                }
+            }
+            foreach (Edge e in edgesWithPointTo)
+            {
+                foreach (Triangle t in EdgeTriangles[e])
+                {
+                    trianglesWithPoint.Add(t);
+                }
+            }
+            List<Point> triCircumcenters = new List<Point>();
+            foreach (var tri in trianglesWithPoint)
+            {
+                var v3 = Point.ToVectors3(tri.Points);
+                var ac = v3[2] - v3[0];
+                var ab = v3[1] - v3[0];
+                var abXac = ab.Cross(ac);
+                var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
+                float circumsphereRadius = vToCircumsphereCenter.Length();
+                Point cc = new Point(v3[0] + vToCircumsphereCenter);
+                if (triCircumcenters.Contains(cc))
+                {
+                    continue;
+                }
+                if (circumcenters.ContainsKey(cc.Index))
+                {
+                    Point usedCC = circumcenters[cc.Index];
+                    triCircumcenters.Add(usedCC);
+                }
+                else
+                {
+                    circumcenters.Add(cc.Index, cc);
+                    triCircumcenters.Add(cc);
+                }
+            }
+            Face dualFace = new Face(triCircumcenters.ToList());
+            dualFaces.Add(dualFace);
+            Vector3 center = new Vector3(0, 0, 0);
+            foreach (Point triCenter in triCircumcenters)
+            {
+                center += triCenter.ToVector3();
+            }
+            center /= triCircumcenters.Count;
+            center = center.Normalized();
+
+            var centroid = new Vector3(0, 0, 0);
+            var v1 = triCircumcenters[1].ToVector3() - triCircumcenters[0].ToVector3();
+            var v2 = triCircumcenters[2].ToVector3() - triCircumcenters[0].ToVector3();
+            var UnitNorm = v1.Cross(v2);
+            UnitNorm = UnitNorm.Normalized();
+            if (UnitNorm.Dot(triCircumcenters[0].ToVector3()) < 0f)
+            {
+                UnitNorm = -UnitNorm;
+            }
+            VoronoiCell calculated = TriangulatePoints(UnitNorm, triCircumcenters, VoronoiCells.Count);
+            calculated.IsBorderTile = false;
+            if (calculated != null)
+            {
+                VoronoiCells.Add(calculated);
+            }
+            percent.PercentCurrent++;
+        }
+    }
+
+    private void DeformMesh(float optimalSideLength)
+    {
+        int alteredIndex = 0;
+        for (int deforms = 0; deforms < NumDeformationCycles; deforms++)
+        {
+            for (int i = 0; i < NumAbberations; i++)
+            {
+                var randomTri = baseTris[rand.RandiRange(0, baseTris.Count - 1)];
+                var randomTriPoint = randomTri.Points[rand.RandiRange(0, 2)];
+                testPoint = randomTriPoint;
+                HashSet<Edge> edgesWithPointFrom = HalfEdgesFrom[randomTriPoint];
+                HashSet<Edge> edgesWithPointTo = HalfEdgesTo[randomTriPoint];
+                HashSet<Edge> allEdgesWithPoint = new HashSet<Edge>(edgesWithPointFrom);
+                foreach (Edge e in edgesWithPointTo)
+                {
+                    allEdgesWithPoint.Add(e);
+                }
+                foreach (Edge e in edgesWithPointFrom)
+                {
+                    allEdgesWithPoint.Add(e);
+                }
+                List<Edge> allEdges = allEdgesWithPoint.ToList();
+                bool shouldRedo = false;
+                bool EnoughEdges = allEdgesWithPoint.Count > 5;
+
+                if (EnoughEdges && !shouldRedo)
+                {
+                    if (allEdgesWithPoint.Count > 0)
+                    {
+                        foreach (Edge e in allEdgesWithPoint)
+                        {
+                            List<Triangle> trisWithEdge = EdgeTriangles[e];
+                            if (trisWithEdge.Count < 2) continue;
+                            Triangle tempTris1 = trisWithEdge.ElementAt(0);
+                            Triangle tempTris2 = trisWithEdge.ElementAt(1);
+                            alteredIndex = tempTris1.Index;
+                            var points1 = tempTris1.Points;
+                            var points2 = tempTris2.Points;
+
+                            var sharedPoint1 = e.Q;
+                            var sharedPoint2 = e.P;
+                            var t1UnsharedPoint = tempTris1.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
+                            var t2UnsharedPoint = tempTris2.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
+                            var sharedEdgeLength = (e.P.ToVector3() - e.Q.ToVector3()).Length();
+                            var newEdgeLength = (t1UnsharedPoint.ToVector3() - t2UnsharedPoint.ToVector3()).Length();
+                            if (Mathf.Abs(sharedEdgeLength - newEdgeLength) > optimalSideLength / .5f)
+                            {
+                                i--;
+                                continue;
+                            }
+                            points1[0] = sharedPoint1;
+                            points1[2] = t1UnsharedPoint;
+                            points1[1] = t2UnsharedPoint;
+
+                            points2[0] = sharedPoint2;
+                            points2[1] = t1UnsharedPoint;
+                            points2[2] = t2UnsharedPoint;
+                            e.Q = t1UnsharedPoint;
+                            e.P = t2UnsharedPoint;
+
+                            var otherEdgesT1 = tempTris1.Edges.Where(edge => edge != e).ToList();
+                            otherEdgesT1[0].P = sharedPoint1;
+                            otherEdgesT1[0].Q = t1UnsharedPoint;
+                            otherEdgesT1[1].Q = sharedPoint1;
+                            otherEdgesT1[1].P = t2UnsharedPoint;
+
+                            var otherEdgesT2 = tempTris2.Edges.Where(edge => edge != e).ToList();
+                            otherEdgesT2[0].Q = sharedPoint2;
+                            otherEdgesT2[0].P = t2UnsharedPoint;
+                            otherEdgesT2[1].P = sharedPoint2;
+                            otherEdgesT2[1].Q = t1UnsharedPoint;
+                        }
+                    }
+                }
+                else
+                {
+                    i--;
+                    continue;
+                }
+            }
 
 
+            for (int index = 0; index < 12; index++)
+            {
+                foreach (Point p in VertexPoints.Values)
+                {
+                    HashSet<Edge> edgesWithPoint = HalfEdgesFrom[p];
+                    HashSet<Edge> edgesWithPointTo = HalfEdgesTo[p];
+                    HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+                    foreach (Edge e in edgesWithPoint)
+                    {
+                        foreach (Triangle t in EdgeTriangles[e])
+                        {
+                            trianglesWithPoint.Add(t);
+                        }
+                    }
+                    foreach (Edge e in edgesWithPointTo)
+                    {
+                        foreach (Triangle t in EdgeTriangles[e])
+                        {
+                            trianglesWithPoint.Add(t);
+                        }
+                    }
+                    Vector3 average = new Vector3(0, 0, 0);
+                    foreach (Triangle t in trianglesWithPoint)
+                    {
+                        Vector3 triCenter = new Vector3(0, 0, 0);
+                        triCenter = t.Points[0].ToVector3();
+                        triCenter += t.Points[1].ToVector3();
+                        triCenter += t.Points[2].ToVector3();
+                        triCenter /= 3f;
+                        average += triCenter;
+                    }
+                    average /= trianglesWithPoint.Count;
+                    p.Position = average;
+                }
+            }
+        }
     }
 
     private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
@@ -515,7 +446,10 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
             foreach (var cell in c.cells)
             {
-                cell.Biome = BiomeAssigner.AssignBiome(cell.Height, c.averageMoisture);
+                foreach (Point p in cell.Points)
+                {
+                    p.Biome = BiomeAssigner.AssignBiome(p.Height, c.averageMoisture);
+                }
             }
         }
     }
@@ -644,17 +578,56 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
         }
 
+
         // Then, propagate stress from boundary cells to interior cells
         foreach (KeyValuePair<int, Continent> continentPair in continents)
         {
             Continent continent = continentPair.Value;
 
             // Create a list of cells to process, starting with boundary cells
-            List<VoronoiCell> cellsToProcess = new List<VoronoiCell>(continent.boundaryCells);
-            HashSet<VoronoiCell> processedCells = new HashSet<VoronoiCell>();
-            Queue<VoronoiCell> processedCellsQueue = new Queue<VoronoiCell>();
+            //List<VoronoiCell> cellsToProcess = new List<VoronoiCell>(continent.boundaryCells);
+
+            foreach (VoronoiCell cell in continent.boundaryCells)
+            {
+                HashSet<VoronoiCell> alreadyProcessed = new HashSet<VoronoiCell>();
+                int[] neighborIndices = GetCellNeighbors(cells, cell.Index);
+                foreach (int neighborIndex in neighborIndices)
+                {
+                    VoronoiCell neighborCell = cells[neighborIndex];
+                    if (!alreadyProcessed.Contains(neighborCell) && neighborCell.Index != cell.Index)
+                    {
+                        float distance = (cell.Center - neighborCell.Center).LengthSquared() * 1000.0f;
+                        float heightDifference = cell.Height - neighborCell.Height;
+                        float propagationFactor = Mathf.Sqrt(distance) / distance; // Adjust this factor as needed
+                        neighborCell.Height += heightDifference * propagationFactor;
+                        foreach (Point p in neighborCell.Points)
+                        {
+                            p.Height = neighborCell.Height;
+                        }
+                        alreadyProcessed.Add(neighborCell);
+                    }
+                }
+
+                foreach (VoronoiCell continentCell in continent.cells)
+                {
+                    if (!alreadyProcessed.Contains(continentCell) && continentCell.Index != cell.Index)
+                    {
+                        float distance = (cell.Center - continentCell.Center).LengthSquared() * 1000.0f;
+                        float heightDifference = cell.Height - continentCell.Height;
+                        float propagationFactor = Mathf.Sqrt(distance) / distance; // Adjust this factor as needed
+                        continentCell.Height += heightDifference * propagationFactor;
+                        foreach (Point p in continentCell.Points)
+                        {
+                            p.Height = continentCell.Height;
+                        }
+                        alreadyProcessed.Add(continentCell);
+                    }
+                }
+
+            }
 
 
+            /*
             // Process cells in layers, moving inward from the boundaries
             while (cellsToProcess.Count > 0 || processedCellsQueue.Count > 0)
             {
@@ -706,6 +679,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                     }
                 }
             }
+            */
         }
     }
 
@@ -715,7 +689,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
         foreach (Point p in currentCell.Points)
         {
-            //var neighboringCells = cells.Where(vc => vc.Points.Any(vcp => vcp == p));
             var neighboringCells = CellMap[p];
             foreach (VoronoiCell vc in neighboringCells)
             {
@@ -884,7 +857,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         foreach (var keyValuePair in continents)
         {
             var continent = keyValuePair.Value;
-            //GD.Print($"StartingIndex: {continent.StartingIndex}");
             foreach (Point p in continent.points)
             {
                 continent.averagedCenter += p.Position;
@@ -895,14 +867,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             var v1 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
             var v2 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
             var UnitNorm = v1.Cross(v2);
-            //UnitNorm = UnitNorm / size;
             if (UnitNorm.Dot(continent.averagedCenter) < 0f)
             {
                 UnitNorm = -UnitNorm;
             }
-            //UnitNorm *= (float)size;
-            var uAxis = v1;// * (float)size;
-            var vAxis = UnitNorm.Cross(uAxis);// * (float)size;
+            var uAxis = v1;
+            var vAxis = UnitNorm.Cross(uAxis);
             uAxis = uAxis.Normalized();
             vAxis = vAxis.Normalized();
             foreach (VoronoiCell vc in continent.cells)
@@ -927,19 +897,11 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 var d = UnitNorm.X * (vc.Points[0].X) + UnitNorm.Y * (vc.Points[0].Y) + UnitNorm.Z * (vc.Points[0].Z);
                 var newZ = (d - (UnitNorm.X * vc.Points[0].X) - (UnitNorm.Y * vc.Points[0].Y)) / UnitNorm.Z;
                 var newZ2 = (d / UnitNorm.Z);
-                //GD.Print($"Movement Direction: {vc.MovementDirection}");
                 var directionPoint = uAxis * vc.MovementDirection.X + vAxis * vc.MovementDirection.Y;
                 directionPoint *= vcRadius;
                 directionPoint += average;
                 directionPoint = directionPoint.Normalized();
-
-
-                //GD.Print($"Plane Equation for {vc} is {d} = {UnitNorm.X}a + {UnitNorm.Y}b + {UnitNorm.Z}c");
-
                 //PolygonRendererSDL.DrawArrow(this, size + (continent.averageHeight / 100f), average, directionPoint, UnitNorm, vcRadius, Colors.Black);
-
-
-                //}
             }
         }
 
@@ -955,8 +917,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         Vector3 tac = c.ToVector3() - a.ToVector3();
         Vector2 ab = new Vector2(tab.X, tab.Y);
         Vector2 ac = new Vector2(tac.X, tac.Y);
-        //GD.Print($"Variation Points: {a}, {b}, {c}");
-        //GD.Print($"Variation: {ab.Cross(ac)}");
         if (ab.Cross(ac) > 0.0f) return true;
         return false;
 
@@ -979,33 +939,17 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             u = new Vector3(1, 0, 0);
         }
         u = u.Normalized();
-        //GD.Print($"Unit Normal: {unitNorm}");
-        //GD.Print($"Unit Vector: {u}");
         var v = unitNorm.Cross(u);
 
         List<Point> projectedPoints = new List<Point>();
-        //foreach(Point p in TriCircumcenters) {
-        //    GD.Print($"Point: {p}");
-        //}
         var ccs = Point.ToVectors3(TriCircumcenters);
-        //foreach(Vector3 vec in ccs) {
-        //    GD.Print($"Vector: {vec}");
-        //}
         for (int i = 0; i < TriCircumcenters.Count; i++)
         {
             var projection = new Vector2((ccs[i] - ccs[0]).Dot(u), (ccs[i] - ccs[0]).Dot(v));
-            //GD.Print($"{(ccs[i]-ccs[0]).Dot(u)}");
             projectedPoints.Add(new Point(new Vector3(projection.X, projection.Y, 0.0f), TriCircumcenters[i].Index));
         }
-        //foreach(Point p in projectedPoints) {
-        //    GD.Print($"Point Projected: {p}");
-        //}
-
         //Order List of 2D points in clockwise order
         var orderedPoints = ReorderPoints(projectedPoints);
-        //foreach(Point p in orderedPoints) {
-        //    GD.Print($"Point Reordered: {p}");
-        //}
         var orderedPointsReversed = new List<Point>(orderedPoints);
         orderedPointsReversed.Reverse();
 
@@ -1019,13 +963,11 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         int end = 0;
         while (orderedPoints.Count > 3)
         {
-            //GD.Print($"Number of Points: {orderedPoints.Count}");
             for (int i = 0; i < orderedPoints.Count; i++)
             {
                 var a = GetOrderedPoint(orderedPoints, i);
                 var b = GetOrderedPoint(orderedPoints, i - 1);
                 var c = GetOrderedPoint(orderedPoints, i + 1);
-                //GD.Print($"Points: {a}, {b}, {c}");
 
                 Vector3 tab = b.ToVector3() - a.ToVector3();
                 Vector3 tac = c.ToVector3() - a.ToVector3();
@@ -1059,7 +1001,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                     Vector2 p = new Vector2(orderedPoints[j].X, orderedPoints[j].Y);
                     if (IsPointInTriangle(p, new Vector2(a.X, a.Y), new Vector2(b.X, b.Y), new Vector2(c.X, c.Y), false))
                     {
-                        //GD.Print($"Point not in triangle: {p}");
                         isEar = false;
                         break;
                     }
@@ -1106,7 +1047,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                             }
                             VoronoiEdgeTriMap[e].Add(newTri);
                         }
-                        //RenderTriangleAndConnections(newTri);
                         Triangles.Add(newTri);
                         TriangulatedIndices.Add(circumcenters[c.Index]);
                         TriangulatedIndices.Add(circumcenters[a.Index]);
@@ -1143,7 +1083,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                             }
                             VoronoiEdgeTriMap[e].Add(newTri);
                         }
-                        //RenderTriangleAndConnections(newTri);
                         Triangles.Add(newTri);
                         TriangulatedIndices.Add(circumcenters[b.Index]);
                         TriangulatedIndices.Add(circumcenters[a.Index]);
@@ -1195,7 +1134,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 }
                 VoronoiEdgeTriMap[e].Add(newTri);
             }
-            //RenderTriangleAndConnections(newTri);
             Triangles.Add(newTri);
             TriangulatedIndices.Add(circumcenters[orderedPoints[2].Index]);
             TriangulatedIndices.Add(circumcenters[orderedPoints[1].Index]);
@@ -1231,7 +1169,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 }
                 VoronoiEdgeTriMap[e].Add(newTri);
             }
-            //RenderTriangleAndConnections(newTri, true);
             Triangles.Add(newTri);
             TriangulatedIndices.Add(circumcenters[orderedPoints[0].Index]);
             TriangulatedIndices.Add(circumcenters[orderedPoints[1].Index]);
@@ -1323,7 +1260,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
         average /= points.Count;
         var center = new Vector2(average.X, average.Y);
-        //if (center.X <= 0f) { shouldInvertX = true; }
         List<Point> orderedPoints = new List<Point>();
         for (int i = 0; i < points.Count; i++)
         {
@@ -1345,14 +1281,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public void RenderTriangleAndConnections(Triangle tri, bool dualMesh = false)
     {
         int i = 0;
-        foreach (var p in tri.Points)
-        {
-            //GD.Print($"{p.ToVector3()}");
-        }
-        foreach (Edge e in tri.Edges)
-        {
-            //GD.Print(e);
-        }
         //var edgesFromTri = baseEdges.Where(e => tri.Points.Any(a => a == e.P || a == e.Q));
         List<Edge> edgesFromTri = new List<Edge>();
         if (!dualMesh)
@@ -1378,8 +1306,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             PolygonRendererSDL.DrawLine(this, size, tri.Points[2].ToVector3(), tri.Points[0].ToVector3());
             foreach (Point p in tri.Points)
             {
-                //GD.Print(p);
-                //GD.Print(p.ToVector3());
                 switch (i)
                 {
                     case 0:
@@ -1407,42 +1333,18 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 switch (i)
                 {
                     case 0:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0? p.Radius: 0.05f, Colors.Red);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Red);
                         break;
                     case 1:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0? p.Radius: 0.05f, Colors.Green);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Green);
                         break;
                     case 2:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0? p.Radius: 0.05f, Colors.Blue);
+                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Blue);
                         break;
                 }
                 i++;
             }
         }
-        foreach (var edge in edgesFromTri)
-        {
-            //GD.Print($"Edge: {edge.Index} from {edge.P.ToVector3()} to {edge.Q.ToVector3()}");
-        }
-
-
-        //foreach(Triangle tri in tris) {
-
-        //}
-        /*foreach (Edge edge in edges)
-        {
-            foreach (var p in tri.Points)
-            {
-                if (edge.P.Index == p.Index || edge.Q.Index == p.Index)
-                {
-                    if (ProjectToSphere)
-                        DrawLine(edge.P.ToVector3().Normalized(), edge.Q.ToVector3().Normalized());
-                    else
-                        DrawLine(edge.P.ToVector3(), edge.Q.ToVector3());
-                }
-            }
-            //DrawLine(edge.P.ToVector3().Normalized(), edge.Q.ToVector3().Normalized());
-
-        }*/
     }
 
     public Vector3 ConvertToSpherical(Vector3 pos)
@@ -1467,34 +1369,9 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
     public void GenerateTriangleList()
     {
-        //GD.Print($"Number of Faces: {faces.Count}");
         foreach (Face f in faces)
         {
-            //if(VertexPoints.Any(p => p.ToVector3() == tempVector)) {
-            //  var existingPoint = VertexPoints.Where(a => a.ToVector3() == tempVector);
-            //  return existingPoint.ElementAt(0);
-            //}
-            //Edge[] triEdges = new Edge[3];
-            //for (int i = 0, j = f.v.Length - 1; i < f.v.Length; j = i++)
-            //{
-            //    if (baseEdges.Any(e => e.P == f.v[j] && e.Q == f.v[i]))
-            //    {
-            //        triEdges[i] = baseEdges.Where(a => a.P == f.v[j] && a.Q == f.v[i]).ElementAt(0);
-            //    }
-            //    else if (baseEdges.Any(e => e.P == f.v[i] && e.Q == f.v[j]))
-            //    {
-            //        Edge e = baseEdges.Where(a => a.P == f.v[i] && a.Q == f.v[j]).ElementAt(0);
-            //        e = e.ReverseEdge();
-            //        triEdges[i] = e;
-            //    }
-            //    else
-            //    {
-            //        triEdges[i] = new Edge(baseEdges.Count, f.v[j], f.v[i]);
-            //        baseEdges.Add(triEdges[i]);
-            //    }
-            //}
             Triangle newTri = new Triangle(baseTris.Count, f.v.ToList(), f.e.ToList());
-            //baseEdges.AddRange(f.e);
             baseTris.Add(newTri);
             BaseTris.Add((f.v[0], f.v[1], f.v[2]), newTri);
             foreach (Edge edge in f.e)
@@ -1573,29 +1450,29 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         return Color.FromHsv(hue / 360f, saturation, value);
     }
 
-    private Color GetBiomeColor(VoronoiCell.BiomeType biome, float height)
+    private Color GetBiomeColor(BiomeType biome, float height)
     {
         switch (biome)
         {
-            case VoronoiCell.BiomeType.Tundra:
+            case BiomeType.Tundra:
                 return new Color(0.85f, 0.85f, 0.8f); // Light gray-white
-            case VoronoiCell.BiomeType.Icecap:
+            case BiomeType.Icecap:
                 return Colors.White;
-            case VoronoiCell.BiomeType.Desert:
+            case BiomeType.Desert:
                 return new Color(0.9f, 0.8f, 0.5f); // Sandy yellow
-            case VoronoiCell.BiomeType.Grassland:
+            case BiomeType.Grassland:
                 return new Color(0.5f, 0.8f, 0.3f); // Green
-            case VoronoiCell.BiomeType.Forest:
+            case BiomeType.Forest:
                 return new Color(0.2f, 0.6f, 0.2f); // Dark green
-            case VoronoiCell.BiomeType.Rainforest:
+            case BiomeType.Rainforest:
                 return new Color(0.1f, 0.4f, 0.1f); // Very dark green
-            case VoronoiCell.BiomeType.Taiga:
+            case BiomeType.Taiga:
                 return new Color(0.4f, 0.5f, 0.3f); // Dark green-brown
-            case VoronoiCell.BiomeType.Ocean:
+            case BiomeType.Ocean:
                 return new Color(0.1f, 0.3f, 0.7f); // Deep blue
-            case VoronoiCell.BiomeType.Coastal:
+            case BiomeType.Coastal:
                 return new Color(0.8f, 0.7f, 0.4f); // Light blue
-            case VoronoiCell.BiomeType.Mountain:
+            case BiomeType.Mountain:
                 return new Color(0.6f, 0.5f, 0.4f); // Brown-gray
             default:
                 return Colors.Gray;
@@ -1618,10 +1495,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         foreach (VoronoiCell vor in VoronoiList)
         {
             Color biomeColor = Colors.Pink;
-            if (ShouldDisplayBiomes)
-            {
-                biomeColor = GetBiomeColor(vor.Biome, vor.Height);
-            }
             for (int i = 0; i < vor.Points.Length / 3; i++)
             {
                 var centroid = Vector3.Zero;
@@ -1652,7 +1525,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                     //st.SetNormal(tangent);
                     if (ProjectToSphere)
                     {
-                        st.SetColor(biomeColor == Colors.Pink ? GetVertexColor(vor.Points[3 * i + j].Height) : biomeColor);
+                        st.SetColor(ShouldDisplayBiomes ? GetBiomeColor(vor.Points[3 * i + j].Biome, vor.Points[3 * i + j].Height) : GetVertexColor(vor.Points[3 * i + j].Height));
                         st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 100f));
                     }
                     else
