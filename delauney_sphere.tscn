@@ -15,11 +15,8 @@ gi_mode = 2
 mesh = SubResource("ArrayMesh_81xnv")
 script = ExtResource("2_xj8s3")
 subdivide = 2
-size = 9
-NumAbberations = 53
-NumDeformationCycles = 4
-NumContinents = 98
-VerticesPerEdge = PackedInt32Array(7, 3, 1)
+NumContinents = 40
+VerticesPerEdge = PackedInt32Array(7, 5, 1)
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)
