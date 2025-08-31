@@ -1,6 +1,6 @@
 using Godot;
 using Structures;
-using static Structures.VoronoiCell;
+using static Structures.Point;
 
 public static class BiomeAssigner
 {

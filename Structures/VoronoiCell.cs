@@ -2,10 +2,6 @@ using Godot;
 namespace Structures;
 public class VoronoiCell : IVoronoiCell
 {
-    public enum BiomeType
-    {
-        Tundra, Icecap, Desert, Grassland, Forest, Rainforest, Taiga, Ocean, Coastal, Swamp, Mountain
-    }
     public Point[] Points { get; set; }
     public Triangle[] Triangles { get; set; }
     public Edge[] Edges { get; set; }
@@ -16,11 +12,6 @@ public class VoronoiCell : IVoronoiCell
     public int[] BoundingContinentIndex { get; set; }
     public Vector2 MovementDirection { get; set; }
     public float Height { get; set; }
-    public BiomeType Biome
-    {
-        get;
-        set;
-    }
     public Vector3 Center
     {
         get

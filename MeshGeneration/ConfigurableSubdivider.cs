@@ -83,31 +83,6 @@ public class ConfigurableSubdivider
         List<Face> faces = new List<Face>();
         if (verticesToGenerate == 1)
         {
-            //Edge e0 = new Edge(face.v[0], edgePoints[0][0]);
-            //e0 = AddEdge(e0);
-            //Edge e1 = new Edge(edgePoints[0][0], edgePoints[2][0]);
-            //e1 = AddEdge(e1);
-            //Edge e2 = new Edge(edgePoints[2][0], face.v[0]);
-            //e2 = AddEdge(e2);
-            //Edge e3 = AddEdge(new Edge(edgePoints[0][0], face.v[1]));
-            //e3 = AddEdge(e3);
-            //Edge e4 = new Edge(face.v[1], edgePoints[1][0]);
-            //e4 = AddEdge(e4);
-            //Edge e5 = new Edge(edgePoints[1][0], edgePoints[0][0]);
-            //e5 = AddEdge(e5);
-            //Edge e6 = new Edge(edgePoints[1][0], face.v[2]);
-            //e6 = AddEdge(e6);
-            //Edge e7 = new Edge(face.v[2], edgePoints[2][0]);
-            //e7 = AddEdge(e7);
-            //Edge e8 = new Edge(edgePoints[2][0], edgePoints[1][0]);
-            //e8 = AddEdge(e8);
-            //Edge e9 = new Edge(edgePoints[2][0], edgePoints[0][0]);
-            //e9 = AddEdge(e9);
-            //Edge e10 = new Edge(edgePoints[0][0], edgePoints[1][0]);
-            //e10 = AddEdge(e10);
-            //Edge e11 = new Edge(edgePoints[1][0], edgePoints[2][0]);
-            //e11 = AddEdge(e11);
-
             faces.Add(new Face(face.v[0], edgePoints[0][0], edgePoints[2][0], new Edge(face.v[0], edgePoints[0][0]), new Edge(edgePoints[0][0], edgePoints[2][0]), new Edge(edgePoints[2][0], face.v[0])));
             faces.Add(new Face(edgePoints[0][0], face.v[1], edgePoints[1][0], new Edge(edgePoints[0][0], face.v[1]), new Edge(face.v[1], edgePoints[1][0]), new Edge(edgePoints[1][0], edgePoints[0][0])));
             faces.Add(new Face(edgePoints[1][0], face.v[2], edgePoints[2][0], new Edge(edgePoints[1][0], face.v[2]), new Edge(face.v[2], edgePoints[2][0]), new Edge(edgePoints[2][0], edgePoints[1][0])));

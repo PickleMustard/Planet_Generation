@@ -5,6 +5,10 @@ using Godot;
 namespace Structures;
 public class Point : IPoint, IEquatable<Point>
 {
+    public enum BiomeType
+    {
+        Tundra, Icecap, Desert, Grassland, Forest, Rainforest, Taiga, Ocean, Coastal, Swamp, Mountain
+    }
     public static int DetermineIndex(float x, float y, float z) {
         int ix = BitConverter.SingleToInt32Bits(MathF.Round(x, 6));
         int iy = BitConverter.SingleToInt32Bits(MathF.Round(y, 6));
@@ -24,6 +28,11 @@ public class Point : IPoint, IEquatable<Point>
     public int Index { get; set; }
     public bool continentBorder { get; set; }
     public float Radius { get; set; }
+    public BiomeType Biome
+    {
+        get;
+        set;
+    }
 
     public bool Equals(Point other)
     {
