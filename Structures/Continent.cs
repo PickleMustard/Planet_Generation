@@ -29,6 +29,7 @@ public class Continent
 
     // Tectonic Plate fields
     public Vector2 movementDirection;
+    public float velocity;
     public float rotation;
 
     public CRUST_TYPE elevation;
@@ -43,7 +44,7 @@ public class Continent
 
     public Continent(int StartingIndex, List<VoronoiCell> cells, HashSet<VoronoiCell> boundaryCells,
             HashSet<Point> points, List<Point> ConvexHull, Vector3 averagedCenter,
-            Vector3 uAxis, Vector3 vAxis, Vector2 movementDirection,
+            Vector3 uAxis, Vector3 vAxis, Vector2 movementDirection, float velocity,
             float rotation, CRUST_TYPE elevation, float averageHeight, float averageMoisture,
             HashSet<int> neighborContinents, float stressAccumulation, Dictionary<int, float> neighborStress, Dictionary<int, BOUNDARY_TYPE> boundaryTypes)
     {
@@ -56,6 +57,7 @@ public class Continent
         this.uAxis = uAxis;
         this.vAxis = vAxis;
         this.movementDirection = movementDirection;
+        this.velocity = velocity;
         this.rotation = rotation;
         this.elevation = elevation;
         this.averageHeight = averageHeight;
