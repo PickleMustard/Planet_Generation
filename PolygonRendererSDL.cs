@@ -23,7 +23,8 @@ public static class PolygonRendererSDL
 
         //material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
         //material.AlbedoColor = color ?? Colors.WhiteSmoke;
-        parent.AddChild(meshInstance);
+        //parent.AddChild(meshInstance);
+        parent.CallDeferredThreadGroup("add_child", meshInstance);
 
         return meshInstance;
     }
@@ -50,7 +51,8 @@ public static class PolygonRendererSDL
 
         //material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
         //material.AlbedoColor = color ?? Colors.WhiteSmoke;
-        parent.AddChild(meshInstance);
+        //parent.AddChild(meshInstance);
+        parent.CallDeferredThreadGroup("add_child", meshInstance);
 
         return meshInstance;
     }
@@ -67,13 +69,14 @@ public static class PolygonRendererSDL
 
         immediateMesh.SurfaceBegin(Mesh.PrimitiveType.Lines, material);
         immediateMesh.SurfaceAddVertex(arrowBase * size);
-        immediateMesh.SurfaceAddVertex(arrowTip * size);
+        immediateMesh.SurfaceAddVertex(arrowBase.Lerp(arrowTip, .75f) * size);
         immediateMesh.SurfaceEnd();
 
 
         material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
         material.AlbedoColor = color ?? Colors.Aqua;
-        parent.AddChild(meshInstance);
+        //parent.AddChild(meshInstance);
+        parent.CallDeferredThreadGroup("add_child", meshInstance);
 
         var coneInstance = new MeshInstance3D();
         CylinderMesh pointer = new CylinderMesh();
@@ -82,7 +85,8 @@ public static class PolygonRendererSDL
         pointer.Height = height;
 
         coneInstance.Mesh = pointer;
-        parent.AddChild(coneInstance);
+        //parent.AddChild(coneInstance);
+        parent.CallDeferredThreadGroup("add_child", coneInstance);
         coneInstance.LookAtFromPosition(arrowBase.Lerp(arrowTip, .75f) * size, arrowTip * size, normal);
         coneInstance.RotateObjectLocal(Vector3.Right, 90);
 
@@ -107,7 +111,8 @@ public static class PolygonRendererSDL
 
         material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
         material.AlbedoColor = color ?? Colors.Aqua;
-        parent.AddChild(meshInstance);
+        //parent.AddChild(meshInstance);
+        parent.CallDeferredThreadGroup("add_child", meshInstance);
 
         return meshInstance;
     }
@@ -129,7 +134,8 @@ public static class PolygonRendererSDL
         material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
         material.AlbedoColor = color ?? Colors.WhiteSmoke;
 
-        parent.AddChild(meshInstance);
+        //parent.AddChild(meshInstance);
+        parent.CallDeferredThreadGroup("add_child", meshInstance);
 
         return meshInstance;
     }
