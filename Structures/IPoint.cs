@@ -6,4 +6,5 @@ public interface IPoint
     float Y { get; set; }
     float Z { get; set; }
     int Index { get; set; }
+    float Stress { get; set; }
 }

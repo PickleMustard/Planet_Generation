@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 namespace Structures;
 public class VoronoiCell : IVoronoiCell
@@ -10,23 +11,11 @@ public class VoronoiCell : IVoronoiCell
     public int ContinentIndex { get; set; }
     public bool IsBorderTile { get; set; }
     public int[] BoundingContinentIndex { get; set; }
+    public Dictionary<Edge, int> EdgeBoundaryMap { get; set; }
     public Vector2 MovementDirection { get; set; }
     public float Height { get; set; }
-    public Vector3 Center
-    {
-        get
-        {
-            if (Points == null || Points.Length == 0)
-                return new Vector3(0, 0, 0);
-
-            Vector3 center = new Vector3(0, 0, 0);
-            foreach (Point p in Points)
-            {
-                center += p.Position;
-            }
-            return center / Points.Length;
-        }
-    }
+    public Vector3 Center{get; set;}
+    public float Stress { get; set; }
     public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles, Edge[] edges)
     {
         Triangles = triangles;
@@ -36,6 +25,15 @@ public class VoronoiCell : IVoronoiCell
         ContinentIndex = -1;
         BoundingContinentIndex = new int[] { };
         IsBorderTile = false;
+        EdgeBoundaryMap = new Dictionary<Edge, int>();
+
+        Vector3 center = new Vector3(0, 0, 0);
+        foreach (Point p in Points)
+        {
+            center += p.Position;
+        }
+        center /= Points.Length;
+        Center = center;
     }
 
     public override string ToString()

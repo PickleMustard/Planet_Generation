@@ -25,6 +25,7 @@ public class Point : IPoint, IEquatable<Point>
     public float X { get; set; }
     public float Y { get; set; }
     public float Z { get; set; }
+    public float Stress { get; set; }
     public int Index { get; set; }
     public bool continentBorder { get; set; }
     public float Radius { get; set; }
