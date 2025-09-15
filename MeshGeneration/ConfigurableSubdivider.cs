@@ -3,6 +3,8 @@ using System.Linq;
 using Godot;
 using Structures;
 
+using static MeshGeneration.StructureDatabase;
+
 namespace MeshGeneration;
 public class ConfigurableSubdivider
 {
@@ -67,13 +69,13 @@ public class ConfigurableSubdivider
         Vector3 cVec = c.ToVector3();
         Vector3 result = aVec * u + bVec * v + cVec * w;
         Point resultPoint = new Point(result);
-        if (GenerateDocArrayMesh.VertexPoints.ContainsKey(resultPoint.Index))
+        if (VertexPoints.ContainsKey(resultPoint.Index))
         {
-            resultPoint = GenerateDocArrayMesh.VertexPoints[resultPoint.Index];
+            resultPoint = VertexPoints[resultPoint.Index];
         }
         else
         {
-            GenerateDocArrayMesh.VertexPoints.Add(resultPoint.Index, resultPoint);
+            VertexPoints.Add(resultPoint.Index, resultPoint);
         }
         return resultPoint;
     }

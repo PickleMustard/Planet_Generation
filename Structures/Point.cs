@@ -2,13 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using static Structures.Biome;
+
 namespace Structures;
 public class Point : IPoint, IEquatable<Point>
 {
-    public enum BiomeType
-    {
-        Tundra, Icecap, Desert, Grassland, Forest, Rainforest, Taiga, Ocean, Coastal, Swamp, Mountain
-    }
     public static int DetermineIndex(float x, float y, float z) {
         int ix = BitConverter.SingleToInt32Bits(MathF.Round(x, 6));
         int iy = BitConverter.SingleToInt32Bits(MathF.Round(y, 6));
@@ -38,7 +36,7 @@ public class Point : IPoint, IEquatable<Point>
     public bool Equals(Point other)
     {
         if((Object)other == null) return false;
-        return other.X == X && other.Y == Y && other.Z == Z;
+        return other.Index == Index;
     }
 
     public override bool Equals(Object obj)
