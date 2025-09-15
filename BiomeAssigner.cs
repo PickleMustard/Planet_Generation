@@ -1,6 +1,6 @@
 using Godot;
 using Structures;
-using static Structures.Point;
+using static Structures.Biome;
 
 public static class BiomeAssigner
 {

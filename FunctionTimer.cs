@@ -155,7 +155,7 @@ public class FunctionTimer
                 GD.PrintRaw($"\r{spinner[spinnerIndex]} Processing: {currentFunction} - {timeStr}");
                 if(functionPercents.ContainsKey(currentFunction)) {
                     int percent = (int)(functionPercents[currentFunction].Percent * 100.0f);
-                    GD.PrintRaw($"| {percent}% ");
+                    GD.PrintRaw($"| {percent}%  | {functionPercents[currentFunction].PercentCurrent}");
                 }
 
                 spinnerIndex = (spinnerIndex + 1) % spinner.Length;

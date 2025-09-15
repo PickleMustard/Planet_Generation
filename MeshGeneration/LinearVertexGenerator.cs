@@ -1,6 +1,8 @@
 using Godot;
 using Structures;
 
+using static MeshGeneration.StructureDatabase;
+
 namespace MeshGeneration
 {
     public class LinearVertexGenerator : IVertexGenerator
@@ -16,13 +18,13 @@ namespace MeshGeneration
                 float t = (i + 1) * step;
                 Vector3 pos = start.ToVector3().Lerp(end.ToVector3(), t);
                 vertices[i] = new Point(pos);
-                if (GenerateDocArrayMesh.VertexPoints.ContainsKey(vertices[i].Index))
+                if (VertexPoints.ContainsKey(vertices[i].Index))
                 {
-                    vertices[i] = GenerateDocArrayMesh.VertexPoints[vertices[i].Index];
+                    vertices[i] = VertexPoints[vertices[i].Index];
                 }
                 else
                 {
-                    GenerateDocArrayMesh.VertexPoints.Add(vertices[i].Index, vertices[i]);
+                    VertexPoints.Add(vertices[i].Index, vertices[i]);
                 }
             }
 

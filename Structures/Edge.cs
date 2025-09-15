@@ -1,4 +1,5 @@
 using System;
+using static MeshGeneration.StructureDatabase;
 namespace Structures;
 public class Edge : IEdge, IEquatable<Edge>
 {
@@ -14,13 +15,13 @@ public class Edge : IEdge, IEquatable<Edge>
     public static Edge AddEdge(Point p1, Point p2)
     {
         Edge returnEdge = new Edge(p1, p2);
-        if (!GenerateDocArrayMesh.Edges.ContainsKey(returnEdge.Index))
+        if (!Edges.ContainsKey(returnEdge.Index))
         {
-            GenerateDocArrayMesh.Edges.Add(returnEdge.Index, returnEdge);
+            Edges.Add(returnEdge.Index, returnEdge);
         }
         else
         {
-            returnEdge = GenerateDocArrayMesh.Edges[returnEdge.Index];
+            returnEdge = Edges[returnEdge.Index];
         }
         return returnEdge;
     }
