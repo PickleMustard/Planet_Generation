@@ -75,6 +75,10 @@ public class VoronoiCellGeneration
             }
             VoronoiCell calculated = TriangulatePoints(UnitNorm, triCircumcenters, VoronoiCells.Count);
             calculated.IsBorderTile = false;
+            foreach (Point vertex in calculated.Points)
+            {
+                VoronoiCellVertices.Add(vertex);
+            }
             if (calculated != null)
             {
                 VoronoiCells.Add(calculated);
@@ -358,10 +362,13 @@ public class VoronoiCellGeneration
                 EdgeMap.Add(e, new HashSet<VoronoiCell>());
                 EdgeMap[e].Add(GeneratedCell);
             }
-            else
+            if (!EdgeMap.ContainsKey(e.ReverseEdge()))
             {
-                EdgeMap[e].Add(GeneratedCell);
+                EdgeMap.Add(e.ReverseEdge(), new HashSet<VoronoiCell>());
+                EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
             }
+            EdgeMap[e].Add(GeneratedCell);
+            EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
         }
         return GeneratedCell;
     }

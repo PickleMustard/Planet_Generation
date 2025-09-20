@@ -18,12 +18,30 @@ public static class StructureDatabase
     public static Dictionary<int, Point> circumcenters = new Dictionary<int, Point>();
 
     public static List<VoronoiCell> VoronoiCells = new List<VoronoiCell>();
+    public static HashSet<Point> VoronoiCellVertices = new HashSet<Point>();
     public static Dictionary<Point, HashSet<VoronoiCell>> CellMap = new Dictionary<Point, HashSet<VoronoiCell>>();
     public static Dictionary<Edge, HashSet<VoronoiCell>> EdgeMap = new Dictionary<Edge, HashSet<VoronoiCell>>();
     public static Dictionary<Point, HashSet<Triangle>> VoronoiTriMap = new Dictionary<Point, HashSet<Triangle>>();
     public static Dictionary<Edge, HashSet<Triangle>> VoronoiEdgeTriMap = new Dictionary<Edge, HashSet<Triangle>>();
     public static Dictionary<Point, Dictionary<Point, Edge>> worldHalfEdgeMapFrom = new Dictionary<Point, Dictionary<Point, Edge>>();
     public static Dictionary<Point, Dictionary<Point, Edge>> worldHalfEdgeMapTo = new Dictionary<Point, Dictionary<Point, Edge>>();
+
+    public static Edge[] GetEdgesFromPoint(Point p)
+    {
+        Dictionary<Point, Edge> edgesFromPoint = worldHalfEdgeMapFrom[p];
+        Dictionary<Point, Edge> edgesToPoint = worldHalfEdgeMapTo[p];
+        HashSet<Edge> EdgesFrom = new HashSet<Edge>();
+        foreach (Edge e in edgesFromPoint.Values)
+        {
+            EdgesFrom.Add(e);
+        }
+        foreach (Edge e in edgesToPoint.Values)
+        {
+            EdgesFrom.Add(e);
+        }
+        List<Edge> edges = new List<Edge>(EdgesFrom);
+        return edges.ToArray();
+    }
 
     public static void AddTriangle(Triangle triangle)
     {
@@ -162,8 +180,10 @@ public static class StructureDatabase
         }
     }
 
-    public static void RemoveEdge(Edge edge){
-        lock (lockObject) {
+    public static void RemoveEdge(Edge edge)
+    {
+        lock (lockObject)
+        {
             Edges.Remove(edge.Index);
             EdgeTriangles.Remove(edge);
             HalfEdgesFrom.Remove(edge.P);
