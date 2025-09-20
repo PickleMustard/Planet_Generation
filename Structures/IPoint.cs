@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 namespace Structures;
 public interface IPoint
 {
@@ -7,4 +7,5 @@ public interface IPoint
     float Z { get; set; }
     int Index { get; set; }
     float Stress { get; set; }
+    HashSet<int> ContinentIndecies { get; set; }
 }
