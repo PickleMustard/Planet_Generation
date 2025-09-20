@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://dt8sw4jlumdml"]
 
-[ext_resource type="Script" uid="uid://0g72whd74328" path="res://camera_control.gd" id="2_pc5x5"]
+[ext_resource type="Script" uid="uid://dyn0u4dusj2j4" path="res://camera_control.gd" id="2_pc5x5"]
 [ext_resource type="Script" uid="uid://cerel8nbttjp6" path="res://GenerateDocArrayMesh.cs" id="2_xj8s3"]
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_81xnv"]
