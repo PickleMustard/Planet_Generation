@@ -15,10 +15,15 @@ gi_mode = 2
 mesh = SubResource("ArrayMesh_81xnv")
 script = ExtResource("2_xj8s3")
 subdivide = 3
-VerticesPerEdge = PackedInt32Array(7, 3, 1)
+VerticesPerEdge = PackedInt32Array(7, 7, 3)
 NumContinents = 15
-ConvergentBoundaryStrength = 0.3
-DivergentBoundaryStrength = 0.2
+StressScale = 0.3
+ShearScale = 0.1
+MaxPropagationDistance = 0.034
+InactiveStressThreshold = 0.25
+GeneralHeightScale = 0.12
+GeneralCompressionScale = 0.12
+GeneralTransformScale = 0.05
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)

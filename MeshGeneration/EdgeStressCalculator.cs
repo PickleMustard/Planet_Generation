@@ -87,12 +87,12 @@ namespace MeshGeneration
                         continue;
 
                     // Calculate distance between edge midpoints
-                    Vector3 sourceMidpoint = (sourceEdge.P.ToVector3() + sourceEdge.Q.ToVector3()) / 2.0f;
-                    Vector3 connectedMidpoint = (connectedEdge.P.ToVector3() + connectedEdge.Q.ToVector3()) / 2.0f;
+                    Vector3 sourceMidpoint = (((Point)sourceEdge.P).ToVector3() + ((Point)sourceEdge.Q).ToVector3()) / 2.0f;
+                    Vector3 connectedMidpoint = (((Point)connectedEdge.P).ToVector3() + ((Point)connectedEdge.Q).ToVector3()) / 2.0f;
                     float distance = (sourceMidpoint - connectedMidpoint).Length();
 
                     // Apply exponential decay
-                    float propagatedValue = sourceEdge.CalculatedStress * Mathf.Pow(decayFactor, distance);
+                    float propagatedValue = sourceEdge.StressMagnitude * Mathf.Pow(decayFactor, distance);
 
                     // Add to dictionary, keeping the maximum stress if edge already has a value
                     if (propagatedStress.ContainsKey(connectedEdge))
@@ -119,7 +119,7 @@ namespace MeshGeneration
         public static float CalculateSpringStress(Edge edge, VoronoiCell cell, float restLength = -1f)
         {
             // Calculate current edge length
-            float currentLength = (edge.P.ToVector3() - edge.Q.ToVector3()).Length();
+            float currentLength = (((Point)edge.P).ToVector3() - ((Point)edge.Q).ToVector3()).Length();
 
             // If rest length not provided, estimate it based on average edge length in the cell
             if (restLength <= 0f)
@@ -127,7 +127,7 @@ namespace MeshGeneration
                 float totalLength = 0f;
                 foreach (Edge e in cell.Edges)
                 {
-                    totalLength += (e.P.ToVector3() - e.Q.ToVector3()).Length();
+                    totalLength += (((Point)e.P).ToVector3() - ((Point)e.Q).ToVector3()).Length();
                 }
                 restLength = totalLength / cell.Edges.Length;
             }
