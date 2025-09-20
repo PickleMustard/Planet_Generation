@@ -28,7 +28,7 @@ namespace MeshGeneration
             Continent continent2 = continents[cell2.ContinentIndex];
 
             // Calculate relative movement vector
-            Vector2 relativeMovement = (cell1.MovementDirection * continent1.velocity) - 
+            Vector2 relativeMovement = (cell1.MovementDirection * continent1.velocity) -
                                       (cell2.MovementDirection * continent2.velocity);
 
             // Calculate distance between cell centers
@@ -70,10 +70,10 @@ namespace MeshGeneration
         public static Dictionary<Edge, float> PropagateStress(Edge sourceEdge, List<VoronoiCell> voronoiCells, float decayFactor = 0.7f)
         {
             Dictionary<Edge, float> propagatedStress = new Dictionary<Edge, float>();
-            
+
             // Get cells that share this edge
             HashSet<VoronoiCell> edgeCells = EdgeMap.ContainsKey(sourceEdge) ? EdgeMap[sourceEdge] : new HashSet<VoronoiCell>();
-            
+
             if (edgeCells.Count == 0)
                 return propagatedStress;
 
@@ -92,8 +92,8 @@ namespace MeshGeneration
                     float distance = (sourceMidpoint - connectedMidpoint).Length();
 
                     // Apply exponential decay
-                    float propagatedValue = sourceEdge.Stress * Mathf.Pow(decayFactor, distance);
-                    
+                    float propagatedValue = sourceEdge.CalculatedStress * Mathf.Pow(decayFactor, distance);
+
                     // Add to dictionary, keeping the maximum stress if edge already has a value
                     if (propagatedStress.ContainsKey(connectedEdge))
                     {
@@ -136,7 +136,7 @@ namespace MeshGeneration
             // Stress is proportional to the deformation
             float deformation = Mathf.Abs(currentLength - restLength);
             float springConstant = 0.5f; // Adjustable parameter
-            
+
             return springConstant * deformation;
         }
 

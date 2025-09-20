@@ -161,27 +161,26 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         {
             foreach (VoronoiCell vc in VoronoiCells)
             {
-                var cellNeighbors = GetCellNeighbors(VoronoiCells, vc.Index);
+                var cellNeighbors = GetCellNeighbors(vc);
                 float averageHeight = vc.Height;
                 List<Edge> OutsideEdges = new List<Edge>();
                 List<int> BoundingContinentIndex = new List<int>();
-                foreach (int neighbor in cellNeighbors)
+                foreach (VoronoiCell neighbor in cellNeighbors)
                 {
                     //GD.Print($"VC: {vc.Index}, {vc.ContinentIndex} | Neighbor: {VoronoiCells[neighbor].Index}, {VoronoiCells[neighbor].ContinentIndex}");
                     //GD.Print($"Continent: {continents[vc.ContinentIndex]}, Boundary Cells: {continents[vc.ContinentIndex].boundaryCells}");
-                    if (VoronoiCells[neighbor].ContinentIndex != vc.ContinentIndex)
+                    if (neighbor.ContinentIndex != vc.ContinentIndex)
                     {
                         vc.IsBorderTile = true;
                         continents[vc.ContinentIndex].boundaryCells.Add(vc);
-                        continents[vc.ContinentIndex].neighborContinents.Add(VoronoiCells[neighbor].ContinentIndex);
-                        continents[VoronoiCells[neighbor].ContinentIndex].neighborContinents.Add(vc.ContinentIndex);
-                        VoronoiCells[neighbor].IsBorderTile = true;
-                        BoundingContinentIndex.Add(VoronoiCells[neighbor].ContinentIndex);
+                        continents[vc.ContinentIndex].neighborContinents.Add(neighbor.ContinentIndex);
+                        continents[neighbor.ContinentIndex].neighborContinents.Add(vc.ContinentIndex);
+                        neighbor.IsBorderTile = true;
+                        BoundingContinentIndex.Add(neighbor.ContinentIndex);
                         foreach (Point p in vc.Points)
                         {
-                            foreach (Point p2 in VoronoiCells[neighbor].Points)
+                            foreach (Point p2 in neighbor.Points)
                             {
-                                //GD.Print($"Comparing: {p} to {p2}");
                                 if (p.Equals(p2))
                                 {
                                     p.continentBorder = true;
@@ -190,11 +189,11 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                         }
                         foreach (Edge e in vc.Edges)
                         {
-                            foreach (Edge e2 in VoronoiCells[neighbor].Edges)
+                            foreach (Edge e2 in neighbor.Edges)
                             {
                                 if (e.Equals(e2) || e.ReverseEdge().Equals(e2))
                                 {
-                                    vc.EdgeBoundaryMap.Add(e, VoronoiCells[neighbor].ContinentIndex);
+                                    vc.EdgeBoundaryMap.Add(e, neighbor.ContinentIndex);
                                     OutsideEdges.Add(e);
                                 }
                             }
@@ -208,7 +207,8 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 vc.Height = averageHeight / (cellNeighbors.Length + 1);
                 foreach (Point p in vc.Points)
                 {
-                    p.Height = vc.Height;
+                    p.ContinentIndecies.Add(vc.ContinentIndex);
+                    //GD.PrintRaw($"Point {p} is in Continent {vc.ContinentIndex}\n");
                 }
             }
             return 0;
@@ -216,60 +216,95 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         emptyPercent.Reset();
         function = FunctionTimer.TimeFunction<int>("Average out Heights", () =>
         {
-            foreach (Point p in circumcenters.Values)
+            foreach (Point p in VoronoiCellVertices)
             {
-                var EdgesFrom = worldHalfEdgeMapFrom[p].Values.ToList();
-                var EdgesTo = worldHalfEdgeMapTo[p].Values.ToList();
-                HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
-                foreach (Edge e in EdgesFrom)
-                {
-                    foreach (Triangle t in VoronoiEdgeTriMap[e])
-                    {
-                        trianglesWithPoint.Add(t);
-                    }
-                }
-                foreach (Edge e in EdgesTo)
-                {
-                    foreach (Triangle t in VoronoiEdgeTriMap[e])
-                    {
-                        trianglesWithPoint.Add(t);
-                    }
-                }
-
-                float height = p.Height;
-                int counter = 1;
-                foreach (Triangle t in trianglesWithPoint)
-                {
-                    foreach (Point p2 in t.Points)
-                    {
-                        height += p2.Height;
-                        counter++;
-                    }
-                }
-                height /= counter;
-                p.Height = height;
-                //var pointEdges = baseEdges.Where(e => e.P == p || e.Q == p);
+                //GD.PrintRaw($"{p}, {CellMap.ContainsKey(p)}\n");
             }
+            try
+            {
+                UpdateVertexHeights(VoronoiCellVertices, continents);
+            }
+            catch (Exception e)
+            {
+                GD.PrintRaw($"\nHeight Average Error:  {e.Message}\n{e.StackTrace}\n");
+            }
+
+            //foreach (Point p in circumcenters.Values)
+            //{
+            //    var EdgesFrom = worldHalfEdgeMapFrom[p].Values.ToList();
+            //    var EdgesTo = worldHalfEdgeMapTo[p].Values.ToList();
+            //    HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+            //    foreach (Edge e in EdgesFrom)
+            //    {
+            //        foreach (Triangle t in VoronoiEdgeTriMap[e])
+            //        {
+            //            trianglesWithPoint.Add(t);
+            //        }
+            //    }
+            //    foreach (Edge e in EdgesTo)
+            //    {
+            //        foreach (Triangle t in VoronoiEdgeTriMap[e])
+            //        {
+            //            trianglesWithPoint.Add(t);
+            //        }
+            //    }
+
+            //    float height = p.Height;
+            //    int counter = 1;
+            //    foreach (Triangle t in trianglesWithPoint)
+            //    {
+            //        foreach (Point p2 in t.Points)
+            //        {
+            //            height += p2.Height;
+            //            counter++;
+            //        }
+            //    }
+            //    height /= counter;
+            //    //p.Height = height;
+
+            //    //var pointEdges = baseEdges.Where(e => e.P == p || e.Q == p);
+            //}
             return 0;
         }, emptyPercent);
         percent.PercentTotal = continents.Count;
-        GD.PrintRaw("Are we making it here?");
         function = FunctionTimer.TimeFunction<int>("Calculate Boundary Stress", () =>
         {
-            CalculateBoundaryStress(continents, VoronoiCells, circumcenters);
+            try
+            {
+                CalculateBoundaryStress(EdgeMap, VoronoiCellVertices, continents);
+            }
+            catch (Exception boundsError)
+            {
+                GD.PrintRaw($"\nBoundary Stress Error:  {boundsError.Message}\n{boundsError.StackTrace}\n");
+            }
             return 0;
         }, percent);
         percent.Reset();
         function = FunctionTimer.TimeFunction<int>("Apply Stress to Terrain", () =>
         {
-            ApplyStressToTerrain(continents, VoronoiCells);
+            try
+            {
+                ApplyStressToTerrain(continents, VoronoiCells);
+                //UpdateVertexHeights(VoronoiCellVertices, continents);
+            }
+            catch (Exception stressError)
+            {
+                GD.PrintRaw($"\nStress Error:  {stressError.Message}\n{stressError.StackTrace}\n");
+            }
             return 0;
         }, percent);
         percent.Reset();
-        maxHeight = circumcenters.Values.Max(p => p.Height);
+        maxHeight = VoronoiCellVertices.Max(p => p.Height);
         function = FunctionTimer.TimeFunction<int>("Assign Biomes", () =>
         {
-            AssignBiomes(continents, VoronoiCells);
+            try
+            {
+                AssignBiomes(continents, VoronoiCells);
+            }
+            catch (Exception biomeError)
+            {
+                GD.PrintRaw($"\nBiome Error:  {biomeError.Message}\n{biomeError.StackTrace}\n");
+            }
             return 0;
         }, percent);
         percent.Reset();
@@ -277,8 +312,15 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         percent.PercentCurrent = 0;
         function = FunctionTimer.TimeFunction<int>("Generate From Continents", () =>
         {
-            GenerateFromContinents(continents, circumcenters);
-            //DrawContinentBorders(continents);
+            try
+            {
+                GenerateFromContinents(continents);
+            }
+            catch (Exception genError)
+            {
+                GD.PrintRaw($"\nGenerate From Continents Error:  {genError.Message}\n{genError.StackTrace}\n");
+            }
+            DrawContinentBorders(continents);
             return 0;
         }, percent);
 
@@ -301,24 +343,46 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
     }
 
-    public void CalculateBoundaryStress(Dictionary<int, Continent> continents, List<VoronoiCell> cells, Dictionary<int, Point> points)
+    ///<summary>
+    ///Goes through all the vertices and updates their heights based on the height of their containing continents
+    ///</summary>
+    ///<param name="Vertices">Dictionary of Index of Vertex to Point object </param>
+    ///<param name="Continents">Dictionary of Index of starting Voronoi Cell in Continent to Continent </param>
+    ///<returns>void</returns>
+    public void UpdateVertexHeights(HashSet<Point> Vertices, Dictionary<int, Continent> Continents)
     {
-        // Initialize stress fields for each continent
-        foreach (KeyValuePair<int, Continent> continentPair in continents)
+        foreach (Point p in Vertices)
         {
-            int continentIndex = continentPair.Key;
-            Continent continent = continentPair.Value;
-            GD.Print($"Continent: {continentIndex}| Direction: {continent.movementDirection} | Rotation: {continent.rotation}");
-
-            // Reset stress accumulation for this continent
-            continent.stressAccumulation = 0f;
-            continent.neighborStress = new Dictionary<int, float>();
-            continent.boundaryTypes = new Dictionary<int, Continent.BOUNDARY_TYPE>();
-
-            // Save updated continent back to dictionary
-            continents[continentIndex] = continent;
+            //GD.PrintRaw($"\nNumber of Continents Point {p} is in: {p.ContinentIndecies.Count}");
+            if (p.ContinentIndecies.Count == 0)
+            {
+                GD.PrintRaw("This should never happen\n");
+            }
+            if (p.ContinentIndecies.Count == 1)
+            {
+                p.Height = Continents[p.ContinentIndecies.ElementAt(0)].averageHeight;
+            }
+            else if (p.ContinentIndecies.Count > 1)
+            {
+                float height = 0;
+                foreach (int continentIndex in p.ContinentIndecies)
+                {
+                    height += Continents[continentIndex].averageHeight;
+                }
+                height /= p.ContinentIndecies.Count;
+                p.Height = height;
+            }
         }
+    }
 
+    ///<summary>
+    /// 1st goes through every edge and calculates the stress on it depending on the type of edge it is.
+    /// 2nd goes through every vertex and propogates out the stress from edges directly connected to it through neighbors up to a depth of 3
+    /// </summary>
+    public void CalculateBoundaryStress(Dictionary<Edge, HashSet<VoronoiCell>> edgeMap, HashSet<Point> points, Dictionary<int, Continent> continents)
+    {
+
+        //GD.PrintRaw($"Calculating Boundary Stress\n");
         // Calculate stress between neighboring continents
         foreach (KeyValuePair<int, Continent> continentPair in continents)
         {
@@ -338,274 +402,387 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             vAxis = vAxis.Normalized();
             foreach (VoronoiCell borderCell in continent.boundaryCells)
             {
-                int[] neighbors = GetCellNeighbors(cells, borderCell.Index, false);
-                foreach (int neighbor in neighbors)
+                foreach (Edge e in borderCell.Edges)
                 {
-                    VoronoiCell neighborCell = cells[neighbor];
-                    float k = (1.0f - UnitNorm.X * borderCell.Center.X - UnitNorm.Y * borderCell.Center.Y - UnitNorm.Z * borderCell.Center.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
-                    Vector3 projectedCenterCell = new Vector3(borderCell.Center.X + k * UnitNorm.X, borderCell.Center.Y + k * UnitNorm.Y, borderCell.Center.Z + k * UnitNorm.Z);
-                    Vector2 projectedCenterCell2D = new Vector2(uAxis.Dot(projectedCenterCell), vAxis.Dot(projectedCenterCell));
-
-                    k = (1.0f - UnitNorm.X * neighborCell.Center.X - UnitNorm.Y * neighborCell.Center.Y - UnitNorm.Z * neighborCell.Center.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
-                    Vector3 projectedCenterNeighbor = new Vector3(neighborCell.Center.X + k * UnitNorm.X, neighborCell.Center.Y + k * UnitNorm.Y, neighborCell.Center.Z + k * UnitNorm.Z);
-                    Vector2 projectedCenterNeighbor2D = new Vector2(uAxis.Dot(projectedCenterNeighbor), vAxis.Dot(projectedCenterNeighbor));
-
-                    Vector2 relativePosition = projectedCenterCell2D - projectedCenterNeighbor2D;
-                    float distance = relativePosition.LengthSquared();
-                    Vector2 direction = relativePosition / distance;
-                    Vector2 relativeMovement = (borderCell.MovementDirection * continent.velocity) - (neighborCell.MovementDirection * continents[neighborCell.ContinentIndex].velocity);
-
-                    Vector3 directionPoint = uAxis * relativeMovement.X + vAxis * relativeMovement.Y;
-                    directionPoint = directionPoint.Normalized();
-                    //PolygonRendererSDL.DrawArrow(this, size + (continent.averageHeight / 100f), borderCell.Center, directionPoint, UnitNorm, 0.1f, Colors.Black);
-                    float convergingVelocity = relativeMovement.Dot(direction);
-                    //float strength = relativeMovement.LengthSquared() / ((distance + 0.1f) * 50.0f); // Adjust this factor as needed
-                    if (!continent.neighborStress.ContainsKey(neighborCell.ContinentIndex))
+                    List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e]);
+                    VoronoiCell[] original = new VoronoiCell[] { borderCell };
+                    List<VoronoiCell> neighbors2 = new List<VoronoiCell>(neighbors.Except(original));
+                    VoronoiCell neighborCell = null;
+                    if (neighbors2.Count > 0)
                     {
-                        continent.neighborStress[neighborCell.ContinentIndex] = 0f;
-                    }
-                    if (convergingVelocity <= 0f)
-                    {
-                        continent.neighborStress[neighborCell.ContinentIndex] -= relativeMovement.LengthSquared();
-                    }
-                    else if (convergingVelocity > 0f && convergingVelocity < 1f)
-                    {
-                        continent.neighborStress[neighborCell.ContinentIndex] += relativeMovement.LengthSquared() / 4f;
+                        neighborCell = neighbors2.First();
                     }
                     else
                     {
-                        continent.neighborStress[neighborCell.ContinentIndex] += relativeMovement.LengthSquared();
+                        continue;
+                    }
+                    if (neighborCell != null && neighborCell.ContinentIndex != borderCell.ContinentIndex)
+                    {
+                        float k = (1.0f - UnitNorm.X * borderCell.Center.X - UnitNorm.Y * borderCell.Center.Y - UnitNorm.Z * borderCell.Center.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
+                        Vector3 projectedCenterCell = new Vector3(borderCell.Center.X + k * UnitNorm.X, borderCell.Center.Y + k * UnitNorm.Y, borderCell.Center.Z + k * UnitNorm.Z);
+                        Vector2 projectedCenterCell2D = new Vector2(uAxis.Dot(projectedCenterCell), vAxis.Dot(projectedCenterCell));
+
+                        k = (1.0f - UnitNorm.X * neighborCell.Center.X - UnitNorm.Y * neighborCell.Center.Y - UnitNorm.Z * neighborCell.Center.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
+                        Vector3 projectedCenterNeighbor = new Vector3(neighborCell.Center.X + k * UnitNorm.X, neighborCell.Center.Y + k * UnitNorm.Y, neighborCell.Center.Z + k * UnitNorm.Z);
+                        Vector2 projectedCenterNeighbor2D = new Vector2(uAxis.Dot(projectedCenterNeighbor), vAxis.Dot(projectedCenterNeighbor));
+
+                        Vector2 relativePosition = projectedCenterCell2D - projectedCenterNeighbor2D;
+                        float distance = relativePosition.LengthSquared();
+                        Vector2 direction = relativePosition / distance;
+                        Vector2 relativeMovement = (borderCell.MovementDirection * continent.velocity) - (neighborCell.MovementDirection * continents[neighborCell.ContinentIndex].velocity);                                                      //VoronoiCell[] neighbors = GetCellNeighbors(borderCell, false);
+
+                        Vector3 directionPoint = uAxis * relativeMovement.X + vAxis * relativeMovement.Y;
+                        directionPoint = directionPoint.Normalized();
+                        float convergingVelocity = MathF.Acos(relativeMovement.Dot(direction) / (relativeMovement.Length() * direction.Length()));
+                        if (convergingVelocity <= 3.0f * MathF.PI / 4.0f && convergingVelocity > MathF.PI / 4.0f)
+                        {
+                            e.CalculatedStress = relativeMovement.LengthSquared() / ((distance + 0.1f) * 5f) * ConvergentBoundaryStrength; // Adjust this factor as needed
+                            e.Type = EdgeType.convergent;
+                        }
+                        else if (convergingVelocity >= 5.0f * MathF.PI / 4.0f && convergingVelocity < 7.0f * MathF.PI / 4.0f)
+                        {
+                            e.CalculatedStress = relativeMovement.LengthSquared() / ((distance + 0.1f) * 5f) * DivergentBoundaryStrength; // Adjust this factor as needed
+                            e.Type = EdgeType.divergent;
+                        }
+                        else
+                        {
+                            e.CalculatedStress = relativeMovement.LengthSquared() / ((distance + 0.1f) * 5f) * TransformBoundaryStrength; // Adjust this factor as needed
+                            e.Type = EdgeType.transform;
+                        }
+                    }
+                    else
+                    {
+                        e.CalculatedStress = 0f;
+                        e.Type = EdgeType.joined;
                     }
                 }
+                //foreach (VoronoiCell neighborCell in neighbors)
+                //{
+                //    float k = (1.0f - UnitNorm.X * borderCell.Center.X - UnitNorm.Y * borderCell.Center.Y - UnitNorm.Z * borderCell.Center.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
+                //    Vector3 projectedCenterCell = new Vector3(borderCell.Center.X + k * UnitNorm.X, borderCell.Center.Y + k * UnitNorm.Y, borderCell.Center.Z + k * UnitNorm.Z);
+                //    Vector2 projectedCenterCell2D = new Vector2(uAxis.Dot(projectedCenterCell), vAxis.Dot(projectedCenterCell));
+
+                //    k = (1.0f - UnitNorm.X * neighborCell.Center.X - UnitNorm.Y * neighborCell.Center.Y - UnitNorm.Z * neighborCell.Center.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
+                //    Vector3 projectedCenterNeighbor = new Vector3(neighborCell.Center.X + k * UnitNorm.X, neighborCell.Center.Y + k * UnitNorm.Y, neighborCell.Center.Z + k * UnitNorm.Z);
+                //    Vector2 projectedCenterNeighbor2D = new Vector2(uAxis.Dot(projectedCenterNeighbor), vAxis.Dot(projectedCenterNeighbor));
+
+                //    Vector2 relativePosition = projectedCenterCell2D - projectedCenterNeighbor2D;
+                //    float distance = relativePosition.LengthSquared();
+                //    Vector2 direction = relativePosition / distance;
+                //    Vector2 relativeMovement = (borderCell.MovementDirection * continent.velocity) - (neighborCell.MovementDirection * continents[neighborCell.ContinentIndex].velocity);
+
+                //    Vector3 directionPoint = uAxis * relativeMovement.X + vAxis * relativeMovement.Y;
+                //    directionPoint = directionPoint.Normalized();
+                //    //PolygonRendererSDL.DrawArrow(this, size + (continent.averageHeight / 100f), borderCell.Center, directionPoint, UnitNorm, 0.1f, Colors.Black);
+                //    float convergingVelocity = relativeMovement.Dot(direction);
+                //    //float strength = relativeMovement.LengthSquared() / ((distance + 0.1f) * 50.0f); // Adjust this factor as needed
+                //    if (!continent.neighborStress.ContainsKey(neighborCell.ContinentIndex))
+                //    {
+                //        continent.neighborStress[neighborCell.ContinentIndex] = 0f;
+                //    }
+                //    if (convergingVelocity <= 0f)
+                //    {
+                //        continent.neighborStress[neighborCell.ContinentIndex] -= relativeMovement.LengthSquared();
+                //    }
+                //    else if (convergingVelocity > 0f && convergingVelocity < 1f)
+                //    {
+                //        continent.neighborStress[neighborCell.ContinentIndex] += relativeMovement.LengthSquared() / 4f;
+                //    }
+                //    else
+                //    {
+                //        continent.neighborStress[neighborCell.ContinentIndex] += relativeMovement.LengthSquared();
+                //    }
+                //}
             }
+            //GD.PrintRaw($"Calculated Stress for Continent {continent.StartingIndex}\n");
 
             // Find neighboring continents
-            foreach (int neighborIndex in continent.neighborContinents)
-            {
-                Continent neighbor = continents[neighborIndex];
-                Vector3 neighborCenter = neighbor.averagedCenter;
+            //foreach (int neighborIndex in continent.neighborContinents)
+            //{
+            //    Continent neighbor = continents[neighborIndex];
+            //    Vector3 neighborCenter = neighbor.averagedCenter;
 
-                // Calculate relative movement vector
-                Vector2 relativeMovement = neighbor.movementDirection - continent.movementDirection;
-                float distance = (neighborCenter - continentCenter).LengthSquared();
+            //    // Calculate relative movement vector
+            //    Vector2 relativeMovement = neighbor.movementDirection - continent.movementDirection;
+            //    float distance = (neighborCenter - continentCenter).LengthSquared();
 
-                // Normalize distance to a reasonable scale (assuming sphere radius is 'size')
-                //float normalizedDistance = distance / (2 * size);
+            //    // Normalize distance to a reasonable scale (assuming sphere radius is 'size')
+            //    //float normalizedDistance = distance / (2 * size);
 
-                // Calculate stress based on relative velocity and distance
-                // This is a simplified model - you might want to adjust the formula
-                float stress = relativeMovement.LengthSquared() / (distance + 0.1f); // Add small value to avoid division by zero
+            //    // Calculate stress based on relative velocity and distance
+            //    // This is a simplified model - you might want to adjust the formula
+            //    float stress = relativeMovement.LengthSquared() / (distance + 0.1f); // Add small value to avoid division by zero
 
-                // Determine boundary type based on relative movement
-                Continent.BOUNDARY_TYPE boundaryType;
-                float dotProduct = continent.movementDirection.Dot(neighbor.movementDirection);
+            //    // Determine boundary type based on relative movement
+            //    Continent.BOUNDARY_TYPE boundaryType;
+            //    float dotProduct = continent.movementDirection.Dot(neighbor.movementDirection);
 
-                if (dotProduct > 0.5f) // Moving in similar directions
-                {
-                    boundaryType = Continent.BOUNDARY_TYPE.Transform;
-                }
-                else if (dotProduct < -0.5f) // Moving towards each other
-                {
-                    boundaryType = Continent.BOUNDARY_TYPE.Divergent;
-                }
-                else // Moving apart or perpendicular
-                {
-                    boundaryType = Continent.BOUNDARY_TYPE.Convergent;
-                }
+            //    if (dotProduct > 0.5f) // Moving in similar directions
+            //    {
+            //        boundaryType = Continent.BOUNDARY_TYPE.Transform;
+            //    }
+            //    else if (dotProduct < -0.5f) // Moving towards each other
+            //    {
+            //        boundaryType = Continent.BOUNDARY_TYPE.Divergent;
+            //    }
+            //    else // Moving apart or perpendicular
+            //    {
+            //        boundaryType = Continent.BOUNDARY_TYPE.Convergent;
+            //    }
 
-                // Update continent's stress and boundary type dictionaries
-                continent.neighborStress[neighborIndex] = stress;
-                continent.boundaryTypes[neighborIndex] = boundaryType;
+            //    // Update continent's stress and boundary type dictionaries
+            //    continent.neighborStress[neighborIndex] = stress;
+            //    continent.boundaryTypes[neighborIndex] = boundaryType;
 
-                // Accumulate total stress
-                continent.stressAccumulation += stress;
-            }
+            //    // Accumulate total stress
+            //    continent.stressAccumulation += stress;
+            //}
 
             // Save updated continent back to dictionary
             continents[continentIndex] = continent;
+        }
+        //GD.PrintRaw($"Calculated Boundary Stress\n");
+        // Calculate propogated stress
+        GD.PrintRaw($"Num of Edges: {edgeMap.Keys.Count}\n");
+        foreach (Edge e in edgeMap.Keys)
+        {
+            Point origin = e.P;
+            Point destination = e.Q;
+            HashSet<Edge> visitedEdges = new HashSet<Edge>();
+            try
+            {
+                if (e.CalculatedStress > 0.0f)
+                {
+                    CalculatePropogatedStress(e, e, origin, 0, visitedEdges);
+                    CalculatePropogatedStress(e, e, destination, 0, visitedEdges);
+                }
+            }
+            catch (Exception err)
+            {
+                GD.PrintRaw($"\nPropogated Stress Error:  {err.Message}\n{err.StackTrace}\n");
+            }
+        }
+        GD.PrintRaw($"Calculated Propogated Stress\n");
+    }
+
+    private void CalculatePropogatedStress(Edge origin, Edge lastEdge, Point branchPoint, int depth, HashSet<Edge> visitedEdges)
+    {
+        if (depth > 3)
+        {
+            return;
+        }
+        Edge[] edgesFromPoint = GetEdgesFromPoint(branchPoint);
+        Edge[] lastEdges = new Edge[] { lastEdge };
+        edgesFromPoint.Except(lastEdges);
+        foreach (Edge e in edgesFromPoint)
+        {
+            if (visitedEdges.Contains(e)) continue;
+            visitedEdges.Add(e);
+            if (e.Type == EdgeType.joined)
+            {
+                if (e.ContinentIndex == origin.ContinentIndex)
+                {
+                    e.PropogatedStress += origin.CalculatedStress * MathF.Pow(2.0f, -depth);
+                }
+            }
+            else
+            {
+                float distance = lastEdge.Midpoint.DistanceTo(origin.Midpoint);
+                e.PropogatedStress += origin.CalculatedStress / distance;
+            }
+            Point nextPoint = e.Q == branchPoint ? e.P : e.Q;
+            CalculatePropogatedStress(origin, e, nextPoint, depth + 1, visitedEdges);
         }
     }
 
     public void ApplyStressToTerrain(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
+        foreach (Point p in VoronoiCellVertices)
+        {
+            Edge[] edges = GetEdgesFromPoint(p);
+            float alteredHeight = 0.0f;
+            foreach (Edge e in edges)
+            {
+                //GD.PrintRaw($"Edge: {e} with stress: {e.TotalStress} from {e.CalculatedStress} and {e.PropogatedStress}, Edge Type: {e.Type}\n");
+                switch (e.Type)
+                {
+                    case EdgeType.joined: alteredHeight += e.TotalStress; break;
+                    case EdgeType.transform: alteredHeight += e.TotalStress; break;
+                    case EdgeType.divergent: alteredHeight -= e.TotalStress; break;
+                    case EdgeType.convergent: alteredHeight += e.TotalStress; break;
+                }
+            }
+            p.Height += alteredHeight;
+        }
+
         // First, apply stress directly to boundary cells
-        foreach (KeyValuePair<int, Continent> continentPair in continents)
-        {
-            int continentIndex = continentPair.Key;
-            Continent continent = continentPair.Value;
+        //foreach (KeyValuePair<int, Continent> continentPair in continents)
+        //{
+        //    int continentIndex = continentPair.Key;
+        //    Continent continent = continentPair.Value;
 
-            // Process each boundary cell of this continent
-            foreach (VoronoiCell boundaryCell in continent.boundaryCells)
-            {
-                int[] neighbors = GetCellNeighbors(cells, boundaryCell.Index, false);
-                foreach (int neighbor in neighbors)
-                {
-                    VoronoiCell neighborCell = cells[neighbor];
-                    Vector2 relativeMovement = boundaryCell.MovementDirection - neighborCell.MovementDirection;
-                    float distance = (boundaryCell.Center - neighborCell.Center).LengthSquared();
-                    float strength = relativeMovement.LengthSquared() / ((distance + 0.1f)); // Adjust this factor as needed
-                                                                                             // Get the boundary type and stress for this specific neighbor
-                    Continent.BOUNDARY_TYPE boundaryType = continent.boundaryTypes[neighborCell.ContinentIndex];
+        //    // Process each boundary cell of this continent
+        //    foreach (VoronoiCell boundaryCell in continent.boundaryCells)
+        //    {
+        //        VoronoiCell[] neighbors = GetCellNeighbors(boundaryCell, false);
+        //        foreach (VoronoiCell neighborCell in neighbors)
+        //        {
+        //            Vector2 relativeMovement = boundaryCell.MovementDirection - neighborCell.MovementDirection;
+        //            float distance = (boundaryCell.Center - neighborCell.Center).LengthSquared();
+        //            float strength = relativeMovement.LengthSquared() / ((distance + 0.1f)); // Adjust this factor as needed
+        //                                                                                     // Get the boundary type and stress for this specific neighbor
+        //            Continent.BOUNDARY_TYPE boundaryType = continent.boundaryTypes[neighborCell.ContinentIndex];
 
-                    // Apply height modification based on boundary type and stress
-                    switch (boundaryType)
-                    {
-                        case Continent.BOUNDARY_TYPE.Convergent:
-                            // Compressing - might create mountains or trenches
-                            boundaryCell.Height += strength * ConvergentBoundaryStrength;
-                            break;
-                        case Continent.BOUNDARY_TYPE.Divergent:
-                            // Pulling apart - might create rifts
-                            boundaryCell.Height -= strength * DivergentBoundaryStrength; // Example multiplier
-                            break;
-                        case Continent.BOUNDARY_TYPE.Transform:
-                            // Sliding past - might create fault lines
-                            // Could add some noise or specific patterns
-                            boundaryCell.Height += (float)rand.RandfRange(-0.1f, 0.1f) * strength * TransformBoundaryStrength;
-                            break;
-                    }
+        //            // Apply height modification based on boundary type and stress
+        //            switch (boundaryType)
+        //            {
+        //                case Continent.BOUNDARY_TYPE.Convergent:
+        //                    // Compressing - might create mountains or trenches
+        //                    boundaryCell.Height += strength * ConvergentBoundaryStrength;
+        //                    break;
+        //                case Continent.BOUNDARY_TYPE.Divergent:
+        //                    // Pulling apart - might create rifts
+        //                    boundaryCell.Height -= strength * DivergentBoundaryStrength; // Example multiplier
+        //                    break;
+        //                case Continent.BOUNDARY_TYPE.Transform:
+        //                    // Sliding past - might create fault lines
+        //                    // Could add some noise or specific patterns
+        //                    boundaryCell.Height += (float)rand.RandfRange(-0.1f, 0.1f) * strength * TransformBoundaryStrength;
+        //                    break;
+        //            }
 
-                    // Update the height of all points in this boundary cell
-                    foreach (Point p in boundaryCell.Points)
-                    {
-                        p.Height = boundaryCell.Height;
-                    }
-                }
-            }
-        }
-
+        //            // Update the height of all points in this boundary cell
+        //            foreach (Point p in boundaryCell.Points)
+        //            {
+        //                p.Height = boundaryCell.Height;
+        //            }
+        //        }
+        //    }
+        //}
 
 
-        // Then, propagate stress from boundary cells to interior cells
-        foreach (KeyValuePair<int, Continent> continentPair in continents)
-        {
-            Continent continent = continentPair.Value;
 
-            // Create a list of cells to process, starting with boundary cells
-            //List<VoronoiCell> cellsToProcess = new List<VoronoiCell>(continent.boundaryCells);
+        //// Then, propagate stress from boundary cells to interior cells
+        //foreach (KeyValuePair<int, Continent> continentPair in continents)
+        //{
+        //    Continent continent = continentPair.Value;
 
-            foreach (VoronoiCell cell in continent.boundaryCells)
-            {
-                HashSet<VoronoiCell> alreadyProcessed = new HashSet<VoronoiCell>();
-                int[] neighborIndices = GetCellNeighbors(cells, cell.Index);
-                foreach (int neighborIndex in neighborIndices)
-                {
-                    VoronoiCell neighborCell = cells[neighborIndex];
+        //    // Create a list of cells to process, starting with boundary cells
+        //    //List<VoronoiCell> cellsToProcess = new List<VoronoiCell>(continent.boundaryCells);
 
+        //    foreach (VoronoiCell cell in continent.boundaryCells)
+        //    {
+        //        HashSet<VoronoiCell> alreadyProcessed = new HashSet<VoronoiCell>();
+        //        VoronoiCell[] neighborIndices = GetCellNeighbors(cell);
+        //        foreach (VoronoiCell neighborCell in neighborIndices)
+        //        {
+        //            if (!alreadyProcessed.Contains(neighborCell) && neighborCell.Index != cell.Index)
+        //            {
+        //                float heightDifference = Mathf.Round(cell.Height) - Mathf.Round(neighborCell.Height);
+        //                float propagationFactor = 1.0f;//Mathf.Sqrt(distance) / distance; // Adjust this factor as needed
+        //                neighborCell.Height += heightDifference * propagationFactor;
+        //                foreach (Point p in neighborCell.Points)
+        //                {
+        //                    p.Height = neighborCell.Height;
+        //                }
+        //                alreadyProcessed.Add(neighborCell);
+        //            }
+        //        }
 
-                    if (!alreadyProcessed.Contains(neighborCell) && neighborCell.Index != cell.Index)
-                    {
-                        float heightDifference = Mathf.Round(cell.Height) - Mathf.Round(neighborCell.Height);
-                        float propagationFactor = 1.0f;//Mathf.Sqrt(distance) / distance; // Adjust this factor as needed
-                        neighborCell.Height += heightDifference * propagationFactor;
-                        foreach (Point p in neighborCell.Points)
-                        {
-                            p.Height = neighborCell.Height;
-                        }
-                        alreadyProcessed.Add(neighborCell);
-                    }
-                }
+        //        foreach (VoronoiCell continentCell in continent.cells)
+        //        {
+        //            if (!alreadyProcessed.Contains(continentCell) && continentCell.Index != cell.Index)
+        //            {
+        //                float distance = (cell.Center - continentCell.Center).LengthSquared() * 1000.0f;
+        //                float heightDifference = Mathf.Round(cell.Height) - Mathf.Round(continentCell.Height);
+        //                float propagationFactor = 1.0f;//Mathf.Sqrt(distance) / distance; // Adjust this factor as needed
+        //                continentCell.Height += heightDifference * propagationFactor;
+        //                foreach (Point p in continentCell.Points)
+        //                {
+        //                    p.Height = continentCell.Height;
+        //                }
+        //                alreadyProcessed.Add(continentCell);
+        //            }
+        //        }
 
-                foreach (VoronoiCell continentCell in continent.cells)
-                {
-                    if (!alreadyProcessed.Contains(continentCell) && continentCell.Index != cell.Index)
-                    {
-                        float distance = (cell.Center - continentCell.Center).LengthSquared() * 1000.0f;
-                        float heightDifference = Mathf.Round(cell.Height) - Mathf.Round(continentCell.Height);
-                        float propagationFactor = 1.0f;//Mathf.Sqrt(distance) / distance; // Adjust this factor as needed
-                        continentCell.Height += heightDifference * propagationFactor;
-                        foreach (Point p in continentCell.Points)
-                        {
-                            p.Height = continentCell.Height;
-                        }
-                        alreadyProcessed.Add(continentCell);
-                    }
-                }
-
-            }
+        //    }
 
 
-            /*
-            // Process cells in layers, moving inward from the boundaries
-            while (cellsToProcess.Count > 0 || processedCellsQueue.Count > 0)
-            {
-                //GD.Print($"Cells to Process: {cellsToProcess.Count} | Processed Cells Queue: {processedCellsQueue.Count}");
-                VoronoiCell currentCell = null;
-                if (cellsToProcess.Count > 0)
-                {
-                    currentCell = cellsToProcess[0];
-                    cellsToProcess.RemoveAt(0);
-                }
-                else
-                {
-                    currentCell = processedCellsQueue.Dequeue();
-                }
+        //    /*
+        //    // Process cells in layers, moving inward from the boundaries
+        //    while (cellsToProcess.Count > 0 || processedCellsQueue.Count > 0)
+        //    {
+        //        //GD.Print($"Cells to Process: {cellsToProcess.Count} | Processed Cells Queue: {processedCellsQueue.Count}");
+        //        VoronoiCell currentCell = null;
+        //        if (cellsToProcess.Count > 0)
+        //        {
+        //            currentCell = cellsToProcess[0];
+        //            cellsToProcess.RemoveAt(0);
+        //        }
+        //        else
+        //        {
+        //            currentCell = processedCellsQueue.Dequeue();
+        //        }
 
-                // Skip if already processed
-                if (processedCells.Contains(currentCell))
-                    continue;
+        //        // Skip if already processed
+        //        if (processedCells.Contains(currentCell))
+        //            continue;
 
-                processedCells.Add(currentCell);
+        //        processedCells.Add(currentCell);
 
-                // Get neighboring cells within the same continent
-                int[] neighborIndices = GetCellNeighbors(cells, currentCell.Index);
-                foreach (int neighborIndex in neighborIndices)
-                {
-                    VoronoiCell neighborCell = cells[neighborIndex];
+        //        // Get neighboring cells within the same continent
+        //        int[] neighborIndices = GetCellNeighbors(cells, currentCell.Index);
+        //        foreach (int neighborIndex in neighborIndices)
+        //        {
+        //            VoronoiCell neighborCell = cells[neighborIndex];
 
-                    // Only process neighbors that belong to the same continent and haven't been processed
-                    if (neighborCell.ContinentIndex == currentCell.ContinentIndex &&
-                                                                                  !processedCells.Contains(neighborCell))
-                    {
-                        // Calculate distance between cell centers
-                        float distance = (currentCell.Center - neighborCell.Center).Length();
+        //            // Only process neighbors that belong to the same continent and haven't been processed
+        //            if (neighborCell.ContinentIndex == currentCell.ContinentIndex &&
+        //                                                                          !processedCells.Contains(neighborCell))
+        //            {
+        //                // Calculate distance between cell centers
+        //                float distance = (currentCell.Center - neighborCell.Center).Length();
 
-                        // Propagate a fraction of the height difference based on distance
-                        // This creates a smoothing effect from boundaries inward
-                        float heightDifference = currentCell.Height - neighborCell.Height;
-                        float propagationFactor = 0.7f / (distance + 1.0f); // Adjust this factor as needed
-                        neighborCell.Height += heightDifference * propagationFactor;
+        //                // Propagate a fraction of the height difference based on distance
+        //                // This creates a smoothing effect from boundaries inward
+        //                float heightDifference = currentCell.Height - neighborCell.Height;
+        //                float propagationFactor = 0.7f / (distance + 1.0f); // Adjust this factor as needed
+        //                neighborCell.Height += heightDifference * propagationFactor;
 
-                        // Add this neighbor to the processing queue
-                        cellsToProcess.Add(neighborCell);
+        //                // Add this neighbor to the processing queue
+        //                cellsToProcess.Add(neighborCell);
 
-                        // Update the height of all points in this neighbor cell
-                        foreach (Point p in neighborCell.Points)
-                        {
-                            p.Height = neighborCell.Height;
-                        }
-                    }
-                }
-            }
-            */
-        }
+        //                // Update the height of all points in this neighbor cell
+        //                foreach (Point p in neighborCell.Points)
+        //                {
+        //                    p.Height = neighborCell.Height;
+        //                }
+        //            }
+        //        }
+        //    }
+        //    */
+        //}
     }
 
-    public int[] GetCellNeighbors(List<VoronoiCell> cells, int index, bool includeSameContinent = true)
+    public VoronoiCell[] GetCellNeighbors(VoronoiCell origin, bool includeSameContinent = true)
     {
-        var currentCell = cells[index];
         HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
-        foreach (Point p in currentCell.Points)
+        foreach (Edge e in origin.Edges)
         {
-            var neighboringCells = CellMap[p];
+            var neighboringCells = EdgeMap[e];
             foreach (VoronoiCell vc in neighboringCells)
             {
-                if (vc.ContinentIndex == currentCell.ContinentIndex && includeSameContinent)
+                if (includeSameContinent)
                 {
                     neighbors.Add(vc);
                 }
-                else if (vc.ContinentIndex != currentCell.ContinentIndex)
+                else if (vc.ContinentIndex != origin.ContinentIndex)
                 {
                     neighbors.Add(vc);
                 }
             }
         }
-        List<int> neighborIndices = new List<int>();
-        foreach (VoronoiCell vc in neighbors)
-        {
-            neighborIndices.Add(vc.Index);
-        }
-        return neighborIndices.ToArray();
+        return neighbors.ToArray();
     }
 
     public HashSet<int> GenerateStartingCells(List<VoronoiCell> cells)
@@ -621,6 +798,8 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
     public void DrawContinentBorders(Dictionary<int, Continent> continents)
     {
+        int maxAttempts = continents.Count * 10;
+        int currentAttempts = 0;
         foreach (var vc in continents)
         {
             var boundaries = vc.Value.boundaryCells;
@@ -635,16 +814,22 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                         Point p2 = e1.Q;
                         Vector3 pos1 = p1.ToVector3().Normalized() * (size + p1.Height / 100f);
                         Vector3 pos2 = p2.ToVector3().Normalized() * (size + p2.Height / 100f);
-                        Color lineColor = vc.Value.boundaryTypes[b.EdgeBoundaryMap[b.OutsideEdges[i]]] switch
-                        {
-                            Continent.BOUNDARY_TYPE.Convergent => Colors.Aqua,
-                            Continent.BOUNDARY_TYPE.Divergent => Colors.Red,
-                            Continent.BOUNDARY_TYPE.Transform => Colors.Green,
-                            _ => Colors.Black
-                        };
+                        Color lineColor = Colors.Black;
+                        //Color lineColor = vc.Value.boundaryTypes[b.EdgeBoundaryMap[b.OutsideEdges[i]]] switch
+                        //{
+                        //    Continent.BOUNDARY_TYPE.Convergent => Colors.Aqua,
+                        //    Continent.BOUNDARY_TYPE.Divergent => Colors.Red,
+                        //    Continent.BOUNDARY_TYPE.Transform => Colors.Green,
+                        //    _ => Colors.Black
+                        //};
                         PolygonRendererSDL.DrawLine(this, 1.005f, pos1, pos2, lineColor);
                     }
                 }
+            }
+            currentAttempts++;
+            if (currentAttempts > maxAttempts)
+            {
+                break;
             }
         }
     }
@@ -684,16 +869,23 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             foreach (Point p in cells[i].Points)
             {
                 continent.points.Add(p);
+                //GD.PrintRaw($"Does VoronoiCellVertices contain {p}? {VoronoiCellVertices.Contains(p)}\n");
+                p.ContinentIndecies.Add(continent.StartingIndex);
+                //GD.PrintRaw($"Point {p} is in Continent {continent.StartingIndex}\n");
+            }
+            foreach (Edge e in cells[i].Edges)
+            {
+                e.ContinentIndex = i;
             }
             continents[i] = continent;
 
-            var neighborIndices = GetCellNeighbors(cells, i);
+            var neighborIndices = GetCellNeighbors(cells[i]);
             foreach (var nb in neighborIndices)
             {
-                if (neighborChart[nb] == -1)
+                if (neighborChart[nb.Index] == -1)
                 {
-                    neighborChart[nb] = neighborChart[i];
-                    queue.Add(nb);
+                    neighborChart[nb.Index] = neighborChart[i];
+                    queue.Add(nb.Index);
                 }
             }
         }
@@ -703,13 +895,13 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             var pos = rand.RandiRange(i, (queue.Count - 1));
             var currentVCell = queue[pos];
             queue[pos] = queue[i];
-            var neighborIndices = GetCellNeighbors(cells, currentVCell);
+            var neighborIndices = GetCellNeighbors(cells[currentVCell]);
             foreach (var nb in neighborIndices)
             {
-                if (neighborChart[nb] == -1)
+                if (neighborChart[nb.Index] == -1)
                 {
-                    neighborChart[nb] = neighborChart[currentVCell];
-                    queue.Add(nb);
+                    neighborChart[nb.Index] = neighborChart[currentVCell];
+                    queue.Add(nb.Index);
                 }
             }
         }
@@ -722,11 +914,17 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 continent.cells.Add(cells[i]);
                 cells[i].Height = continent.averageHeight;
                 cells[i].ContinentIndex = continent.StartingIndex;
+                foreach (Edge e in cells[i].Edges)
+                {
+                    e.ContinentIndex = neighborChart[i];
+                }
                 foreach (Point p in cells[i].Points)
                 {
                     p.Position = p.Position.Normalized();
                     p.Height = continent.averageHeight;
                     continent.points.Add(p);
+                    p.ContinentIndecies.Add(continent.StartingIndex);
+                    //GD.PrintRaw($"Point {p} is in Continent {continent.StartingIndex}\n");
                 }
             }
         }
@@ -737,6 +935,10 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             foreach (Point p in continent.points)
             {
                 continent.averagedCenter += p.Position;
+            }
+            foreach (VoronoiCell vc in continent.cells)
+            {
+                vc.ContinentIndex = continent.StartingIndex;
             }
 
             continent.averagedCenter /= continent.points.Count;
@@ -893,11 +1095,11 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         return cart;
     }
 
-    public void GenerateFromContinents(Dictionary<int, Continent> continents, Dictionary<int, Point> circumcenters)
+    public void GenerateFromContinents(Dictionary<int, Continent> continents)
     {
         foreach (var keyValuePair in continents)
         {
-            GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters);
+            GenerateSurfaceMesh(keyValuePair.Value.cells);
             percent.PercentCurrent++;
         }
     }
@@ -955,7 +1157,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }
     }
 
-    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, Dictionary<int, Point> circumcenters)
+    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList)
     {
         RandomNumberGenerator randy = new RandomNumberGenerator();
         //float height = averageHeight;
