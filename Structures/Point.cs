@@ -7,32 +7,28 @@ using static Structures.Biome;
 namespace Structures;
 public class Point : IPoint, IEquatable<Point>
 {
+    private int _index;
+    private float[] _position = new float[3];
+    private float _stress;
+
+    public float[] Components { get { return _position; } set { value.CopyTo(_position, 0); } }
+    public int Index { get { return _index; } set { _index = value; } }
+    public int VectorSpace { get { return 3; } }
+    public Vector3 Position { get { return new Vector3(_position[0], _position[1], _position[2]); } set { _position[0] = value.X; _position[1] = value.Y; _position[2] = value.Z; } }
+    public HashSet<int> ContinentIndecies { get; set; }
+    public float Height { get; set; }
+    public Vector3 Velocity { get; set; }
+    public float Stress { get { return _stress; } set { _stress = value; } }
+    public bool isOnContinentBorder { get; set; }
+    public float Radius { get; set; }
+    public BiomeType Biome { get; set; }
+
     public static int DetermineIndex(float x, float y, float z)
     {
         int ix = BitConverter.SingleToInt32Bits(MathF.Round(x, 6));
         int iy = BitConverter.SingleToInt32Bits(MathF.Round(y, 6));
         int iz = BitConverter.SingleToInt32Bits(MathF.Round(z, 6));
         return HashCode.Combine(ix, iy, iz);
-    }
-    public Vector3 Position
-    {
-        get { return new Vector3(X, Y, Z); }
-        set { X = value.X; Y = value.Y; Z = value.Z; }
-    }
-    public float Height { get; set; }
-    public Vector3 Velocity { get; set; }
-    public float X { get; set; }
-    public float Y { get; set; }
-    public float Z { get; set; }
-    public float Stress { get; set; }
-    public int Index { get; set; }
-    public bool continentBorder { get; set; }
-    public float Radius { get; set; }
-    public HashSet<int> ContinentIndecies { get; set; }
-    public BiomeType Biome
-    {
-        get;
-        set;
     }
 
     public bool Equals(Point other)
@@ -67,17 +63,13 @@ public class Point : IPoint, IEquatable<Point>
 
     public void Move(Vector3 newLocation)
     {
-        X = newLocation.X;
-        Y = newLocation.Y;
-        Z = newLocation.Z;
+        Position = newLocation;
         Radius = 0;
     }
 
     public Point(float x, float y, float z)
     {
-        X = x;
-        Y = y;
-        Z = z;
+        Components = new float[] { x, y, z };
         Index = DetermineIndex(x, y, z);
         Radius = 0;
         ContinentIndecies = new HashSet<int>();
@@ -85,9 +77,7 @@ public class Point : IPoint, IEquatable<Point>
 
     public Point(Vector3 v)
     {
-        X = v.X;
-        Y = v.Y;
-        Z = v.Z;
+        Position = v;
         Index = DetermineIndex(v.X, v.Y, v.Z);
         Radius = 0;
         ContinentIndecies = new HashSet<int>();
@@ -95,9 +85,7 @@ public class Point : IPoint, IEquatable<Point>
 
     public Point(Vector3 v, int i)
     {
-        X = v.X;
-        Y = v.Y;
-        Z = v.Z;
+        Position = v;
         Index = i;
         Radius = 0;
         ContinentIndecies = new HashSet<int>();
@@ -105,9 +93,7 @@ public class Point : IPoint, IEquatable<Point>
 
     public Point()
     {
-        X = 0;
-        Y = 0;
-        Z = 0;
+        Position = Vector3.Zero;
         Index = DetermineIndex(0, 0, 0);
         Radius = 0;
         ContinentIndecies = new HashSet<int>();
@@ -115,19 +101,20 @@ public class Point : IPoint, IEquatable<Point>
 
     public Point(IPoint copy)
     {
-        X = copy.X;
-        Y = copy.Y;
-        Z = copy.Z;
+        copy.Components.CopyTo(Components, 0);
         Index = copy.Index;
-        ContinentIndecies = new HashSet<int>(copy.ContinentIndecies);
-        Radius = 0;
+        if (copy.VectorSpace == 3)
+        {
+            ContinentIndecies = new HashSet<int>(((Point)copy).ContinentIndecies);
+            Radius = 0;
+        }
     }
 
-    public static Vector3[] ToVectors3(IEnumerable<Point> points) => points.Select(point => point.ToVector3()).ToArray();
+    public static Vector3[] ToVectors3(IEnumerable<IPoint> points) => points.Select(point => ((Point)point).ToVector3()).ToArray();
     public static Point[] ToPoints(IEnumerable<Vector3> vertices) => vertices.Select(vertex => ToPoint(vertex)).ToArray();
     public static Point ToPoint(Vector3 vertex) => new Point(vertex);
-    public Vector3 ToVector3() => new Vector3(X, Y, Z);
-    public Vector2 ToVector2() => new Vector2(X, Y);
+    public Vector3 ToVector3() => new Vector3(Components[0], Components[1], Components[2]);
+    public Vector2 ToVector2() => new Vector2(Components[0], Components[1]);
     public Edge ReverseEdge(Edge e) { var t = e.Q; e.Q = e.P; e.P = t; return e; }
 
     private string printContinents()
@@ -140,5 +127,5 @@ public class Point : IPoint, IEquatable<Point>
         return continents;
     }
 
-    public override string ToString() => $"Point: ({Index},{X},{Y},{Z}) | Member of {printContinents()}";
+    public override string ToString() => $"Point: ({Index},{Components[0]},{Components[1]},{Components[2]}) Continents: {printContinents()}";
 }

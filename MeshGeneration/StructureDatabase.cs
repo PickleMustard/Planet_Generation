@@ -47,10 +47,10 @@ public static class StructureDatabase
     {
         lock (lockObject)
         {
-            BaseTris.Add((triangle.Points[0], triangle.Points[1], triangle.Points[2]), triangle);
-            EdgeTriangles[triangle.Edges[0]].Add(triangle);
-            EdgeTriangles[triangle.Edges[1]].Add(triangle);
-            EdgeTriangles[triangle.Edges[2]].Add(triangle);
+            BaseTris.Add(((Point)triangle.Points[0], (Point)triangle.Points[1], (Point)triangle.Points[2]), triangle);
+            EdgeTriangles[(Edge)triangle.Edges[0]].Add(triangle);
+            EdgeTriangles[(Edge)triangle.Edges[1]].Add(triangle);
+            EdgeTriangles[(Edge)triangle.Edges[2]].Add(triangle);
         }
     }
 
@@ -59,23 +59,23 @@ public static class StructureDatabase
         lock (lockObject)
         {
             Edges.Add(edge.Index, edge);
-            if (HalfEdgesFrom.ContainsKey(edge.P))
+            if (HalfEdgesFrom.ContainsKey((Point)edge.P))
             {
-                HalfEdgesFrom[edge.P].Add(edge);
+                HalfEdgesFrom[(Point)edge.P].Add(edge);
             }
             else
             {
-                HalfEdgesFrom.Add(edge.P, new HashSet<Edge>());
-                HalfEdgesFrom[edge.P].Add(edge);
+                HalfEdgesFrom.Add((Point)edge.P, new HashSet<Edge>());
+                HalfEdgesFrom[(Point)edge.P].Add(edge);
             }
-            if (HalfEdgesTo.ContainsKey(edge.Q))
+            if (HalfEdgesTo.ContainsKey((Point)edge.Q))
             {
-                HalfEdgesTo[edge.Q].Add(edge);
+                HalfEdgesTo[(Point)edge.Q].Add(edge);
             }
             else
             {
-                HalfEdgesTo.Add(edge.Q, new HashSet<Edge>());
-                HalfEdgesTo[edge.Q].Add(edge);
+                HalfEdgesTo.Add((Point)edge.Q, new HashSet<Edge>());
+                HalfEdgesTo[(Point)edge.Q].Add(edge);
             }
         }
     }
@@ -133,26 +133,26 @@ public static class StructureDatabase
     {
         lock (lockObject)
         {
-            HalfEdgesFrom[edge.P].Remove(edge);
-            HalfEdgesTo[edge.Q].Remove(edge);
+            HalfEdgesFrom[(Point)edge.P].Remove(edge);
+            HalfEdgesTo[(Point)edge.Q].Remove(edge);
             Edges[edge.Index] = newEdge;
-            if (HalfEdgesFrom.ContainsKey(newEdge.P))
+            if (HalfEdgesFrom.ContainsKey((Point)newEdge.P))
             {
-                HalfEdgesFrom[newEdge.P].Add(newEdge);
+                HalfEdgesFrom[(Point)newEdge.P].Add(newEdge);
             }
             else
             {
-                HalfEdgesFrom.Add(edge.P, new HashSet<Edge>());
-                HalfEdgesFrom[edge.P].Add(edge);
+                HalfEdgesFrom.Add((Point)newEdge.P, new HashSet<Edge>());
+                HalfEdgesFrom[(Point)newEdge.P].Add(newEdge);
             }
-            if (HalfEdgesTo.ContainsKey(newEdge.Q))
+            if (HalfEdgesTo.ContainsKey((Point)newEdge.Q))
             {
-                HalfEdgesTo[newEdge.Q].Add(newEdge);
+                HalfEdgesTo[(Point)newEdge.Q].Add(newEdge);
             }
             else
             {
-                HalfEdgesTo.Add(edge.Q, new HashSet<Edge>());
-                HalfEdgesTo[edge.Q].Add(edge);
+                HalfEdgesTo.Add((Point)newEdge.Q, new HashSet<Edge>());
+                HalfEdgesTo[(Point)newEdge.Q].Add(newEdge);
             }
         }
     }
@@ -161,13 +161,13 @@ public static class StructureDatabase
     {
         lock (lockObject)
         {
-            EdgeTriangles[triangle.Edges[0]].Remove(triangle);
-            EdgeTriangles[triangle.Edges[1]].Remove(triangle);
-            EdgeTriangles[triangle.Edges[2]].Remove(triangle);
-            BaseTris[(triangle.Points[0], triangle.Points[1], triangle.Points[2])] = newTriangle;
-            EdgeTriangles[triangle.Edges[0]].Add(newTriangle);
-            EdgeTriangles[triangle.Edges[1]].Add(newTriangle);
-            EdgeTriangles[triangle.Edges[2]].Add(newTriangle);
+            EdgeTriangles[(Edge)triangle.Edges[0]].Remove(triangle);
+            EdgeTriangles[(Edge)triangle.Edges[1]].Remove(triangle);
+            EdgeTriangles[(Edge)triangle.Edges[2]].Remove(triangle);
+            BaseTris[((Point)triangle.Points[0], (Point)triangle.Points[1], (Point)triangle.Points[2])] = newTriangle;
+            EdgeTriangles[(Edge)triangle.Edges[0]].Add(newTriangle);
+            EdgeTriangles[(Edge)triangle.Edges[1]].Add(newTriangle);
+            EdgeTriangles[(Edge)triangle.Edges[2]].Add(newTriangle);
         }
     }
 
@@ -186,8 +186,8 @@ public static class StructureDatabase
         {
             Edges.Remove(edge.Index);
             EdgeTriangles.Remove(edge);
-            HalfEdgesFrom.Remove(edge.P);
-            HalfEdgesTo.Remove(edge.Q);
+            HalfEdgesFrom.Remove((Point)edge.P);
+            HalfEdgesTo.Remove((Point)edge.Q);
         }
     }
 

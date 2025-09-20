@@ -2,7 +2,7 @@ using System.Collections.Generic;
 namespace Structures;
 public interface ITriangle
 {
-    IList<Point> Points { get; }
-    IList<Edge> Edges { get; }
+    IList<IPoint> Points { get; }
+    IList<IEdge> Edges { get; }
     int Index { get; }
 }

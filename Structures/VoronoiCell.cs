@@ -14,7 +14,7 @@ public class VoronoiCell : IVoronoiCell
     public Dictionary<Edge, int> EdgeBoundaryMap { get; set; }
     public Vector2 MovementDirection { get; set; }
     public float Height { get; set; }
-    public Vector3 Center{get; set;}
+    public Vector3 Center { get; set; }
     public float Stress { get; set; }
     public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles, Edge[] edges)
     {
@@ -47,6 +47,9 @@ public class VoronoiCell : IVoronoiCell
         //  output += $"{t}, ";
         //}
         output += ")";
+        output += $", {Points.Length}# Points, {Edges.Length}# Edges, {Triangles.Length}# Triangles.";
+        output += $"Part of: {ContinentIndex}";
+
         return output;
     }
 }

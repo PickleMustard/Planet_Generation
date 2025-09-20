@@ -49,15 +49,16 @@ public class BaseMeshGeneration
                         new Point(new Vector3(TAU, 0, 1)),
                         new Point( new Vector3(TAU, 0, -1)),
                         new Point( new Vector3(-TAU, 0, -1)),
-                        new Point( new Vector3(-TAU, 0, 1))};
+                        new Point( new Vector3(-TAU, 0, 1))
+        };
         VertexIndex = 12;
         normals = new List<Vector3>();
         uvs = new List<Vector2>();
         foreach (Point p in cartesionPoints)
         {
             p.Position = p.Position.Normalized();
-            normals.Add(p.ToVector3());
-            //GD.Print($"Point: {p}");
+            normals.Add(new Vector3(p.Position.X, p.Position.Y, p.Position.Z));
+            GD.PrintRaw($"Point: {p}");
             VertexPoints.Add(p.Index, p);
         }
         faces = new List<Face>();
@@ -85,7 +86,10 @@ public class BaseMeshGeneration
     };
         for (int i = 0; i < indices.Count; i += 3)
         {
-            faces.Add(new Face(cartesionPoints[indices[i]], cartesionPoints[indices[i + 1]], cartesionPoints[indices[i + 2]], new Edge(cartesionPoints[indices[i]], cartesionPoints[indices[i + 1]]), new Edge(cartesionPoints[indices[i + 1]], cartesionPoints[indices[i + 2]]), new Edge(cartesionPoints[indices[i + 2]], cartesionPoints[indices[i]])));
+            faces.Add(new Face(cartesionPoints[indices[i]], cartesionPoints[indices[i + 1]], cartesionPoints[indices[i + 2]],
+                        new Edge(cartesionPoints[indices[i]], cartesionPoints[indices[i + 1]]),
+                        new Edge(cartesionPoints[indices[i + 1]], cartesionPoints[indices[i + 2]]),
+                        new Edge(cartesionPoints[indices[i + 2]], cartesionPoints[indices[i]])));
         }
 
     }
@@ -112,29 +116,33 @@ public class BaseMeshGeneration
     {
         foreach (Face f in faces)
         {
-            Triangle newTri = new Triangle(BaseTris.Count, f.v.ToList(), f.e.ToList());
+            List<IPoint> points = f.v.Cast<IPoint>().ToList();
+            List<IEdge> edges = f.e.Cast<IEdge>().ToList();
+            Triangle newTri = new Triangle(BaseTris.Count, points, edges);
             BaseTris.Add((f.v[0], f.v[1], f.v[2]), newTri);
             foreach (Edge edge in f.e)
             {
                 if (!EdgeTriangles.ContainsKey(edge) || EdgeTriangles[edge] == null) EdgeTriangles[edge] = new List<Triangle>();
                 EdgeTriangles[edge].Add(newTri);
-                if (!HalfEdgesFrom.ContainsKey(edge.P))
+                Point edgeP = (Point)edge.P;
+                Point edgeQ = (Point)edge.Q;
+                if (!HalfEdgesFrom.ContainsKey(edgeP))
                 {
-                    HalfEdgesFrom.Add(edge.P, new HashSet<Edge>());
-                    HalfEdgesFrom[edge.P].Add(edge);
+                    HalfEdgesFrom.Add(edgeP, new HashSet<Edge>());
+                    HalfEdgesFrom[edgeP].Add(edge);
                 }
                 else
                 {
-                    HalfEdgesFrom[edge.P].Add(edge);
+                    HalfEdgesFrom[edgeP].Add(edge);
                 }
-                if (!HalfEdgesTo.ContainsKey(edge.Q))
+                if (!HalfEdgesTo.ContainsKey(edgeQ))
                 {
-                    HalfEdgesTo.Add(edge.Q, new HashSet<Edge>());
-                    HalfEdgesTo[edge.Q].Add(edge);
+                    HalfEdgesTo.Add(edgeQ, new HashSet<Edge>());
+                    HalfEdgesTo[edgeQ].Add(edge);
                 }
                 else
                 {
-                    HalfEdgesTo[edge.Q].Add(edge);
+                    HalfEdgesTo[edgeQ].Add(edge);
                 }
             }
         }
@@ -196,12 +204,16 @@ public class BaseMeshGeneration
                     var points1 = alterTri1.Points;
                     var points2 = alterTri2.Points;
 
-                    Point sharedPoint1 = e.Q;
-                    Point sharedPoint2 = e.P;
-                    Point t1UnsharedPoint = alterTri1.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
-                    Point t2UnsharedPoint = alterTri2.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
-                    float sharedEdgeLength = (e.P.ToVector3() - e.Q.ToVector3()).Length();
-                    float newEdgeLength = (t1UnsharedPoint.ToVector3() - t2UnsharedPoint.ToVector3()).Length();
+                    Point sharedPoint1 = (Point)e.Q;
+                    Point sharedPoint2 = (Point)e.P;
+                    Point t1UnsharedPoint = (Point)alterTri1.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
+                    Point t2UnsharedPoint = (Point)alterTri2.Points.Where(p => p != sharedPoint1 && p != sharedPoint2).ElementAt(0);
+                    Vector3 p1Pos = new Vector3(((Point)e.P).Position.X, ((Point)e.P).Position.Y, ((Point)e.P).Position.Z);
+                    Vector3 q1Pos = new Vector3(((Point)e.Q).Position.X, ((Point)e.Q).Position.Y, ((Point)e.Q).Position.Z);
+                    Vector3 t1Pos = new Vector3(t1UnsharedPoint.Position.X, t1UnsharedPoint.Position.Y, t1UnsharedPoint.Position.Z);
+                    Vector3 t2Pos = new Vector3(t2UnsharedPoint.Position.X, t2UnsharedPoint.Position.Y, t2UnsharedPoint.Position.Z);
+                    float sharedEdgeLength = (p1Pos - q1Pos).Length();
+                    float newEdgeLength = (t1Pos - t2Pos).Length();
                     Edge sharedTriEdge = new Edge(e.Index, t1UnsharedPoint, t2UnsharedPoint);
                     if (Mathf.Abs(sharedEdgeLength - newEdgeLength) > optimalSideLength / .5f)
                     {
@@ -213,25 +225,25 @@ public class BaseMeshGeneration
 
                     var otherEdgesT1 = alterTri1.Edges.Where(edge => edge != e).ToList();
                     Edge triEdge2 = new Edge(otherEdgesT1[0].Index, sharedPoint1, t1UnsharedPoint);
-                    RemoveEdge(otherEdgesT1[0]);
+                    RemoveEdge((Edge)otherEdgesT1[0]);
                     AddEdge(triEdge2);
                     Edge triEdge3 = new Edge(otherEdgesT1[1].Index, sharedPoint1, t2UnsharedPoint);
-                    RemoveEdge(otherEdgesT1[1]);
+                    RemoveEdge((Edge)otherEdgesT1[1]);
                     AddEdge(triEdge3);
-                    List<Point> updatedPoints = new List<Point> { sharedPoint1, t1UnsharedPoint, t2UnsharedPoint };
-                    List<Edge> updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
+                    List<IPoint> updatedPoints = new List<IPoint> { sharedPoint1, t1UnsharedPoint, t2UnsharedPoint };
+                    List<IEdge> updatedEdges = new List<IEdge> { sharedTriEdge, triEdge2, triEdge3 };
                     Triangle deformedTri1 = new Triangle(alterTri1.Index, updatedPoints, updatedEdges);
                     UpdateTriangle(alterTri1, deformedTri1);
 
                     var otherEdgesT2 = alterTri2.Edges.Where(edge => edge != e).ToList();
                     triEdge2 = new Edge(otherEdgesT2[0].Index, sharedPoint2, t2UnsharedPoint);
-                    RemoveEdge(otherEdgesT2[0]);
+                    RemoveEdge((Edge)otherEdgesT2[0]);
                     AddEdge(triEdge2);
                     triEdge3 = new Edge(otherEdgesT2[1].Index, sharedPoint2, t1UnsharedPoint);
-                    RemoveEdge(otherEdgesT2[1]);
+                    RemoveEdge((Edge)otherEdgesT2[1]);
                     AddEdge(triEdge3);
-                    updatedPoints = new List<Point> { sharedPoint2, t1UnsharedPoint, t2UnsharedPoint };
-                    updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
+                    updatedPoints = new List<IPoint> { sharedPoint2, t1UnsharedPoint, t2UnsharedPoint };
+                    updatedEdges = new List<IEdge> { sharedTriEdge, triEdge2, triEdge3 };
                     Triangle deformedTri2 = new Triangle(alterTri2.Index, updatedPoints, updatedEdges);
                     UpdateTriangle(alterTri2, deformedTri2);
                 }
@@ -263,9 +275,9 @@ public class BaseMeshGeneration
                 foreach (Triangle t in trianglesWithPoint)
                 {
                     Vector3 triCenter = new Vector3(0, 0, 0);
-                    triCenter = t.Points[0].ToVector3();
-                    triCenter += t.Points[1].ToVector3();
-                    triCenter += t.Points[2].ToVector3();
+                    triCenter = new Vector3(((Point)t.Points[0]).Position.X, ((Point)t.Points[0]).Position.Y, ((Point)t.Points[0]).Position.Z);
+                    triCenter += new Vector3(((Point)t.Points[1]).Position.X, ((Point)t.Points[1]).Position.Y, ((Point)t.Points[1]).Position.Z);
+                    triCenter += new Vector3(((Point)t.Points[2]).Position.X, ((Point)t.Points[2]).Position.Y, ((Point)t.Points[2]).Position.Z);
                     triCenter /= 3f;
                     average += triCenter;
                 }

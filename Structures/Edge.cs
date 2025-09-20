@@ -4,18 +4,21 @@ using static MeshGeneration.StructureDatabase;
 namespace Structures;
 public enum EdgeType
 {
-    joined, transform, divergent, convergent
+    inactive, transform, divergent, convergent
 }
 public class Edge : IEdge, IEquatable<Edge>
 {
+    private Point _p;
+    private Point _q;
+
     public static int DefineIndex(Point p, Point q)
     {
-        int pix = BitConverter.SingleToInt32Bits(p.X);
-        int piy = BitConverter.SingleToInt32Bits(p.Y);
-        int piz = BitConverter.SingleToInt32Bits(p.Z);
-        int qix = BitConverter.SingleToInt32Bits(q.X);
-        int qiy = BitConverter.SingleToInt32Bits(q.Y);
-        int qiz = BitConverter.SingleToInt32Bits(q.Z);
+        int pix = BitConverter.SingleToInt32Bits(p.Position.X);
+        int piy = BitConverter.SingleToInt32Bits(p.Position.Y);
+        int piz = BitConverter.SingleToInt32Bits(p.Position.Z);
+        int qix = BitConverter.SingleToInt32Bits(q.Position.X);
+        int qiy = BitConverter.SingleToInt32Bits(q.Position.Y);
+        int qiz = BitConverter.SingleToInt32Bits(q.Position.Z);
         return HashCode.Combine(pix, piy, piz, qix, qiy, qiz);
     }
     public static Edge AddEdge(Point p1, Point p2)
@@ -31,24 +34,25 @@ public class Edge : IEdge, IEquatable<Edge>
         }
         return returnEdge;
     }
-    public Point P { get; set; }
-    public Point Q { get; set; }
+
+    public IPoint P { get { return _p; } set { _p = (Point)value; } }
+    public IPoint Q { get { return _q; } set { _q = (Point)value; } }
     public int Index { get; set; }
 
     public int ContinentIndex { get; set; }
     public EdgeType Type { get; set; }
-    public float CalculatedStress { get; set; }
-    public float PropogatedStress { get; set; }
-    public float TotalStress { get { return CalculatedStress + PropogatedStress; } }
+    public EdgeStress Stress { get; set; }
 
-    public Vector3 Midpoint { get { return new Vector3((P.X + Q.X) / 2.0f, (P.Y + Q.Y) / 2.0f, (P.Z + Q.Z) / 2.0f); } }
+    public float StressMagnitude { get; set; } = 0.0f;
+
+    public Vector3 Midpoint { get { return new Vector3((_p.Position.X + _q.Position.X) / 2.0f, (_p.Position.Y + _q.Position.Y) / 2.0f, (_p.Position.Z + _q.Position.Z) / 2.0f); } }
 
     public Edge(int e, Point p, Point q)
     {
         Index = e;
         P = p;
         Q = q;
-        Type = EdgeType.joined;
+        Type = EdgeType.inactive;
     }
 
     public Edge(Point p, Point q)
@@ -56,7 +60,7 @@ public class Edge : IEdge, IEquatable<Edge>
         P = p;
         Q = q;
         Index = DefineIndex(p, q);
-        Type = EdgeType.joined;
+        Type = EdgeType.inactive;
     }
 
     public bool Equals(Edge other)
@@ -66,7 +70,7 @@ public class Edge : IEdge, IEquatable<Edge>
 
     public Edge ReverseEdge()
     {
-        return new Edge(Q, P);
+        return new Edge(_q, _p);
     }
 
     public static bool operator ==(Edge e1, Edge e2)
