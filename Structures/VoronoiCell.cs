@@ -14,7 +14,7 @@ public class VoronoiCell : IVoronoiCell
     public Dictionary<Edge, int> EdgeBoundaryMap { get; set; }
     public Vector2 MovementDirection { get; set; }
     public float Height { get; set; }
-    public Vector3 Center{get; set;}
+    public Vector3 Center { get; set; }
     public float Stress { get; set; }
     public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles, Edge[] edges)
     {
@@ -39,7 +39,7 @@ public class VoronoiCell : IVoronoiCell
     public override string ToString()
     {
         string output = "";
-        output += $"VoronoiCell: ({Index}, ";
+        output += $"VoronoiCell: ({Index}, #Points: {Points.Length}, #Triangles: {Triangles.Length}, #Edges: {Edges.Length}, ";
         //foreach(Point p in Points) {
         //  output += $"{p}, ";
         //}

@@ -14,10 +14,19 @@ blend_shape_mode = 0
 gi_mode = 2
 mesh = SubResource("ArrayMesh_81xnv")
 script = ExtResource("2_xj8s3")
-subdivide = 3
-VerticesPerEdge = PackedInt32Array(7, 3, 1)
+subdivide = 2
+VerticesPerEdge = PackedInt32Array(5, 3, 3)
 size = 7
-NumContinents = 38
+Seed = 5002
+NumAbberations = 4
+NumContinents = 40
+StressScale = 1.095
+ShearScale = 0.8
+InactiveStressThreshold = 0.805
+GeneralHeightScale = 0.1
+GeneralShearScale = 0.12
+GeneralCompressionScale = 0.15
+GeneralTransformScale = 0.1
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)

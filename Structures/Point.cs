@@ -7,7 +7,8 @@ using static Structures.Biome;
 namespace Structures;
 public class Point : IPoint, IEquatable<Point>
 {
-    public static int DetermineIndex(float x, float y, float z) {
+    public static int DetermineIndex(float x, float y, float z)
+    {
         int ix = BitConverter.SingleToInt32Bits(MathF.Round(x, 6));
         int iy = BitConverter.SingleToInt32Bits(MathF.Round(y, 6));
         int iz = BitConverter.SingleToInt32Bits(MathF.Round(z, 6));
@@ -23,10 +24,12 @@ public class Point : IPoint, IEquatable<Point>
     public float X { get; set; }
     public float Y { get; set; }
     public float Z { get; set; }
+    public Edge Edge { get; set; }
     public float Stress { get; set; }
     public int Index { get; set; }
     public bool continentBorder { get; set; }
     public float Radius { get; set; }
+    public HashSet<int> ContinentIndices { get; set; } = new HashSet<int>();
     public BiomeType Biome
     {
         get;
@@ -35,7 +38,7 @@ public class Point : IPoint, IEquatable<Point>
 
     public bool Equals(Point other)
     {
-        if((Object)other == null) return false;
+        if ((Object)other == null) return false;
         return other.Index == Index;
     }
 
@@ -44,21 +47,16 @@ public class Point : IPoint, IEquatable<Point>
         return false;
     }
 
-    public override int GetHashCode()
-    {
-        return this.Index.GetHashCode();
-    }
-
     public static bool operator ==(Point p1, Point p2)
     {
-        if((Object)p1 == null || (Object)p2 == null)
+        if ((Object)p1 == null || (Object)p2 == null)
             return false;
         return p1.Equals(p2);
     }
 
     public static bool operator !=(Point p1, Point p2)
     {
-        if((Object)p1 == null || (Object)p2 == null)
+        if ((Object)p1 == null || (Object)p2 == null)
             return true;
         return !p1.Equals(p2);
     }
@@ -80,7 +78,8 @@ public class Point : IPoint, IEquatable<Point>
         Radius = 0;
     }
 
-    public Point(Vector3 v) {
+    public Point(Vector3 v)
+    {
         X = v.X;
         Y = v.Y;
         Z = v.Z;
@@ -120,7 +119,6 @@ public class Point : IPoint, IEquatable<Point>
     public static Point ToPoint(Vector3 vertex) => new Point(vertex);
     public Vector3 ToVector3() => new Vector3(X, Y, Z);
     public Vector2 ToVector2() => new Vector2(X, Y);
-    public Edge ReverseEdge(Edge e) { var t = e.Q; e.Q = e.P; e.P = t; return e; }
 
     public override string ToString() => $"Point: ({Index},{X},{Y},{Z})";
 }

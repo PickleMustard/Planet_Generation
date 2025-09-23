@@ -1,7 +1,35 @@
 using Godot;
+using Structures;
 using System;
+using System.Collections.Generic;
+using static MeshGeneration.StructureDatabase;
 public static class PolygonRendererSDL
 {
+    public static void RenderTriangleAndConnections(Node parent, float size, Triangle tri, Color? color = null, bool dualMesh = false)
+    {
+        int i = 0;
+        PolygonRendererSDL.DrawLine(parent, size, tri.Points[0].ToVector3().Normalized(), tri.Points[1].ToVector3().Normalized());
+        PolygonRendererSDL.DrawLine(parent, size, tri.Points[1].ToVector3().Normalized(), tri.Points[2].ToVector3().Normalized());
+        PolygonRendererSDL.DrawLine(parent, size, tri.Points[2].ToVector3().Normalized(), tri.Points[0].ToVector3().Normalized());
+        foreach (Point p in tri.Points)
+        {
+            //GD.Print(p);
+            //GD.Print(p.ToVector3());
+            switch (i)
+            {
+                case 0:
+                    PolygonRendererSDL.DrawPoint(parent, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Red);
+                    break;
+                case 1:
+                    PolygonRendererSDL.DrawPoint(parent, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Green);
+                    break;
+                case 2:
+                    PolygonRendererSDL.DrawPoint(parent, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Blue);
+                    break;
+            }
+            i++;
+        }
+    }
     public static MeshInstance3D DrawFace(Node parent, float size, Color? color = null, params Vector3[] vertices)
     {
         var meshInstance = new MeshInstance3D();
@@ -97,6 +125,7 @@ public static class PolygonRendererSDL
     public static MeshInstance3D DrawLine(Node parent, float size, Vector3 pos1, Vector3 pos2, Color? color = null)
     {
         var meshInstance = new MeshInstance3D();
+        meshInstance.Name = "Line";
         var immediateMesh = new ImmediateMesh();
         var material = new StandardMaterial3D();
 
@@ -112,7 +141,7 @@ public static class PolygonRendererSDL
         material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
         material.AlbedoColor = color ?? Colors.Aqua;
         //parent.AddChild(meshInstance);
-        parent.CallDeferredThreadGroup("add_child", meshInstance);
+        parent.CallDeferredThreadGroup("add_child", meshInstance, true);
 
         return meshInstance;
     }
