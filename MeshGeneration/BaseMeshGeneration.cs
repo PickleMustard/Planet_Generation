@@ -57,9 +57,8 @@ public class BaseMeshGeneration
         uvs = new List<Vector2>();
         foreach (Point p in cartesionPoints)
         {
-            p.Position = p.Position.Normalized();
+            p.Position = p.Position.Normalized() * 100f;
             normals.Add(p.ToVector3());
-            //GD.Print($"Point: {p}");
             VertexPoints.Add(p.Index, p);
         }
         faces = new List<Face>();
@@ -230,7 +229,7 @@ public class BaseMeshGeneration
             semaphore.Wait();
             try
             {
-                for (int index = 0; index < 7; index++)
+                for (int index = 0; index < 12; index++)
                 {
                     GD.PrintRaw($"Deforming, index: {index} \n");
                     foreach (Point p in VertexPoints.Values)

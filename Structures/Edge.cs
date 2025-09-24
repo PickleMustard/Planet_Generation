@@ -17,7 +17,8 @@ public class Edge : IEquatable<Edge>
         int qiy = BitConverter.SingleToInt32Bits(q.Y);
         int qiz = BitConverter.SingleToInt32Bits(q.Z);
         int sum = pix + piy + piz + qix + qiy + qiz;
-        return HashCode.Combine(sum, p.Index, q.Index);
+        int time = BitConverter.SingleToInt32Bits(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        return HashCode.Combine(sum, p.Index, q.Index, time);
     }
     public static Edge MakeEdge(Point p, Point q, int index)
     {

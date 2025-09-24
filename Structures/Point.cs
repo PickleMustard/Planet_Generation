@@ -9,10 +9,11 @@ public class Point : IPoint, IEquatable<Point>
 {
     public static int DetermineIndex(float x, float y, float z)
     {
-        int ix = BitConverter.SingleToInt32Bits(MathF.Round(x, 6));
-        int iy = BitConverter.SingleToInt32Bits(MathF.Round(y, 6));
-        int iz = BitConverter.SingleToInt32Bits(MathF.Round(z, 6));
-        return HashCode.Combine(ix, iy, iz);
+        int ix = BitConverter.SingleToInt32Bits(x);
+        int iy = BitConverter.SingleToInt32Bits(y);
+        int iz = BitConverter.SingleToInt32Bits(z);
+        int time = BitConverter.SingleToInt32Bits(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        return HashCode.Combine(ix, iy, iz, time);
     }
     public Vector3 Position
     {

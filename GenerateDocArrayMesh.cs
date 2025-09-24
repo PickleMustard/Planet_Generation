@@ -149,14 +149,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }, emptyPercent);
 
         GD.Print("Deformed Base Mesh");
-        if (AllTriangles)
-        {
-            foreach (var triangle in BaseTris)
-            {
-                RenderTriangleAndConnections(triangle.Value);
-            }
-        }
-
     }
 
     private void GenerateSecondPass()
@@ -441,7 +433,8 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                             if (!success) break;
                             if (visited.Contains(current) || distance > MaxPropagationDistance) continue;
                             visited.Add(current);
-                            float magnitude = CalculateStressAtDistance(e.Stress, distance, current, e);
+                            //float magnitude = CalculateStressAtDistance(e.Stress, distance, current, e);
+                            float magnitude = 1f;
                             current.StressMagnitude += magnitude;
                             toVisit.EnqueueRange(GetEdgesFromPoint(current.Q).ToArray(), (current.Midpoint - e.Midpoint).Length());
                             toVisit.EnqueueRange(GetEdgesFromPoint(current.P).ToArray(), (current.Midpoint - e.Midpoint).Length());
@@ -797,72 +790,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     }
 
 
-    public void RenderTriangleAndConnections(Triangle tri, bool dualMesh = false)
-    {
-        int i = 0;
-        //var edgesFromTri = baseEdges.Where(e => tri.Points.Any(a => a == e.P || a == e.Q));
-        List<Edge> edgesFromTri = new List<Edge>();
-        if (!dualMesh)
-        {
-            foreach (Point p in tri.Points)
-            {
-                edgesFromTri.AddRange(HalfEdgesFrom[p.Index]);
-            }
-        }
-        else
-        {
-            foreach (Point p in tri.Points)
-            {
-                edgesFromTri.AddRange(worldHalfEdgeMapFrom[p].Values);
-            }
-        }
-        if (!ProjectToSphere)
-        {
-            PolygonRendererSDL.DrawLine(this, size, tri.Points[0].ToVector3(), tri.Points[1].ToVector3());
-            PolygonRendererSDL.DrawLine(this, size, tri.Points[1].ToVector3(), tri.Points[2].ToVector3());
-            PolygonRendererSDL.DrawLine(this, size, tri.Points[2].ToVector3(), tri.Points[0].ToVector3());
-            foreach (Point p in tri.Points)
-            {
-                switch (i)
-                {
-                    case 0:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Red);
-                        break;
-                    case 1:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Green);
-                        break;
-                    case 2:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Blue);
-                        break;
-                }
-                i++;
-            }
-        }
-        else
-        {
-            PolygonRendererSDL.DrawLine(this, size, tri.Points[0].ToVector3().Normalized(), tri.Points[1].ToVector3().Normalized());
-            PolygonRendererSDL.DrawLine(this, size, tri.Points[1].ToVector3().Normalized(), tri.Points[2].ToVector3().Normalized());
-            PolygonRendererSDL.DrawLine(this, size, tri.Points[2].ToVector3().Normalized(), tri.Points[0].ToVector3().Normalized());
-            foreach (Point p in tri.Points)
-            {
-                //GD.Print(p);
-                //GD.Print(p.ToVector3());
-                switch (i)
-                {
-                    case 0:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Red);
-                        break;
-                    case 1:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Green);
-                        break;
-                    case 2:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Blue);
-                        break;
-                }
-                i++;
-            }
-        }
-    }
 
     public Vector3 ConvertToSpherical(Vector3 pos)
     {
@@ -888,7 +815,14 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         foreach (var keyValuePair in continents)
         {
-            GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters);
+            try
+            {
+                GenerateSurfaceMesh(keyValuePair.Value.cells, circumcenters);
+            }
+            catch (Exception e)
+            {
+                GD.PrintRaw($"Error: {e.Message}\n{e.StackTrace}\n");
+            }
             percent.PercentCurrent++;
         }
     }
@@ -961,7 +895,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         st.SetMaterial(material);
         foreach (VoronoiCell vor in VoronoiList)
         {
-            Color biomeColor = Colors.Pink;
+            Dictionary<int, Queue<int>> VertexMap = new Dictionary<int, Queue<int>>();
             for (int i = 0; i < vor.Points.Length / 3; i++)
             {
                 var centroid = Vector3.Zero;
@@ -982,6 +916,15 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                     var rel_pos = vor.Points[3 * i + j].ToVector3() - centroid;
                     var u = rel_pos.Dot(tangent);
                     var v = rel_pos.Dot(bitangent);
+                    if (VertexMap.ContainsKey(vor.Points[3 * i + j].Index))
+                    {
+                        VertexMap[vor.Points[3 * i + j].Index].Enqueue(3 * i + j);
+                    }
+                    else
+                    {
+                        VertexMap.Add(vor.Points[3 * i + j].Index, new Queue<int>());
+                        VertexMap[vor.Points[3 * i + j].Index].Enqueue(3 * i + j);
+                    }
                     min_u = Mathf.Min(min_u, u);
                     min_v = Mathf.Min(min_v, v);
                     max_u = Mathf.Max(max_u, u);
@@ -989,20 +932,19 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
                     var uv = new Vector2((u - min_u) / (max_u - min_u), (v - min_v) / (max_v - min_v));
                     st.SetUV(uv);
-                    st.SetNormal(tangent);
-                    if (ProjectToSphere)
-                    {
-                        st.SetColor(ShouldDisplayBiomes ? GetBiomeColor(vor.Points[3 * i + j].Biome, vor.Points[3 * i + j].Height) : GetVertexColor(vor.Points[3 * i + j].Height));
-                        st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 100f));
-                    }
-                    else
-                    {
-                        st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 10f));
-                    }
+                    //st.SetNormal(tangent);
+                    st.SetColor(ShouldDisplayBiomes ? GetBiomeColor(vor.Points[3 * i + j].Biome, vor.Points[3 * i + j].Height) : GetVertexColor(vor.Points[3 * i + j].Height));
+                    st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 100f));
                 }
             }
+            //foreach (Triangle triangle in vor.Triangles)
+            //{
+            //    st.AddIndex(VertexMap[triangle.Points[0].Index]);
+            //    st.AddIndex(VertexMap[triangle.Points[2].Index]);
+            //    st.AddIndex(VertexMap[triangle.Points[1].Index]);
+            //}
         }
-        //st.GenerateNormals();
+        st.GenerateNormals();
         //st.GenerateTangents();
         st.CallDeferred("commit", arrMesh);
     }
