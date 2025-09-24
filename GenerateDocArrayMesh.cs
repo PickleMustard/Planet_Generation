@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using UtilityLibrary;
 //using static Structures.Point;
 using static MeshGeneration.StructureDatabase;
 using static Structures.Biome;
@@ -12,6 +13,11 @@ using static Structures.Biome;
 
 public partial class GenerateDocArrayMesh : MeshInstance3D
 {
+    /* TODO:
+     * Check through the base mesh generation and Voronoi Cell generation for any errors in Vertex CRUD
+     * If that doesn't fix the errors in generating faces, then look into the Delaunay Triangulation
+     *
+     */
     public static GenericPercent percent;
     public DelaunatorSharp.Delaunator dl;
     Vector3 origin = new Vector3(0, 0, 0);
@@ -82,12 +88,15 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public bool AllTriangles = false;
     [Export]
     public bool ShouldDrawArrowsInterface = false;
+    [Export]
+    public Logger.Mode LogMode = Logger.Mode.PROD;
 
     public static bool ShouldDrawArrows = false;
 
     public override void _Ready()
     {
         instance = this;
+        Logger.logMode = LogMode;
         ShouldDrawArrows = ShouldDrawArrowsInterface;
         percent = new GenericPercent();
         rand.Seed = Seed;

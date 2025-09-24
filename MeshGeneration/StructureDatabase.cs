@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Godot;
 using Structures;
+using UtilityLibrary;
 
 namespace MeshGeneration;
 public static class StructureDatabase
@@ -94,32 +95,47 @@ public static class StructureDatabase
     }
     public static void AddTriangle(Triangle triangle)
     {
+        Logger.EnterFunction("StructureDatabase.AddTriangle", $"Triangle: {triangle.Points[0].Index} | {triangle.Points[1].Index} | {triangle.Points[2].Index}");
         semaphore.Wait();
         try
         {
+            Logger.Debug($"Acquired semaphore for AddTriangle operation", "StructureDatabase");
+
             if (!BaseTris.ContainsKey((triangle.Points[0], triangle.Points[1], triangle.Points[2])))
             {
                 BaseTris.Add((triangle.Points[0], triangle.Points[1], triangle.Points[2]), triangle);
+                Logger.Info($"Added new triangle to BaseTris", "StructureDatabase");
             }
-            if (!EdgeTriangles.ContainsKey(triangle.Edges[0]))
+            else
             {
-                EdgeTriangles.Add(triangle.Edges[0], new HashSet<Triangle>());
+                Logger.Debug($"Triangle already exists in BaseTris, skipping addition", "StructureDatabase");
             }
-            if (!EdgeTriangles.ContainsKey(triangle.Edges[1]))
+
+            // Add edges to EdgeTriangles mapping
+            for (int i = 0; i < 3; i++)
             {
-                EdgeTriangles.Add(triangle.Edges[1], new HashSet<Triangle>());
+                Edge edge = triangle.Edges[i];
+                if (!EdgeTriangles.ContainsKey(edge))
+                {
+                    EdgeTriangles.Add(edge, new HashSet<Triangle>());
+                    //Logger.Debug($"Created new EdgeTriangles entry for edge {edge.Index}", "StructureDatabase");
+                }
+                EdgeTriangles[edge].Add(triangle);
+                Logger.Debug($"Added triangle to EdgeTriangles for edge {edge.Index}", "StructureDatabase");
             }
-            if (!EdgeTriangles.ContainsKey(triangle.Edges[2]))
-            {
-                EdgeTriangles.Add(triangle.Edges[2], new HashSet<Triangle>());
-            }
-            EdgeTriangles[triangle.Edges[0]].Add(triangle);
-            EdgeTriangles[triangle.Edges[1]].Add(triangle);
-            EdgeTriangles[triangle.Edges[2]].Add(triangle);
+
+            Logger.Triangle($"Successfully added triangle with points {triangle.Points[0].Index} | {triangle.Points[1].Index} | {triangle.Points[2].Index}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error in AddTriangle: {ex.Message}", "StructureDatabase");
+            throw;
         }
         finally
         {
             semaphore.Release();
+            Logger.Debug($"Released semaphore for AddTriangle operation", "StructureDatabase");
+            Logger.ExitFunction("StructureDatabase.AddTriangle");
         }
     }
 

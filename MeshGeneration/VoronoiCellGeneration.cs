@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Structures;
+using UtilityLibrary;
 using static MeshGeneration.StructureDatabase;
 
 namespace MeshGeneration;
@@ -11,10 +12,14 @@ public class VoronoiCellGeneration
     int ranThing = 0;
     public void GenerateVoronoiCells(GenericPercent percent)
     {
+        Logger.EnterFunction("GenerateVoronoiCells", $"Points: {VertexPoints.Count}");
         try
         {
+            int pointCount = 0;
             foreach (Point p in VertexPoints.Values)
             {
+                pointCount++;
+                Logger.Debug($"Processing point {pointCount}/{VertexPoints.Count}: {p.Index}", "VoronoiCellGeneration");
                 //GD.Print($"Triangulating Point: {p}\r");
                 //Find all triangles that contain the current point
                 HashSet<Edge> edgesWithPoint = new HashSet<Edge>();
@@ -24,9 +29,11 @@ public class VoronoiCellGeneration
                 }
                 else
                 {
+                    Logger.Debug($"No edges found for point {p.Index}, skipping", "VoronoiCellGeneration");
                     continue;
                 }
                 HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+                Logger.Debug($"Found {edgesWithPoint.Count} edges for point {p.Index}", "VoronoiCellGeneration");
 
                 foreach (Edge e in edgesWithPoint)
                 {
@@ -35,9 +42,11 @@ public class VoronoiCellGeneration
                         trianglesWithPoint.Add(t);
                     }
                 }
+                Logger.Debug($"Found {trianglesWithPoint.Count} triangles for point {p.Index}", "VoronoiCellGeneration");
                 List<Point> triCircumcenters = new List<Point>();
                 foreach (var tri in trianglesWithPoint)
                 {
+                    Logger.Debug($"Calculating circumcenter for triangle {tri.Index}", "VoronoiCellGeneration");
                     var v3 = Point.ToVectors3(tri.Points);
                     var ac = v3[2] - v3[0];
                     var ab = v3[1] - v3[0];
@@ -47,17 +56,20 @@ public class VoronoiCellGeneration
                     Point cc = new Point(v3[0] + vToCircumsphereCenter);
                     if (triCircumcenters.Contains(cc))
                     {
+                        Logger.Debug($"Circumcenter {cc.Index} already exists, skipping", "VoronoiCellGeneration");
                         continue;
                     }
                     if (circumcenters.ContainsKey(cc.Index))
                     {
                         Point usedCC = circumcenters[cc.Index];
                         triCircumcenters.Add(usedCC);
+                        Logger.Debug($"Using existing circumcenter {usedCC.Index}", "VoronoiCellGeneration");
                     }
                     else
                     {
                         circumcenters.Add(cc.Index, cc);
                         triCircumcenters.Add(cc);
+                        Logger.Debug($"Added new circumcenter {cc.Index}", "VoronoiCellGeneration");
                     }
                 }
                 Vector3 center = new Vector3(0, 0, 0);
@@ -67,6 +79,7 @@ public class VoronoiCellGeneration
                 }
                 center /= triCircumcenters.Count;
                 center = center.Normalized();
+                Logger.Debug($"Calculated normalized center for point {p.Index}: {center}", "VoronoiCellGeneration");
 
                 var centroid = new Vector3(0, 0, 0);
                 var v1 = triCircumcenters[1].ToVector3() - triCircumcenters[0].ToVector3();
@@ -77,15 +90,18 @@ public class VoronoiCellGeneration
                 {
                     UnitNorm = -UnitNorm;
                 }
+                Logger.Debug($"Unit normal vector calculated: {UnitNorm}", "VoronoiCellGeneration");
                 VoronoiCell calculated = TriangulatePoints(UnitNorm, triCircumcenters, VoronoiCells.Count);
                 calculated.IsBorderTile = false;
                 if (calculated != null)
                 {
                     VoronoiCells.Add(calculated);
+                    Logger.Debug($"Added Voronoi cell {calculated.Index} to collection", "VoronoiCellGeneration");
                 }
                 foreach (Point vert in calculated.Points)
                 {
                     VoronoiCellVertices.Add(vert);
+                    Logger.Debug($"Added {calculated.Points.Length} vertices to VoronoiCellVertices", "VoronoiCellGeneration");
                 }
                 percent.PercentCurrent++;
             }
@@ -98,34 +114,39 @@ public class VoronoiCellGeneration
 
     public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, int index)
     {
-        var u = new Vector3(0, 0, 0);
-        if (!Mathf.Equals(unitNorm.X, 0.0f))
+        // Validate input
+        if (TriCircumcenters.Count < 3)
         {
-            u = new Vector3(-unitNorm.Y, unitNorm.X, 0.0f);
+            Logger.Debug($"Cannot triangulate cell {index} with only {TriCircumcenters.Count} points", "TriangulatePoints");
+            return new VoronoiCell(index, new Point[0], new Triangle[0], new Edge[0]);
         }
-        else if (!Mathf.Equals(unitNorm.Y, 0.0f))
-        {
-            u = new Vector3(-unitNorm.Z, 0, unitNorm.Y);
-        }
-        else
-        {
-            u = new Vector3(1, 0, 0);
-        }
-        u = u.Normalized();
+        
+        // Create an orthonormal basis for the tangent plane
+        Vector3 t = Mathf.Abs(unitNorm.Y) < 0.9f ? unitNorm.Cross(Vector3.Up) : unitNorm.Cross(Vector3.Right);
+        var u = t.Normalized();
         var v = unitNorm.Cross(u);
-
-        List<Point> projectedPoints = new List<Point>();
+        
+        // Find the centroid of all circumcenters
+        Vector3 centroid = Vector3.Zero;
         var ccs = Point.ToVectors3(TriCircumcenters);
+        foreach (var p in ccs)
+        {
+            centroid += p;
+        }
+        centroid /= ccs.Length;
+        centroid = centroid.Normalized(); // Project to sphere surface
+
+        // Project points onto the tangent plane at the centroid
+        List<Point> projectedPoints = new List<Point>();
         for (int i = 0; i < TriCircumcenters.Count; i++)
         {
-            var projection = new Vector2((ccs[i] - ccs[0]).Dot(u), (ccs[i] - ccs[0]).Dot(v));
+            // Project to tangent plane centered at centroid
+            Vector3 relPos = ccs[i].Normalized() - centroid;
+            var projection = new Vector2(relPos.Dot(u), relPos.Dot(v));
             projectedPoints.Add(new Point(new Vector3(projection.X, projection.Y, 0.0f), TriCircumcenters[i].Index));
         }
-        /*
-        var orderedPointsReversed = new List<Point>(orderedPoints);
-        orderedPointsReversed.Reverse();
-        */
-        //Order List of 2D points in clockwise order
+        
+        // Order points for better triangulation
         var orderedPoints = ReorderPoints(projectedPoints);
         var GenTriangles = DelaunayTriangulation.TriangulateCell(orderedPoints, unitNorm);
 
@@ -135,33 +156,61 @@ public class VoronoiCellGeneration
 
         foreach (var triangle in GenTriangles)
         {
-            // Create proper edges for the triangle
-            Edge[] triEdges = new Edge[3];
-
             // Get the actual 3D circumcenter points
             Point p1 = circumcenters[triangle.Points[0].Index];
             Point p2 = circumcenters[triangle.Points[1].Index];
             Point p3 = circumcenters[triangle.Points[2].Index];
+            
+            // Validate triangle is not degenerate
+            Vector3 v1 = p1.ToVector3().Normalized();
+            Vector3 v2 = p2.ToVector3().Normalized();
+            Vector3 v3 = p3.ToVector3().Normalized();
+            
+            // Check for degenerate triangles (points too close or collinear)
+            float minAngle = 0.01f; // Minimum angle in radians
+            Vector3 e1 = (v2 - v1).Normalized();
+            Vector3 e2 = (v3 - v1).Normalized();
+            float crossMag = e1.Cross(e2).Length();
+            
+            if (crossMag < minAngle)
+            {
+                Logger.Debug($"Skipping degenerate triangle with indices {p1.Index}, {p2.Index}, {p3.Index}", "TriangulatePoints");
+                continue;
+            }
+            
+            // Check triangle doesn't span too large an arc on the sphere
+            float maxArc = Mathf.Pi / 3.0f; // Maximum 60 degrees
+            if (Mathf.Acos(v1.Dot(v2)) > maxArc || 
+                Mathf.Acos(v2.Dot(v3)) > maxArc || 
+                Mathf.Acos(v3.Dot(v1)) > maxArc)
+            {
+                Logger.Debug($"Skipping triangle that spans too large an arc", "TriangulatePoints");
+                continue;
+            }
 
-            // Create edges using the world edge map
+            // Create proper edges for the triangle
+            Edge[] triEdges = new Edge[3];
             triEdges[0] = UpdateWorldEdgeMap(p1, p2);
             triEdges[1] = UpdateWorldEdgeMap(p2, p3);
             triEdges[2] = UpdateWorldEdgeMap(p3, p1);
 
-            //// Update the triangle with proper edges
+            // Update the triangle with proper edges
+            triangle.Points[0] = p1;
+            triangle.Points[1] = p2;
+            triangle.Points[2] = p3;
             triangle.Edges = triEdges.ToList();
 
-            //// Add points to triangulated indices
+            // Add points to triangulated indices
             TriangulatedIndices.Add(p1);
             TriangulatedIndices.Add(p2);
             TriangulatedIndices.Add(p3);
 
-            //// Add edges to cell edges
+            // Add edges to cell edges
             CellEdges.Add(triEdges[0]);
             CellEdges.Add(triEdges[1]);
             CellEdges.Add(triEdges[2]);
 
-            //// Add triangle to maps
+            // Add triangle to maps
             AddTriangleToMaps(triangle);
             Triangles.Add(triangle);
         }
@@ -263,7 +312,7 @@ public class VoronoiCellGeneration
 
     public float less(Vector2 center, Vector2 a)
     {
-        float a1 = (Mathf.RadToDeg(Mathf.Atan2(a.X - center.X, a.Y - center.Y)) + 360) % 360;
+        float a1 = (Mathf.RadToDeg(Mathf.Atan2(a.Y - center.Y, a.X - center.X)) + 360) % 360;
         return a1;
     }
 

@@ -7,13 +7,20 @@ using static Structures.Biome;
 namespace Structures;
 public class Point : IPoint, IEquatable<Point>
 {
-    public static int DetermineIndex(float x, float y, float z)
+    public static int DetermineMapIndex(float x, float y, float z)
     {
         int ix = BitConverter.SingleToInt32Bits(x);
         int iy = BitConverter.SingleToInt32Bits(y);
         int iz = BitConverter.SingleToInt32Bits(z);
         int time = BitConverter.SingleToInt32Bits(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         return HashCode.Combine(ix, iy, iz, time);
+    }
+    public static int DetermineIndex(float x, float y, float z)
+    {
+        int ix = BitConverter.SingleToInt32Bits(x);
+        int iy = BitConverter.SingleToInt32Bits(y);
+        int iz = BitConverter.SingleToInt32Bits(z);
+        return HashCode.Combine(ix, iy, iz);
     }
     public Vector3 Position
     {
@@ -28,6 +35,7 @@ public class Point : IPoint, IEquatable<Point>
     public Edge Edge { get; set; }
     public float Stress { get; set; }
     public int Index { get; set; }
+    public int MapIndex { get; set; }
     public bool continentBorder { get; set; }
     public float Radius { get; set; }
     public HashSet<int> ContinentIndices { get; set; } = new HashSet<int>();
@@ -76,6 +84,7 @@ public class Point : IPoint, IEquatable<Point>
         Y = y;
         Z = z;
         Index = DetermineIndex(x, y, z);
+        MapIndex = DetermineMapIndex(x, y, z);
         Radius = 0;
     }
 
@@ -85,6 +94,7 @@ public class Point : IPoint, IEquatable<Point>
         Y = v.Y;
         Z = v.Z;
         Index = DetermineIndex(v.X, v.Y, v.Z);
+        MapIndex = DetermineMapIndex(v.X, v.Y, v.Z);
         Radius = 0;
     }
 
@@ -94,6 +104,7 @@ public class Point : IPoint, IEquatable<Point>
         Y = v.Y;
         Z = v.Z;
         Index = i;
+        MapIndex = DetermineMapIndex(v.X, v.Y, v.Z);
         Radius = 0;
     }
 
@@ -103,6 +114,7 @@ public class Point : IPoint, IEquatable<Point>
         Y = 0;
         Z = 0;
         Index = DetermineIndex(0, 0, 0);
+        MapIndex = DetermineMapIndex(0, 0, 0);
         Radius = 0;
     }
 
@@ -112,7 +124,13 @@ public class Point : IPoint, IEquatable<Point>
         Y = copy.Y;
         Z = copy.Z;
         Index = copy.Index;
+        MapIndex = copy.MapIndex;
         Radius = 0;
+    }
+
+    override public int GetHashCode()
+    {
+        return Index;
     }
 
     public static Vector3[] ToVectors3(IEnumerable<Point> points) => points.Select(point => point.ToVector3()).ToArray();

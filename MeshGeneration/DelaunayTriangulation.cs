@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using Structures;
+using UtilityLibrary;
 
 
 namespace MeshGeneration
 {
-    using EdgeList = System.Collections.Generic.List<Edge>;
     using PointList = System.Collections.Generic.List<Point>;
 
     public class DelaunayTriangulation
@@ -16,24 +16,29 @@ namespace MeshGeneration
 
         private static void Kill(Edge e)
         {
-            //GD.PrintRaw($"Killing Edge: {e}\n");
+            Logger.Edge($"Killing Edge: {e}");
             Edge.Splice(e, e.Oprev());
             Edge.Splice(e.Sym(), e.Sym().Oprev());
             Edges.Remove(e.Sym());
             Edges.Remove(e);
+            Logger.Debug($"Edge killed successfully", "Kill");
         }
 
-        private static (EdgeList, EdgeList) LinePrimitive(Point p, Point q)
+        private static (Edge, Edge) LinePrimitive(Point p, Point q)
         {
+            Logger.EnterFunction("LinePrimitive", $"p={p}, q={q}");
             Edge e = Edge.MakeEdge(p, q);
             Edges.Add(e);
             Edges.Add(e.Sym());
-            //GD.PrintRaw($"LinePrimitive: {e}\n");
-            return (new EdgeList { e }, new EdgeList { e.Sym() });
+            PolygonRendererSDL.DrawLine(GenerateDocArrayMesh.instance, 10, StructureDatabase.circumcenters[e.Origin.Index].ToVector3(), StructureDatabase.circumcenters[e.Destination.Index].ToVector3());
+            Logger.Edge($"LinePrimitive created edge: {e}");
+            Logger.ExitFunction("LinePrimitive", $"Returning ({e}, {e.Sym()})");
+            return (e, e.Sym());
         }
 
-        private static (EdgeList, EdgeList) TrianglePrimitive(Point a, Point b, Point c)
+        private static (Edge, Edge) TrianglePrimitive(Point a, Point b, Point c)
         {
+            Logger.EnterFunction("TrianglePrimitive", $"a={a}, b={b}, c={c}");
             Edge a1 = Edge.MakeEdge(a, b);
             Edge b1 = Edge.MakeEdge(b, c);
             Edges.Add(a1);
@@ -41,34 +46,43 @@ namespace MeshGeneration
             Edges.Add(b1);
             Edges.Add(b1.Sym());
             Edge.Splice(a1.Sym(), b1);
+            Logger.Edge($"TrianglePrimitive created edges: a1={a1}, b1={b1}");
+
             if (CCW(a, b, c))
             {
+                Logger.Debug("Points are CCW ordered", "TrianglePrimitive");
                 Edge c1 = Edge.Connect(b1, a1);
                 Edges.Add(c1);
                 Edges.Add(c1.Sym());
-                if (renderTriCounter < 100)
+                Logger.Edge($"Connected edges to form triangle: c1={c1}");
+                if (renderTriCounter < 000)
                 {
                     var tri = new Triangle(new List<Point> { StructureDatabase.circumcenters[a.Index], StructureDatabase.circumcenters[b.Index], StructureDatabase.circumcenters[c.Index] }, new List<Edge> { a1, b1, c1 });
                     PolygonRendererSDL.RenderTriangleAndConnections(GenerateDocArrayMesh.instance, 10, tri);
                 }
-                return (new EdgeList { a1 }, new EdgeList { b1.Sym() });
+                Logger.ExitFunction("TrianglePrimitive", $"Returning CCW case: ({a1}, {b1.Sym()})");
+                return (a1, b1.Sym());
             }
             else if (CCW(a, c, b))
             {
+                Logger.Debug("Points are CW ordered", "TrianglePrimitive");
                 Edge c1 = Edge.Connect(b1, a1);
                 Edges.Add(c1);
                 Edges.Add(c1.Sym());
-                if (renderTriCounter < 100)
+                Logger.Edge($"Connected edges to form triangle: c1={c1}");
+                if (renderTriCounter < 000)
                 {
                     var tri = new Triangle(new List<Point> { StructureDatabase.circumcenters[a.Index], StructureDatabase.circumcenters[b.Index], StructureDatabase.circumcenters[c.Index] }, new List<Edge> { a1, b1, c1 });
                     PolygonRendererSDL.RenderTriangleAndConnections(GenerateDocArrayMesh.instance, 10, tri);
                 }
-                return (new EdgeList { c1.Sym() }, new EdgeList { c1 });
+                Logger.ExitFunction("TrianglePrimitive", $"Returning CW case: ({c1.Sym()}, {c1})");
+                return (c1.Sym(), c1);
             }
             else
             {
-                //Points are collinear
-                return (new EdgeList { a1 }, new EdgeList { b1.Sym() });
+                Logger.Debug("Points are collinear", "TrianglePrimitive");
+                Logger.ExitFunction("TrianglePrimitive", $"Returning collinear case: ({a1}, {b1.Sym()})");
+                return (a1, b1.Sym());
             }
         }
 
@@ -134,20 +148,24 @@ namespace MeshGeneration
 
         private static Edge LowestCommonTangent(Edge leftInner, Edge rightInner)
         {
-            //GD.PrintRaw($"Finding Lowest Common Tangent\n");
+            Logger.EnterFunction("LowestCommonTangent", $"leftInner={leftInner}, rightInner={rightInner}");
+            Logger.Debug("Finding Lowest Common Tangent", "LowestCommonTangent");
             while (true)
             {
-                //GD.PrintRaw($"Left Inner: {leftInner}, Right Inner: {rightInner}\n");
+                Logger.Debug($"Current edges - Left: {leftInner}, Right: {rightInner}", "LowestCommonTangent");
                 if (LeftOf(leftInner, rightInner.Origin))
                 {
+                    Logger.Debug("Moving left inner edge forward", "LowestCommonTangent");
                     leftInner = leftInner.Lnext();
                 }
                 else if (RightOf(rightInner, leftInner.Origin))
                 {
+                    Logger.Debug("Moving right inner edge backward", "LowestCommonTangent");
                     rightInner = rightInner.Rprev();
                 }
                 else
                 {
+                    Logger.Debug("Found lowest common tangent", "LowestCommonTangent");
                     break;
                 }
             }
@@ -155,6 +173,8 @@ namespace MeshGeneration
             Edge baseEdge = Edge.Connect(rightInner.Sym(), leftInner);
             Edges.Add(baseEdge);
             Edges.Add(baseEdge.Sym()); // Add symmetric edge
+            Logger.Edge($"Connected edges to form base edge: {baseEdge}");
+            Logger.ExitFunction("LowestCommonTangent", $"Returning base edge: {baseEdge}");
             return baseEdge;
         }
 
@@ -190,49 +210,120 @@ namespace MeshGeneration
             return rightCandidate;
         }
 
-        private static void MergeHulls(Edge baseEdge)
+        private static Edge MergeHulls(Edge ldi, Edge rdi)
         {
-            GD.PrintRaw($"Merging Hulls\n");
+            Logger.Debug("Merging Hulls", "MergeHulls");
+
+            // Find the lowest common tangent
             while (true)
             {
-                Edge leftCandidate = LeftCandidate(baseEdge);
-                GD.PrintRaw($"Left Candidate: {leftCandidate}\n");
-                Edge rightCandidate = RightCandidate(baseEdge);
-                GD.PrintRaw($"Right Candidate: {rightCandidate}\n");
-
-                if (!Valid(leftCandidate, baseEdge) && !Valid(rightCandidate, baseEdge))
+                if (LeftOf(ldi, rdi.Origin))
                 {
-                    break;
+                    ldi = ldi.Lnext();
                 }
-                // Fixed: Using correct vertices for InCircle test (Destination, Origin order)
-                else if (!Valid(leftCandidate, baseEdge) || (Valid(rightCandidate, baseEdge) && InCircle(leftCandidate.Destination, leftCandidate.Origin, rightCandidate.Origin, rightCandidate.Destination)))
+                else if (RightOf(rdi, ldi.Origin))
                 {
-                    baseEdge = Edge.Connect(rightCandidate, baseEdge.Sym());
+                    rdi = rdi.Rprev();
+                }
+                else break;
+            }
+
+            Edge baseEdge = Edge.Connect(rdi.Sym(), ldi);
+            Edges.Add(baseEdge);
+            Edges.Add(baseEdge.Sym());
+
+            if (ldi.Origin == baseEdge.Origin) ldi = baseEdge.Sym();
+            if (rdi.Origin == baseEdge.Destination) rdi = baseEdge;
+
+            // Merge the two hulls
+            while (true)
+            {
+                Edge lcand = baseEdge.Sym().Onext();
+                if (Valid(lcand, baseEdge))
+                {
+                    while (InCircle(baseEdge.Destination, baseEdge.Origin, lcand.Destination, lcand.Onext().Destination))
+                    {
+                        var t = lcand.Onext();
+                        Kill(lcand);
+                        lcand = t;
+                    }
+                }
+
+                Edge rcand = baseEdge.Oprev();
+                if (Valid(rcand, baseEdge))
+                {
+                    while (InCircle(baseEdge.Destination, baseEdge.Origin, rcand.Destination, rcand.Oprev().Destination))
+                    {
+                        var t = rcand.Oprev();
+                        Kill(rcand);
+                        rcand = t;
+                    }
+                }
+
+                if (!Valid(lcand, baseEdge) && !Valid(rcand, baseEdge)) break;
+
+                if (!Valid(lcand, baseEdge) || (Valid(rcand, baseEdge) &&
+                    InCircle(lcand.Destination, lcand.Origin, rcand.Origin, rcand.Destination)))
+                {
+                    baseEdge = Edge.Connect(rcand, baseEdge.Sym());
                     Edges.Add(baseEdge);
-                    Edges.Add(baseEdge.Sym()); // Add symmetric edge
+                    Edges.Add(baseEdge.Sym());
                 }
                 else
                 {
-                    baseEdge = Edge.Connect(baseEdge.Sym(), leftCandidate.Sym());
+                    baseEdge = Edge.Connect(baseEdge.Sym(), lcand.Sym());
                     Edges.Add(baseEdge);
-                    Edges.Add(baseEdge.Sym()); // Add symmetric edge
+                    Edges.Add(baseEdge.Sym());
                 }
             }
+
+            return ldi;
         }
 
         public static List<Triangle> TriangulateCell(List<Point> points, Vector3 unitNormal)
         {
             Edges.Clear();
-            var result = Triangulate(points);
+
+            // Validate input
+            if (points.Count < 3)
+            {
+                Logger.Debug($"Cannot triangulate with {points.Count} points", "TriangulateCell");
+                return new List<Triangle>();
+            }
+
+            List<Point> vertices = new List<Point>();
+            for (int i = 0; i < points.Count; i++)
+            {
+                vertices.Add(new Point(points[i].Position, points[i].Index));
+            }
+
+            // Sort vertices lexicographically
+            vertices.Sort((a, b) =>
+            {
+                int cmp = a.Position.X.CompareTo(b.Position.X);
+                if (cmp == 0) cmp = a.Position.Y.CompareTo(b.Position.Y);
+                return cmp;
+            });
+
+            var result = Triangulate(0, vertices.Count - 1, vertices);
             var triangles = ExtractTriangles(result.Item1, result.Item2, unitNormal);
-            if (renderTriCounter < 200)
+
+            // Debug rendering
+            if (renderTriCounter < 400)
             {
                 foreach (var triangle in triangles)
                 {
-                    PolygonRendererSDL.DrawTriangle(GenerateDocArrayMesh.instance, 7, StructureDatabase.circumcenters[triangle.Points[0].Index].ToVector3() / 10f, StructureDatabase.circumcenters[triangle.Points[2].Index].ToVector3() / 10f, StructureDatabase.circumcenters[triangle.Points[1].Index].ToVector3() / 10f);
+                    Triangle tri = new Triangle(new List<Point> { StructureDatabase.circumcenters[triangle.Points[0].Index], StructureDatabase.circumcenters[triangle.Points[2].Index], StructureDatabase.circumcenters[triangle.Points[1].Index] }, new List<Edge> { triangle.Edges[0], triangle.Edges[2], triangle.Edges[1] });
+                    PolygonRendererSDL.RenderTriangleAndConnections(GenerateDocArrayMesh.instance, 10, tri);
+                    PolygonRendererSDL.DrawTriangle(GenerateDocArrayMesh.instance, 7,
+                        StructureDatabase.circumcenters[triangle.Points[0].Index].ToVector3() / 10f,
+                        StructureDatabase.circumcenters[triangle.Points[2].Index].ToVector3() / 10f,
+                        StructureDatabase.circumcenters[triangle.Points[1].Index].ToVector3() / 10f);
                 }
                 renderTriCounter++;
             }
+
+            Logger.Debug($"Triangulated {points.Count} points into {triangles.Count} triangles", "TriangulateCell");
             GD.PrintRaw($"Triangles: {triangles.Count}\n");
 
             return triangles;
@@ -244,62 +335,54 @@ namespace MeshGeneration
         /// <param name="points">List of 2D projected points</param>
         /// <param name="unitNormal">Unit normal vector of the plane</param>
         /// <returns>List of triangles forming the Delaunay triangulation</returns>
-        public static (EdgeList, EdgeList) Triangulate(List<Point> points)
+        public static (Edge, Edge) Triangulate(int start, int end, List<Point> points)
         {
-            if (points.Count < 2) GD.PrintRaw($"Points division with <2 points");
-            if (points.Count == 2)
+            int n = end - start + 1;
+            if (n < 2) GD.PrintRaw($"Points division with <2 points");
+            if (n == 2)
             {
-                GD.PrintRaw($"Points division with 2 points");
-                var result = LinePrimitive(points[0], points[1]);
+                GD.PrintRaw($"Points division with 2 points at {start} and {end}\n");
+                var result = LinePrimitive(points[start], points[end]);
                 //PolygonRendererSDL.DrawLine(GenerateDocArrayMesh.instance, 10, StructureDatabase.circumcenters[result.Item1[0].Origin.Index].ToVector3() / 10f, StructureDatabase.circumcenters[result.Item1[0].Destination.Index].ToVector3() / 10f);
                 //GD.PrintRaw($"meow\nLinePrimitive: {result.Item1[0]} | {result.Item2[0]}\n");
                 return result;
             }
 
-            if (points.Count == 3)
+            if (n == 3)
             {
-                GD.PrintRaw($"Points division with 3 points");
-                var result = TrianglePrimitive(points[0], points[1], points[2]);
+                GD.PrintRaw($"Points division with 3 points\n");
+                var result = TrianglePrimitive(points[start], points[start + 1], points[end]);
                 //PolygonRendererSDL.DrawTriangle(GenerateDocArrayMesh.instance, 10, StructureDatabase.circumcenters[result.Item1[0].Index].ToVector3(), StructureDatabase.circumcenters[result.Item1[1].Index].ToVector3(), StructureDatabase.circumcenters[result.Item1[2].Index].ToVector3());
                 return result;
             }
 
-            var PointsPartition = SplitPoints(points);
-            GD.PrintRaw($"Points Partition: {PointsPartition.Item1.Count}, {PointsPartition.Item2.Count}\n");
-            var left = Triangulate(PointsPartition.Item1);
-            var right = Triangulate(PointsPartition.Item2);
+            int sm = (start + end) / 2;
+            var left = Triangulate(start, sm, points);
+            var right = Triangulate(sm + 1, end, points);
 
-            Edge rightInner = right.Item1[0];
-            Edge leftInner = left.Item2[0];
+            Edge leftOut = MergeHulls(left.Item2, right.Item1);
+            Edge rightOut = right.Item2;
 
-            Edge leftOuter = left.Item1[0];
-            Edge rightOuter = right.Item2[0];
+            if (left.Item1.Origin == left.Item2.Origin) leftOut = left.Item1;
+            if (right.Item1.Origin == right.Item2.Origin) rightOut = right.Item1;
 
-            Edge baseEdge = LowestCommonTangent(leftInner, rightInner);
-            if (leftInner.Origin == leftOuter.Origin)
-            {
-                leftOuter = baseEdge.Sym();
-            }
-            if (rightInner.Origin == rightOuter.Origin)
-            {
-                rightOuter = baseEdge;
-            }
+            Logger.Debug($"Merged hulls, returning edges", "Triangulate");
 
-            MergeHulls(baseEdge);
-            return (new EdgeList { leftOuter }, new EdgeList { rightOuter });
+            return (leftOut, rightOut);
 
         }
 
-        private static List<Triangle> ExtractTriangles(EdgeList LeftEdges, EdgeList RightEdges, Vector3 unitNormal)
+        private static List<Triangle> ExtractTriangles(Edge LeftEdges, Edge RightEdges, Vector3 unitNormal)
         {
             HashSet<Triangle> triangles = new HashSet<Triangle>();
             HashSet<Edge> visitedEdges = new HashSet<Edge>();
+            HashSet<string> triangleHashes = new HashSet<string>();
 
-            // Use the global Edges list instead of collecting from left/right
-            // This ensures we get all edges including those added during merging
+            // Process each edge exactly once
             foreach (Edge e in Edges)
             {
-                //if (visitedEdges.Contains(e)) continue;
+                if (visitedEdges.Contains(e)) continue;
+                visitedEdges.Add(e);
 
                 // Try to form a triangle from this edge using Lnext navigation
                 Edge e1 = e;
@@ -317,18 +400,26 @@ namespace MeshGeneration
                     if (v1 != null && v2 != null && v3 != null &&
                         v1 != v2 && v2 != v3 && v3 != v1)
                     {
-                        // Check for consistent CCW winding
-                        List<Point> points = new List<Point> { v1, v2, v3 };
-                        List<Edge> edges = new List<Edge> { e1, e2, e3 };
-                        Triangle triangle = new Triangle(points, edges);
-                        triangles.Add(triangle);
+                        // Create a unique hash for this triangle to avoid duplicates
+                        List<int> indices = new List<int> { v1.Index, v2.Index, v3.Index };
+                        indices.Sort();
+                        string hash = $"{indices[0]}_{indices[1]}_{indices[2]}";
+
+                        if (!triangleHashes.Contains(hash))
+                        {
+                            triangleHashes.Add(hash);
+
+                            // Verify triangle is CCW in 2D projection
+                            if (CCW(v1, v2, v3))
+                            {
+                                List<Point> points = new List<Point> { v1, v2, v3 };
+                                List<Edge> edges = new List<Edge> { e1, e2, e3 };
+                                Triangle triangle = new Triangle(points, edges);
+                                triangles.Add(triangle);
+                            }
+                        }
                     }
                 }
-
-                // Mark edges as visited
-                visitedEdges.Add(e1);
-                visitedEdges.Add(e2);
-                visitedEdges.Add(e3);
             }
 
             List<Triangle> triangleList = new List<Triangle>(triangles);
@@ -393,56 +484,6 @@ namespace MeshGeneration
                     triangle.Points[2] = temp;
                 }
             }
-        }
-
-
-        private static void CollectAllEdges(Edge edge, HashSet<Edge> allEdges)
-        {
-            Color[] color = new Color[] { Colors.Aqua, Colors.Red, Colors.Green, Colors.Blue, Colors.White, Colors.Black, Colors.Gray, Colors.Pink };
-            Queue<Edge> queue = new Queue<Edge>();
-            queue.Enqueue(edge);
-            int counter = 0;
-            while (queue.Count > 0)
-            {
-                Edge current = queue.Dequeue();
-                if (renderTriCounter < 100)
-                {
-                    PolygonRendererSDL.DrawLine(GenerateDocArrayMesh.instance, 10, StructureDatabase.circumcenters[current.Origin.Index].ToVector3(), StructureDatabase.circumcenters[current.Destination.Index].ToVector3(), color[counter % color.Length]);
-                    counter++;
-                }
-                if (allEdges.Contains(current)) continue;
-                allEdges.Add(current);
-                Edge next = current.Onext();
-                Edge sym = current.Sym();
-                Edge prev = current.Oprev();
-                Edge lnext = current.Lnext();
-                Edge rnext = current.Rnext();
-
-                if (!queue.Contains(next)) queue.Enqueue(next);
-                if (!queue.Contains(sym)) queue.Enqueue(sym);
-                if (!queue.Contains(prev)) queue.Enqueue(prev);
-                if (!queue.Contains(lnext)) queue.Enqueue(lnext);
-                if (!queue.Contains(rnext)) queue.Enqueue(rnext);
-            }
-        }
-
-        private static List<Edge> TryFormTriangle(Edge edge, HashSet<Edge> visitedEdges)
-        {
-            List<Edge> edges = new List<Edge>();
-            Edge current = edge;
-
-            do
-            {
-                edges.Add(current);
-                visitedEdges.Add(current);
-                current = current.Lnext();
-                if (edges.Count > 10) break;
-            } while (current != edge && edges.Count < 4);
-            if (edges.Count == 3)
-            {
-                return edges;
-            }
-            return null;
         }
 
         private static bool CCW(Point a, Point b, Point c)
