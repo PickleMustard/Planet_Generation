@@ -14,7 +14,6 @@ blend_shape_mode = 0
 gi_mode = 2
 mesh = SubResource("ArrayMesh_81xnv")
 script = ExtResource("2_xj8s3")
-subdivide = 3
 VerticesPerEdge = PackedInt32Array(7, 7, 3)
 NumContinents = 15
 StressScale = 0.3
