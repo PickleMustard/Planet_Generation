@@ -6,8 +6,6 @@ using Godot;
 using Structures;
 using UtilityLibrary;
 
-using static MeshGeneration.StructureDatabase;
-
 namespace MeshGeneration;
 public class BaseMeshGeneration
 {
@@ -64,7 +62,7 @@ public class BaseMeshGeneration
         uvs = new List<Vector2>();
         foreach (Point p in cartesionPoints)
         {
-            p.Position = p.Position.Normalized();
+            p.Position = p.Position.Normalized() * 10f;
             normals.Add(new Vector3(p.Position.X, p.Position.Y, p.Position.Z));
             Logger.Point($"Point: {p}");
             StrDb.VertexPoints.Add(p.Index, p);
@@ -170,135 +168,134 @@ public class BaseMeshGeneration
     public void InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
     {
         Logger.EnterFunction("InitiateDeformation", $"cycles={numDeformationCycles}, abberations={numAbberations}, optimalSideLength={optimalSideLength}");
-        currentIndex = 0;
         HashSet<Point> usedPoints = new HashSet<Point>();
-        List<Task> deformationPasses = new List<Task>();
+        Task[] deformationPasses = new Task[numDeformationCycles];
         for (int deforms = 0; deforms < numDeformationCycles; deforms++)
         {
             Task firstPass = Task.Factory.StartNew(() => DeformMesh(numAbberations, optimalSideLength));
-            deformationPasses.Add(firstPass);
+            deformationPasses[deforms] = firstPass;
         }
-        Task.WaitAll(deformationPasses.ToArray());
+        Task.WaitAll(deformationPasses);
         Logger.ExitFunction("InitiateDeformation");
     }
 
     private void DeformMesh(int numAbberations, float optimalSideLength)
     {
-        Logger.EnterFunction("DeformMesh", $"optimalSideLength={optimalSideLength}");
-        int alteredIndex = 0;
-        for (int abberation = 0; abberation < numAbberations; abberation++)
+        try
         {
-            Point randomPoint = StrDb.SelectRandomPoint(rand);
-            HashSet<Edge> edgesWithPointFrom = StrDb.HalfEdgesFrom[randomPoint];
-            HashSet<Edge> edgesWithPointTo = StrDb.HalfEdgesTo[randomPoint];
-            HashSet<Edge> allEdgesWithPoint = new HashSet<Edge>(edgesWithPointFrom);
-            foreach (Edge e in edgesWithPointTo)
+            Logger.EnterFunction("DeformMesh", $"optimalSideLength={optimalSideLength}");
+            int alteredIndex = 0;
+            for (int abberation = 0; abberation < numAbberations; abberation++)
             {
-                allEdgesWithPoint.Add(e);
-            }
-            foreach (Edge e in edgesWithPointFrom)
-            {
-                allEdgesWithPoint.Add(e);
-            }
-            List<Edge> allEdges = allEdgesWithPoint.ToList();
-            bool EnoughEdges = allEdgesWithPoint.Count > 5;
-
-            if (allEdgesWithPoint.Count > 0)
-            {
-                foreach (Edge e in allEdgesWithPoint)
-                {
-                    List<Triangle> trisWithEdge = StrDb.EdgeTriangles[e];
-                    if (trisWithEdge.Count < 2) continue;
-                    Triangle alterTri1 = trisWithEdge.ElementAt(0);
-                    Triangle alterTri2 = trisWithEdge.ElementAt(1);
-                    alteredIndex = alterTri1.Index;
-                    var points1 = alterTri1.Points;
-                    var points2 = alterTri2.Points;
-
-                    Point sharedPoint1 = (Point)e.Q;
-                    Point sharedPoint2 = (Point)e.P;
-                    Point t1UnsharedPoint = (Point)alterTri1.Points.Where(p2 => p2 != sharedPoint1 && p2 != sharedPoint2).ElementAt(0);
-                    Point t2UnsharedPoint = (Point)alterTri2.Points.Where(p2 => p2 != sharedPoint1 && p2 != sharedPoint2).ElementAt(0);
-                    Vector3 p1Pos = new Vector3(((Point)e.P).Position.X, ((Point)e.P).Position.Y, ((Point)e.P).Position.Z);
-                    Vector3 q1Pos = new Vector3(((Point)e.Q).Position.X, ((Point)e.Q).Position.Y, ((Point)e.Q).Position.Z);
-                    Vector3 t1Pos = new Vector3(t1UnsharedPoint.Position.X, t1UnsharedPoint.Position.Y, t1UnsharedPoint.Position.Z);
-                    Vector3 t2Pos = new Vector3(t2UnsharedPoint.Position.X, t2UnsharedPoint.Position.Y, t2UnsharedPoint.Position.Z);
-                    float sharedEdgeLength = (p1Pos - q1Pos).Length();
-                    float newEdgeLength = (t1Pos - t2Pos).Length();
-                    Edge sharedTriEdge = new Edge(e.Index, t1UnsharedPoint, t2UnsharedPoint);
-                    if (Mathf.Abs(sharedEdgeLength - newEdgeLength) > optimalSideLength / .5f)
-                    {
-                        continue;
-                    }
-
-                    StrDb.RemoveEdge(e);
-                    StrDb.AddEdgeBaseMesh(sharedTriEdge);
-
-                    var otherEdgesT1 = alterTri1.Edges.Where(edge => edge != e).ToList();
-                    Edge triEdge2 = new Edge(otherEdgesT1[0].Index, sharedPoint1, t1UnsharedPoint);
-                    StrDb.RemoveEdge((Edge)otherEdgesT1[0]);
-                    StrDb.AddEdgeBaseMesh(triEdge2);
-                    Edge triEdge3 = new Edge(otherEdgesT1[1].Index, sharedPoint1, t2UnsharedPoint);
-                    StrDb.RemoveEdge((Edge)otherEdgesT1[1]);
-                    StrDb.AddEdgeBaseMesh(triEdge3);
-                    List<Point> updatedPoints = new List<Point> { sharedPoint1, t1UnsharedPoint, t2UnsharedPoint };
-                    List<Edge> updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
-                    Triangle deformedTri1 = new Triangle(alterTri1.Index, updatedPoints, updatedEdges);
-                    StrDb.UpdateTriangle(alterTri1, deformedTri1);
-
-                    var otherEdgesT2 = alterTri2.Edges.Where(edge => edge != e).ToList();
-                    triEdge2 = new Edge(otherEdgesT2[0].Index, sharedPoint2, t2UnsharedPoint);
-                    StrDb.RemoveEdge((Edge)otherEdgesT2[0]);
-                    StrDb.AddEdgeBaseMesh(triEdge2);
-                    triEdge3 = new Edge(otherEdgesT2[1].Index, sharedPoint2, t1UnsharedPoint);
-                    StrDb.RemoveEdge((Edge)otherEdgesT2[1]);
-                    StrDb.AddEdgeBaseMesh(triEdge3);
-                    updatedPoints = new List<Point> { sharedPoint2, t1UnsharedPoint, t2UnsharedPoint };
-                    updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
-                    Triangle deformedTri2 = new Triangle(alterTri2.Index, updatedPoints, updatedEdges);
-                    StrDb.UpdateTriangle(alterTri2, deformedTri2);
-                }
-            }
-        }
-
-        for (int index = 0; index < 12; index++)
-        {
-            foreach (Point p in StrDb.VertexPoints.Values)
-            {
-                HashSet<Edge> edgesWithPoint = StrDb.HalfEdgesFrom[p];
-                HashSet<Edge> edgesWithPointTo = StrDb.HalfEdgesTo[p];
-                HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
-                foreach (Edge e in edgesWithPoint)
-                {
-                    foreach (Triangle t in StrDb.EdgeTriangles[e])
-                    {
-                        trianglesWithPoint.Add(t);
-                    }
-                }
+                Point randomPoint = StrDb.SelectRandomPoint(rand);
+                HashSet<Edge> edgesWithPointFrom = StrDb.HalfEdgesFrom[randomPoint];
+                HashSet<Edge> edgesWithPointTo = StrDb.HalfEdgesTo[randomPoint];
+                HashSet<Edge> allEdgesWithPoint = new HashSet<Edge>(edgesWithPointFrom);
                 foreach (Edge e in edgesWithPointTo)
                 {
-                    foreach (Triangle t in StrDb.EdgeTriangles[e])
+                    allEdgesWithPoint.Add(e);
+                }
+                foreach (Edge e in edgesWithPointFrom)
+                {
+                    allEdgesWithPoint.Add(e);
+                }
+                List<Edge> allEdges = allEdgesWithPoint.ToList();
+                bool EnoughEdges = allEdgesWithPoint.Count > 5;
+
+                if (allEdgesWithPoint.Count > 0)
+                {
+                    foreach (Edge e in allEdgesWithPoint)
                     {
-                        trianglesWithPoint.Add(t);
+                        List<Triangle> trisWithEdge = StrDb.EdgeTriangles[e];
+                        if (trisWithEdge.Count < 2) continue;
+                        Triangle alterTri1 = trisWithEdge.ElementAt(0);
+                        Triangle alterTri2 = trisWithEdge.ElementAt(1);
+                        alteredIndex = alterTri1.Index;
+                        var points1 = alterTri1.Points;
+                        var points2 = alterTri2.Points;
+
+                        Point sharedPoint1 = (Point)e.Q;
+                        Point sharedPoint2 = (Point)e.P;
+                        Point t1UnsharedPoint = (Point)alterTri1.Points.Where(p2 => p2 != sharedPoint1 && p2 != sharedPoint2).ElementAt(0);
+                        Point t2UnsharedPoint = (Point)alterTri2.Points.Where(p2 => p2 != sharedPoint1 && p2 != sharedPoint2).ElementAt(0);
+                        Vector3 p1Pos = new Vector3(((Point)e.P).Position.X, ((Point)e.P).Position.Y, ((Point)e.P).Position.Z);
+                        Vector3 q1Pos = new Vector3(((Point)e.Q).Position.X, ((Point)e.Q).Position.Y, ((Point)e.Q).Position.Z);
+                        Vector3 t1Pos = new Vector3(t1UnsharedPoint.Position.X, t1UnsharedPoint.Position.Y, t1UnsharedPoint.Position.Z);
+                        Vector3 t2Pos = new Vector3(t2UnsharedPoint.Position.X, t2UnsharedPoint.Position.Y, t2UnsharedPoint.Position.Z);
+                        float sharedEdgeLength = (p1Pos - q1Pos).Length();
+                        float newEdgeLength = (t1Pos - t2Pos).Length();
+                        var index = e.Index;
+                        StrDb.RemoveEdge(e);
+                        Edge sharedTriEdge = StrDb.AddEdge(t1UnsharedPoint, t2UnsharedPoint, index);
+                        if (Mathf.Abs(sharedEdgeLength - newEdgeLength) > optimalSideLength / .5f)
+                        {
+                            continue;
+                        }
+
+
+                        var otherEdgesT1 = alterTri1.Edges.Where(edge => edge != e).ToList();
+                        index = otherEdgesT1[0].Index;
+                        StrDb.RemoveEdge((Edge)otherEdgesT1[0]);
+                        Edge triEdge2 = StrDb.AddEdge(sharedPoint1, t1UnsharedPoint, index);
+                        index = otherEdgesT1[1].Index;
+                        StrDb.RemoveEdge((Edge)otherEdgesT1[1]);
+                        Edge triEdge3 = StrDb.AddEdge(sharedPoint1, t2UnsharedPoint, index);
+                        List<Point> updatedPoints = new List<Point> { sharedPoint1, t1UnsharedPoint, t2UnsharedPoint };
+                        List<Edge> updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
+                        Triangle deformedTri1 = new Triangle(alterTri1.Index, updatedPoints, updatedEdges);
+                        StrDb.UpdateTriangle(alterTri1, deformedTri1);
+
+                        var otherEdgesT2 = alterTri2.Edges.Where(edge => edge != e).ToList();
+                        index = otherEdgesT2[0].Index;
+                        StrDb.RemoveEdge((Edge)otherEdgesT2[0]);
+                        triEdge2 = StrDb.AddEdge(sharedPoint2, t2UnsharedPoint, index);
+                        index = otherEdgesT2[1].Index;
+                        StrDb.RemoveEdge((Edge)otherEdgesT2[1]);
+                        triEdge3 = StrDb.AddEdge(sharedPoint2, t1UnsharedPoint, index);
+                        updatedPoints = new List<Point> { sharedPoint2, t1UnsharedPoint, t2UnsharedPoint };
+                        updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
+                        Triangle deformedTri2 = new Triangle(alterTri2.Index, updatedPoints, updatedEdges);
+                        StrDb.UpdateTriangle(alterTri2, deformedTri2);
                     }
                 }
-                Vector3 average = new Vector3(0, 0, 0);
-                foreach (Triangle t in trianglesWithPoint)
-                {
-                    Vector3 triCenter = new Vector3(0, 0, 0);
-                    triCenter = new Vector3(((Point)t.Points[0]).Position.X, ((Point)t.Points[0]).Position.Y, ((Point)t.Points[0]).Position.Z);
-                    triCenter += new Vector3(((Point)t.Points[1]).Position.X, ((Point)t.Points[1]).Position.Y, ((Point)t.Points[1]).Position.Z);
-                    triCenter += new Vector3(((Point)t.Points[2]).Position.X, ((Point)t.Points[2]).Position.Y, ((Point)t.Points[2]).Position.Z);
-                    triCenter /= 3f;
-                    average += triCenter;
-                }
-                average /= trianglesWithPoint.Count;
+            }
 
-                Point newPoint = new Point(p.Position + (average - p.Position) / currentIndex, p.Index);
-                StrDb.UpdatePointBaseMesh(p, newPoint);
+            for (int index = 0; index < 1; index++)
+            {
+                foreach (Point p in StrDb.VertexPoints.Values)
+                {
+                    Edge[] edgesWithPoint = StrDb.GetEdgesFromPoint(p);
+                    HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+                    foreach (Edge e in edgesWithPoint)
+                    {
+                        foreach (Triangle t in StrDb.EdgeTriangles[e])
+                        {
+                            trianglesWithPoint.Add(t);
+                        }
+                    }
+                    Vector3 average = new Vector3(0, 0, 0);
+                    foreach (Triangle t in trianglesWithPoint)
+                    {
+                        Vector3 triCenter = new Vector3(0, 0, 0);
+                        triCenter = new Vector3(((Point)t.Points[0]).Position.X, ((Point)t.Points[0]).Position.Y, ((Point)t.Points[0]).Position.Z);
+                        triCenter += new Vector3(((Point)t.Points[1]).Position.X, ((Point)t.Points[1]).Position.Y, ((Point)t.Points[1]).Position.Z);
+                        triCenter += new Vector3(((Point)t.Points[2]).Position.X, ((Point)t.Points[2]).Position.Y, ((Point)t.Points[2]).Position.Z);
+                        triCenter /= 3f;
+                        average += triCenter;
+                    }
+                    average /= trianglesWithPoint.Count;
+
+                    Point newPoint = new Point(p.Position + (average - p.Position) / currentIndex, p.Index);
+                    StrDb.UpdatePointBaseMesh(p, newPoint);
+                }
             }
             currentIndex++;
+            Logger.ExitFunction("DeformMesh", $"updatedVertices={StrDb.VertexPoints.Count}");
         }
-        Logger.ExitFunction("DeformMesh", $"updatedVertices={StrDb.VertexPoints.Count}");
+        catch (Exception e)
+        {
+            Logger.Error($"DeformMesh Error: {e.Message}\n{e.StackTrace}", "ERROR");
+            GD.PrintErr($"Error in DeformMesh: {e.Message}\n{e.StackTrace}");
+        }
     }
 }

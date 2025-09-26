@@ -18,3 +18,7 @@ config/icon="res://icon.svg"
 [dotnet]
 
 project/assembly_name="Delaunay Triangulation Map Generation"
+
+[filesystem]
+
+import/blender/enabled=false

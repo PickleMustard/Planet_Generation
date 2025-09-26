@@ -1,0 +1,136 @@
+[gd_scene load_steps=3 format=3 uid="uid://14km67grwjbh"]
+
+[ext_resource type="Script" uid="uid://cwakjbtw2pqm3" path="res://UI/BodyItem.cs" id="1_v7n1y"]
+[ext_resource type="Script" uid="uid://cl0fnsihfju2q" path="res://UI/ToggleSection.cs" id="2_q7k4c"]
+
+[node name="BodyItem" type="VBoxContainer"]
+custom_minimum_size = Vector2(0, 8)
+script = ExtResource("1_v7n1y")
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Toggle" type="Button" parent="Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Star"
+script = ExtResource("2_q7k4c")
+content_path = NodePath("../../Content")
+
+[node name="RemoveItem" type="Button" parent="Header"]
+layout_mode = 2
+text = "-"
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="PositionContent" type="GridContainer" parent="Content"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelX" type="Label" parent="Content/PositionContent"]
+layout_mode = 2
+text = "X"
+
+[node name="X" type="SpinBox" parent="Content/PositionContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -1e+06
+max_value = 1e+06
+step = 0.1
+allow_greater = true
+allow_lesser = true
+
+[node name="LabelY" type="Label" parent="Content/PositionContent"]
+layout_mode = 2
+text = "Y"
+
+[node name="Y" type="SpinBox" parent="Content/PositionContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -1e+06
+max_value = 1e+06
+step = 0.1
+allow_greater = true
+allow_lesser = true
+
+[node name="LabelZ" type="Label" parent="Content/PositionContent"]
+layout_mode = 2
+text = "Z"
+
+[node name="Z" type="SpinBox" parent="Content/PositionContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -1e+06
+max_value = 1e+06
+step = 0.1
+allow_greater = true
+allow_lesser = true
+
+[node name="VelocityContent" type="GridContainer" parent="Content"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelVelX" type="Label" parent="Content/VelocityContent"]
+layout_mode = 2
+text = "velX"
+
+[node name="velX" type="SpinBox" parent="Content/VelocityContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -1e+06
+max_value = 1e+06
+step = 0.1
+allow_greater = true
+allow_lesser = true
+
+[node name="LabelVelY" type="Label" parent="Content/VelocityContent"]
+layout_mode = 2
+text = "velY"
+
+[node name="velY" type="SpinBox" parent="Content/VelocityContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -1e+06
+max_value = 1e+06
+step = 0.1
+allow_greater = true
+allow_lesser = true
+
+[node name="LabelVelZ" type="Label" parent="Content/VelocityContent"]
+layout_mode = 2
+text = "velZ"
+
+[node name="velZ" type="SpinBox" parent="Content/VelocityContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -1e+06
+max_value = 1e+06
+step = 0.1
+allow_greater = true
+allow_lesser = true
+
+[node name="BodyTypeContent" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="BodyTypeLabel" type="Label" parent="Content/BodyTypeContent"]
+layout_mode = 2
+text = "BodyType"
+
+[node name="OptionButton" type="OptionButton" parent="Content/BodyTypeContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MassContent" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="MassLabel" type="Label" parent="Content/MassContent"]
+layout_mode = 2
+text = "mass"
+
+[node name="mass" type="SpinBox" parent="Content/MassContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1e+06
+step = 0.1
+allow_greater = true

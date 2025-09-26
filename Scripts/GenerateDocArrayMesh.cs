@@ -43,7 +43,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     [Export]
     public bool ProjectToSphere = true;
     [Export]
-    public ulong Seed = 5001;
+    public ulong Seed = 0;
     [Export]
     public int NumAbberations = 3;
     [Export]
@@ -84,8 +84,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public bool AllTriangles = false;
     [Export]
     public bool ShouldDrawArrowsInterface = false;
-    [Export]
-    public Logger.Mode LogMode = Logger.Mode.PROD;
 
     public static bool ShouldDrawArrows = false;
 
@@ -93,23 +91,26 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     {
         ShouldDrawArrows = ShouldDrawArrowsInterface;
         StrDb = new StructureDatabase();
-        Logger.logMode = LogMode;
+        //GD.PrintRaw($"StructureDatabase {StrDb.state}\n");
         percent = new GenericPercent();
-        rand.Seed = Seed;
-        GD.Print($"Rand Seed: {rand.Seed}");
+        if (Seed != 0)
+        {
+            rand.Seed = Seed;
+        }
+        GD.Print($"Rand Seed: {rand.Seed}\n");
         PolygonRendererSDL.DrawPoint(this, size, new Vector3(0, 0, 0), 0.1f, Colors.White);
         List<MeshInstance3D> meshInstances = new List<MeshInstance3D>();
         Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync());
-
-
-
-        GD.Print($"Number of Vertices: {StrDb.circumcenters.Values.Count}");
+        GD.Print($"Number of Vertices: {StrDb.circumcenters.Values.Count}\n");
     }
 
     private void GeneratePlanetAsync()
     {
+        //GD.PrintRaw($"StructureDatabase {StrDb.state}\n");
         Task firstPass = Task.Factory.StartNew(() => GenerateFirstPass());
         Task.WaitAll(firstPass);
+        StrDb.IncrementMeshState();
+        //GD.PrintRaw($"StructureDatabase {StrDb.state}\n");
         Task secondPass = Task.Factory.StartNew(() => GenerateSecondPass());
     }
 
@@ -119,7 +120,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         GenericPercent emptyPercent = new GenericPercent();
         BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge);
         emptyPercent.PercentTotal = 0;
-        var function = FunctionTimer.TimeFunction<int>(
+        var function = FunctionTimer.TimeFunction<int>(Name.ToString(),
             "Base Mesh Generation",
             () =>
             {
@@ -132,16 +133,16 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                     GD.PrintRaw($"\nBase Mesh Generation Error:  {e.Message}\n");
                 }
                 baseMesh.GenerateNonDeformedFaces();
-                GD.PrintRaw($"One\n");
+                //GD.PrintRaw($"One\n");
                 baseMesh.GenerateTriangleList();
-                GD.PrintRaw($"One\n");
+                //GD.PrintRaw($"One\n");
                 return 0;
             }, emptyPercent);
 
 
         var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb.BaseTris.Count;
         float OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
-        function = FunctionTimer.TimeFunction<int>("Deformed Mesh Generation", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Deformed Mesh Generation", () =>
         {
             try
             {
@@ -149,7 +150,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             catch (Exception e)
             {
-                GD.PrintRaw($"\nDeform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
+                //GD.PrintRaw($"\nDeform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
             }
             return 0;
         }, emptyPercent);
@@ -171,8 +172,8 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         GenericPercent emptyPercent = new GenericPercent();
         emptyPercent.PercentTotal = 0;
         percent.PercentTotal = StrDb.VertexPoints.Count;
-        GD.PrintRaw($"Generating Voronoi Cells | {StrDb.VertexPoints.Count}");
-        var function = FunctionTimer.TimeFunction<int>("Voronoi Cell Generation", () =>
+        //GD.PrintRaw($"Generating Voronoi Cells | {StrDb.VertexPoints.Count}");
+        var function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Voronoi Cell Generation", () =>
         {
             try
             {
@@ -186,13 +187,13 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
         }, percent);
 
         Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
-        function = FunctionTimer.TimeFunction<int>("Flood Filling", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Flood Filling", () =>
         {
             continents = FloodFillContinentGeneration(StrDb.VoronoiCells);
             return 0;
         }, emptyPercent);
         percent.Reset();
-        function = FunctionTimer.TimeFunction<int>("Calculate Voronoi Cells", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Calculate Voronoi Cells", () =>
         {
             try
             {
@@ -259,7 +260,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             return 0;
         }, percent);
         emptyPercent.Reset();
-        function = FunctionTimer.TimeFunction<int>("Average out Heights", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Average out Heights", () =>
         {
             try
             {
@@ -267,14 +268,14 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             catch (Exception e)
             {
-                GD.PrintRaw($"\nHeight Average Error:  {e.Message}\n{e.StackTrace}\n");
+                //GD.PrintRaw($"\nHeight Average Error:  {e.Message}\n{e.StackTrace}\n");
             }
 
             return 0;
         }, emptyPercent);
         percent.PercentTotal = continents.Count;
         percent.Reset();
-        function = FunctionTimer.TimeFunction<int>("Calculate Boundary Stress", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Calculate Boundary Stress", () =>
         {
             try
             {
@@ -282,12 +283,12 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             catch (Exception boundsError)
             {
-                GD.PrintRaw($"\nBoundary Stress Error:  {boundsError.Message}\n{boundsError.StackTrace}\n");
+                //GD.PrintRaw($"\nBoundary Stress Error:  {boundsError.Message}\n{boundsError.StackTrace}\n");
             }
             return 0;
         }, percent);
         percent.Reset();
-        function = FunctionTimer.TimeFunction<int>("Apply Stress to Terrain", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Apply Stress to Terrain", () =>
         {
             try
             {
@@ -296,13 +297,13 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             catch (Exception stressError)
             {
-                GD.PrintRaw($"\nStress Error:  {stressError.Message}\n{stressError.StackTrace}\n");
+                //GD.PrintRaw($"\nStress Error:  {stressError.Message}\n{stressError.StackTrace}\n");
             }
             return 0;
         }, percent);
         percent.Reset();
         maxHeight = StrDb.VoronoiCellVertices.Max(p => p.Height);
-        function = FunctionTimer.TimeFunction<int>("Assign Biomes", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Assign Biomes", () =>
         {
             try
             {
@@ -310,14 +311,14 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             catch (Exception biomeError)
             {
-                GD.PrintRaw($"\nBiome Error:  {biomeError.Message}\n{biomeError.StackTrace}\n");
+                //GD.PrintRaw($"\nBiome Error:  {biomeError.Message}\n{biomeError.StackTrace}\n");
             }
             return 0;
         }, percent);
         percent.Reset();
         percent.PercentTotal = continents.Values.Count;
         percent.PercentCurrent = 0;
-        function = FunctionTimer.TimeFunction<int>("Generate From Continents", () =>
+        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Generate From Continents", () =>
         {
             try
             {
@@ -325,7 +326,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
             }
             catch (Exception genError)
             {
-                GD.PrintRaw($"\nGenerate From Continents Error:  {genError.Message}\n{genError.StackTrace}\n");
+                //GD.PrintRaw($"\nGenerate From Continents Error:  {genError.Message}\n{genError.StackTrace}\n");
             }
             DrawContinentBorders(continents);
             return 0;
@@ -336,7 +337,8 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
     private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
-        List<Task> BiomeThreader = new List<Task>();
+        Task[] BiomeThreader = new Task[continents.Count];
+        int continentCount = 0;
         foreach (var continent in continents)
         {
             Task biomeThread = Task.Factory.StartNew(() =>
@@ -352,7 +354,8 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
                 }
             }
             );
-            BiomeThreader.Add(biomeThread);
+            BiomeThreader[continentCount] = biomeThread;
+            continentCount++;
         }
         Task.WaitAll(BiomeThreader.ToArray());
     }
@@ -953,9 +956,6 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
 
     public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList)
     {
-        RandomNumberGenerator randy = new RandomNumberGenerator();
-        //float height = averageHeight;
-        randy.Seed = Seed;
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
