@@ -1,0 +1,76 @@
+[gd_scene load_steps=2 format=3 uid="uid://ca805w5kf1f7q"]
+
+[ext_resource type="Script" uid="uid://btbyafcvgv7bv" path="res://UI/PlanetSystemGenerator.cs" id="1_pj1xb"]
+
+[node name="PlanetSystemGeneratorUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_pj1xb")
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="ControlsRow" type="HBoxContainer" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="BodiesLabel" type="Label" parent="Panel/MarginContainer/VBox/ControlsRow"]
+layout_mode = 2
+text = "Bodies"
+
+[node name="AddBody" type="Button" parent="Panel/MarginContainer/VBox/ControlsRow"]
+layout_mode = 2
+text = "+"
+
+[node name="RemoveBody" type="Button" parent="Panel/MarginContainer/VBox/ControlsRow"]
+layout_mode = 2
+text = "-"
+
+[node name="CountLabel" type="Label" parent="Panel/MarginContainer/VBox/ControlsRow"]
+layout_mode = 2
+text = "0 bodies"
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BodiesList" type="VBoxContainer" parent="Panel/MarginContainer/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Separator" type="HSeparator" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Generate System"
