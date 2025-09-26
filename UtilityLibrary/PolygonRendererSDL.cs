@@ -9,7 +9,7 @@ namespace UtilityLibrary
         public static void RenderTriangleAndConnections(Node parent, float size, Triangle tri, Color? color = null, bool dualMesh = false)
         {
             int i = 0;
-            PolygonRendererSDL.DrawLine(parent, size, tri.Points[0].ToVector3().Normalized(), tri.Points[1].ToVector3().Normalized());
+            PolygonRendererSDL.DrawLine(parent, size, tri.Points[0].Position.Normalized(), tri.Points[1].ToVector3().Normalized());
             PolygonRendererSDL.DrawLine(parent, size, tri.Points[1].ToVector3().Normalized(), tri.Points[2].ToVector3().Normalized());
             PolygonRendererSDL.DrawLine(parent, size, tri.Points[2].ToVector3().Normalized(), tri.Points[0].ToVector3().Normalized());
             foreach (Point p in tri.Points)

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Godot;
 using Structures;
 using static MeshGeneration.StructureDatabase;
@@ -19,9 +18,13 @@ namespace MeshGeneration
         /// <returns>Calculated stress value</returns>
         public static float CalculateBoundaryStress(Edge edge, VoronoiCell cell1, VoronoiCell cell2, Dictionary<int, Continent> continents)
         {
+            UtilityLibrary.Logger.EnterFunction("CalculateBoundaryStress", $"edgeIndex={edge.Index}, cell1={cell1.Index}, cell2={cell2.Index}");
             // Check if both cells belong to different continents
             if (cell1.ContinentIndex == cell2.ContinentIndex)
+            {
+                UtilityLibrary.Logger.ExitFunction("CalculateBoundaryStress", "returned 0 (same continent)");
                 return 0f;
+            }
 
             // Get the continents
             Continent continent1 = continents[cell1.ContinentIndex];
@@ -57,6 +60,7 @@ namespace MeshGeneration
                     break;
             }
 
+            UtilityLibrary.Logger.ExitFunction("CalculateBoundaryStress", $"returned stress={stress:F4}, boundaryType={boundaryType}");
             return stress;
         }
 
@@ -67,16 +71,22 @@ namespace MeshGeneration
         /// <param name="voronoiCells">List of all Voronoi cells</param>
         /// <param name="decayFactor">Factor for exponential decay (0.0 to 1.0)</param>
         /// <returns>Dictionary mapping connected edges to their propagated stress values</returns>
-        public static Dictionary<Edge, float> PropagateStress(Edge sourceEdge, List<VoronoiCell> voronoiCells, float decayFactor = 0.7f)
+        public static Dictionary<Edge, float> PropagateStress(Edge sourceEdge, List<VoronoiCell> voronoiCells, StructureDatabase db, float decayFactor = 0.7f)
         {
+            UtilityLibrary.Logger.EnterFunction("PropagateStress", $"edgeIndex={sourceEdge.Index}, decayFactor={decayFactor}");
             Dictionary<Edge, float> propagatedStress = new Dictionary<Edge, float>();
 
             // Get cells that share this edge
-            HashSet<VoronoiCell> edgeCells = EdgeMap.ContainsKey(sourceEdge) ? EdgeMap[sourceEdge] : new HashSet<VoronoiCell>();
+            HashSet<VoronoiCell> edgeCells = db.EdgeMap.ContainsKey(sourceEdge) ? db.EdgeMap[sourceEdge] : new HashSet<VoronoiCell>();
+            UtilityLibrary.Logger.Info($"edgeCells.Count={edgeCells.Count}");
 
             if (edgeCells.Count == 0)
+            {
+                UtilityLibrary.Logger.ExitFunction("PropagateStress", "returned 0 edges (no cells)");
                 return propagatedStress;
+            }
 
+            int updates = 0;
             // For each cell sharing the edge, propagate to connected edges
             foreach (VoronoiCell cell in edgeCells)
             {
@@ -103,9 +113,11 @@ namespace MeshGeneration
                     {
                         propagatedStress[connectedEdge] = propagatedValue;
                     }
+                    updates++;
                 }
             }
 
+            UtilityLibrary.Logger.ExitFunction("PropagateStress", $"returned edges={propagatedStress.Count}, updates={updates}");
             return propagatedStress;
         }
 
@@ -118,6 +130,7 @@ namespace MeshGeneration
         /// <returns>Calculated stress value based on spring model</returns>
         public static float CalculateSpringStress(Edge edge, VoronoiCell cell, float restLength = -1f)
         {
+            UtilityLibrary.Logger.EnterFunction("CalculateSpringStress", $"edgeIndex={edge.Index}, cellIndex={cell.Index}, restLength={restLength}");
             // Calculate current edge length
             float currentLength = (((Point)edge.P).ToVector3() - ((Point)edge.Q).ToVector3()).Length();
 
@@ -137,7 +150,9 @@ namespace MeshGeneration
             float deformation = Mathf.Abs(currentLength - restLength);
             float springConstant = 0.5f; // Adjustable parameter
 
-            return springConstant * deformation;
+            float result = springConstant * deformation;
+            UtilityLibrary.Logger.ExitFunction("CalculateSpringStress", $"returned stress={result:F4}");
+            return result;
         }
 
         /// <summary>

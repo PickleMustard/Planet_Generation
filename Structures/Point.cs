@@ -11,6 +11,11 @@ public class Point : IPoint, IEquatable<Point>
     private float[] _position = new float[3];
     private float _stress;
 
+    // Deterministic, collision-free mapping from quantized coordinates -> unique index
+    private static readonly object IndexLock = new object();
+    private static readonly Dictionary<(int ix, int iy, int iz), int> KeyToIndex = new Dictionary<(int, int, int), int>();
+    private static int NextIndex = 0;
+
     public float[] Components { get { return _position; } set { value.CopyTo(_position, 0); } }
     public int Index { get { return _index; } set { _index = value; } }
     public int VectorSpace { get { return 3; } }
@@ -23,12 +28,21 @@ public class Point : IPoint, IEquatable<Point>
     public float Radius { get; set; }
     public BiomeType Biome { get; set; }
 
+    private static int QuantizeKey(float x, float y, float z)
+    {
+        // Normalize tiny values to 0 to avoid -0 vs +0 differences, then round
+        float qx = MathF.Abs(x) < 1e-6f ? 0f : MathF.Round(x, 6);
+        float qy = MathF.Abs(y) < 1e-6f ? 0f : MathF.Round(y, 6);
+        float qz = MathF.Abs(z) < 1e-6f ? 0f : MathF.Round(z, 6);
+
+        String key = $"{qx},{qy},{qz}";
+        return HashCode.Combine(qx, qy, qz);
+    }
+
     public static int DetermineIndex(float x, float y, float z)
     {
-        int ix = BitConverter.SingleToInt32Bits(MathF.Round(x, 6));
-        int iy = BitConverter.SingleToInt32Bits(MathF.Round(y, 6));
-        int iz = BitConverter.SingleToInt32Bits(MathF.Round(z, 6));
-        return HashCode.Combine(ix, iy, iz);
+        var key = QuantizeKey(x, y, z);
+        return key;
     }
 
     public bool Equals(Point other)

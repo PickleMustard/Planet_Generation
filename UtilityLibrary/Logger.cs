@@ -31,6 +31,8 @@ namespace UtilityLibrary
             {
                 File.Delete(LogFilePath);
             }
+
+            File.Create(LogFilePath).Close();
         }
 
         private static Mode ConvertStringToMode(String input)
