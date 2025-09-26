@@ -7,8 +7,14 @@ using UtilityLibrary;
 namespace MeshGeneration;
 public class StructureDatabase
 {
+    public enum MeshState
+    {
+        Ungenerated = 0, BaseMesh = 1, DualMesh = 2
+    }
     private object lockObject = new object();
 
+    //Starts at Ungenerated and increments after a Mesh has been generated
+    public MeshState state = MeshState.Ungenerated;
     public Dictionary<(Point, Point, Point), Triangle> BaseTris = new Dictionary<(Point, Point, Point), Triangle>();
     public Dictionary<Point, HashSet<Edge>> HalfEdgesFrom = new Dictionary<Point, HashSet<Edge>>();
     public Dictionary<Point, HashSet<Edge>> HalfEdgesTo = new Dictionary<Point, HashSet<Edge>>();
@@ -27,85 +33,168 @@ public class StructureDatabase
     public Dictionary<Point, Dictionary<Point, Edge>> worldHalfEdgeMapFrom = new Dictionary<Point, Dictionary<Point, Edge>>();
     public Dictionary<Point, Dictionary<Point, Edge>> worldHalfEdgeMapTo = new Dictionary<Point, Dictionary<Point, Edge>>();
 
+    public void IncrementMeshState()
+    {
+        state = (MeshState)((int)state + 1);
+    }
+
     public Edge[] GetEdgesFromPoint(Point p)
     {
         Logger.EnterFunction("GetEdgesFromPoint", $"pIndex={p.Index}");
 
         HashSet<Edge> EdgesFrom = new HashSet<Edge>();
-        var found = worldHalfEdgeMapFrom.TryGetValue(p, out Dictionary<Point, Edge> edgesFromPoint);
-        if (found)
+        switch (state)
         {
-            foreach (Edge e in edgesFromPoint.Values)
-            {
-                EdgesFrom.Add(e);
-            }
-        }
-        found = worldHalfEdgeMapTo.TryGetValue(p, out Dictionary<Point, Edge> edgesToPoint);
-        if (found)
-        {
-            foreach (Edge e in edgesToPoint.Values)
-            {
-                EdgesFrom.Add(e);
-            }
+            case MeshState.BaseMesh:
+                var found = HalfEdgesFrom.TryGetValue(p, out HashSet<Edge> baseEdgesFromPoint);
+                if (found)
+                {
+                    foreach (Edge e in baseEdgesFromPoint)
+                    {
+                        EdgesFrom.Add(e);
+                    }
+                }
+                found = HalfEdgesTo.TryGetValue(p, out HashSet<Edge> baseEdgesToPoint);
+                if (found)
+                {
+                    foreach (Edge e in baseEdgesToPoint)
+                    {
+                        EdgesFrom.Add(e);
+                    }
+                }
+                break;
+            case MeshState.DualMesh:
+                found = worldHalfEdgeMapFrom.TryGetValue(p, out Dictionary<Point, Edge> edgesFromPoint);
+                if (found)
+                {
+                    foreach (Edge e in edgesFromPoint.Values)
+                    {
+                        EdgesFrom.Add(e);
+                    }
+                }
+                found = worldHalfEdgeMapTo.TryGetValue(p, out Dictionary<Point, Edge> edgesToPoint);
+                if (found)
+                {
+                    foreach (Edge e in edgesToPoint.Values)
+                    {
+                        EdgesFrom.Add(e);
+                    }
+                }
+                break;
         }
         List<Edge> edges = new List<Edge>(EdgesFrom);
         Logger.ExitFunction("GetEdgesFromPoint", $"returned {edges.Count} edges");
         return edges.ToArray();
     }
 
-    public void AddTriangleBaseMesh(Triangle triangle)
+    public void AddPoint(Point point)
     {
-        Logger.EnterFunction("AddTriangleBaseMesh", $"triIndex={triangle.Index}");
+        Logger.EnterFunction("AddPoint", $"MeshState: {state}, pointIndex={point.Index}");
         lock (lockObject)
         {
-            BaseTris.Add(((Point)triangle.Points[0], (Point)triangle.Points[1], (Point)triangle.Points[2]), triangle);
-            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[0])) EdgeTriangles[(Edge)triangle.Edges[0]] = new List<Triangle>();
-            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[1])) EdgeTriangles[(Edge)triangle.Edges[1]] = new List<Triangle>();
-            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[2])) EdgeTriangles[(Edge)triangle.Edges[2]] = new List<Triangle>();
-            EdgeTriangles[(Edge)triangle.Edges[0]].Add(triangle);
-            EdgeTriangles[(Edge)triangle.Edges[1]].Add(triangle);
-            EdgeTriangles[(Edge)triangle.Edges[2]].Add(triangle);
+            switch (state)
+            {
+                case MeshState.Ungenerated:
+                    Logger.EnterFunction("AddPointBaseMesh", $"pointIndex={point.Index}");
+                    lock (lockObject)
+                    {
+                        VertexPoints.Add(point.Index, point);
+                    }
+                    Logger.ExitFunction("AddPointBaseMesh");
+                    break;
+                case MeshState.BaseMesh:
+                    break;
+                case MeshState.DualMesh:
+                    break;
+            }
         }
-        Logger.Info($"Added triangle {triangle.Index} to BaseTris and EdgeTriangles");
-        Logger.ExitFunction("AddTriangleBaseMesh");
     }
 
-    public void AddEdgeBaseMesh(Edge edge)
+    public Edge AddEdge(Point p1, Point p2)
     {
-        Logger.EnterFunction("AddEdgeBaseMesh", $"edgeIndex={edge.Index}, p={((Point)edge.P).Index}, q={((Point)edge.Q).Index}");
-        lock (lockObject)
-        {
-            Edges.Add(edge.Index, edge);
-            if (HalfEdgesFrom.ContainsKey((Point)edge.P))
-            {
-                HalfEdgesFrom[(Point)edge.P].Add(edge);
-            }
-            else
-            {
-                HalfEdgesFrom.Add((Point)edge.P, new HashSet<Edge>());
-                HalfEdgesFrom[(Point)edge.P].Add(edge);
-            }
-            if (HalfEdgesTo.ContainsKey((Point)edge.Q))
-            {
-                HalfEdgesTo[(Point)edge.Q].Add(edge);
-            }
-            else
-            {
-                HalfEdgesTo.Add((Point)edge.Q, new HashSet<Edge>());
-                HalfEdgesTo[(Point)edge.Q].Add(edge);
-            }
-        }
-        Logger.Info($"Edge {edge.Index} added. FromCount={HalfEdgesFrom[((Point)edge.P)].Count}, ToCount={HalfEdgesTo[((Point)edge.Q)].Count}");
-        Logger.ExitFunction("AddEdgeBaseMesh");
+        Logger.EnterFunction("AddEdge", $"MeshState: {state}, From {p1} to {p2}");
+        Edge returnEdge = new Edge(p1, p2);
+        AddEdge(returnEdge);
+        return returnEdge;
     }
-    public void AddPointBaseMesh(Point point)
+    public Edge AddEdge(Point p1, Point p2, int index)
     {
-        Logger.EnterFunction("AddPointBaseMesh", $"pointIndex={point.Index}");
+        Logger.EnterFunction("AddEdge", $"MeshState: {state}, From {p1} to {p2} with index {index}");
+        Edge returnEdge = new Edge(index, p1, p2);
+        AddEdge(returnEdge);
+        return returnEdge;
+    }
+    public void AddEdge(Edge edge)
+    {
+        Logger.EnterFunction("AddEdge", $"MeshState: {state}, edgeIndex={edge.Index}");
         lock (lockObject)
         {
-            VertexPoints.Add(point.Index, point);
+            switch (state)
+            {
+                case MeshState.Ungenerated:
+                    Edges.Add(edge.Index, edge);
+                    if (HalfEdgesFrom.ContainsKey((Point)edge.P))
+                    {
+                        HalfEdgesFrom[(Point)edge.P].Add(edge);
+                    }
+                    else
+                    {
+                        HalfEdgesFrom.Add((Point)edge.P, new HashSet<Edge>());
+                        HalfEdgesFrom[(Point)edge.P].Add(edge);
+                    }
+                    if (HalfEdgesTo.ContainsKey((Point)edge.Q))
+                    {
+                        HalfEdgesTo[(Point)edge.Q].Add(edge);
+                    }
+                    else
+                    {
+                        HalfEdgesTo.Add((Point)edge.Q, new HashSet<Edge>());
+                        HalfEdgesTo[(Point)edge.Q].Add(edge);
+                    }
+                    break;
+                case MeshState.BaseMesh:
+                    break;
+                case MeshState.DualMesh:
+                    break;
+            }
         }
-        Logger.ExitFunction("AddPointBaseMesh");
+    }
+    public void AddTriangle(Triangle triangle)
+    {
+        Logger.EnterFunction("AddTriangle", $"MeshState: {state}, triIndex={triangle.Index}");
+        lock (lockObject)
+        {
+            switch (state)
+            {
+                case MeshState.Ungenerated:
+                    BaseTris.Add(((Point)triangle.Points[0], (Point)triangle.Points[1], (Point)triangle.Points[2]), triangle);
+                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[0])) EdgeTriangles[(Edge)triangle.Edges[0]] = new List<Triangle>();
+                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[1])) EdgeTriangles[(Edge)triangle.Edges[1]] = new List<Triangle>();
+                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[2])) EdgeTriangles[(Edge)triangle.Edges[2]] = new List<Triangle>();
+                    EdgeTriangles[(Edge)triangle.Edges[0]].Add(triangle);
+                    EdgeTriangles[(Edge)triangle.Edges[1]].Add(triangle);
+                    EdgeTriangles[(Edge)triangle.Edges[2]].Add(triangle);
+                    Logger.Info($"Added triangle {triangle.Index} to BaseTris and EdgeTriangles");
+                    break;
+                case MeshState.BaseMesh:
+                    foreach (Point p in triangle.Points)
+                    {
+                        var found = VoronoiTriMap.TryGetValue(p, out HashSet<Triangle> value);
+                        if (!found) { VoronoiTriMap.Add(p, new HashSet<Triangle>()); }
+                        VoronoiTriMap[p].Add(triangle);
+                    }
+                    foreach (Edge e in triangle.Edges)
+                    {
+                        var found = VoronoiEdgeTriMap.TryGetValue(e, out HashSet<Triangle> value);
+                        if (!found) { VoronoiEdgeTriMap.Add(e, new HashSet<Triangle>()); }
+                        VoronoiEdgeTriMap[e].Add(triangle);
+                        UpdateWorldEdgeMap((Point)e.P, (Point)e.Q);
+                    }
+                    break;
+                case MeshState.DualMesh:
+                    break;
+            }
+        }
     }
 
     public void UpdatePointBaseMesh(Point point, Point newPoint)
@@ -116,29 +205,6 @@ public class StructureDatabase
             VertexPoints[point.Index] = newPoint;
         }
         Logger.ExitFunction("UpdatePointBaseMesh");
-    }
-
-    public void AddTriangleDualMesh(Triangle triangle)
-    {
-        Logger.EnterFunction("AddTriangleDualMesh", $"triIndex={triangle.Index}");
-        lock (lockObject)
-        {
-            foreach (Point p in triangle.Points)
-            {
-                var found = VoronoiTriMap.TryGetValue(p, out HashSet<Triangle> value);
-                if (!found) { VoronoiTriMap.Add(p, new HashSet<Triangle>()); }
-                VoronoiTriMap[p].Add(triangle);
-            }
-            foreach (Edge e in triangle.Edges)
-            {
-                var found = VoronoiEdgeTriMap.TryGetValue(e, out HashSet<Triangle> value);
-                if (!found) { VoronoiEdgeTriMap.Add(e, new HashSet<Triangle>()); }
-                VoronoiEdgeTriMap[e].Add(triangle);
-                UpdateWorldEdgeMap((Point)e.P, (Point)e.Q);
-            }
-        }
-        Logger.Info($"Dual triangle {triangle.Index} added. PointsUpdated={triangle.Points.Count}, EdgesUpdated={triangle.Edges.Count}");
-        Logger.ExitFunction("AddTriangleDualMesh");
     }
 
     public Edge UpdateWorldEdgeMap(Point p1, Point p2)
@@ -245,20 +311,6 @@ public class StructureDatabase
             HalfEdgesTo.Remove((Point)edge.Q);
         }
         Logger.ExitFunction("RemoveEdge");
-    }
-
-    public Edge AddEdge(Point p1, Point p2)
-    {
-        Edge returnEdge = new Edge(p1, p2);
-        if (!Edges.ContainsKey(returnEdge.Index))
-        {
-            Edges.Add(returnEdge.Index, returnEdge);
-        }
-        else
-        {
-            returnEdge = Edges[returnEdge.Index];
-        }
-        return returnEdge;
     }
 
     private static bool MapContains(Dictionary<Point, Dictionary<Point, Edge>> map, Point p1)
