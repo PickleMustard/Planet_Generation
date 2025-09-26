@@ -21,22 +21,9 @@ public class Edge : IEdge, IEquatable<Edge>
         int qiz = BitConverter.SingleToInt32Bits(q.Position.Z);
         return HashCode.Combine(pix, piy, piz, qix, qiy, qiz);
     }
-    public static Edge AddEdge(Point p1, Point p2)
-    {
-        Edge returnEdge = new Edge(p1, p2);
-        if (!Edges.ContainsKey(returnEdge.Index))
-        {
-            Edges.Add(returnEdge.Index, returnEdge);
-        }
-        else
-        {
-            returnEdge = Edges[returnEdge.Index];
-        }
-        return returnEdge;
-    }
 
-    public IPoint P { get { return _p; } set { _p = (Point)value; } }
-    public IPoint Q { get { return _q; } set { _q = (Point)value; } }
+    public Point P { get { return _p; } set { _p = (Point)value; } }
+    public Point Q { get { return _q; } set { _q = (Point)value; } }
     public int Index { get; set; }
 
     public int ContinentIndex { get; set; }

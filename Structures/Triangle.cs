@@ -3,10 +3,10 @@ namespace Structures;
 public class Triangle : ITriangle
 {
     public int Index { get; set; }
-    public IList<IPoint> Points { get; set; }
-    public IList<IEdge> Edges { get; set; }
+    public IList<Point> Points { get; set; }
+    public IList<Edge> Edges { get; set; }
 
-    public Triangle(int t, List<IPoint> points, List<IEdge> edges)
+    public Triangle(int t, List<Point> points, List<Edge> edges)
     {
         Edges = edges;
         Points = points;
