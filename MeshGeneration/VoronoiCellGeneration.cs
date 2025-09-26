@@ -1,94 +1,128 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Structures;
+using UtilityLibrary;
 using static MeshGeneration.StructureDatabase;
 
 namespace MeshGeneration;
 public class VoronoiCellGeneration
 {
+    private StructureDatabase StrDb;
+    public VoronoiCellGeneration(StructureDatabase db)
+    {
+        StrDb = db;
+    }
+    SphericalDelaunayTriangulation sphericalTriangulator;
     public void GenerateVoronoiCells(GenericPercent percent)
     {
-        foreach (Point p in VertexPoints.Values)
+        Logger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");
+        try
         {
-            //GD.Print($"Triangulating Point: {p}\r");
-            //Find all triangles that contain the current point
-            HashSet<Edge> edgesWithPoint = HalfEdgesFrom[p];
-            HashSet<Edge> edgesWithPointTo = HalfEdgesTo[p];
-            HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+            Logger.Info($"Generating Voronoi Cells: {StrDb.VertexPoints.Count} Sites");
+            foreach (Point p in StrDb.VertexPoints.Values)
+            {
+                // Find all base triangles incident to this site using existing half-edge maps
+                HashSet<Edge> edgesWithPointFrom = StrDb.HalfEdgesFrom[p];
+                HashSet<Edge> edgesWithPointTo = StrDb.HalfEdgesTo[p];
+                HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
 
-            foreach (Edge e in edgesWithPoint)
-            {
-                foreach (Triangle t in EdgeTriangles[e])
+                foreach (Edge e in edgesWithPointFrom)
                 {
-                    trianglesWithPoint.Add(t);
+                    foreach (Triangle t in StrDb.EdgeTriangles[e])
+                    {
+                        trianglesWithPoint.Add(t);
+                    }
                 }
-            }
-            foreach (Edge e in edgesWithPointTo)
-            {
-                foreach (Triangle t in EdgeTriangles[e])
+                foreach (Edge e in edgesWithPointTo)
                 {
-                    trianglesWithPoint.Add(t);
+                    foreach (Triangle t in StrDb.EdgeTriangles[e])
+                    {
+                        trianglesWithPoint.Add(t);
+                    }
                 }
-            }
-            List<Point> triCircumcenters = new List<Point>();
-            foreach (var tri in trianglesWithPoint)
-            {
-                var v3 = Point.ToVectors3((IEnumerable<Point>)tri.Points);
-                var ac = v3[2] - v3[0];
-                var ab = v3[1] - v3[0];
-                var abXac = ab.Cross(ac);
-                var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
-                float circumsphereRadius = vToCircumsphereCenter.Length();
-                Point cc = new Point(v3[0] + vToCircumsphereCenter);
-                if (triCircumcenters.Contains(cc))
+
+                // Build Voronoi vertices (spherical circumcenters of incident triangles)
+                List<Point> triCircumcenters = new List<Point>();
+                Logger.Info($"Building Voronoi Cell: incidentTris={trianglesWithPoint.Count}, siteIndex={p.Index}");
+                foreach (var tri in trianglesWithPoint)
                 {
+                    Logger.Debug($"Calculating circumcenter for triangle: {tri.Index}");
+                    var v3 = Point.ToVectors3(tri.Points);
+                    var ac = v3[2] - v3[0];
+                    var ab = v3[1] - v3[0];
+                    var abXac = ab.Cross(ac);
+                    var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
+                    float circumsphereRadius = vToCircumsphereCenter.Length();
+                    Point cc = new Point(v3[0] + vToCircumsphereCenter);
+                    if (triCircumcenters.Contains(cc))
+                    {
+                        Logger.Debug($"Duplicate circumcenter encountered: {cc.Index}");
+                        continue;
+                    }
+                    if (StrDb.circumcenters.ContainsKey(cc.Index))
+                    {
+                        Point existing = StrDb.circumcenters[cc.Index];
+                        triCircumcenters.Add(existing);
+                        Logger.Debug($"Reused existing circumcenter: {existing.Index}");
+                    }
+                    else
+                    {
+                        StrDb.circumcenters.Add(cc.Index, cc);
+                        triCircumcenters.Add(cc);
+                        Logger.Debug($"Added new circumcenter: {cc.Index}");
+                    }
+                }
+
+                if (triCircumcenters.Count == 0)
+                {
+                    percent.PercentCurrent++;
                     continue;
                 }
-                if (circumcenters.ContainsKey(cc.Index))
+
+                // Compute a plane normal unique to this cell for projection
+                Vector3 unitNorm;
+                if (triCircumcenters.Count >= 3)
                 {
-                    Point usedCC = circumcenters[cc.Index];
-                    triCircumcenters.Add(usedCC);
+                    var v1 = triCircumcenters[1].ToVector3() - triCircumcenters[0].ToVector3();
+                    var v2 = triCircumcenters[2].ToVector3() - triCircumcenters[0].ToVector3();
+                    unitNorm = v1.Cross(v2).Normalized();
+                    if (unitNorm.Dot(triCircumcenters[0].ToVector3()) < 0f)
+                    {
+                        unitNorm = -unitNorm;
+                    }
                 }
                 else
                 {
-                    circumcenters.Add(cc.Index, cc);
-                    triCircumcenters.Add(cc);
+                    unitNorm = p.ToVector3().Normalized();
                 }
-            }
-            Vector3 center = new Vector3(0, 0, 0);
-            foreach (Point triCenter in triCircumcenters)
-            {
-                center += triCenter.ToVector3();
-            }
-            center /= triCircumcenters.Count;
-            center = center.Normalized();
 
-            var centroid = new Vector3(0, 0, 0);
-            var v1 = triCircumcenters[1].ToVector3() - triCircumcenters[0].ToVector3();
-            var v2 = triCircumcenters[2].ToVector3() - triCircumcenters[0].ToVector3();
-            var UnitNorm = v1.Cross(v2);
-            UnitNorm = UnitNorm.Normalized();
-            if (UnitNorm.Dot(triCircumcenters[0].ToVector3()) < 0f)
-            {
-                UnitNorm = -UnitNorm;
+                Logger.Debug($"Unit Norm: {unitNorm}");
+                VoronoiCell calculated = TriangulatePoints(unitNorm, triCircumcenters, StrDb.VoronoiCells.Count);
+                Logger.Info($"Generated Voronoi Cell: {calculated.Index} with {calculated.Points.Length} points, {calculated.Edges.Length} edges");
+                calculated.IsBorderTile = false;
+                foreach (Point vertex in calculated.Points)
+                {
+                    StrDb.VoronoiCellVertices.Add(vertex);
+                }
+                if (calculated != null)
+                {
+                    StrDb.VoronoiCells.Add(calculated);
+                }
+                percent.PercentCurrent++;
             }
-            VoronoiCell calculated = TriangulatePoints(UnitNorm, triCircumcenters, VoronoiCells.Count);
-            calculated.IsBorderTile = false;
-            foreach (Point vertex in calculated.Points)
-            {
-                VoronoiCellVertices.Add(vertex);
-            }
-            if (calculated != null)
-            {
-                VoronoiCells.Add(calculated);
-            }
-            percent.PercentCurrent++;
         }
+        catch (Exception e)
+        {
+            Logger.Error($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
+        }
+        Logger.ExitFunction("GenerateVoronoiCells", $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}");
     }
 
     public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, int index)
     {
+        Logger.EnterFunction("TriangulatePoints", $"unitNorm=({unitNorm.X:F3},{unitNorm.Y:F3},{unitNorm.Z:F3}), count={TriCircumcenters.Count}, index={index}");
         var u = new Vector3(0, 0, 0);
         if (!Mathf.Equals(unitNorm.X, 0.0f))
         {
@@ -112,135 +146,65 @@ public class VoronoiCellGeneration
             var projection = new Vector2((ccs[i] - ccs[0]).Dot(u), (ccs[i] - ccs[0]).Dot(v));
             projectedPoints.Add(new Point(new Vector3(projection.X, projection.Y, 0.0f), TriCircumcenters[i].Index));
         }
-        //Order List of 2D points in clockwise order
-        var withoutCollinearPoints = RemoveCollinearPoints(projectedPoints);
-        var orderedPoints = ReorderPoints(withoutCollinearPoints);
-        var orderedPointsReversed = new List<Point>(orderedPoints);
-        orderedPointsReversed.Reverse();
 
+        // Order and clean points to form a simple polygon before CDT
+        //projectedPoints = RemoveCollinearPoints(ReorderPoints(projectedPoints));
+
+        sphericalTriangulator = new SphericalDelaunayTriangulation(StrDb);
+        Triangle[] tris = sphericalTriangulator.Triangulate(projectedPoints, TriCircumcenters);
+        List<Triangle> Triangles = new List<Triangle>(tris);
         List<Point> TriangulatedIndices = new List<Point>();
-        List<Triangle> Triangles = new List<Triangle>();
-        HashSet<IEdge> CellEdges = new HashSet<IEdge>();
-
-        // Remove collinear points to avoid degenerate triangles
-
-        if (orderedPoints.Count < 3)
+        HashSet<Edge> CellEdges = new HashSet<Edge>();
+        foreach (Triangle t in Triangles)
         {
-            // Handle degenerate case - create a single triangle with duplicate points
-            if (orderedPoints.Count >= 1)
+            TriangulatedIndices.AddRange(t.Points);
+        }
+        foreach (Triangle t in Triangles)
+        {
+            foreach (Edge e in t.Edges)
             {
-                Point p1 = circumcenters[orderedPoints[0].Index];
-                Point p2 = p1;
-                Point p3 = p1;
-
-                if (orderedPoints.Count >= 2)
-                    p2 = circumcenters[orderedPoints[1].Index];
-                if (orderedPoints.Count >= 3)
-                    p3 = circumcenters[orderedPoints[2].Index];
-
-                IEdge[] triEdges = new Edge[3];
-                triEdges[0] = UpdateWorldEdgeMap(p1, p2);
-                triEdges[1] = UpdateWorldEdgeMap(p2, p3);
-                triEdges[2] = UpdateWorldEdgeMap(p3, p1);
-
-                Triangle newTri = new Triangle(Triangles.Count, new List<IPoint>() { p1, p2, p3 }, triEdges.ToList());
-                AddTriangleToMaps(newTri);
-                Triangles.Add(newTri);
-                TriangulatedIndices.Add(p1);
-                TriangulatedIndices.Add(p2);
-                TriangulatedIndices.Add(p3);
-                CellEdges.Add(triEdges[0]);
-                CellEdges.Add(triEdges[1]);
-                CellEdges.Add(triEdges[2]);
+                CellEdges.Add(e);
             }
         }
-        else
-        {
-            // Use monotone chain triangulation for convex polygon
-            var triangles = MonotoneChainTriangulation(orderedPoints);
+        Logger.Info($"# Triangles: {Triangles.Count}, # Edges: {CellEdges.Count}");
 
-            // Convert 2D triangles back to 3D and create proper triangles
-            foreach (var triangle in triangles)
-            {
-                Point v1 = circumcenters[triangle[0].Index];
-                Point v2 = circumcenters[triangle[1].Index];
-                Point v3 = circumcenters[triangle[2].Index];
-
-                Vector3 vec1 = v2.ToVector3() - v1.ToVector3();
-                Vector3 vec2 = v3.ToVector3() - v1.ToVector3();
-                Vector3 triangleCrossProduct = vec1.Cross(vec2).Normalized();
-                float angleTriangleFace = Mathf.Acos(triangleCrossProduct.Dot(unitNorm));
-
-                IEdge[] triEdges;
-                if (Mathf.Abs(Mathf.RadToDeg(angleTriangleFace)) > 90)
-                { //Inverse Winding
-                    triEdges = new Edge[3];
-                    triEdges[0] = UpdateWorldEdgeMap(v1, v2);
-                    triEdges[1] = UpdateWorldEdgeMap(v3, v1);
-                    triEdges[2] = UpdateWorldEdgeMap(v2, v3);
-
-                    Triangle newTri = new Triangle(Triangles.Count,
-                            new List<IPoint>() { v3, v1, v2 },
-                            triEdges.ToList());
-                    AddTriangleToMaps(newTri);
-                    Triangles.Add(newTri);
-                    TriangulatedIndices.AddRange(new Point[] { v3, v1, v2 });
-                }
-                else
-                {
-                    triEdges = new Edge[3];
-                    triEdges[0] = UpdateWorldEdgeMap(v1, v2);
-                    triEdges[1] = UpdateWorldEdgeMap(v2, v3);
-                    triEdges[2] = UpdateWorldEdgeMap(v3, v1);
-
-                    Triangle newTri = new Triangle(Triangles.Count,
-                            new List<IPoint>() { v1, v2, v3 },
-                            triEdges.ToList());
-                    AddTriangleToMaps(newTri);
-                    Triangles.Add(newTri);
-                    TriangulatedIndices.AddRange(new Point[] { v1, v2, v3 });
-                }
-
-                CellEdges.Add(triEdges[0]);
-                CellEdges.Add(triEdges[1]);
-                CellEdges.Add(triEdges[2]);
-            }
-        }
-
-
-        VoronoiCell GeneratedCell = new VoronoiCell(index, TriangulatedIndices.ToArray(), Triangles.ToArray(), (Edge[])CellEdges.ToArray());
+        VoronoiCell GeneratedCell = new VoronoiCell(index, TriangulatedIndices.ToArray(), Triangles.ToArray(), CellEdges.ToArray());
         foreach (Point p in TriangulatedIndices)
         {
-            if (!CellMap.ContainsKey(p))
+            if (!StrDb.CellMap.ContainsKey(p))
             {
-                CellMap.Add(p, new HashSet<VoronoiCell>());
-                CellMap[p].Add(GeneratedCell);
+                StrDb.CellMap.Add(p, new HashSet<VoronoiCell>());
+                StrDb.CellMap[p].Add(GeneratedCell);
+                Logger.Debug($"CellMap: added new key pointIndex={p.Index} with cell={GeneratedCell.Index}");
             }
             else
             {
-                CellMap[p].Add(GeneratedCell);
+                StrDb.CellMap[p].Add(GeneratedCell);
+                Logger.Debug($"CellMap: appended cell={GeneratedCell.Index} to pointIndex={p.Index}");
             }
         }
         foreach (Edge e in CellEdges)
         {
-            if (!EdgeMap.ContainsKey(e))
+            if (!StrDb.EdgeMap.ContainsKey(e))
             {
-                EdgeMap.Add(e, new HashSet<VoronoiCell>());
-                EdgeMap[e].Add(GeneratedCell);
+                StrDb.EdgeMap.Add(e, new HashSet<VoronoiCell>());
+                StrDb.EdgeMap[e].Add(GeneratedCell);
             }
-            if (!EdgeMap.ContainsKey(e.ReverseEdge()))
+            if (!StrDb.EdgeMap.ContainsKey(e.ReverseEdge()))
             {
-                EdgeMap.Add(e.ReverseEdge(), new HashSet<VoronoiCell>());
-                EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
+                StrDb.EdgeMap.Add(e.ReverseEdge(), new HashSet<VoronoiCell>());
+                StrDb.EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
             }
-            EdgeMap[e].Add(GeneratedCell);
-            EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
+            StrDb.EdgeMap[e].Add(GeneratedCell);
+            StrDb.EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
         }
+        Logger.ExitFunction("TriangulatePoints", $"returned cellIndex={GeneratedCell.Index}");
         return GeneratedCell;
     }
 
     public List<Point> ReorderPoints(List<Point> points)
     {
+        Logger.EnterFunction("ReorderPoints", $"count={points.Count}");
         var average = new Vector3(0, 0, 0);
         foreach (Point p in points)
         {
@@ -258,12 +222,14 @@ public class VoronoiCellGeneration
         {
             points[i] = new Point(new Vector3(orderedPoints[i].Position.X, orderedPoints[i].Position.Y, 0.0f), orderedPoints[i].Index);
         }
+        Logger.ExitFunction("ReorderPoints", $"returned count={points.Count}");
         return points;
     }
 
 
     public bool IsPointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c, bool reversed)
     {
+        Logger.EnterFunction("IsPointInTriangle", $"reversed={reversed}");
         var ab = b - a;
         var bc = c - b;
         var ca = a - c;
@@ -277,6 +243,7 @@ public class VoronoiCellGeneration
 
             if (ab.Cross(ap) < 0f || bc.Cross(bp) < 0f || ca.Cross(cp) < 0f)
             {
+                Logger.ExitFunction("IsPointInTriangle", "returned false");
                 return false;
             }
         }
@@ -284,26 +251,32 @@ public class VoronoiCellGeneration
         {
             if (ab.Cross(ap) > 0f || bc.Cross(bp) > 0f || ca.Cross(cp) > 0f)
             {
+                Logger.ExitFunction("IsPointInTriangle", "returned false");
                 return false;
             }
         }
+        Logger.ExitFunction("IsPointInTriangle", "returned true");
         return true;
     }
 
     public Point GetOrderedPoint(List<Point> points, int index)
     {
+        Logger.EnterFunction("GetOrderedPoint", $"index={index}, count={points.Count}");
+        Point result;
         if (index >= points.Count)
         {
-            return points[index % points.Count];
+            result = points[index % points.Count];
         }
         else if (index < 0)
         {
-            return points[index % points.Count + points.Count];
+            result = points[index % points.Count + points.Count];
         }
         else
         {
-            return points[index];
+            result = points[index];
         }
+        Logger.ExitFunction("GetOrderedPoint", $"returned pointIndex={result.Index}");
+        return result;
     }
 
     public float less(Vector2 center, Vector2 a)
@@ -314,6 +287,7 @@ public class VoronoiCellGeneration
 
     private List<Point[]> MonotoneChainTriangulation(List<Point> orderedPoints)
     {
+        Logger.EnterFunction("MonotoneChainTriangulation", $"count={orderedPoints.Count}");
         if (orderedPoints.Count < 3)
             return new List<Point[]>();
 
@@ -329,11 +303,13 @@ public class VoronoiCellGeneration
             triangles.Add(new Point[] { orderedPoints[0], orderedPoints[i], orderedPoints[i + 1] });
         }
 
+        Logger.ExitFunction("MonotoneChainTriangulation", $"returned tris={triangles.Count}");
         return triangles;
     }
 
     private List<Point> RemoveCollinearPoints(List<Point> points)
     {
+        Logger.EnterFunction("RemoveCollinearPoints", $"count={points.Count}");
         if (points.Count <= 3)
             return points;
 
@@ -362,31 +338,11 @@ public class VoronoiCellGeneration
         // Ensure we have at least 3 points
         if (cleanedPoints.Count < 3 && points.Count >= 3)
         {
+            Logger.ExitFunction("RemoveCollinearPoints", "returned original first three points");
             return new List<Point> { points[0], points[1], points[2] };
         }
 
+        Logger.ExitFunction("RemoveCollinearPoints", $"returned count={cleanedPoints.Count}");
         return cleanedPoints.Count >= 3 ? cleanedPoints : points;
     }
-
-    private void AddTriangleToMaps(Triangle triangle)
-    {
-        foreach (Point p in triangle.Points)
-        {
-            if (!VoronoiTriMap.ContainsKey(p))
-            {
-                VoronoiTriMap.Add(p, new HashSet<Triangle>());
-            }
-            VoronoiTriMap[p].Add(triangle);
-        }
-
-        foreach (Edge e in triangle.Edges)
-        {
-            if (!VoronoiEdgeTriMap.ContainsKey(e))
-            {
-                VoronoiEdgeTriMap.Add(e, new HashSet<Triangle>());
-            }
-            VoronoiEdgeTriMap[e].Add(triangle);
-        }
-    }
-
 }

@@ -1,7 +1,7 @@
 namespace Structures;
 public interface IEdge
 {
-    IPoint P { get; }
-    IPoint Q { get; }
+    Point P { get; }
+    Point Q { get; }
     int Index { get; }
 }

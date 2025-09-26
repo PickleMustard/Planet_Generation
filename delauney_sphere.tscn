@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://dt8sw4jlumdml"]
+[gd_scene load_steps=5 format=3 uid="uid://dt8sw4jlumdml"]
 
 [ext_resource type="Script" uid="uid://dyn0u4dusj2j4" path="res://camera_control.gd" id="2_pc5x5"]
 [ext_resource type="Script" uid="uid://cerel8nbttjp6" path="res://GenerateDocArrayMesh.cs" id="2_xj8s3"]
@@ -6,23 +6,9 @@
 [sub_resource type="ArrayMesh" id="ArrayMesh_81xnv"]
 blend_shape_mode = 0
 
+[sub_resource type="ArrayMesh" id="ArrayMesh_l2dhl"]
+
 [node name="root" type="Node3D"]
-
-[node name="Delauney Sphere" type="Node3D" parent="."]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Delauney Sphere"]
-gi_mode = 2
-mesh = SubResource("ArrayMesh_81xnv")
-script = ExtResource("2_xj8s3")
-VerticesPerEdge = PackedInt32Array(7, 7, 3)
-NumContinents = 15
-StressScale = 0.3
-ShearScale = 0.1
-MaxPropagationDistance = 0.034
-InactiveStressThreshold = 0.25
-GeneralHeightScale = 0.12
-GeneralCompressionScale = 0.12
-GeneralTransformScale = 0.05
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)
@@ -35,3 +21,29 @@ script = ExtResource("2_pc5x5")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00016582, 0, -0.664038)
 light_bake_mode = 1
 sky_mode = 1
+
+[node name="Delauney Sphere" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Delauney Sphere"]
+gi_mode = 2
+mesh = SubResource("ArrayMesh_81xnv")
+script = ExtResource("2_xj8s3")
+subdivide = 2
+VerticesPerEdge = PackedInt32Array(7, 5, 3)
+size = 8
+Seed = 14396
+NumContinents = 55
+StressScale = 1.095
+ShearScale = 0.8
+InactiveStressThreshold = 0.047
+GeneralShearScale = 12.0
+GeneralCompressionScale = 17.5
+GeneralTransformScale = 7.0
+
+[node name="Star" type="Node3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Star"]
+mesh = SubResource("ArrayMesh_l2dhl")
+script = ExtResource("2_xj8s3")
+VerticesPerEdge = PackedInt32Array(5, 3, 4)
