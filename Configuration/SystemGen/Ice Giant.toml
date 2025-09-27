@@ -9,3 +9,8 @@ names = ["Fridtjof Nansen","Roald Amundsen","Robert Falcon Scott","Ernest Shackl
 
 [adjectives]
 names = ["Frostbound","Glacial","Gelid","Subzero","Hyperborean","Boreal","Arctic","Antarctic","Cryogenic","Rimebound","Icebound","Ice-locked","Ice-wreathed","Snow-laden","Rimeswept","Storm-banded","Cloud-shrouded","Haze-draped","Aurora-crowned","Blue-shifted","Cerulean","Cobalt","Sapphire","Azure","Cyanic","Teal","Lazuline","Indigo","Methane-blue","Polar-night","Sun-distant","Distant","Remote","Shadow-drenched","Noctilucent","Katabatic","Circumpolar","Tempestuous","Wind-shorn","Gale-swept","Permafrosted","Glacier-born","Frost-veined","Diamond-hard","Crystal-cold","Hibernal","Ice-veiled","Deep-azure","Far-flung","Aphelion-far"]
+
+[template]
+position = [800, 0, 0]
+velocity = [0, 5, 0]
+mass = 50

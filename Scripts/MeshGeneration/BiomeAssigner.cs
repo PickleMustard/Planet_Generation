@@ -7,7 +7,7 @@ namespace MeshGeneration;
 public static class BiomeAssigner
 {
     const float MAX_MOISTURE = 2.7f;
-    public static BiomeType AssignBiome(GenerateDocArrayMesh generator, float height, float moisture, float latitude = 0f)
+    public static BiomeType AssignBiome(CelestialBodyMesh generator, float height, float moisture, float latitude = 0f)
     {
         Logger.EnterFunction("AssignBiome", $"height={height:F3}, moisture={moisture:F3}, lat={latitude:F3}");
         // Normalize height to 0-1 range
