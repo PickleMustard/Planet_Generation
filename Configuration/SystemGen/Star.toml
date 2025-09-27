@@ -9,3 +9,8 @@ names = ["Ferdinand Magellan","Christopher Columbus","Vasco da Gama","James Cook
 
 [adjectives]
 names = ["Radiant","Luminous","Blazing","Incandescent","Aureate","Gilded","Solar","Stellar","Dazzling","Fiery","Resplendent","Effulgent","Glimmering","Scintillant","Shimmering","Gleaming","Beaming","Brilliant","Flaming","Sunlit","Sunbright","Golden","Auroral","Dawnlit","Starborn","Starfire","Fire Crowned","Lightforged","Flame Kissed","Emberbright","Skybright","Coronal","Photospheric","Scorching","Searing","Smoldering","Glowing","Iridescent","Opalescent","Lambent","Glittering","Glistening","Sunward","Solarborn","Heliacal","Aflame","Starry","Flamewreathed","Emberlit","Celestial"]
+
+[template]
+position = [0, 0, 0]
+velocity = [0, 0, 0]
+mass = 5000

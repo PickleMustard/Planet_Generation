@@ -7,7 +7,7 @@ public partial class SystemGenerator : Node
 
     override public void _Ready()
     {
-        root = GetNode("/");
+        root = GetNode("/root");
     }
 
 }

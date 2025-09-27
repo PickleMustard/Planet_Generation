@@ -1,15 +1,13 @@
-[gd_scene load_steps=6 format=3 uid="uid://dt8sw4jlumdml"]
+[gd_scene load_steps=4 format=3 uid="uid://dt8sw4jlumdml"]
 
+[ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/SystemGenerator.cs" id="1_6ftxy"]
 [ext_resource type="Script" uid="uid://dyn0u4dusj2j4" path="res://Scripts/camera_control.gd" id="1_l2dhl"]
-[ext_resource type="Script" uid="uid://cerel8nbttjp6" path="res://Scripts/GenerateDocArrayMesh.cs" id="3_6ftxy"]
 [ext_resource type="PackedScene" uid="uid://ca805w5kf1f7q" path="res://UI/PlanetSystemGenerator.tscn" id="3_qqilr"]
 
-[sub_resource type="ArrayMesh" id="ArrayMesh_81xnv"]
-blend_shape_mode = 0
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_l2dhl"]
-
 [node name="root" type="Node3D"]
+
+[node name="system_generator" type="Node" parent="."]
+script = ExtResource("1_6ftxy")
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00016582, 0, 5.66404)
@@ -23,25 +21,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00016582, 0, -0.664038)
 light_bake_mode = 1
 sky_mode = 1
 
-[node name="Delauney Sphere" type="Node3D" parent="." groups=["CelestialBody"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, 0)
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Delauney Sphere"]
-gi_mode = 2
-mesh = SubResource("ArrayMesh_81xnv")
-script = ExtResource("3_6ftxy")
-VerticesPerEdge = PackedInt32Array(5, 5)
-NumDeformationCycles = 0
-
-[node name="Star" type="Node3D" parent="."]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Star"]
-mesh = SubResource("ArrayMesh_l2dhl")
-script = ExtResource("3_6ftxy")
-subdivide = 2
-VerticesPerEdge = PackedInt32Array(7, 5)
-NumDeformationCycles = 0
-
 [node name="PlanetSystemGeneratorUI" parent="." instance=ExtResource("3_qqilr")]
-offset_right = -762.0
-offset_bottom = -370.0
+offset_right = -772.0
+offset_bottom = -13.0
