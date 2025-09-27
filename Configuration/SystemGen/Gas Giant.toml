@@ -9,3 +9,8 @@ names = ["Ferdinand Magellan","Vasco da Gama","James Cook","Zheng He","Ibn Battu
 
 [adjectives]
 names = ["Storm Wracked","Banded Colossus","Roaring Maelstrom","Amber Belts","Turbulent Titan","Cyclonic Vastness","Endless Vortices","Thunder Laden","Cloud Shrouded","Pressure Forged","Dusky Bands","Stratospheric Giant","Swirling Behemoth","Jet Streamed","Lightning Veined","Hypnotic Gyres","Gale Bound","Polar Hexagoned","Shear Torn","Coriolis Driven","Deep Atmosphered","Ochre Striped","Boiling Skies","Vortex Crowned","Hydrogen Rich","Helium Heavy","Methane Tinted","Ammonia Laced","Radiant Bands","Great Stormed","Cyclone Spotted","Wind Sculpted","Belt Zoned","Cloud Banked","Turbulence Riven","Gravity Dominant","Auroral Rimmed","Haze Layered","Storm Belted","Jet Latticed","Whirlpool Hearted","Thunderstorm Strewn","Squall Ringed","Pressure Layered","Colossally Banded","Atmosphere Oceanic","Convection Fueled","Storm Horizon","Band Wrapped","Monsoon Hearted"]
+
+[template]
+position = [500, 0, 0]
+velocity = [0, 7, 0]
+mass = 100

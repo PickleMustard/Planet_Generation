@@ -10,10 +10,9 @@ using UtilityLibrary;
 using static Structures.Biome;
 
 
-public partial class GenerateDocArrayMesh : MeshInstance3D
+public partial class CelestialBodyMesh : MeshInstance3D
 {
     public static GenericPercent percent;
-    public DelaunatorSharp.Delaunator dl;
     Vector3 origin = new Vector3(0, 0, 0);
     public int VertexIndex = 0;
     public int testIndex = 0;
@@ -29,7 +28,7 @@ public partial class GenerateDocArrayMesh : MeshInstance3D
     public List<Edge> generatedEdges = new List<Edge>();
     RandomNumberGenerator rand = new RandomNumberGenerator();
 
-    public GenerateDocArrayMesh Instance { get; }
+    public CelestialBodyMesh Instance { get; }
     private StructureDatabase StrDb;
 
     [ExportCategory("Planet Generation")]
