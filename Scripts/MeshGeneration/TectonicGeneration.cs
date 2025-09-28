@@ -44,7 +44,7 @@ public class TectonicGeneration
     }
 
     public void CalculateBoundaryStress(
-        Dictionary<Edge, HashSet<VoronoiCell>> edgeMap,
+        IReadOnlyDictionary<Edge, HashSet<VoronoiCell>> edgeMap,
         HashSet<Point> points,
         Dictionary<int, Continent> continents,
         GenericPercent percent)
@@ -107,8 +107,8 @@ public class TectonicGeneration
                         PriorityQueue<Edge, float> toVisit = new PriorityQueue<Edge, float>();
                         HashSet<Edge> visited = new HashSet<Edge>();
                         visited.Add(e);
-                        toVisit.EnqueueRange(StrDb.GetEdgesFromPoint(e.Q).ToArray(), 0.0f);
-                        toVisit.EnqueueRange(StrDb.GetEdgesFromPoint((Point)e.P).ToArray(), 0.0f);
+                        toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(e.Q).ToArray(), 0.0f);
+                        toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges((Point)e.P).ToArray(), 0.0f);
                         while (toVisit.Count > 0)
                         {
                             Edge current;
@@ -119,8 +119,8 @@ public class TectonicGeneration
                             visited.Add(current);
                             float magnitude = CalculateStressAtDistance(e.Stress, distance, current, e);
                             current.StressMagnitude += magnitude;
-                            toVisit.EnqueueRange(StrDb.GetEdgesFromPoint(current.Q).ToArray(), (current.Midpoint - e.Midpoint).Length());
-                            toVisit.EnqueueRange(StrDb.GetEdgesFromPoint(current.P).ToArray(), (current.Midpoint - e.Midpoint).Length());
+                            toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(current.Q).ToArray(), (current.Midpoint - e.Midpoint).Length());
+                            toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(current.P).ToArray(), (current.Midpoint - e.Midpoint).Length());
                         }
 
                     }
@@ -135,7 +135,7 @@ public class TectonicGeneration
     {
         foreach (Point p in StrDb.VoronoiCellVertices)
         {
-            Edge[] edges = StrDb.GetEdgesFromPoint(p);
+            Edge[] edges = StrDb.GetIncidentHalfEdges(p);
             Logger.Info($"# of Edges: {edges.Length}");
             float alteredHeight = 0.0f;
             foreach (Edge e in edges)

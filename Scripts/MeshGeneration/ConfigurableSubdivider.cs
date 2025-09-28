@@ -82,15 +82,7 @@ public class ConfigurableSubdivider
         Vector3 bVec = b.ToVector3();
         Vector3 cVec = c.ToVector3();
         Vector3 result = aVec * u + bVec * v + cVec * w;
-        Point resultPoint = new Point(result);
-        if (StrDb.VertexPoints.ContainsKey(resultPoint.Index))
-        {
-            resultPoint = StrDb.VertexPoints[resultPoint.Index];
-        }
-        else
-        {
-            StrDb.VertexPoints.Add(resultPoint.Index, resultPoint);
-        }
+        Point resultPoint = StrDb.GetOrCreatePoint(result);
         Logger.ExitFunction("CalculateBarycentricPoint", $"returned pointIndex={resultPoint.Index}");
         return resultPoint;
     }
