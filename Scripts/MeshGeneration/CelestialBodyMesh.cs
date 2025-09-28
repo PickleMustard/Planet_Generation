@@ -30,6 +30,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
     public CelestialBodyMesh Instance { get; }
     private StructureDatabase StrDb;
+    private TectonicGeneration tectonics;
 
     [ExportCategory("Planet Generation")]
     [ExportGroup("Mesh Generation")]
@@ -88,6 +89,93 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
     public override void _Ready()
     {
+
+    }
+
+    public void ConfigureFrom(Godot.Collections.Dictionary meshParams)
+    {
+        if (meshParams == null) return;
+
+        // Base mesh settings
+        if (meshParams.ContainsKey("subdivisions"))
+        {
+            try { subdivide = meshParams["subdivisions"].As<int>(); } catch { }
+        }
+
+        if (meshParams.ContainsKey("vertices_per_edge"))
+        {
+            var v = meshParams["vertices_per_edge"];
+            bool assigned = false;
+            try
+            {
+                var ia = v.As<int[]>();
+                if (ia != null && ia.Length > 0)
+                {
+                    VerticesPerEdge = ia;
+                    assigned = true;
+                }
+            }
+            catch { }
+
+            if (!assigned)
+            {
+                try
+                {
+                    var ga = v.As<Godot.Collections.Array<int>>();
+                    if (ga != null && ga.Count > 0)
+                    {
+                        VerticesPerEdge = ga.ToArray();
+                        assigned = true;
+                    }
+                }
+                catch { }
+            }
+        }
+
+        if (VerticesPerEdge != null && subdivide > 0 && VerticesPerEdge.Length != subdivide)
+        {
+            var adjusted = new int[subdivide];
+            for (int i = 0; i < subdivide; i++)
+                adjusted[i] = VerticesPerEdge.Length > 0 ? VerticesPerEdge[Math.Min(i, VerticesPerEdge.Length - 1)] : 2;
+            VerticesPerEdge = adjusted;
+        }
+
+        if (meshParams.ContainsKey("num_abberations"))
+        {
+            try { NumAbberations = meshParams["num_abberations"].As<int>(); } catch { }
+        }
+        if (meshParams.ContainsKey("num_deformation_cycles"))
+        {
+            try { NumDeformationCycles = meshParams["num_deformation_cycles"].As<int>(); } catch { }
+        }
+
+        // Tectonic settings
+        if (meshParams.ContainsKey("tectonic"))
+        {
+            try
+            {
+                var tect = meshParams["tectonic"].As<Godot.Collections.Dictionary>();
+                if (tect != null)
+                {
+                    if (tect.ContainsKey("num_continents")) { try { NumContinents = tect["num_continents"].As<int>(); } catch { } }
+                    if (tect.ContainsKey("stress_scale")) { try { StressScale = tect["stress_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("shear_scale")) { try { ShearScale = tect["shear_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("max_propagation_distance")) { try { MaxPropagationDistance = tect["max_propagation_distance"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("propagation_falloff")) { try { PropagationFalloff = tect["propagation_falloff"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("inactive_stress_threshold")) { try { InactiveStressThreshold = tect["inactive_stress_threshold"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_height_scale")) { try { GeneralHeightScale = tect["general_height_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_shear_scale")) { try { GeneralShearScale = tect["general_shear_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_compression_scale")) { try { GeneralCompressionScale = tect["general_compression_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_transform_scale")) { try { GeneralTransformScale = tect["general_transform_scale"].As<float>(); } catch { } }
+                }
+            }
+            catch { }
+        }
+    }
+
+    public void GenerateMesh()
+    {
+        this.Mesh = new ArrayMesh();
         ShouldDrawArrows = ShouldDrawArrowsInterface;
         StrDb = new StructureDatabase();
         //GD.PrintRaw($"StructureDatabase {StrDb.state}\n");
@@ -97,19 +185,28 @@ public partial class CelestialBodyMesh : MeshInstance3D
             rand.Seed = Seed;
         }
         GD.Print($"Rand Seed: {rand.Seed}\n");
-        PolygonRendererSDL.DrawPoint(this, size, new Vector3(0, 0, 0), 0.1f, Colors.White);
+        //PolygonRendererSDL.DrawPoint(this, size, new Vector3(0, 0, 0), 0.1f, Colors.White);
         List<MeshInstance3D> meshInstances = new List<MeshInstance3D>();
+        tectonics = new TectonicGeneration(
+            StrDb,
+            rand,
+            StressScale,
+            ShearScale,
+            MaxPropagationDistance,
+            PropagationFalloff,
+            InactiveStressThreshold,
+            GeneralHeightScale,
+            GeneralShearScale,
+            GeneralCompressionScale);
         Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync());
         GD.Print($"Number of Vertices: {StrDb.circumcenters.Values.Count}\n");
     }
 
     private void GeneratePlanetAsync()
     {
-        //GD.PrintRaw($"StructureDatabase {StrDb.state}\n");
         Task firstPass = Task.Factory.StartNew(() => GenerateFirstPass());
         Task.WaitAll(firstPass);
         StrDb.IncrementMeshState();
-        //GD.PrintRaw($"StructureDatabase {StrDb.state}\n");
         Task secondPass = Task.Factory.StartNew(() => GenerateSecondPass());
     }
 
@@ -126,15 +223,14 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 try
                 {
                     baseMesh.PopulateArrays();
+                    baseMesh.GenerateNonDeformedFaces();
+                    baseMesh.GenerateTriangleList();
                 }
                 catch (Exception e)
                 {
+                    Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
                     GD.PrintRaw($"\nBase Mesh Generation Error:  {e.Message}\n");
                 }
-                baseMesh.GenerateNonDeformedFaces();
-                //GD.PrintRaw($"One\n");
-                baseMesh.GenerateTriangleList();
-                //GD.PrintRaw($"One\n");
                 return 0;
             }, emptyPercent);
 
@@ -278,7 +374,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
         {
             try
             {
-                CalculateBoundaryStress(StrDb.EdgeMap, StrDb.VoronoiCellVertices, continents, percent);
+                tectonics.CalculateBoundaryStress(StrDb.EdgeMap, StrDb.VoronoiCellVertices, continents, percent);
             }
             catch (Exception boundsError)
             {
@@ -291,7 +387,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
         {
             try
             {
-                ApplyStressToTerrain(continents, StrDb.VoronoiCells);
+                tectonics.ApplyStressToTerrain(continents, StrDb.VoronoiCells);
                 //UpdateVertexHeights(VoronoiCellVertices, continents);
             }
             catch (Exception stressError)
@@ -327,7 +423,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             {
                 //GD.PrintRaw($"\nGenerate From Continents Error:  {genError.Message}\n{genError.StackTrace}\n");
             }
-            DrawContinentBorders(continents);
+            //DrawContinentBorders(continents);
             return 0;
         }, percent);
 
@@ -398,171 +494,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 height /= p.ContinentIndecies.Count;
                 p.Height = height;
             }
-        }
-    }
-
-    ///<summary>
-    /// 1st goes through every edge and calculates the stress on it depending on the type of edge it is.
-    /// 2nd goes through every vertex and propogates out the stress from edges directly connected to it through neighbors up to a depth of 3
-    /// </summary>
-    public void CalculateBoundaryStress(Dictionary<Edge, HashSet<VoronoiCell>> edgeMap, HashSet<Point> points, Dictionary<int, Continent> continents, GenericPercent percent)
-    {
-
-        GD.PrintRaw($"Calculating Boundary Stress\n{continents.Count}\n");
-        // Calculate stress between neighboring continents
-        foreach (KeyValuePair<int, Continent> continentPair in continents)
-        {
-            int continentIndex = continentPair.Key;
-            Continent continent = continentPair.Value;
-            Vector3 continentCenter = continent.averagedCenter;
-            Vector3 v1 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
-            Vector3 v2 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
-            Vector3 UnitNorm = v1.Cross(v2);
-            if (UnitNorm.Dot(continent.averagedCenter) < 0f)
-            {
-                UnitNorm = -UnitNorm;
-            }
-            Vector3 uAxis = v1;
-            Vector3 vAxis = UnitNorm.Cross(uAxis);
-            uAxis = uAxis.Normalized();
-            vAxis = vAxis.Normalized();
-            foreach (VoronoiCell borderCell in continent.boundaryCells)
-            {
-                foreach (Edge e in borderCell.Edges)
-                {
-                    List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e]);
-                    VoronoiCell[] original = new VoronoiCell[] { borderCell };
-                    List<VoronoiCell> neighbors2 = new List<VoronoiCell>(neighbors.Except(original));
-                    VoronoiCell neighborCell = null;
-                    if (neighbors2.Count > 0)
-                    {
-                        neighborCell = neighbors2.First();
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                    if (neighborCell != null && neighborCell.ContinentIndex != borderCell.ContinentIndex)
-                    {
-                        Vector3 projectedBorderCellMovement = uAxis * (borderCell.MovementDirection.X * continent.velocity) + vAxis * (borderCell.MovementDirection.Y * continent.velocity);
-                        Vector3 projectedNeighborCellMovement = uAxis * (neighborCell.MovementDirection.X * continents[neighborCell.ContinentIndex].velocity) + vAxis * (neighborCell.MovementDirection.Y * continents[neighborCell.ContinentIndex].velocity);
-
-                        Vector3 EdgeVector = (((Point)e.P).Position - ((Point)e.Q).Position).Normalized();
-                        Vector3 EdgeNormal = EdgeVector.Cross(((Point)e.Q).Position.Normalized());
-
-                        float bcVelNormal = projectedBorderCellMovement.Dot(EdgeNormal);
-                        float ncVelNormal = projectedNeighborCellMovement.Dot(EdgeNormal);
-
-                        float bcVelTangent = projectedBorderCellMovement.Dot(EdgeVector);
-                        float ncVelTangent = projectedNeighborCellMovement.Dot(EdgeVector);
-
-                        EdgeStress calculatedStress = new EdgeStress
-                        {
-                            CompressionStress = (bcVelNormal - ncVelNormal) * StressScale,
-                            ShearStress = (bcVelTangent - ncVelTangent) * ShearScale,
-                            StressDirection = EdgeNormal
-                        };
-                        e.Stress = calculatedStress;
-                        e.Type = ClassifyBoundaryType(calculatedStress);
-                        PriorityQueue<Edge, float> toVisit = new PriorityQueue<Edge, float>();
-                        HashSet<Edge> visited = new HashSet<Edge>();
-                        visited.Add(e);
-                        toVisit.EnqueueRange(StrDb.GetEdgesFromPoint(e.Q).ToArray(), 0.0f);
-                        toVisit.EnqueueRange(StrDb.GetEdgesFromPoint((Point)e.P).ToArray(), 0.0f);
-                        while (toVisit.Count > 0)
-                        {
-                            Edge current;
-                            float distance;
-                            bool success = toVisit.TryDequeue(out current, out distance);
-                            if (!success) break;
-                            if (visited.Contains(current) || distance > MaxPropagationDistance) continue;
-                            visited.Add(current);
-                            float magnitude = CalculateStressAtDistance(e.Stress, distance, current, e);
-                            current.StressMagnitude += magnitude;
-                            toVisit.EnqueueRange(StrDb.GetEdgesFromPoint(current.Q).ToArray(), (current.Midpoint - e.Midpoint).Length());
-                            toVisit.EnqueueRange(StrDb.GetEdgesFromPoint(current.P).ToArray(), (current.Midpoint - e.Midpoint).Length());
-                        }
-
-                    }
-                }
-            }
-            continents[continentIndex] = continent;
-            percent.PercentCurrent++;
-        }
-    }
-
-    private EdgeType ClassifyBoundaryType(EdgeStress es)
-    {
-        float normalizedCompression = Mathf.Abs(es.CompressionStress);
-        float normalizedShear = Mathf.Abs(es.ShearStress);
-        float totalStress = normalizedCompression + normalizedShear;
-
-        if (totalStress < InactiveStressThreshold)
-        {
-            return EdgeType.inactive;
-        }
-
-        float compressionFactor = normalizedCompression / (totalStress + .0001f);
-        float shearFactor = normalizedShear / (totalStress + .0001f);
-        if (compressionFactor > 0.56f)
-        {
-            if (es.CompressionStress >= 0.0f)
-            {
-                return EdgeType.convergent;
-            }
-            else
-            {
-                return EdgeType.divergent;
-            }
-        }
-        else if (shearFactor > 0.7f)
-        {
-            return EdgeType.transform;
-        }
-        else
-        {
-            if (normalizedCompression > normalizedShear)
-                return es.CompressionStress >= 0.0f ? EdgeType.convergent : EdgeType.divergent;
-            else return EdgeType.transform;
-        }
-    }
-
-    private float CalculateStressAtDistance(EdgeStress edgeStress, float distance, Edge current, Edge origin)
-    {
-        float decayFactor = MathF.Exp(-distance / PropagationFalloff);
-        float totalStress = MathF.Abs(edgeStress.CompressionStress) + MathF.Abs(edgeStress.ShearStress) * .5f;
-        Vector3 toEdge = (current.Midpoint - origin.Midpoint).Normalized();
-        float directionalFactor = MathF.Abs(toEdge.Dot(edgeStress.StressDirection));
-        return totalStress * decayFactor * directionalFactor;
-    }
-
-    public void ApplyStressToTerrain(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
-    {
-        foreach (Point p in StrDb.VoronoiCellVertices)
-        {
-            Edge[] edges = StrDb.GetEdgesFromPoint(p);
-            Logger.Info($"# of Edges: {edges.Length}");
-            float alteredHeight = 0.0f;
-            foreach (Edge e in edges)
-            {
-                //GD.PrintRaw($"Edge: {e} with stress: {e.TotalStress} from {e.CalculatedStress} and {e.PropogatedStress}, Edge Type: {e.Type}\n");
-                switch (e.Type)
-                {
-                    case EdgeType.inactive:
-                        alteredHeight += e.StressMagnitude * GeneralHeightScale;
-                        break;
-                    case EdgeType.transform:
-                        alteredHeight += e.Stress.ShearStress * GeneralShearScale;
-                        break;
-                    case EdgeType.divergent:
-                        alteredHeight -= e.Stress.CompressionStress * GeneralCompressionScale;
-                        break;
-                    case EdgeType.convergent:
-                        alteredHeight += e.Stress.CompressionStress * GeneralCompressionScale;
-                        break;
-                }
-            }
-            p.Height += alteredHeight;
         }
     }
 
@@ -1055,4 +986,5 @@ public partial class CelestialBodyMesh : MeshInstance3D
         return middlePoint;
     }
 }
+
 

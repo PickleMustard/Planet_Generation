@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using UtilityLibrary;
 
 namespace PlanetGeneration;
 public enum CelestialBodyType
@@ -12,21 +13,24 @@ public enum CelestialBodyType
 ///Its position can be modified by the forces acting upon it</summary>
 public partial class CelestialBody : Node3D
 {
-    [Export]
     Vector3 Velocity;
-
     float Mass;
     Vector3 TotalForce;
     CelestialBodyType Type;
+    CelestialBodyMesh Mesh;
+
+    public CelestialBody(String type, float mass, Vector3 velocity, CelestialBodyMesh mesh)
+    {
+        this.Type = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
+        this.Mass = mass;
+        this.Velocity = velocity;
+        this.Mesh = mesh;
+        this.AddChild(mesh);
+    }
 
     override public void _Ready()
     {
         AddToGroup("CelestialBody");
-        RandomNumberGenerator rng = new RandomNumberGenerator();
-        //Mass = rng.RandfRange(2.2f, 10.0f);
-        Mass = 5.0f;
-        Velocity = new Vector3(rng.RandfRange(-1.0f, 1.0f), rng.RandfRange(-1.0f, 1.0f), rng.RandfRange(-1.0f, 1.0f));
-        TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
     }
 
     override public void _PhysicsProcess(double delta)
@@ -48,5 +52,12 @@ public partial class CelestialBody : Node3D
         var deltaV = TotalForce * (float)delta;
         Velocity += deltaV;
         GlobalPosition += Velocity * (float)delta;
+    }
+
+    public void GenerateMesh()
+    {
+        var meshParams = SystemGenTemplates.GetMeshParams(Type, Mesh.Seed);
+        Mesh.ConfigureFrom(meshParams);
+        Mesh.GenerateMesh();
     }
 }

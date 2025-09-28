@@ -1,13 +1,17 @@
+using System;
+using System.Reflection;
 using Godot;
+using Godot.Collections;
 
-using System.Collections.Generic;
 using PlanetGeneration;
 
-[Signal]
-public delegate void GeneratePressedEventHandler();
+namespace UI;
 
 public partial class PlanetSystemGenerator : Control
 {
+    [Signal]
+    public delegate void GeneratePressedEventHandler(Array<Dictionary> bodies);
+
     private VBoxContainer _bodiesList;
     private Label _countLabel;
     private Button _addBtn;
@@ -15,11 +19,9 @@ public partial class PlanetSystemGenerator : Control
     private Button _generateBtn;
     private PackedScene _bodyItemScene;
 
-    // Consumers can subscribe to be notified when user requests generation
-    public event System.Action<System.Collections.Generic.List<CelestialBodyParams>> GenerateRequested;
-
     public override void _Ready()
     {
+        this.AddToGroup("GenerationMenu");
         _bodyItemScene = GD.Load<PackedScene>("res://UI/BodyItem.tscn");
         _bodiesList = GetNode<VBoxContainer>("MarginContainer/VBox/Scroll/BodiesList");
         _countLabel = GetNode<Label>("MarginContainer/VBox/ControlsRow/CountLabel");
@@ -71,7 +73,7 @@ public partial class PlanetSystemGenerator : Control
 
     private void OnGeneratePressed()
     {
-        var list = new System.Collections.Generic.List<CelestialBodyParams>();
+        var list = new Array<Dictionary>();
         foreach (Node child in _bodiesList.GetChildren())
         {
             if (child is BodyItem bi)
@@ -79,7 +81,26 @@ public partial class PlanetSystemGenerator : Control
         }
 
         // Notify subscribers; if none, log for debugging
-        if (GenerateRequested != null) GenerateRequested.Invoke(list);
-        else GD.Print($"GenerateRequested with {list.Count} bodies");
+        EmitSignal(SignalName.GeneratePressed, list);
+    }
+
+    private Dictionary ConvertParamsToDict<T>(T parameters)
+    {
+        Dictionary dict = new Dictionary();
+        Type type = typeof(T);
+        FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+        foreach (FieldInfo field in fields)
+        {
+            object value = field.GetValue(parameters);
+            if (value != null)
+            {
+                Type fieldType = field.FieldType;
+                if (fieldType.IsPrimitive || fieldType == typeof(string))
+                {
+                    dict.Add(field.Name, (Godot.Variant)Convert.ChangeType(value, fieldType));
+                }
+            }
+        }
+        return dict;
     }
 }

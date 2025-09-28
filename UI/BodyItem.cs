@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using PlanetGeneration;
+using UtilityLibrary;
 
 public partial class BodyItem : VBoxContainer
 {
@@ -112,7 +113,7 @@ public partial class BodyItem : VBoxContainer
         }
     }
 
-    public CelestialBodyParams ToParams()
+    public Godot.Collections.Dictionary ToParams()
     {
         var ob = GetNode<OptionButton>("Content/BodyTypeContent/OptionButton");
         // Clamp outgoing values as a final safeguard
@@ -126,20 +127,12 @@ public partial class BodyItem : VBoxContainer
 
         float cm = Mathf.Clamp((float)GetNode<SpinBox>("Content/MassContent/mass").Value, 0f, Limit);
 
-        return new CelestialBodyParams
-        {
-            Position = new Vector3(cx, cy, cz),
-            Velocity = new Vector3(cvx, cvy, cvz),
-            Mass = cm,
-            Type = (CelestialBodyType)ob.Selected
-        };
+        Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
+        dict.Add("Position", new Vector3(cx, cy, cz));
+        dict.Add("Velocity", new Vector3(cvx, cvy, cvz));
+        dict.Add("Mass", cm);
+        dict.Add("Type", Enum.GetName(typeof(CelestialBodyType), (CelestialBodyType)ob.Selected));
+        return dict;
     }
 }
 
-public struct CelestialBodyParams
-{
-    public Vector3 Position;
-    public Vector3 Velocity;
-    public float Mass;
-    public CelestialBodyType Type;
-}

@@ -1,10 +1,15 @@
-[gd_scene load_steps=4 format=3 uid="uid://dt8sw4jlumdml"]
+[gd_scene load_steps=5 format=3 uid="uid://dt8sw4jlumdml"]
 
 [ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/SystemGenerator.cs" id="1_6ftxy"]
 [ext_resource type="Script" uid="uid://dyn0u4dusj2j4" path="res://Scripts/camera_control.gd" id="1_l2dhl"]
 [ext_resource type="PackedScene" uid="uid://ca805w5kf1f7q" path="res://UI/PlanetSystemGenerator.tscn" id="3_qqilr"]
+[ext_resource type="Script" uid="uid://c66no17i3tpjj" path="res://Scripts/MeshGeneration/CelestialBodyMesh.cs" id="4_qqilr"]
 
 [node name="root" type="Node3D"]
+
+[node name="PlanetSystemGeneratorUI" parent="." instance=ExtResource("3_qqilr")]
+offset_right = -772.0
+offset_bottom = -13.0
 
 [node name="system_generator" type="Node" parent="."]
 script = ExtResource("1_6ftxy")
@@ -21,6 +26,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00016582, 0, -0.664038)
 light_bake_mode = 1
 sky_mode = 1
 
-[node name="PlanetSystemGeneratorUI" parent="." instance=ExtResource("3_qqilr")]
-offset_right = -772.0
-offset_bottom = -13.0
+[node name="Node3D" type="Node3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Node3D"]
+script = ExtResource("4_qqilr")
