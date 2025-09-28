@@ -274,9 +274,9 @@ public class ConstrainedDelauneyTriangulation
         Point b = vertices[t.vertices[1]];
         Point c = vertices[t.vertices[2]];
         Point[] triVerts = new Point[] {
-            StrDb.circumcenters[a.Index],
-            StrDb.circumcenters[b.Index],
-            StrDb.circumcenters[c.Index] };
+            StrDb.LegacyCircumcenters[a.Index],
+            StrDb.LegacyCircumcenters[b.Index],
+            StrDb.LegacyCircumcenters[c.Index] };
         Structures.Edge e1 = new Structures.Edge(triVerts[0], triVerts[1]);
         Structures.Edge e2 = new Structures.Edge(triVerts[1], triVerts[2]);
         Structures.Edge e3 = new Structures.Edge(triVerts[2], triVerts[0]);

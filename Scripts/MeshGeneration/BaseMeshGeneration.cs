@@ -60,12 +60,14 @@ public class BaseMeshGeneration
         VertexIndex = 12;
         normals = new List<Vector3>();
         uvs = new List<Vector2>();
-        foreach (Point p in cartesionPoints)
+        for (int i = 0; i < cartesionPoints.Count; i++)
         {
-            p.Position = p.Position.Normalized() * 10f;
-            normals.Add(new Vector3(p.Position.X, p.Position.Y, p.Position.Z));
-            Logger.Point($"Point: {p}");
-            StrDb.VertexPoints.Add(p.Index, p);
+            var p = cartesionPoints[i];
+            var pos = p.Position.Normalized() * 100f;
+            var rp = StrDb.GetOrCreatePoint(p.Index, pos);
+            cartesionPoints[i] = rp;
+            normals.Add(new Vector3(rp.Position.X, rp.Position.Y, rp.Position.Z));
+            Logger.Point($"Point: {rp}");
         }
         faces = new List<Face>();
         indices = new List<int> {
@@ -116,7 +118,7 @@ public class BaseMeshGeneration
                 tempFaces.AddRange(generated);
             }
             faces.Clear();
-            StrDb.Edges.Clear();
+            if (level == 0) StrDb.ResetPhase(StructureDatabase.MeshState.BaseMesh);
             faces = new List<Face>(tempFaces);
             tempFaces.Clear();
             Logger.Info($"After level {level + 1}: faces={faces.Count}, edges={StrDb.Edges.Count}");
@@ -127,38 +129,14 @@ public class BaseMeshGeneration
     public void GenerateTriangleList()
     {
         Logger.EnterFunction("GenerateTriangleList");
+        Logger.Info($"Structure Database: {StrDb.Index}");
         int added = 0;
         foreach (Face f in faces)
         {
             List<Point> points = f.v.ToList();
-            List<Edge> edges = f.e.ToList();
-            Triangle newTri = new Triangle(StrDb.BaseTris.Count, points, edges);
-            StrDb.BaseTris.Add((f.v[0], f.v[1], f.v[2]), newTri);
-            foreach (Edge edge in f.e)
-            {
-                if (!StrDb.EdgeTriangles.ContainsKey(edge) || StrDb.EdgeTriangles[edge] == null) StrDb.EdgeTriangles[edge] = new List<Triangle>();
-                StrDb.EdgeTriangles[edge].Add(newTri);
-                Point edgeP = (Point)edge.P;
-                Point edgeQ = (Point)edge.Q;
-                if (!StrDb.HalfEdgesFrom.ContainsKey(edgeP))
-                {
-                    StrDb.HalfEdgesFrom.Add(edgeP, new HashSet<Edge>());
-                    StrDb.HalfEdgesFrom[edgeP].Add(edge);
-                }
-                else
-                {
-                    StrDb.HalfEdgesFrom[edgeP].Add(edge);
-                }
-                if (!StrDb.HalfEdgesTo.ContainsKey(edgeQ))
-                {
-                    StrDb.HalfEdgesTo.Add(edgeQ, new HashSet<Edge>());
-                    StrDb.HalfEdgesTo[edgeQ].Add(edge);
-                }
-                else
-                {
-                    StrDb.HalfEdgesTo[edgeQ].Add(edge);
-                }
-            }
+            // Delegate wiring to DB facade
+            var newTri = StrDb.AddTriangle(points);
+            // Legacy edge additions are handled internally by AddTriangle
             added++;
         }
         Logger.Info($"GenerateTriangleList: added={added} triangles, totalEdges={StrDb.Edges.Count}, BaseTris={StrDb.BaseTris.Count}");
@@ -188,25 +166,15 @@ public class BaseMeshGeneration
             for (int abberation = 0; abberation < numAbberations; abberation++)
             {
                 Point randomPoint = StrDb.SelectRandomPoint(rand);
-                HashSet<Edge> edgesWithPointFrom = StrDb.HalfEdgesFrom[randomPoint];
-                HashSet<Edge> edgesWithPointTo = StrDb.HalfEdgesTo[randomPoint];
-                HashSet<Edge> allEdgesWithPoint = new HashSet<Edge>(edgesWithPointFrom);
-                foreach (Edge e in edgesWithPointTo)
-                {
-                    allEdgesWithPoint.Add(e);
-                }
-                foreach (Edge e in edgesWithPointFrom)
-                {
-                    allEdgesWithPoint.Add(e);
-                }
+                Edge[] allEdgesWithPoint = StrDb.GetIncidentHalfEdges(randomPoint);
                 List<Edge> allEdges = allEdgesWithPoint.ToList();
-                bool EnoughEdges = allEdgesWithPoint.Count > 5;
+                bool EnoughEdges = allEdgesWithPoint.Length > 5;
 
-                if (allEdgesWithPoint.Count > 0)
+                if (allEdgesWithPoint.Length > 0)
                 {
                     foreach (Edge e in allEdgesWithPoint)
                     {
-                        List<Triangle> trisWithEdge = StrDb.EdgeTriangles[e];
+                        List<Triangle> trisWithEdge = StrDb.GetTrianglesByEdgeIndex(e.Index);
                         if (trisWithEdge.Count < 2) continue;
                         Triangle alterTri1 = trisWithEdge.ElementAt(0);
                         Triangle alterTri2 = trisWithEdge.ElementAt(1);
@@ -226,7 +194,7 @@ public class BaseMeshGeneration
                         float newEdgeLength = (t1Pos - t2Pos).Length();
                         var index = e.Index;
                         StrDb.RemoveEdge(e);
-                        Edge sharedTriEdge = StrDb.AddEdge(t1UnsharedPoint, t2UnsharedPoint, index);
+                        Edge sharedTriEdge = StrDb.GetOrCreateEdge(t1UnsharedPoint, t2UnsharedPoint, index);
                         if (Mathf.Abs(sharedEdgeLength - newEdgeLength) > optimalSideLength / .5f)
                         {
                             continue;
@@ -236,10 +204,10 @@ public class BaseMeshGeneration
                         var otherEdgesT1 = alterTri1.Edges.Where(edge => edge != e).ToList();
                         index = otherEdgesT1[0].Index;
                         StrDb.RemoveEdge((Edge)otherEdgesT1[0]);
-                        Edge triEdge2 = StrDb.AddEdge(sharedPoint1, t1UnsharedPoint, index);
+                        Edge triEdge2 = StrDb.GetOrCreateEdge(sharedPoint1, t1UnsharedPoint, index);
                         index = otherEdgesT1[1].Index;
                         StrDb.RemoveEdge((Edge)otherEdgesT1[1]);
-                        Edge triEdge3 = StrDb.AddEdge(sharedPoint1, t2UnsharedPoint, index);
+                        Edge triEdge3 = StrDb.GetOrCreateEdge(sharedPoint1, t2UnsharedPoint, index);
                         List<Point> updatedPoints = new List<Point> { sharedPoint1, t1UnsharedPoint, t2UnsharedPoint };
                         List<Edge> updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
                         Triangle deformedTri1 = new Triangle(alterTri1.Index, updatedPoints, updatedEdges);
@@ -248,10 +216,10 @@ public class BaseMeshGeneration
                         var otherEdgesT2 = alterTri2.Edges.Where(edge => edge != e).ToList();
                         index = otherEdgesT2[0].Index;
                         StrDb.RemoveEdge((Edge)otherEdgesT2[0]);
-                        triEdge2 = StrDb.AddEdge(sharedPoint2, t2UnsharedPoint, index);
+                        triEdge2 = StrDb.GetOrCreateEdge(sharedPoint2, t2UnsharedPoint, index);
                         index = otherEdgesT2[1].Index;
                         StrDb.RemoveEdge((Edge)otherEdgesT2[1]);
-                        triEdge3 = StrDb.AddEdge(sharedPoint2, t1UnsharedPoint, index);
+                        triEdge3 = StrDb.GetOrCreateEdge(sharedPoint2, t1UnsharedPoint, index);
                         updatedPoints = new List<Point> { sharedPoint2, t1UnsharedPoint, t2UnsharedPoint };
                         updatedEdges = new List<Edge> { sharedTriEdge, triEdge2, triEdge3 };
                         Triangle deformedTri2 = new Triangle(alterTri2.Index, updatedPoints, updatedEdges);
@@ -264,7 +232,7 @@ public class BaseMeshGeneration
             {
                 foreach (Point p in StrDb.VertexPoints.Values)
                 {
-                    Edge[] edgesWithPoint = StrDb.GetEdgesFromPoint(p);
+                    Edge[] edgesWithPoint = StrDb.GetIncidentHalfEdges(p);
                     HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
                     foreach (Edge e in edgesWithPoint)
                     {
