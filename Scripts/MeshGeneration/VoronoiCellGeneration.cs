@@ -18,62 +18,53 @@ public class VoronoiCellGeneration
     public void GenerateVoronoiCells(GenericPercent percent)
     {
         Logger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");
+        Logger.Info($"Structure Database: {StrDb.Index}");
         try
         {
-            Logger.Info($"Generating Voronoi Cells: {StrDb.VertexPoints.Count} Sites");
-            foreach (Point p in StrDb.VertexPoints.Values)
+            Logger.Info($"Generating Voronoi Cells: {StrDb.LegacyVertexPoints.Count} Sites");
+            foreach (Point p in StrDb.LegacyVertexPoints.Values)
             {
                 // Find all base triangles incident to this site using existing half-edge maps
-                HashSet<Edge> edgesWithPointFrom = StrDb.HalfEdgesFrom[p];
-                HashSet<Edge> edgesWithPointTo = StrDb.HalfEdgesTo[p];
-                HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
-
-                foreach (Edge e in edgesWithPointFrom)
-                {
-                    foreach (Triangle t in StrDb.EdgeTriangles[e])
-                    {
-                        trianglesWithPoint.Add(t);
-                    }
-                }
-                foreach (Edge e in edgesWithPointTo)
-                {
-                    foreach (Triangle t in StrDb.EdgeTriangles[e])
-                    {
-                        trianglesWithPoint.Add(t);
-                    }
-                }
-
-                // Build Voronoi vertices (spherical circumcenters of incident triangles)
-                List<Point> triCircumcenters = new List<Point>();
-                Logger.Info($"Building Voronoi Cell: incidentTris={trianglesWithPoint.Count}, siteIndex={p.Index}");
-                foreach (var tri in trianglesWithPoint)
-                {
-                    Logger.Debug($"Calculating circumcenter for triangle: {tri.Index}");
-                    var v3 = Point.ToVectors3(tri.Points);
-                    var ac = v3[2] - v3[0];
-                    var ab = v3[1] - v3[0];
-                    var abXac = ab.Cross(ac);
-                    var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
-                    float circumsphereRadius = vToCircumsphereCenter.Length();
-                    Point cc = new Point(v3[0] + vToCircumsphereCenter);
-                    if (triCircumcenters.Contains(cc))
-                    {
-                        Logger.Debug($"Duplicate circumcenter encountered: {cc.Index}");
-                        continue;
-                    }
-                    if (StrDb.circumcenters.ContainsKey(cc.Index))
-                    {
-                        Point existing = StrDb.circumcenters[cc.Index];
-                        triCircumcenters.Add(existing);
-                        Logger.Debug($"Reused existing circumcenter: {existing.Index}");
-                    }
-                    else
-                    {
-                        StrDb.circumcenters.Add(cc.Index, cc);
-                        triCircumcenters.Add(cc);
-                        Logger.Debug($"Added new circumcenter: {cc.Index}");
-                    }
-                }
+                 Edge[] edgesWithPointFrom = StrDb.GetIncidentHalfEdges(p);
+                 HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+ 
+                 foreach (Edge e in edgesWithPointFrom)
+                 {
+                     foreach (Triangle t in StrDb.GetTrianglesByEdgeIndex(e.Index))
+                     {
+                         trianglesWithPoint.Add(t);
+                     }
+                 }
+                 // Build Voronoi vertices (spherical circumcenters of incident triangles)
+                 List<Point> triCircumcenters = new List<Point>();
+                 Logger.Info($"Building Voronoi Cell: incidentTris={trianglesWithPoint.Count}, siteIndex={p.Index}");
+                 foreach (var tri in trianglesWithPoint)
+                 {
+                     Logger.Debug($"Calculating circumcenter for triangle: {tri.Index}");
+                     var v3 = Point.ToVectors3(tri.Points);
+                     var ac = v3[2] - v3[0];
+                     var ab = v3[1] - v3[0];
+                     var abXac = ab.Cross(ac);
+                     var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
+                     Point cc = new Point(v3[0] + vToCircumsphereCenter);
+                     if (triCircumcenters.Contains(cc))
+                     {
+                         Logger.Debug($"Duplicate circumcenter encountered: {cc.Index}");
+                         continue;
+                     }
+                     if (StrDb.circumcenters.ContainsKey(cc.Index))
+                     {
+                         Point existing = StrDb.circumcenters[cc.Index];
+                         triCircumcenters.Add(existing);
+                         Logger.Debug($"Reused existing circumcenter: {existing.Index}");
+                     }
+                     else
+                     {
+                         var stored = StrDb.GetOrCreateCircumcenter(cc.Index, cc.Position);
+                         triCircumcenters.Add(stored);
+                         Logger.Debug($"Added new circumcenter: {stored.Index}");
+                     }
+                 }
 
                 if (triCircumcenters.Count == 0)
                 {
@@ -117,6 +108,7 @@ public class VoronoiCellGeneration
         {
             Logger.Error($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
         }
+        StrDb.Validate("post-voronoi");
         Logger.ExitFunction("GenerateVoronoiCells", $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}");
     }
 
@@ -171,6 +163,9 @@ public class VoronoiCellGeneration
         VoronoiCell GeneratedCell = new VoronoiCell(index, TriangulatedIndices.ToArray(), Triangles.ToArray(), CellEdges.ToArray());
         foreach (Point p in TriangulatedIndices)
         {
+            // Canonical registration
+            StrDb.AddCellForVertex(p, GeneratedCell);
+            // Legacy mirror preserved below
             if (!StrDb.CellMap.ContainsKey(p))
             {
                 StrDb.CellMap.Add(p, new HashSet<VoronoiCell>());
@@ -185,6 +180,9 @@ public class VoronoiCellGeneration
         }
         foreach (Edge e in CellEdges)
         {
+            // Canonical registration via undirected key
+            StrDb.AddCellForEdge(EdgeKey.From(e.P, e.Q), GeneratedCell);
+            // Legacy mirror preserved below
             if (!StrDb.EdgeMap.ContainsKey(e))
             {
                 StrDb.EdgeMap.Add(e, new HashSet<VoronoiCell>());

@@ -348,9 +348,9 @@ public class SphericalDelaunayTriangulation
         var original = originalPoints[index];
 
         // Try to find the point in the circumcenters database
-        if (StrDb.circumcenters.ContainsKey(original.Index))
+        if (StrDb.LegacyCircumcenters.ContainsKey(original.Index))
         {
-            return StrDb.circumcenters[original.Index];
+            return StrDb.LegacyCircumcenters[original.Index];
         }
 
         // If not found, return the original point

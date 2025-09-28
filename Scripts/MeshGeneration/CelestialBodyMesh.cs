@@ -94,12 +94,13 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
     public void ConfigureFrom(Godot.Collections.Dictionary meshParams)
     {
+        GD.Print($"Configuring {meshParams}");
         if (meshParams == null) return;
 
         // Base mesh settings
         if (meshParams.ContainsKey("subdivisions"))
         {
-            try { subdivide = meshParams["subdivisions"].As<int>(); } catch { }
+            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { Logger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
         }
 
         if (meshParams.ContainsKey("vertices_per_edge"))
@@ -115,7 +116,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
                     assigned = true;
                 }
             }
-            catch { }
+            catch (Exception e) { Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
 
             if (!assigned)
             {
@@ -128,7 +129,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
                         assigned = true;
                     }
                 }
-                catch { }
+                catch (Exception e) { Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
             }
         }
 
@@ -177,7 +178,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     {
         this.Mesh = new ArrayMesh();
         ShouldDrawArrows = ShouldDrawArrowsInterface;
-        StrDb = new StructureDatabase();
+        StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
         //GD.PrintRaw($"StructureDatabase {StrDb.state}\n");
         percent = new GenericPercent();
         if (Seed != 0)
@@ -199,7 +200,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             GeneralShearScale,
             GeneralCompressionScale);
         Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync());
-        GD.Print($"Number of Vertices: {StrDb.circumcenters.Values.Count}\n");
+        GD.Print($"Number of Vertices: {StrDb.LegacyCircumcenters.Values.Count}\n");
     }
 
     private void GeneratePlanetAsync()
@@ -235,8 +236,9 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }, emptyPercent);
 
 
-        var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb.BaseTris.Count;
+        var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb.Base.Triangles.Count;
         float OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
+        StrDb.Validate("pre-deform");
         function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Deformed Mesh Generation", () =>
         {
             try
@@ -253,11 +255,12 @@ public partial class CelestialBodyMesh : MeshInstance3D
         GD.Print("Deformed Base Mesh");
         if (AllTriangles)
         {
-            foreach (var triangle in StrDb.BaseTris)
+            foreach (var triangle in StrDb.Base.Triangles)
             {
                 RenderTriangleAndConnections(triangle.Value);
             }
         }
+        StrDb.Validate("end-of-base-pass");
 
     }
 
@@ -266,13 +269,13 @@ public partial class CelestialBodyMesh : MeshInstance3D
         VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
         GenericPercent emptyPercent = new GenericPercent();
         emptyPercent.PercentTotal = 0;
-        percent.PercentTotal = StrDb.VertexPoints.Count;
+        percent.PercentTotal = StrDb.LegacyVertexPoints.Count;
         //GD.PrintRaw($"Generating Voronoi Cells | {StrDb.VertexPoints.Count}");
         var function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Voronoi Cell Generation", () =>
-        {
-            try
             {
-                voronoiCellGeneration.GenerateVoronoiCells(percent);
+                try
+                {
+                    voronoiCellGeneration.GenerateVoronoiCells(percent);
             }
             catch (Exception e)
             {
@@ -284,7 +287,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
         Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
         function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Flood Filling", () =>
         {
-            continents = FloodFillContinentGeneration(StrDb.VoronoiCells);
+            try
+            {
+                continents = FloodFillContinentGeneration(StrDb.VoronoiCells);
+            }
+            catch (Exception e) { Logger.Error($"Flood Filling Error: {e.Message}\n{e.StackTrace}"); }
             return 0;
         }, emptyPercent);
         percent.Reset();
@@ -374,7 +381,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
         {
             try
             {
-                tectonics.CalculateBoundaryStress(StrDb.EdgeMap, StrDb.VoronoiCellVertices, continents, percent);
+                tectonics.CalculateBoundaryStress(StrDb.Dual.EdgeCells, StrDb.VoronoiCellVertices, continents, percent);
             }
             catch (Exception boundsError)
             {
@@ -427,8 +434,9 @@ public partial class CelestialBodyMesh : MeshInstance3D
             return 0;
         }, percent);
 
+         StrDb.Validate("post-voronoi");
+     }
 
-    }
 
     private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
@@ -738,22 +746,10 @@ public partial class CelestialBodyMesh : MeshInstance3D
         int i = 0;
         //var edgesFromTri = baseEdges.Where(e => tri.Points.Any(a => a == e.P || a == e.Q));
         List<Edge> edgesFromTri = new List<Edge>();
-        if (!dualMesh)
-        {
             foreach (Point p in tri.Points)
             {
-                edgesFromTri.AddRange(StrDb.HalfEdgesFrom[p]);
-                edgesFromTri.AddRange(StrDb.HalfEdgesTo[p]);
+                edgesFromTri.AddRange(StrDb.GetIncidentHalfEdges(p));
             }
-        }
-        else
-        {
-            foreach (Point p in tri.Points)
-            {
-                edgesFromTri.AddRange(StrDb.worldHalfEdgeMapFrom[p].Values);
-                edgesFromTri.AddRange(StrDb.worldHalfEdgeMapTo[p].Values);
-            }
-        }
         if (!ProjectToSphere)
         {
             PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[0]).ToVector3(), ((Point)tri.Points[1]).ToVector3());
@@ -971,19 +967,9 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
     public Point GetMiddle(Point v1, Point v2)
     {
-        //var tempVector = (v1 + v2) / 2.0f;
         var tempVector = (v2.ToVector3() - v1.ToVector3()) * 0.5f + v1.ToVector3();
-        //tempVector.Normalized();
-
-        if (StrDb.VertexPoints.ContainsKey(Point.DetermineIndex(tempVector.X, tempVector.Y, tempVector.Z)))
-        {
-            var existingPoint = StrDb.VertexPoints[Point.DetermineIndex(tempVector.X, tempVector.Y, tempVector.Z)];
-            return existingPoint;
-        }
-        Point middlePoint = new Point(tempVector);
-
-        StrDb.VertexPoints.Add(middlePoint.Index, middlePoint);
-        return middlePoint;
+        int idx = Point.DetermineIndex(tempVector.X, tempVector.Y, tempVector.Z);
+        return StrDb.GetOrCreatePoint(idx, tempVector);
     }
 }
 

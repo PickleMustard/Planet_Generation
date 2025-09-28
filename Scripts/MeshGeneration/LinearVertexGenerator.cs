@@ -19,15 +19,7 @@ namespace MeshGeneration
             {
                 float t = (i + 1) * step;
                 Vector3 pos = start.ToVector3().Lerp(end.ToVector3(), t);
-                vertices[i] = new Point(pos);
-                if (db.VertexPoints.ContainsKey(vertices[i].Index))
-                {
-                    vertices[i] = db.VertexPoints[vertices[i].Index];
-                }
-                else
-                {
-                    db.VertexPoints.Add(vertices[i].Index, vertices[i]);
-                }
+                vertices[i] = db.GetOrCreatePoint(pos);
             }
 
             Logger.ExitFunction("LinearVertexGenerator.GenerateVertices", $"returned {vertices.Length} points");
