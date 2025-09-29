@@ -11,14 +11,45 @@ namespace MeshGeneration;
 /// This implementation is specifically designed for triangulating spherical convex hulls
 /// that have been projected onto a 2D plane.
 /// </summary>
+/// <remarks>
+/// The class uses two different triangulation strategies based on the number of points:
+/// - For small convex hulls (≤ 6 points): Fan triangulation from centroid
+/// - For larger convex hulls: Incremental Delaunay triangulation with edge flipping
+/// 
+/// The algorithm ensures that the resulting triangulation satisfies the Delaunay property,
+/// which means no point lies inside the circumcircle of any triangle.
+/// </remarks>
 public class SphericalDelaunayTriangulation
 {
+    /// <summary>
+    /// Original 3D points from the sphere surface
+    /// </summary>
     private List<Point> originalPoints;
+    
+    /// <summary>
+    /// Points projected onto a 2D plane for triangulation
+    /// </summary>
     private List<Point> projectedPoints;
+    
+    /// <summary>
+    /// Generated triangles forming the triangulation
+    /// </summary>
     private List<Triangle> triangles;
+    
+    /// <summary>
+    /// Mapping from index to original point for quick lookup
+    /// </summary>
     private Dictionary<int, Point> pointMap;
+    
+    /// <summary>
+    /// Structure database containing circumcenters and other geometric data
+    /// </summary>
     private StructureDatabase StrDb;
 
+    /// <summary>
+    /// Initializes a new instance of the SphericalDelaunayTriangulation class
+    /// </summary>
+    /// <param name="db">Structure database containing geometric data and circumcenters</param>
     public SphericalDelaunayTriangulation(StructureDatabase db)
     {
         this.StrDb = db;
@@ -30,9 +61,17 @@ public class SphericalDelaunayTriangulation
     /// Triangulates a set of points that represent a convex hull on a sphere.
     /// The points should already be projected onto a 2D plane.
     /// </summary>
-    /// <param name="projectedPoints">Points projected onto a 2D plane</param>
-    /// <param name="originalPoints">Original 3D points from the sphere surface</param>
-    /// <returns>Array of triangles forming the triangulation</returns>
+    /// <param name="projectedPoints">Points projected onto a 2D plane for triangulation</param>
+    /// <param name="originalPoints">Original 3D points from the sphere surface corresponding to the projected points</param>
+    /// <returns>Array of triangles forming the Delaunay triangulation, or empty array if triangulation fails</returns>
+    /// <remarks>
+    /// This method performs validation to ensure:
+    /// - Projected and original point counts match
+    /// - At least 3 points are provided (minimum for triangulation)
+    /// 
+    /// For 3 points, creates a single triangle. For 4-6 points, uses fan triangulation.
+    /// For more than 6 points, uses incremental Delaunay triangulation with edge flipping.
+    /// </remarks>
     public Triangle[] Triangulate(List<Point> projectedPoints, List<Point> originalPoints)
     {
         Logger.EnterFunction("SphericalDelaunayTriangulation.Triangulate",
@@ -98,6 +137,14 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Performs fan triangulation from the centroid for small convex hulls
     /// </summary>
+    /// <remarks>
+    /// This method is used for convex hulls with 6 or fewer points. It works by:
+    /// 1. Sorting points by angle from the centroid
+    /// 2. Creating triangles by connecting the first point to all other consecutive point pairs
+    /// 
+    /// This approach is efficient for small convex polygons and ensures proper triangulation
+    /// without the need for complex Delaunay checks.
+    /// </remarks>
     private void PerformFanTriangulation()
     {
         Logger.EnterFunction("PerformFanTriangulation", $"pointCount={projectedPoints.Count}");
@@ -122,6 +169,16 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Performs incremental Delaunay triangulation for larger convex hulls
     /// </summary>
+    /// <remarks>
+    /// This method is used for convex hulls with more than 6 points. The algorithm:
+    /// 1. Sorts points by angle for numerical stability
+    /// 2. Creates an initial triangle with the first three points
+    /// 3. Incrementally inserts remaining points into the triangulation
+    /// 4. Performs edge flipping to ensure the Delaunay property is maintained
+    /// 
+    /// The edge flipping process iteratively checks adjacent triangles and flips edges
+    /// when a point lies inside the circumcircle of a triangle, ensuring optimal triangle quality.
+    /// </remarks>
     private void PerformIncrementalDelaunay()
     {
         Logger.EnterFunction("PerformIncrementalDelaunay", $"pointCount={projectedPoints.Count}");
@@ -191,6 +248,17 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Inserts a new point into the existing triangulation
     /// </summary>
+    /// <param name="pointIndex">Index of the point to insert into the triangulation</param>
+    /// <remarks>
+    /// This method implements the point insertion step of incremental Delaunay triangulation:
+    /// 1. Finds all triangles visible from the new point (forming the horizon)
+    /// 2. Identifies horizon edges (boundary edges of visible triangles)
+    /// 3. Removes visible triangles from the triangulation
+    /// 4. Creates new triangles connecting the new point to each horizon edge
+    /// 
+    /// For convex hulls, the new point should always be visible from some triangles,
+    /// as it lies on the convex hull boundary.
+    /// </remarks>
     private void InsertPointIntoTriangulation(int pointIndex)
     {
         Logger.Debug($"Inserting point {pointIndex} into triangulation");
@@ -260,6 +328,15 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Checks if a point is visible from a triangle (on the correct side)
     /// </summary>
+    /// <param name="pointIndex">Index of the point to check visibility for</param>
+    /// <param name="tri">Triangle to check visibility against</param>
+    /// <returns>True if the point is visible from the triangle, false otherwise</returns>
+    /// <remarks>
+    /// Visibility is determined using the 2D orientation test. A point is considered
+    /// visible from a triangle if it lies on the same side of the triangle's plane
+    /// as the triangle's normal. This is crucial for determining which triangles
+    /// should be removed during point insertion in incremental triangulation.
+    /// </remarks>
     private bool IsPointVisibleFromTriangle(int pointIndex, Triangle tri)
     {
         var p = projectedPoints[pointIndex];
@@ -274,6 +351,13 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Sorts points by angle from centroid for consistent ordering
     /// </summary>
+    /// <returns>List of point indices sorted by angle from centroid</returns>
+    /// <remarks>
+    /// This method calculates the centroid of all projected points and then sorts
+    /// the points based on their angle relative to this centroid. This consistent
+    /// ordering is important for numerical stability and predictable triangulation results.
+    /// The sorting uses the arctangent function to compute angles in the range [-π, π].
+    /// </remarks>
     private List<int> SortPointsByAngle()
     {
         // Calculate centroid
@@ -302,6 +386,20 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Creates a triangle from three vertex indices
     /// </summary>
+    /// <param name="i1">Index of the first vertex</param>
+    /// <param name="i2">Index of the second vertex</param>
+    /// <param name="i3">Index of the third vertex</param>
+    /// <returns>New Triangle object, or null if creation fails</returns>
+    /// <remarks>
+    /// This method:
+    /// 1. Ensures consistent counter-clockwise winding order using orientation test
+    /// 2. Retrieves the original 3D points from the sphere surface
+    /// 3. Creates edges between the three points
+    /// 4. Constructs a Triangle object with proper indexing
+    /// 
+    /// The method attempts to find points in the circumcenters database first,
+    /// falling back to the original points if not found.
+    /// </remarks>
     private Triangle CreateTriangle(int i1, int i2, int i3)
     {
         // Ensure consistent winding order
@@ -340,6 +438,14 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Gets the original spherical point corresponding to a projected point index
     /// </summary>
+    /// <param name="index">Index of the projected point</param>
+    /// <returns>Original 3D point from sphere surface, or null if index is invalid</returns>
+    /// <remarks>
+    /// This method first checks if the index is within valid bounds, then attempts
+    /// to find the corresponding original point. It优先 checks the circumcenters
+    /// database in the StructureDatabase, which may contain refined point positions.
+    /// If not found there, it returns the original point from the input list.
+    /// </remarks>
     private Point GetOriginalPoint(int index)
     {
         if (index < 0 || index >= originalPoints.Count)
@@ -360,6 +466,14 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Gets vertex index from a triangle
     /// </summary>
+    /// <param name="tri">Triangle containing the vertex</param>
+    /// <param name="vertexPosition">Position of the vertex in the triangle (0, 1, or 2)</param>
+    /// <returns>Index of the vertex in the original points list, or -1 if not found</returns>
+    /// <remarks>
+    /// This method maps a vertex from a triangle back to its index in the original
+    /// points list by comparing point indices. This is necessary for triangulation
+    /// algorithms that need to work with point indices rather than point objects.
+    /// </remarks>
     private int GetVertexIndex(Triangle tri, int vertexPosition)
     {
         var point = tri.Points[vertexPosition];
@@ -378,6 +492,16 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Finds a triangle adjacent to the given triangle sharing the specified edge
     /// </summary>
+    /// <param name="tri">Triangle to find adjacent triangle for</param>
+    /// <param name="v1">First vertex index of the shared edge</param>
+    /// <param name="v2">Second vertex index of the shared edge</param>
+    /// <returns>Adjacent triangle sharing the edge, or null if none found</returns>
+    /// <remarks>
+    /// This method searches through all triangles in the current triangulation
+    /// to find one that shares exactly two vertices with the specified edge.
+    /// Adjacent triangles are important for edge flipping operations in Delaunay
+    /// triangulation, as they form quadrilaterals that may need to be re-triangulated.
+    /// </remarks>
     private Triangle FindAdjacentTriangle(Triangle tri, int v1, int v2)
     {
         foreach (var other in triangles)
@@ -401,6 +525,17 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Checks if an edge should be flipped to maintain Delaunay property
     /// </summary>
+    /// <param name="tri1">First triangle sharing the edge</param>
+    /// <param name="tri2">Second triangle sharing the edge</param>
+    /// <param name="sharedV1">First vertex index of the shared edge</param>
+    /// <param name="sharedV2">Second vertex index of the shared edge</param>
+    /// <returns>True if the edge should be flipped, false otherwise</returns>
+    /// <remarks>
+    /// The Delaunay property requires that no point lies inside the circumcircle
+    /// of any triangle. This method checks if the opposite vertex of one triangle
+    /// lies inside the circumcircle of the other triangle. If so, the shared edge
+    /// should be flipped to improve triangle quality and maintain the Delaunay property.
+    /// </remarks>
     private bool ShouldFlipEdge(Triangle tri1, Triangle tri2, int sharedV1, int sharedV2)
     {
         // Find the opposite vertices
@@ -441,6 +576,20 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Flips an edge between two triangles
     /// </summary>
+    /// <param name="tri1">First triangle sharing the edge</param>
+    /// <param name="tri2">Second triangle sharing the edge</param>
+    /// <param name="sharedV1">First vertex index of the shared edge</param>
+    /// <param name="sharedV2">Second vertex index of the shared edge</param>
+    /// <remarks>
+    /// Edge flipping is a key operation in Delaunay triangulation. This method:
+    /// 1. Identifies the opposite vertices of each triangle (not on the shared edge)
+    /// 2. Removes the original two triangles from the triangulation
+    /// 3. Creates two new triangles by connecting the opposite vertices
+    /// 
+    /// The flip operation replaces the shared edge with a new edge between the
+    /// opposite vertices, which often improves triangle quality and maintains
+    /// the Delaunay property.
+    /// </remarks>
     private void FlipEdge(Triangle tri1, Triangle tri2, int sharedV1, int sharedV2)
     {
         Logger.Debug($"Flipping edge between vertices {sharedV1} and {sharedV2}");
@@ -485,6 +634,17 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Validates that a triangle is properly formed
     /// </summary>
+    /// <param name="tri">Triangle to validate</param>
+    /// <returns>True if the triangle is valid, false otherwise</returns>
+    /// <remarks>
+    /// A triangle is considered valid if:
+    /// 1. It is not null and has exactly 3 points
+    /// 2. All three points are distinct (no duplicate vertices)
+    /// 3. The triangle has non-zero area (points are not collinear)
+    /// 
+    /// This method uses a cross product test to check for collinearity by ensuring
+    /// the squared length of the cross product exceeds a small epsilon value.
+    /// </remarks>
     private bool IsValidTriangle(Triangle tri)
     {
         if (tri == null || tri.Points == null || tri.Points.Count != 3)
@@ -508,8 +668,25 @@ public class SphericalDelaunayTriangulation
     }
 
     /// <summary>
-    /// 2D orientation test
+    /// 2D orientation test for three points
     /// </summary>
+    /// <param name="a">First point</param>
+    /// <param name="b">Second point</param>
+    /// <param name="c">Third point</param>
+    /// <returns>
+    /// Positive if points are counter-clockwise, 
+    /// negative if clockwise, 
+    /// zero if collinear
+    /// </returns>
+    /// <remarks>
+    /// This method computes the signed area of the parallelogram formed by vectors
+    /// (b-a) and (c-a). The sign indicates the orientation of the three points:
+    /// - Positive: counter-clockwise orientation
+    /// - Negative: clockwise orientation  
+    /// - Zero: collinear points
+    /// 
+    /// This is a fundamental geometric predicate used in many triangulation algorithms.
+    /// </remarks>
     private static float Orient2D(Point a, Point b, Point c)
     {
         return (b.Position.X - a.Position.X) * (c.Position.Y - a.Position.Y) -
@@ -519,6 +696,20 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// In-circle test for Delaunay triangulation
     /// </summary>
+    /// <param name="a">First vertex of the triangle</param>
+    /// <param name="b">Second vertex of the triangle</param>
+    /// <param name="c">Third vertex of the triangle</param>
+    /// <param name="d">Point to test</param>
+    /// <returns>True if point d lies inside the circumcircle of triangle abc, false otherwise</returns>
+    /// <remarks>
+    /// This method implements the in-circle test using the determinant method.
+    /// It checks whether point d lies inside the circumcircle of the triangle
+    /// formed by points a, b, and c. This is a key test for Delaunay triangulation,
+    /// as the Delaunay property requires that no point lies inside the circumcircle
+    /// of any triangle.
+    /// 
+    /// The test uses a 4x4 determinant computation optimized for efficiency.
+    /// </remarks>
     private static bool InCircle(Point a, Point b, Point c, Point d)
     {
         float ax = a.Position.X - d.Position.X;

@@ -6,16 +6,35 @@ using static MeshGeneration.StructureDatabase;
 
 namespace MeshGeneration
 {
+    /// <summary>
+    /// Provides static methods for calculating and propagating stress on mesh edges
+    /// in a planetary generation system. This class handles boundary stress between
+    /// continents, stress propagation through connected edges, and spring-based
+    /// stress calculations for interior edges.
+    /// </summary>
     public static class EdgeStressCalculator
     {
         /// <summary>
-        /// Calculates stress on boundary edges between continents based on relative movement
+        /// Calculates stress on boundary edges between continents based on relative movement.
+        /// This method determines the stress level at the boundary between two different
+        /// continents by analyzing their relative velocities and movement directions.
         /// </summary>
-        /// <param name="edge">The edge to calculate stress for</param>
-        /// <param name="cell1">First Voronoi cell sharing this edge</param>
-        /// <param name="cell2">Second Voronoi cell sharing this edge</param>
-        /// <param name="continents">Dictionary of all continents</param>
-        /// <returns>Calculated stress value</returns>
+        /// <param name="edge">The edge to calculate stress for, representing the boundary between cells</param>
+        /// <param name="cell1">First Voronoi cell sharing this edge, belonging to one continent</param>
+        /// <param name="cell2">Second Voronoi cell sharing this edge, belonging to another continent</param>
+        /// <param name="continents">Dictionary mapping continent indices to Continent objects containing movement data</param>
+        /// <returns>A float value representing the calculated stress magnitude. Returns 0 if cells belong to the same continent.</returns>
+        /// <remarks>
+        /// The stress calculation considers:
+        /// - Relative movement vectors between continents
+        /// - Distance between cell centers
+        /// - Boundary type (convergent, divergent, or transform) with appropriate modifiers
+        /// 
+        /// Boundary types and their stress modifiers:
+        /// - Convergent: 1.5x multiplier (higher stress)
+        /// - Divergent: 1.2x multiplier (moderate stress)
+        /// - Transform: 0.8x multiplier (lower stress)
+        /// </remarks>
         public static float CalculateBoundaryStress(Edge edge, VoronoiCell cell1, VoronoiCell cell2, Dictionary<int, Continent> continents)
         {
             UtilityLibrary.Logger.EnterFunction("CalculateBoundaryStress", $"edgeIndex={edge.Index}, cell1={cell1.Index}, cell2={cell2.Index}");
@@ -65,12 +84,27 @@ namespace MeshGeneration
         }
 
         /// <summary>
-        /// Propagates stress from a source edge to connected edges with exponential decay
+        /// Propagates stress from a source edge to connected edges with exponential decay.
+        /// This method simulates how stress spreads through a mesh by distributing stress
+        /// from a high-stress edge to its connected neighbors, with intensity decreasing
+        /// based on distance.
         /// </summary>
-        /// <param name="sourceEdge">The edge to propagate stress from</param>
-        /// <param name="voronoiCells">List of all Voronoi cells</param>
-        /// <param name="decayFactor">Factor for exponential decay (0.0 to 1.0)</param>
-        /// <returns>Dictionary mapping connected edges to their propagated stress values</returns>
+        /// <param name="sourceEdge">The edge to propagate stress from, containing the initial stress magnitude</param>
+        /// <param name="voronoiCells">List of all Voronoi cells in the mesh (currently unused but kept for API compatibility)</param>
+        /// <param name="db">StructureDatabase containing edge-to-cell mappings for connectivity information</param>
+        /// <param name="decayFactor">Factor for exponential decay (0.0 to 1.0). Lower values cause faster decay.</param>
+        /// <returns>Dictionary mapping connected edges to their propagated stress values. Returns empty dictionary if source edge has no associated cells.</returns>
+        /// <remarks>
+        /// The propagation algorithm:
+        /// 1. Finds all Voronoi cells that share the source edge
+        /// 2. For each cell, examines all connected edges
+        /// 3. Calculates distance between edge midpoints
+        /// 4. Applies exponential decay: stress * (decayFactor ^ distance)
+        /// 5. Keeps maximum stress value if multiple paths reach the same edge
+        /// 
+        /// This creates a realistic stress distribution pattern where nearby edges
+        /// receive more stress than distant ones.
+        /// </remarks>
         public static Dictionary<Edge, float> PropagateStress(Edge sourceEdge, List<VoronoiCell> voronoiCells, StructureDatabase db, float decayFactor = 0.7f)
         {
             UtilityLibrary.Logger.EnterFunction("PropagateStress", $"edgeIndex={sourceEdge.Index}, decayFactor={decayFactor}");
@@ -122,12 +156,26 @@ namespace MeshGeneration
         }
 
         /// <summary>
-        /// Calculates stress on interior edges using a spring model based on deformation
+        /// Calculates stress on interior edges using a spring model based on deformation.
+        /// This method simulates elastic stress within a continent by treating edges as
+        /// springs that resist deformation from their natural rest length.
         /// </summary>
-        /// <param name="edge">The edge to calculate stress for</param>
-        /// <param name="cell">The Voronoi cell containing this edge</param>
-        /// <param name="restLength">The rest length of the edge (optional, calculated if not provided)</param>
-        /// <returns>Calculated stress value based on spring model</returns>
+        /// <param name="edge">The edge to calculate stress for, representing a spring element</param>
+        /// <param name="cell">The Voronoi cell containing this edge, used for calculating average edge lengths</param>
+        /// <param name="restLength">The rest length of the edge (optional). If negative or zero, calculates average edge length from the cell.</param>
+        /// <returns>A float value representing the spring-based stress. Higher values indicate greater deformation.</returns>
+        /// <remarks>
+        /// The spring model uses Hooke's law: F = -k * (x - x0)
+        /// Where:
+        /// - k is the spring constant (currently 0.5)
+        /// - x is the current edge length
+        /// - x0 is the rest length
+        /// 
+        /// If no rest length is provided, the method estimates it by calculating
+        /// the average length of all edges in the containing Voronoi cell.
+        /// This provides a reasonable baseline for natural edge lengths within
+        /// the local mesh structure.
+        /// </remarks>
         public static float CalculateSpringStress(Edge edge, VoronoiCell cell, float restLength = -1f)
         {
             UtilityLibrary.Logger.EnterFunction("CalculateSpringStress", $"edgeIndex={edge.Index}, cellIndex={cell.Index}, restLength={restLength}");
@@ -156,11 +204,22 @@ namespace MeshGeneration
         }
 
         /// <summary>
-        /// Determines the boundary type between two continents based on their movement
+        /// Determines the boundary type between two continents based on their movement directions.
+        /// This helper method classifies tectonic boundaries by analyzing the relative
+        /// movement patterns of adjacent continents.
         /// </summary>
-        /// <param name="continent1">First continent</param>
-        /// <param name="continent2">Second continent</param>
-        /// <returns>Boundary type</returns>
+        /// <param name="continent1">First continent with movementDirection property</param>
+        /// <param name="continent2">Second continent with movementDirection property</param>
+        /// <returns>A BOUNDARY_TYPE enum value indicating the type of tectonic boundary</returns>
+        /// <remarks>
+        /// Boundary classification logic:
+        /// - Transform boundary: dot product > 0.5 (continents moving in similar directions)
+        /// - Divergent boundary: dot product < -0.5 (continents moving towards each other)
+        /// - Convergent boundary: all other cases (continents moving apart or perpendicular)
+        /// 
+        /// This classification helps determine appropriate stress modifiers in the
+        /// CalculateBoundaryStress method, simulating real-world tectonic interactions.
+        /// </remarks>
         private static Continent.BOUNDARY_TYPE DetermineBoundaryType(Continent continent1, Continent continent2)
         {
             // Calculate relative movement vector
