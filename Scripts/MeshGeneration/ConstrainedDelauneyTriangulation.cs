@@ -7,33 +7,92 @@ using UtilityLibrary;
 
 namespace MeshGeneration;
 
+/// <summary>
+/// Implements a constrained Delaunay triangulation algorithm for generating triangular meshes from polygon boundaries.
+/// This class provides functionality to triangulate a set of points while preserving specified edge constraints,
+/// making it suitable for mesh generation in planetary surface modeling and other geometric applications.
+/// </summary>
+/// <remarks>
+/// The algorithm follows these main steps:
+/// 1. Initialize with a polygon boundary and build a super-triangle that encompasses all points
+/// 2. Incrementally insert vertices while maintaining Delaunay properties
+/// 3. Recover constrained edges (polygon boundaries) through edge flipping
+/// 4. Remove the super-triangle and perform flood fill to identify interior triangles
+/// 
+/// This implementation uses efficient data structures including edge lookup tables and neighbor tracking
+/// to optimize performance during triangulation operations.
+/// </remarks>
 public class ConstrainedDelauneyTriangulation
 {
+    /// <summary>
+    /// Represents an edge between two vertices using sorted indices for consistent hashing.
+    /// </summary>
     private struct EdgeKey
     {
+        /// <summary>
+        /// The first vertex index (always the smaller of the two).
+        /// </summary>
         public int a;
+        
+        /// <summary>
+        /// The second vertex index (always the larger of the two).
+        /// </summary>
         public int b;
     }
 
+    /// <summary>
+    /// Stores information about an edge's location within a triangle.
+    /// </summary>
     private struct EdgeRecord
     {
+        /// <summary>
+        /// Initializes a new EdgeRecord with default invalid values.
+        /// </summary>
         public EdgeRecord()
         {
             tri = -1;
             edge = -1;
         }
 
+        /// <summary>
+        /// The index of the triangle containing this edge.
+        /// </summary>
         public int tri { get; set; }
+        
+        /// <summary>
+        /// The edge index within the triangle (0, 1, or 2).
+        /// </summary>
         public int edge { get; set; }
     }
 
+    /// <summary>
+    /// Represents a triangle in the triangulation with vertex indices, neighbor information, and constraint flags.
+    /// </summary>
     private class Triangle
     {
+        /// <summary>
+        /// Array of three vertex indices that form this triangle.
+        /// </summary>
         public int[] vertices { get; set; }
+        
+        /// <summary>
+        /// Array of three neighbor triangle indices (-1 if no neighbor exists).
+        /// </summary>
         public int[] neighbors { get; set; }
+        
+        /// <summary>
+        /// Array indicating which edges are constrained (true = constrained, false = unconstrained).
+        /// </summary>
         public bool[] constrained { get; set; }
+        
+        /// <summary>
+        /// Flag indicating whether this triangle is still active in the triangulation.
+        /// </summary>
         public bool alive { get; set; }
 
+        /// <summary>
+        /// Initializes a new Triangle with default empty arrays and alive state.
+        /// </summary>
         public Triangle()
         {
             vertices = new int[3];
@@ -43,10 +102,24 @@ public class ConstrainedDelauneyTriangulation
         }
     }
 
+    /// <summary>
+    /// Stores the result of a triangle walking operation for point location.
+    /// </summary>
     private struct WalkResult
     {
+        /// <summary>
+        /// The index of the located triangle.
+        /// </summary>
         public int triangle { get; set; }
+        
+        /// <summary>
+        /// The edge index within the triangle.
+        /// </summary>
         public int edge { get; set; }
+        
+        /// <summary>
+        /// Initializes a new WalkResult with default invalid values.
+        /// </summary>
         public WalkResult()
         {
             triangle = -1;
@@ -54,23 +127,63 @@ public class ConstrainedDelauneyTriangulation
         }
     }
 
-    List<Point> vertices { get; set; }
-    List<Triangle> triangles { get; set; }
-    Dictionary<EdgeKey, EdgeRecord> edgeLookup { get; set; }
-    int[] superVerts = new int[3];
+    /// <summary>
+    /// List of all vertices in the triangulation.
+    /// </summary>
+    private List<Point> vertices { get; set; }
+    
+    /// <summary>
+    /// List of all triangles in the triangulation.
+    /// </summary>
+    private List<Triangle> triangles { get; set; }
+    
+    /// <summary>
+    /// Dictionary for fast edge lookup and neighbor finding.
+    /// </summary>
+    private Dictionary<EdgeKey, EdgeRecord> edgeLookup { get; set; }
+    
+    /// <summary>
+    /// Array containing the indices of the three super-triangle vertices.
+    /// </summary>
+    private int[] superVerts = new int[3];
 
-    StructureDatabase StrDb;
+    /// <summary>
+    /// Reference to the structure database for accessing legacy circumcenters.
+    /// </summary>
+    private StructureDatabase StrDb;
 
+    /// <summary>
+    /// Computes the 2D orientation test for three points.
+    /// </summary>
+    /// <param name="a">The first point.</param>
+    /// <param name="b">The second point.</param>
+    /// <param name="c">The third point.</param>
+    /// <returns>
+    /// Positive value if the points are in counter-clockwise order,
+    /// negative if clockwise, zero if collinear.
+    /// </returns>
     private static float Orient2D(Point a, Point b, Point c)
     {
         return (b.Position.X - a.Position.X) * (c.Position.Y - a.Position.Y) - (b.Position.Y - a.Position.Y) * (c.Position.X - a.Position.X);
     }
 
+    /// <summary>
+    /// Determines if three points form a counter-clockwise triangle.
+    /// </summary>
+    /// <param name="a">The first vertex.</param>
+    /// <param name="b">The second vertex.</param>
+    /// <param name="c">The third vertex.</param>
+    /// <returns>True if the points are in counter-clockwise order, false otherwise.</returns>
     private static bool IsCounterClockwise(Point a, Point b, Point c)
     {
         return Orient2D(a, b, c) > 0;
     }
 
+    /// <summary>
+    /// Computes the determinant of a 3x3 matrix.
+    /// </summary>
+    /// <param name="mat">A 3x3 matrix represented as a 2D array.</param>
+    /// <returns>The determinant of the matrix.</returns>
     private float Det3x3(float[][] mat)
     {
         float a11 = mat[0][0];
@@ -87,6 +200,14 @@ public class ConstrainedDelauneyTriangulation
         return determinant;
     }
 
+    /// <summary>
+    /// Tests if a point lies inside the circumcircle of a triangle.
+    /// </summary>
+    /// <param name="a">First vertex of the triangle.</param>
+    /// <param name="b">Second vertex of the triangle.</param>
+    /// <param name="c">Third vertex of the triangle.</param>
+    /// <param name="d">The point to test.</param>
+    /// <returns>True if point d lies inside the circumcircle of triangle abc, false otherwise.</returns>
     private bool InCircle(Point a, Point b, Point c, Point d)
     {
         float adx = a.Position.X - d.Position.X;
@@ -105,6 +226,11 @@ public class ConstrainedDelauneyTriangulation
         return (orient > 0f && determinant > 0f) || (orient < 0f && determinant < 0f);
     }
 
+    /// <summary>
+    /// Computes the signed area of a polygon using the shoelace formula.
+    /// </summary>
+    /// <param name="points">List of points forming the polygon boundary.</param>
+    /// <returns>The signed area of the polygon. Positive for counter-clockwise, negative for clockwise.</returns>
     private static double PolygonArea(List<Point> points)
     {
         float accumulator = 0f;
@@ -117,6 +243,11 @@ public class ConstrainedDelauneyTriangulation
         return 0.5f * accumulator;
     }
 
+    /// <summary>
+    /// Computes the centroid (geometric center) of a polygon.
+    /// </summary>
+    /// <param name="points">List of points forming the polygon boundary.</param>
+    /// <returns>The centroid point of the polygon.</returns>
     private static Point PolygonCentroid(List<Point> points)
     {
         float A = 0f;
@@ -137,6 +268,14 @@ public class ConstrainedDelauneyTriangulation
         return new Point { Position = new Vector3(cx * factor, cy * factor, 0f), Index = 0 };
     }
 
+    /// <summary>
+    /// Tests if a point lies inside a triangle.
+    /// </summary>
+    /// <param name="a">First vertex of the triangle.</param>
+    /// <param name="b">Second vertex of the triangle.</param>
+    /// <param name="c">Third vertex of the triangle.</param>
+    /// <param name="p">The point to test.</param>
+    /// <returns>True if the point lies inside or on the edge of the triangle, false otherwise.</returns>
     public static bool PointInTriangle(Point a, Point b, Point c, Point p)
     {
         bool o1 = Orient2D(a, b, p) >= 0f;
@@ -145,6 +284,14 @@ public class ConstrainedDelauneyTriangulation
         return (o1 && o2 && o3);
     }
 
+    /// <summary>
+    /// Tests if two line segments intersect properly (not at endpoints).
+    /// </summary>
+    /// <param name="a">Start point of first segment.</param>
+    /// <param name="b">End point of first segment.</param>
+    /// <param name="c">Start point of second segment.</param>
+    /// <param name="d">End point of second segment.</param>
+    /// <returns>True if the segments intersect properly, false otherwise.</returns>
     private static bool SegmentsIntersectProperly(Point a, Point b, Point c, Point d)
     {
         Logger.EnterFunction("SegmentsIntersectProperly", $"a={a}, b={b}, c={c}, d={d}");
@@ -162,6 +309,12 @@ public class ConstrainedDelauneyTriangulation
         return false;
     }
 
+    /// <summary>
+    /// Tests if a point lies inside a polygon using the ray casting algorithm.
+    /// </summary>
+    /// <param name="points">List of points forming the polygon boundary.</param>
+    /// <param name="p">The point to test.</param>
+    /// <returns>True if the point lies inside the polygon, false otherwise.</returns>
     private static bool PointInPolygon(List<Point> points, Point p)
     {
         bool inside = false;
@@ -177,6 +330,15 @@ public class ConstrainedDelauneyTriangulation
         return inside;
     }
 
+    /// <summary>
+    /// Initializes a new constrained Delaunay triangulation instance.
+    /// </summary>
+    /// <param name="db">Reference to the structure database for accessing legacy circumcenters.</param>
+    /// <param name="points">List of points forming the polygon boundary to be triangulated.</param>
+    /// <remarks>
+    /// The constructor validates the input points and ensures they are in counter-clockwise order.
+    /// If the polygon has negative area (clockwise order), the points are automatically reversed.
+    /// </remarks>
     public ConstrainedDelauneyTriangulation(StructureDatabase db, List<Point> points)
     {
         this.StrDb = db;
@@ -206,6 +368,21 @@ public class ConstrainedDelauneyTriangulation
         Logger.Info($"ConstrainedDelauneyTriangulation: Initialized with {vertices.Count} vertices");
     }
 
+    /// <summary>
+    /// Performs the complete constrained Delaunay triangulation process.
+    /// </summary>
+    /// <returns>An array of Triangle structures representing the triangulated mesh.</returns>
+    /// <remarks>
+    /// This method executes the full triangulation algorithm:
+    /// 1. Builds a super-triangle that encompasses all input points
+    /// 2. Incrementally inserts all vertices while maintaining Delaunay properties
+    /// 3. Recovers all constrained edges (polygon boundaries) through edge flipping
+    /// 4. Removes the super-triangle and performs flood fill to identify interior triangles
+    /// 5. Converts internal triangle representations to the public Triangle structure
+    /// 
+    /// The resulting triangulation preserves all polygon boundary edges as constrained
+    /// while maintaining Delaunay properties for the interior mesh.
+    /// </remarks>
     public Structures.Triangle[] Triangulate()
     {
         Logger.EnterFunction("Triangulate");

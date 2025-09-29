@@ -6,19 +6,76 @@ using System.Linq;
 using UtilityLibrary;
 using MeshGeneration;
 
+/// <summary>
+/// Handles tectonic plate simulation and stress calculation for planetary terrain generation.
+/// This class simulates the interaction between continental plates, calculates boundary stresses,
+/// and applies the resulting deformations to the terrain mesh.
+/// </summary>
 public class TectonicGeneration
 {
+    /// <summary>
+    /// Database containing all structural data for the mesh including vertices, edges, and cells.
+    /// </summary>
     private readonly StructureDatabase StrDb;
+    
+    /// <summary>
+    /// Random number generator for procedural generation and random sampling.
+    /// </summary>
     private readonly RandomNumberGenerator rand;
+    
+    /// <summary>
+    /// Scaling factor for compression stress calculations.
+    /// </summary>
     private readonly float StressScale;
+    
+    /// <summary>
+    /// Scaling factor for shear stress calculations.
+    /// </summary>
     private readonly float ShearScale;
+    
+    /// <summary>
+    /// Maximum distance that stress can propagate from its source edge.
+    /// </summary>
     private readonly float MaxPropagationDistance;
+    
+    /// <summary>
+    /// Rate at which stress magnitude decreases with distance from source.
+    /// </summary>
     private readonly float PropagationFalloff;
+    
+    /// <summary>
+    /// Threshold below which stress is considered inactive and doesn't affect terrain.
+    /// </summary>
     private readonly float InactiveStressThreshold;
+    
+    /// <summary>
+    /// General scaling factor for height modifications due to inactive stress.
+    /// </summary>
     private readonly float GeneralHeightScale;
+    
+    /// <summary>
+    /// Scaling factor for height modifications due to shear stress.
+    /// </summary>
     private readonly float GeneralShearScale;
+    
+    /// <summary>
+    /// Scaling factor for height modifications due to compression stress.
+    /// </summary>
     private readonly float GeneralCompressionScale;
 
+    /// <summary>
+    /// Initializes a new instance of the TectonicGeneration class with specified parameters.
+    /// </summary>
+    /// <param name="strDb">Structure database containing mesh data.</param>
+    /// <param name="rng">Random number generator for procedural generation.</param>
+    /// <param name="stressScale">Scaling factor for compression stress calculations.</param>
+    /// <param name="shearScale">Scaling factor for shear stress calculations.</param>
+    /// <param name="maxPropagationDistance">Maximum distance stress can propagate from source.</param>
+    /// <param name="propagationFalloff">Rate at which stress decreases with distance.</param>
+    /// <param name="inactiveStressThreshold">Threshold below which stress is considered inactive.</param>
+    /// <param name="generalHeightScale">Scaling factor for height modifications from inactive stress.</param>
+    /// <param name="generalShearScale">Scaling factor for height modifications from shear stress.</param>
+    /// <param name="generalCompressionScale">Scaling factor for height modifications from compression stress.</param>
     public TectonicGeneration(
         StructureDatabase strDb,
         RandomNumberGenerator rng,
@@ -43,6 +100,23 @@ public class TectonicGeneration
         GeneralCompressionScale = generalCompressionScale;
     }
 
+    /// <summary>
+    /// Calculates stress at boundaries between continental plates and propagates stress throughout the mesh.
+    /// This method analyzes the interaction between neighboring continents, calculates compression and shear
+    /// stresses at their boundaries, and propagates these stresses through the mesh structure.
+    /// </summary>
+    /// <param name="edgeMap">Dictionary mapping edges to their adjacent Voronoi cells.</param>
+    /// <param name="points">Collection of all points in the mesh.</param>
+    /// <param name="continents">Dictionary of continents with their movement properties.</param>
+    /// <param name="percent">Progress tracking object for reporting completion status.</param>
+    /// <remarks>
+    /// The method performs the following steps:
+    /// 1. For each continent, calculates local coordinate system based on random point pairs
+    /// 2. For each boundary cell, analyzes edges that border different continents
+    /// 3. Calculates compression and shear stress based on relative plate movement
+    /// 4. Classifies boundary type (convergent, divergent, transform, or inactive)
+    /// 5. Propagates stress from boundary edges to surrounding mesh using priority queue
+    /// </remarks>
     public void CalculateBoundaryStress(
         IReadOnlyDictionary<Edge, HashSet<VoronoiCell>> edgeMap,
         HashSet<Point> points,
@@ -131,6 +205,21 @@ public class TectonicGeneration
         }
     }
 
+    /// <summary>
+    /// Applies calculated tectonic stresses to terrain vertices, modifying their heights.
+    /// This method processes all vertices in the mesh and adjusts their heights based on the
+    /// stress values of their incident edges, creating realistic terrain features like
+    /// mountains, valleys, and trenches.
+    /// </summary>
+    /// <param name="continents">Dictionary of continents (not directly used but kept for interface consistency).</param>
+    /// <param name="cells">List of Voronoi cells (not directly used but kept for interface consistency).</param>
+    /// <remarks>
+    /// The method applies different height modifications based on edge types:
+    /// - Inactive edges: General height scaling based on stress magnitude
+    /// - Transform edges: Height modification based on shear stress (creates strike-slip features)
+    /// - Divergent edges: Height reduction based on compression stress (creates rifts/trenches)
+    /// - Convergent edges: Height increase based on compression stress (creates mountains)
+    /// </remarks>
     public void ApplyStressToTerrain(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
         foreach (Point p in StrDb.VoronoiCellVertices)
@@ -161,6 +250,20 @@ public class TectonicGeneration
         }
     }
 
+    /// <summary>
+    /// Classifies the type of tectonic boundary based on calculated stress values.
+    /// This method analyzes compression and shear stress components to determine
+    /// whether a boundary is convergent, divergent, transform, or inactive.
+    /// </summary>
+    /// <param name="es">EdgeStress object containing compression and shear stress values.</param>
+    /// <returns>EdgeType enum value indicating the classification of the boundary.</returns>
+    /// <remarks>
+    /// Classification logic:
+    /// - If total stress is below threshold: inactive
+    /// - If compression factor > 56%: convergent (positive compression) or divergent (negative compression)
+    /// - If shear factor > 70%: transform boundary
+    /// - Otherwise: classify based on dominant stress type
+    /// </remarks>
     private EdgeType ClassifyBoundaryType(EdgeStress es)
     {
         float normalizedCompression = Mathf.Abs(es.CompressionStress);
@@ -197,6 +300,22 @@ public class TectonicGeneration
         }
     }
 
+    /// <summary>
+    /// Calculates the stress magnitude at a given distance from the source edge.
+    /// This method models how tectonic stress propagates through the crust with
+    /// exponential decay and directional attenuation.
+    /// </summary>
+    /// <param name="edgeStress">The original stress values at the source edge.</param>
+    /// <param name="distance">Distance from the source edge to the current edge.</param>
+    /// <param name="current">The edge receiving the propagated stress.</param>
+    /// <param name="origin">The source edge from which stress originates.</param>
+    /// <returns>Calculated stress magnitude at the current edge location.</returns>
+    /// <remarks>
+    /// The calculation considers:
+    /// - Exponential decay based on distance and propagation falloff rate
+    /// - Combined compression and shear stress (with shear weighted at 50%)
+    /// - Directional factor based on alignment with stress direction
+    /// </remarks>
     private float CalculateStressAtDistance(EdgeStress edgeStress, float distance, Edge current, Edge origin)
     {
         float decayFactor = MathF.Exp(-distance / PropagationFalloff);

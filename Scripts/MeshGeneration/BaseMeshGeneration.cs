@@ -7,22 +7,81 @@ using Structures;
 using UtilityLibrary;
 
 namespace MeshGeneration;
+
+/// <summary>
+/// Handles the generation and deformation of base mesh structures for celestial bodies.
+/// This class creates a dodecahedron as the starting mesh and then subdivides and deforms it
+/// to create more complex planetary surfaces with configurable vertex distribution.
+/// </summary>
 public class BaseMeshGeneration
 {
+    /// <summary>
+    /// Static counter used for vertex deformation calculations.
+    /// </summary>
     private static int currentIndex = 0;
+    
+    /// <summary>
+    /// The golden ratio constant (1 + sqrt(5)) / 2, used for dodecahedron vertex calculations.
+    /// </summary>
     static private float TAU = (1 + (float)Math.Sqrt(5)) / 2;
+    
+    /// <summary>
+    /// Random number generator for procedural generation and deformation.
+    /// </summary>
     private RandomNumberGenerator rand;
+    
+    /// <summary>
+    /// Number of subdivision levels to apply to the base mesh.
+    /// </summary>
     private int subdivide;
+    
+    /// <summary>
+    /// Array specifying the number of vertices to generate per edge at each subdivision level.
+    /// </summary>
     private int[] VerticesPerEdge;
+    
+    /// <summary>
+    /// Reference to the configurable subdivider for mesh subdivision operations.
+    /// </summary>
     private ConfigurableSubdivider _subdivider;
 
+    /// <summary>
+    /// Current vertex index counter for mesh generation.
+    /// </summary>
     private int VertexIndex = 0;
+    
+    /// <summary>
+    /// List of vertex normals for the generated mesh.
+    /// </summary>
     private List<Vector3> normals;
+    
+    /// <summary>
+    /// List of UV coordinates for texture mapping.
+    /// </summary>
     private List<Vector2> uvs;
+    
+    /// <summary>
+    /// List of triangle indices defining the mesh topology.
+    /// </summary>
     private List<int> indices;
+    
+    /// <summary>
+    /// List of faces that make up the current mesh state.
+    /// </summary>
     private List<Face> faces;
+    
+    /// <summary>
+    /// Reference to the structure database for managing mesh data.
+    /// </summary>
     private StructureDatabase StrDb;
 
+    /// <summary>
+    /// Initializes a new instance of the BaseMeshGeneration class.
+    /// </summary>
+    /// <param name="rand">Random number generator for procedural generation</param>
+    /// <param name="StrDb">Structure database for managing mesh data</param>
+    /// <param name="subdivide">Number of times to subdivide the dodecahedron</param>
+    /// <param name="VerticesPerEdge">Number of points to generate per edge at each subdivision level</param>
     public BaseMeshGeneration(RandomNumberGenerator rand, StructureDatabase StrDb, int subdivide, int[] VerticesPerEdge)
     {
         Logger.EnterFunction("BaseMeshGeneration::.ctor", $"subdivide={subdivide}, VPE=[{string.Join(",", VerticesPerEdge ?? Array.Empty<int>())}]");
@@ -40,6 +99,15 @@ public class BaseMeshGeneration
         Logger.ExitFunction("BaseMeshGeneration::.ctor");
     }
 
+    /// <summary>
+    /// Initializes the mesh data structures by creating a dodecahedron as the base mesh.
+    /// This method generates the 12 vertices of a dodecahedron and creates the initial
+    /// 20 triangular faces that define the base mesh structure.
+    /// </summary>
+    /// <remarks>
+    /// The dodecahedron vertices are calculated using the golden ratio (TAU) to ensure
+    /// proper geometric proportions. Each vertex is normalized and scaled to a radius of 100 units.
+    /// </remarks>
     public void PopulateArrays()
     {
         Logger.EnterFunction("PopulateArrays");
@@ -104,6 +172,17 @@ public class BaseMeshGeneration
     }
 
 
+    /// <summary>
+    /// Generates non-deformed faces by subdividing the base mesh according to the specified parameters.
+    /// This method performs multiple levels of subdivision, each time increasing the complexity
+    /// of the mesh by adding more vertices and faces.
+    /// </summary>
+    /// <param name="distribution">The vertex distribution method to use during subdivision (defaults to Linear)</param>
+    /// <remarks>
+    /// The subdivision process works iteratively, with each level potentially using a different
+    /// number of vertices per edge as specified in the VerticesPerEdge array. After the first
+    /// subdivision level, the structure database is reset to BaseMesh state.
+    /// </remarks>
     public void GenerateNonDeformedFaces(VertexDistribution distribution = VertexDistribution.Linear)
     {
         Logger.EnterFunction("GenerateNonDeformedFaces", $"subdivide={subdivide}, distribution={distribution}");
@@ -126,6 +205,16 @@ public class BaseMeshGeneration
         Logger.ExitFunction("GenerateNonDeformedFaces");
     }
 
+    /// <summary>
+    /// Converts the generated faces into a triangle list and stores them in the structure database.
+    /// This method processes all faces and creates corresponding triangle objects with proper
+    /// edge connectivity, establishing the final mesh topology.
+    /// </summary>
+    /// <remarks>
+    /// Each face is converted to a triangle and added to the structure database. The method
+    /// handles edge creation and connectivity automatically through the database facade.
+    /// This is typically called after mesh subdivision and before deformation.
+    /// </remarks>
     public void GenerateTriangleList()
     {
         Logger.EnterFunction("GenerateTriangleList");
@@ -143,6 +232,22 @@ public class BaseMeshGeneration
         Logger.ExitFunction("GenerateTriangleList");
     }
 
+    /// <summary>
+    /// Initiates the mesh deformation process to create more natural-looking planetary surfaces.
+    /// This method runs multiple deformation cycles in parallel to optimize the mesh topology
+    /// by performing edge flips and vertex smoothing operations.
+    /// </summary>
+    /// <param name="numDeformationCycles">Number of parallel deformation cycles to execute</param>
+    /// <param name="numAbberations">Number of edge flip operations to perform per cycle</param>
+    /// <param name="optimalSideLength">Target edge length for deformation decisions</param>
+    /// <remarks>
+    /// The deformation process involves two main phases:
+    /// 1. Edge flipping: Randomly selects edges and flips them if it improves triangle quality
+    /// 2. Vertex smoothing: Moves vertices toward the average center of adjacent triangles
+    /// 
+    /// This process helps create more evenly distributed triangles and reduces mesh artifacts.
+    /// The method uses parallel processing for better performance with multiple deformation cycles.
+    /// </remarks>
     public void InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
     {
         Logger.EnterFunction("InitiateDeformation", $"cycles={numDeformationCycles}, abberations={numAbberations}, optimalSideLength={optimalSideLength}");

@@ -7,10 +7,28 @@ using UtilityLibrary;
 using static MeshGeneration.StructureDatabase;
 
 namespace MeshGeneration;
+
+/// <summary>
+/// A configurable mesh subdivider that can subdivide triangular faces using different vertex distribution strategies.
+/// This class provides flexible subdivision capabilities for procedural mesh generation, supporting various
+/// vertex distribution patterns including linear, geometric, and custom distributions.
+/// </summary>
 public class ConfigurableSubdivider
 {
+    /// <summary>
+    /// The structure database used for managing points, edges, and faces during subdivision.
+    /// </summary>
     private StructureDatabase StrDb;
+    
+    /// <summary>
+    /// Dictionary mapping vertex distribution types to their corresponding vertex generators.
+    /// </summary>
     private readonly Dictionary<VertexDistribution, IVertexGenerator> _generators;
+    
+    /// <summary>
+    /// Initializes a new instance of the ConfigurableSubdivider class.
+    /// </summary>
+    /// <param name="db">The structure database to use for managing mesh data during subdivision.</param>
     public ConfigurableSubdivider(StructureDatabase db)
     {
         this.StrDb = db;
@@ -23,6 +41,18 @@ public class ConfigurableSubdivider
         Logger.ExitFunction("ConfigurableSubdivider::.ctor");
     }
 
+    /// <summary>
+    /// Subdivides a triangular face into smaller faces using the specified vertex distribution strategy.
+    /// </summary>
+    /// <param name="face">The triangular face to subdivide.</param>
+    /// <param name="verticesToGenerate">The number of vertices to generate along each edge of the face.</param>
+    /// <param name="distribution">The vertex distribution strategy to use (default: Linear).</param>
+    /// <returns>An array of new faces created from the subdivision process.</returns>
+    /// <remarks>
+    /// This method generates vertices along each edge of the face and creates interior points,
+    /// then constructs new triangular faces using barycentric subdivision. The number of 
+    /// resulting faces depends on the verticesToGenerate parameter.
+    /// </remarks>
     public Face[] SubdivideFace(Face face, int verticesToGenerate, VertexDistribution distribution = VertexDistribution.Linear)
     {
         Logger.EnterFunction("SubdivideFace", $"face=({face.v[0].Index},{face.v[1].Index},{face.v[2].Index}), vToGen={verticesToGenerate}, dist={distribution}");
@@ -45,6 +75,17 @@ public class ConfigurableSubdivider
         return created;
     }
 
+    /// <summary>
+    /// Generates interior points within a triangular face using barycentric coordinates.
+    /// </summary>
+    /// <param name="face">The triangular face in which to generate interior points.</param>
+    /// <param name="verticesToGenerate">The number of vertices to generate along each edge.</param>
+    /// <returns>A list of interior points generated within the face.</returns>
+    /// <remarks>
+    /// This method uses barycentric coordinates to distribute points evenly within the triangular face.
+    /// Points are generated in a grid pattern based on the resolution (verticesToGenerate + 1).
+    /// No interior points are generated if verticesToGenerate is 2 or less.
+    /// </remarks>
     private List<Point> GenerateInteriorPoints(Face face, int verticesToGenerate)
     {
         Logger.EnterFunction("GenerateInteriorPoints", $"vToGen={verticesToGenerate}");
@@ -75,6 +116,20 @@ public class ConfigurableSubdivider
         return interiorPoints;
     }
 
+    /// <summary>
+    /// Calculates a point using barycentric coordinates within a triangle defined by three vertices.
+    /// </summary>
+    /// <param name="a">The first vertex of the triangle.</param>
+    /// <param name="b">The second vertex of the triangle.</param>
+    /// <param name="c">The third vertex of the triangle.</param>
+    /// <param name="u">The barycentric coordinate weight for vertex a.</param>
+    /// <param name="v">The barycentric coordinate weight for vertex b.</param>
+    /// <param name="w">The barycentric coordinate weight for vertex c.</param>
+    /// <returns>A new point calculated using the barycentric coordinates.</returns>
+    /// <remarks>
+    /// Barycentric coordinates allow for interpolation within a triangle where u + v + w = 1.
+    /// The resulting point is a weighted average of the three triangle vertices.
+    /// </remarks>
     private Point CalculateBarycentricPoint(Point a, Point b, Point c, float u, float v, float w)
     {
         Logger.EnterFunction("CalculateBarycentricPoint", $"u={u:F3}, v={v:F3}, w={w:F3}");
@@ -87,6 +142,20 @@ public class ConfigurableSubdivider
         return resultPoint;
     }
 
+    /// <summary>
+    /// Creates new triangular faces using barycentric subdivision based on edge and interior points.
+    /// </summary>
+    /// <param name="face">The original face being subdivided.</param>
+    /// <param name="edgePoints">Array of three lists containing points generated along each edge.</param>
+    /// <param name="interiorPoints">List of points generated in the interior of the face.</param>
+    /// <param name="verticesToGenerate">The number of vertices generated along each edge.</param>
+    /// <returns>An array of new faces created from the subdivision.</returns>
+    /// <remarks>
+    /// This method handles different subdivision strategies based on the verticesToGenerate parameter:
+    /// - For 1 vertex: Creates 4 new triangular faces
+    /// - For 2 vertices: Creates 9 new triangular faces with a center point
+    /// - For 3+ vertices: Uses CreateTriangularGrid for more complex subdivision
+    /// </remarks>
     private Face[] CreateBarycentricFaces(Face face, List<Point>[] edgePoints, List<Point> interiorPoints, int verticesToGenerate)
     {
         Logger.EnterFunction("CreateBarycentricFaces", $"vToGen={verticesToGenerate}, interior={interiorPoints.Count}");
@@ -130,6 +199,19 @@ public class ConfigurableSubdivider
         return faces.ToArray();
     }
 
+    /// <summary>
+    /// Creates a triangular grid of faces for higher resolution subdivisions (3+ vertices per edge).
+    /// </summary>
+    /// <param name="face">The original face being subdivided.</param>
+    /// <param name="edgePoints">Array of three lists containing points generated along each edge.</param>
+    /// <param name="interiorPoints">List of points generated in the interior of the face.</param>
+    /// <param name="verticesToGenerate">The number of vertices generated along each edge.</param>
+    /// <returns>A list of new faces created from the triangular grid subdivision.</returns>
+    /// <remarks>
+    /// This method uses barycentric coordinates to map all points (vertices, edge points, and interior points)
+    /// to a coordinate system, then creates triangular faces by connecting adjacent points in the grid.
+    /// The algorithm creates two triangles for each valid grid position to ensure complete coverage.
+    /// </remarks>
     private List<Face> CreateTriangularGrid(Face face, List<Point>[] edgePoints, List<Point> interiorPoints, int verticesToGenerate)
     {
         Logger.EnterFunction("CreateTriangularGrid", $"vToGen={verticesToGenerate}");
@@ -197,6 +279,15 @@ public class ConfigurableSubdivider
         return faces;
     }
 
+    /// <summary>
+    /// Calculates the centroid (geometric center) of a list of vertices.
+    /// </summary>
+    /// <param name="vertices">The list of vertices for which to calculate the centroid.</param>
+    /// <returns>A new Point representing the centroid of the input vertices.</returns>
+    /// <remarks>
+    /// The centroid is calculated as the average position of all vertices in the list.
+    /// This method is useful for finding the center point of a polygon or vertex group.
+    /// </remarks>
     private Point CalculateCentroid(List<Point> vertices)
     {
         Logger.EnterFunction("CalculateCentroid", $"count={vertices.Count}");

@@ -7,15 +7,40 @@ using UtilityLibrary;
 using static MeshGeneration.StructureDatabase;
 
 namespace MeshGeneration;
+
+/// <summary>
+/// Handles the generation of Voronoi cells from a spherical Delaunay triangulation.
+/// This class is responsible for creating Voronoi diagrams on a sphere by computing
+/// circumcenters of triangles and organizing them into cells around each site point.
+/// </summary>
 public class VoronoiCellGeneration
 {
+    /// <summary>
+    /// Reference to the structure database containing all mesh data and relationships.
+    /// </summary>
     private StructureDatabase StrDb;
+    
+    /// <summary>
+    /// Spherical triangulator used for triangulating projected points.
+    /// </summary>
+    private SphericalDelaunayTriangulation sphericalTriangulator;
+
+    /// <summary>
+    /// Initializes a new instance of the VoronoiCellGeneration class.
+    /// </summary>
+    /// <param name="db">The structure database containing vertex, edge, and triangle data.</param>
     public VoronoiCellGeneration(StructureDatabase db)
     {
         StrDb = db;
     }
-    SphericalDelaunayTriangulation sphericalTriangulator;
-    public void GenerateVoronoiCells(GenericPercent percent)
+
+    /// <summary>
+/// Generates Voronoi cells for all sites in the structure database.
+/// This method processes each site point, finds incident triangles, computes circumcenters,
+/// and creates Voronoi cells by triangulating the projected circumcenters.
+/// </summary>
+/// <param name="percent">Progress tracking object for monitoring generation progress.</param>
+public void GenerateVoronoiCells(GenericPercent percent)
     {
         Logger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");
         Logger.Info($"Structure Database: {StrDb.Index}");
@@ -112,7 +137,16 @@ public class VoronoiCellGeneration
         Logger.ExitFunction("GenerateVoronoiCells", $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}");
     }
 
-    public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, int index)
+    /// <summary>
+/// Triangulates a set of circumcenter points to form a Voronoi cell.
+/// Projects 3D points onto a 2D plane using the provided normal vector,
+/// then performs Delaunay triangulation to create the cell structure.
+/// </summary>
+/// <param name="unitNorm">The unit normal vector for the projection plane.</param>
+/// <param name="TriCircumcenters">List of circumcenter points to triangulate.</param>
+/// <param name="index">Index to assign to the generated Voronoi cell.</param>
+/// <returns>A new VoronoiCell containing the triangulated structure.</returns>
+public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, int index)
     {
         Logger.EnterFunction("TriangulatePoints", $"unitNorm=({unitNorm.X:F3},{unitNorm.Y:F3},{unitNorm.Z:F3}), count={TriCircumcenters.Count}, index={index}");
         var u = new Vector3(0, 0, 0);
@@ -200,7 +234,14 @@ public class VoronoiCellGeneration
         return GeneratedCell;
     }
 
-    public List<Point> ReorderPoints(List<Point> points)
+    /// <summary>
+/// Reorders points in a list based on their angular position relative to the centroid.
+/// This method calculates the average position of all points and sorts them by angle
+/// to create a consistent ordering for polygon formation.
+/// </summary>
+/// <param name="points">List of points to reorder.</param>
+/// <returns>List of points reordered by angular position.</returns>
+public List<Point> ReorderPoints(List<Point> points)
     {
         Logger.EnterFunction("ReorderPoints", $"count={points.Count}");
         var average = new Vector3(0, 0, 0);
@@ -225,7 +266,17 @@ public class VoronoiCellGeneration
     }
 
 
-    public bool IsPointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c, bool reversed)
+    /// <summary>
+/// Determines if a 2D point lies inside a triangle defined by three vertices.
+/// Uses cross product calculations to check the point's position relative to each edge.
+/// </summary>
+/// <param name="p">The point to test.</param>
+/// <param name="a">First vertex of the triangle.</param>
+/// <param name="b">Second vertex of the triangle.</param>
+/// <param name="c">Third vertex of the triangle.</param>
+/// <param name="reversed">Whether to use reversed winding order for the test.</param>
+/// <returns>True if the point is inside the triangle, false otherwise.</returns>
+public bool IsPointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c, bool reversed)
     {
         Logger.EnterFunction("IsPointInTriangle", $"reversed={reversed}");
         var ab = b - a;
@@ -257,7 +308,15 @@ public class VoronoiCellGeneration
         return true;
     }
 
-    public Point GetOrderedPoint(List<Point> points, int index)
+    /// <summary>
+/// Gets a point from a list using modular arithmetic to handle out-of-bounds indices.
+/// This method wraps around the list boundaries, allowing negative indices and
+/// indices larger than the list size.
+/// </summary>
+/// <param name="points">List of points to access.</param>
+/// <param name="index">Index of the point to retrieve (can be negative or out of bounds).</param>
+/// <returns>The point at the specified index (with wrap-around behavior).</returns>
+public Point GetOrderedPoint(List<Point> points, int index)
     {
         Logger.EnterFunction("GetOrderedPoint", $"index={index}, count={points.Count}");
         Point result;
@@ -277,13 +336,28 @@ public class VoronoiCellGeneration
         return result;
     }
 
-    public float less(Vector2 center, Vector2 a)
+    /// <summary>
+/// Calculates the angle in degrees between a center point and another point.
+/// This method computes the arctangent of the relative position and converts
+/// it to degrees, normalized to the range [0, 360).
+/// </summary>
+/// <param name="center">The center reference point.</param>
+/// <param name="a">The point to calculate the angle for.</param>
+/// <returns>The angle in degrees from the center to point a.</returns>
+public float less(Vector2 center, Vector2 a)
     {
         float a1 = (Mathf.RadToDeg(Mathf.Atan2(a.X - center.X, a.Y - center.Y)) + 360) % 360;
         return a1;
     }
 
-    private List<Point[]> MonotoneChainTriangulation(List<Point> orderedPoints)
+    /// <summary>
+/// Performs fan triangulation on a set of ordered points to create triangles.
+/// This method uses a simple fan triangulation approach suitable for convex polygons,
+/// creating triangles from the first point to consecutive pairs of points.
+/// </summary>
+/// <param name="orderedPoints">List of points ordered in convex polygon formation.</param>
+/// <returns>List of triangle point arrays representing the triangulation.</returns>
+private List<Point[]> MonotoneChainTriangulation(List<Point> orderedPoints)
     {
         Logger.EnterFunction("MonotoneChainTriangulation", $"count={orderedPoints.Count}");
         if (orderedPoints.Count < 3)
@@ -305,7 +379,14 @@ public class VoronoiCellGeneration
         return triangles;
     }
 
-    private List<Point> RemoveCollinearPoints(List<Point> points)
+    /// <summary>
+/// Removes collinear points from a list while preserving the polygon shape.
+/// This method iterates through consecutive triplets of points and removes
+/// the middle point if it lies on the line segment between the other two.
+/// </summary>
+/// <param name="points">List of points to process.</param>
+/// <returns>List of points with collinear points removed.</returns>
+private List<Point> RemoveCollinearPoints(List<Point> points)
     {
         Logger.EnterFunction("RemoveCollinearPoints", $"count={points.Count}");
         if (points.Count <= 3)

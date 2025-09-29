@@ -4,9 +4,34 @@ using static Structures.Biome;
 using UtilityLibrary;
 
 namespace MeshGeneration;
+
+/// <summary>
+/// A static utility class for assigning biomes to celestial body mesh faces based on environmental factors.
+/// Implements biome assignment logic using a Whittaker Diagram approach that considers height, moisture, and latitude.
+/// </summary>
 public static class BiomeAssigner
 {
+    /// <summary>
+    /// The maximum moisture value used in moisture calculations.
+    /// </summary>
     const float MAX_MOISTURE = 2.7f;
+
+    /// <summary>
+    /// Assigns a biome type based on height, moisture, and latitude using a Whittaker Diagram mapping.
+    /// </summary>
+    /// <param name="generator">The celestial body mesh generator containing height information.</param>
+    /// <param name="height">The absolute height value at the location.</param>
+    /// <param name="moisture">The moisture level at the location (0-1 range).</param>
+    /// <param name="latitude">The latitude of the location (-1 to 1 range, where 0 is equator). Defaults to 0f.</param>
+    /// <returns>The assigned BiomeType based on the environmental conditions.</returns>
+    /// <remarks>
+    /// This method normalizes the height to a 0-1 range and then applies a series of conditional checks
+    /// based on the Whittaker Diagram to determine the appropriate biome. The logic considers:
+    /// - High elevation areas become icecaps or mountains
+    /// - Polar regions become tundra or taiga
+    /// - Low elevation areas become ocean or coastal
+    /// - Mid elevation areas vary based on moisture levels (desert, grassland, forest, rainforest)
+    /// </remarks>
     public static BiomeType AssignBiome(CelestialBodyMesh generator, float height, float moisture, float latitude = 0f)
     {
         Logger.EnterFunction("AssignBiome", $"height={height:F3}, moisture={moisture:F3}, lat={latitude:F3}");
@@ -31,6 +56,20 @@ public static class BiomeAssigner
         return result;
     }
 
+    /// <summary>
+    /// Calculates moisture levels for a continent based on geographic factors and random variation.
+    /// </summary>
+    /// <param name="continent">The continent for which to calculate moisture.</param>
+    /// <param name="rng">Random number generator for adding variation.</param>
+    /// <param name="baseMoisture">The base moisture level to start from. Defaults to 0.5f.</param>
+    /// <returns>A calculated moisture value between 0 and MAX_MOISTURE.</returns>
+    /// <remarks>
+    /// The moisture calculation considers several factors:
+    /// - Latitude factor: Based on the continent's Y-coordinate position
+    /// - Size factor: Based on the number of cells in the continent
+    /// - Random variation: Adds natural variation between -0.2 and +0.2
+    /// The final value is normalized using MAX_MOISTURE to ensure it stays within expected ranges.
+    /// </remarks>
     public static float CalculateMoisture(Continent continent, RandomNumberGenerator rng, float baseMoisture = 0.5f)
     {
         Logger.EnterFunction("CalculateMoisture", $"continentStartIdx={continent.StartingIndex}, base={baseMoisture:F2}");
