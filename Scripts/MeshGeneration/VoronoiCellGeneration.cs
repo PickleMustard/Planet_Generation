@@ -19,7 +19,7 @@ public class VoronoiCellGeneration
     /// Reference to the structure database containing all mesh data and relationships.
     /// </summary>
     private StructureDatabase StrDb;
-    
+
     /// <summary>
     /// Spherical triangulator used for triangulating projected points.
     /// </summary>
@@ -35,61 +35,62 @@ public class VoronoiCellGeneration
     }
 
     /// <summary>
-/// Generates Voronoi cells for all sites in the structure database.
-/// This method processes each site point, finds incident triangles, computes circumcenters,
-/// and creates Voronoi cells by triangulating the projected circumcenters.
-/// </summary>
-/// <param name="percent">Progress tracking object for monitoring generation progress.</param>
-public void GenerateVoronoiCells(GenericPercent percent)
+    /// Generates Voronoi cells for all sites in the structure database.
+    /// This method processes each site point, finds incident triangles, computes circumcenters,
+    /// and creates Voronoi cells by triangulating the projected circumcenters.
+    /// </summary>
+    /// <param name="percent">Progress tracking object for monitoring generation progress.</param>
+    public void GenerateVoronoiCells(GenericPercent percent)
     {
         Logger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");
         Logger.Info($"Structure Database: {StrDb.Index}");
         try
         {
-            Logger.Info($"Generating Voronoi Cells: {StrDb.LegacyVertexPoints.Count} Sites");
-            foreach (Point p in StrDb.LegacyVertexPoints.Values)
+            Logger.Info($"Generating Voronoi Cells: {StrDb.PointsById.Count} Sites");
+            Point[] initialPoints = StrDb.PointsById.Values.ToArray();
+            foreach (Point p in initialPoints)
             {
                 // Find all base triangles incident to this site using existing half-edge maps
-                 Edge[] edgesWithPointFrom = StrDb.GetIncidentHalfEdges(p);
-                 HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
- 
-                 foreach (Edge e in edgesWithPointFrom)
-                 {
-                     foreach (Triangle t in StrDb.GetTrianglesByEdgeIndex(e.Index))
-                     {
-                         trianglesWithPoint.Add(t);
-                     }
-                 }
-                 // Build Voronoi vertices (spherical circumcenters of incident triangles)
-                 List<Point> triCircumcenters = new List<Point>();
-                 Logger.Info($"Building Voronoi Cell: incidentTris={trianglesWithPoint.Count}, siteIndex={p.Index}");
-                 foreach (var tri in trianglesWithPoint)
-                 {
-                     Logger.Debug($"Calculating circumcenter for triangle: {tri.Index}");
-                     var v3 = Point.ToVectors3(tri.Points);
-                     var ac = v3[2] - v3[0];
-                     var ab = v3[1] - v3[0];
-                     var abXac = ab.Cross(ac);
-                     var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
-                     Point cc = new Point(v3[0] + vToCircumsphereCenter);
-                     if (triCircumcenters.Contains(cc))
-                     {
-                         Logger.Debug($"Duplicate circumcenter encountered: {cc.Index}");
-                         continue;
-                     }
-                     if (StrDb.circumcenters.ContainsKey(cc.Index))
-                     {
-                         Point existing = StrDb.circumcenters[cc.Index];
-                         triCircumcenters.Add(existing);
-                         Logger.Debug($"Reused existing circumcenter: {existing.Index}");
-                     }
-                     else
-                     {
-                         var stored = StrDb.GetOrCreateCircumcenter(cc.Index, cc.Position);
-                         triCircumcenters.Add(stored);
-                         Logger.Debug($"Added new circumcenter: {stored.Index}");
-                     }
-                 }
+                Edge[] edgesWithPointFrom = StrDb.GetIncidentHalfEdges(p);
+                HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
+
+                foreach (Edge e in edgesWithPointFrom)
+                {
+                    foreach (Triangle t in StrDb.GetTrianglesByEdgeIndex(e.Index))
+                    {
+                        trianglesWithPoint.Add(t);
+                    }
+                }
+                // Build Voronoi vertices (spherical circumcenters of incident triangles)
+                List<Point> triCircumcenters = new List<Point>();
+                Logger.Info($"Building Voronoi Cell: incidentTris={trianglesWithPoint.Count}, siteIndex={p.Index}");
+                foreach (var tri in trianglesWithPoint)
+                {
+                    Logger.Debug($"Calculating circumcenter for triangle: {tri.Index}");
+                    var v3 = Point.ToVectors3(tri.Points);
+                    var ac = v3[2] - v3[0];
+                    var ab = v3[1] - v3[0];
+                    var abXac = ab.Cross(ac);
+                    var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
+                    Point cc = new Point(v3[0] + vToCircumsphereCenter);
+                    if (triCircumcenters.Contains(cc))
+                    {
+                        Logger.Debug($"Duplicate circumcenter encountered: {cc.Index}");
+                        continue;
+                    }
+                    if (StrDb.circumcenters.ContainsKey(cc.Index))
+                    {
+                        Point existing = StrDb.circumcenters[cc.Index];
+                        triCircumcenters.Add(existing);
+                        Logger.Debug($"Reused existing circumcenter: {existing.Index}");
+                    }
+                    else
+                    {
+                        var stored = StrDb.GetOrCreateCircumcenter(cc.Index, cc.Position);
+                        triCircumcenters.Add(stored);
+                        Logger.Debug($"Added new circumcenter: {stored.Index}");
+                    }
+                }
 
                 if (triCircumcenters.Count == 0)
                 {
@@ -131,22 +132,22 @@ public void GenerateVoronoiCells(GenericPercent percent)
         }
         catch (Exception e)
         {
+            GD.PrintRaw($"\u001b[2J\u001b[H");
             Logger.Error($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
         }
-        StrDb.Validate("post-voronoi");
         Logger.ExitFunction("GenerateVoronoiCells", $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}");
     }
 
     /// <summary>
-/// Triangulates a set of circumcenter points to form a Voronoi cell.
-/// Projects 3D points onto a 2D plane using the provided normal vector,
-/// then performs Delaunay triangulation to create the cell structure.
-/// </summary>
-/// <param name="unitNorm">The unit normal vector for the projection plane.</param>
-/// <param name="TriCircumcenters">List of circumcenter points to triangulate.</param>
-/// <param name="index">Index to assign to the generated Voronoi cell.</param>
-/// <returns>A new VoronoiCell containing the triangulated structure.</returns>
-public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, int index)
+    /// Triangulates a set of circumcenter points to form a Voronoi cell.
+    /// Projects 3D points onto a 2D plane using the provided normal vector,
+    /// then performs Delaunay triangulation to create the cell structure.
+    /// </summary>
+    /// <param name="unitNorm">The unit normal vector for the projection plane.</param>
+    /// <param name="TriCircumcenters">List of circumcenter points to triangulate.</param>
+    /// <param name="index">Index to assign to the generated Voronoi cell.</param>
+    /// <returns>A new VoronoiCell containing the triangulated structure.</returns>
+    public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, int index)
     {
         Logger.EnterFunction("TriangulatePoints", $"unitNorm=({unitNorm.X:F3},{unitNorm.Y:F3},{unitNorm.Z:F3}), count={TriCircumcenters.Count}, index={index}");
         var u = new Vector3(0, 0, 0);
@@ -199,18 +200,18 @@ public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcent
         {
             // Canonical registration
             StrDb.AddCellForVertex(p, GeneratedCell);
-            // Legacy mirror preserved below
-            if (!StrDb.CellMap.ContainsKey(p))
-            {
-                StrDb.CellMap.Add(p, new HashSet<VoronoiCell>());
-                StrDb.CellMap[p].Add(GeneratedCell);
-                Logger.Debug($"CellMap: added new key pointIndex={p.Index} with cell={GeneratedCell.Index}");
-            }
-            else
-            {
-                StrDb.CellMap[p].Add(GeneratedCell);
-                Logger.Debug($"CellMap: appended cell={GeneratedCell.Index} to pointIndex={p.Index}");
-            }
+            //// Legacy mirror preserved below
+            //if (!StrDb.CellMap.ContainsKey(p))
+            //{
+            //    StrDb.CellMap.Add(p, new HashSet<VoronoiCell>());
+            //    StrDb.CellMap[p].Add(GeneratedCell);
+            //    Logger.Debug($"CellMap: added new key pointIndex={p.Index} with cell={GeneratedCell.Index}");
+            //}
+            //else
+            //{
+            //    StrDb.CellMap[p].Add(GeneratedCell);
+            //    Logger.Debug($"CellMap: appended cell={GeneratedCell.Index} to pointIndex={p.Index}");
+            //}
         }
         foreach (Edge e in CellEdges)
         {
@@ -235,13 +236,13 @@ public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcent
     }
 
     /// <summary>
-/// Reorders points in a list based on their angular position relative to the centroid.
-/// This method calculates the average position of all points and sorts them by angle
-/// to create a consistent ordering for polygon formation.
-/// </summary>
-/// <param name="points">List of points to reorder.</param>
-/// <returns>List of points reordered by angular position.</returns>
-public List<Point> ReorderPoints(List<Point> points)
+    /// Reorders points in a list based on their angular position relative to the centroid.
+    /// This method calculates the average position of all points and sorts them by angle
+    /// to create a consistent ordering for polygon formation.
+    /// </summary>
+    /// <param name="points">List of points to reorder.</param>
+    /// <returns>List of points reordered by angular position.</returns>
+    public List<Point> ReorderPoints(List<Point> points)
     {
         Logger.EnterFunction("ReorderPoints", $"count={points.Count}");
         var average = new Vector3(0, 0, 0);
@@ -267,16 +268,16 @@ public List<Point> ReorderPoints(List<Point> points)
 
 
     /// <summary>
-/// Determines if a 2D point lies inside a triangle defined by three vertices.
-/// Uses cross product calculations to check the point's position relative to each edge.
-/// </summary>
-/// <param name="p">The point to test.</param>
-/// <param name="a">First vertex of the triangle.</param>
-/// <param name="b">Second vertex of the triangle.</param>
-/// <param name="c">Third vertex of the triangle.</param>
-/// <param name="reversed">Whether to use reversed winding order for the test.</param>
-/// <returns>True if the point is inside the triangle, false otherwise.</returns>
-public bool IsPointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c, bool reversed)
+    /// Determines if a 2D point lies inside a triangle defined by three vertices.
+    /// Uses cross product calculations to check the point's position relative to each edge.
+    /// </summary>
+    /// <param name="p">The point to test.</param>
+    /// <param name="a">First vertex of the triangle.</param>
+    /// <param name="b">Second vertex of the triangle.</param>
+    /// <param name="c">Third vertex of the triangle.</param>
+    /// <param name="reversed">Whether to use reversed winding order for the test.</param>
+    /// <returns>True if the point is inside the triangle, false otherwise.</returns>
+    public bool IsPointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c, bool reversed)
     {
         Logger.EnterFunction("IsPointInTriangle", $"reversed={reversed}");
         var ab = b - a;
@@ -309,14 +310,14 @@ public bool IsPointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c, bool r
     }
 
     /// <summary>
-/// Gets a point from a list using modular arithmetic to handle out-of-bounds indices.
-/// This method wraps around the list boundaries, allowing negative indices and
-/// indices larger than the list size.
-/// </summary>
-/// <param name="points">List of points to access.</param>
-/// <param name="index">Index of the point to retrieve (can be negative or out of bounds).</param>
-/// <returns>The point at the specified index (with wrap-around behavior).</returns>
-public Point GetOrderedPoint(List<Point> points, int index)
+    /// Gets a point from a list using modular arithmetic to handle out-of-bounds indices.
+    /// This method wraps around the list boundaries, allowing negative indices and
+    /// indices larger than the list size.
+    /// </summary>
+    /// <param name="points">List of points to access.</param>
+    /// <param name="index">Index of the point to retrieve (can be negative or out of bounds).</param>
+    /// <returns>The point at the specified index (with wrap-around behavior).</returns>
+    public Point GetOrderedPoint(List<Point> points, int index)
     {
         Logger.EnterFunction("GetOrderedPoint", $"index={index}, count={points.Count}");
         Point result;
@@ -337,27 +338,27 @@ public Point GetOrderedPoint(List<Point> points, int index)
     }
 
     /// <summary>
-/// Calculates the angle in degrees between a center point and another point.
-/// This method computes the arctangent of the relative position and converts
-/// it to degrees, normalized to the range [0, 360).
-/// </summary>
-/// <param name="center">The center reference point.</param>
-/// <param name="a">The point to calculate the angle for.</param>
-/// <returns>The angle in degrees from the center to point a.</returns>
-public float less(Vector2 center, Vector2 a)
+    /// Calculates the angle in degrees between a center point and another point.
+    /// This method computes the arctangent of the relative position and converts
+    /// it to degrees, normalized to the range [0, 360).
+    /// </summary>
+    /// <param name="center">The center reference point.</param>
+    /// <param name="a">The point to calculate the angle for.</param>
+    /// <returns>The angle in degrees from the center to point a.</returns>
+    public float less(Vector2 center, Vector2 a)
     {
         float a1 = (Mathf.RadToDeg(Mathf.Atan2(a.X - center.X, a.Y - center.Y)) + 360) % 360;
         return a1;
     }
 
     /// <summary>
-/// Performs fan triangulation on a set of ordered points to create triangles.
-/// This method uses a simple fan triangulation approach suitable for convex polygons,
-/// creating triangles from the first point to consecutive pairs of points.
-/// </summary>
-/// <param name="orderedPoints">List of points ordered in convex polygon formation.</param>
-/// <returns>List of triangle point arrays representing the triangulation.</returns>
-private List<Point[]> MonotoneChainTriangulation(List<Point> orderedPoints)
+    /// Performs fan triangulation on a set of ordered points to create triangles.
+    /// This method uses a simple fan triangulation approach suitable for convex polygons,
+    /// creating triangles from the first point to consecutive pairs of points.
+    /// </summary>
+    /// <param name="orderedPoints">List of points ordered in convex polygon formation.</param>
+    /// <returns>List of triangle point arrays representing the triangulation.</returns>
+    private List<Point[]> MonotoneChainTriangulation(List<Point> orderedPoints)
     {
         Logger.EnterFunction("MonotoneChainTriangulation", $"count={orderedPoints.Count}");
         if (orderedPoints.Count < 3)
@@ -380,13 +381,13 @@ private List<Point[]> MonotoneChainTriangulation(List<Point> orderedPoints)
     }
 
     /// <summary>
-/// Removes collinear points from a list while preserving the polygon shape.
-/// This method iterates through consecutive triplets of points and removes
-/// the middle point if it lies on the line segment between the other two.
-/// </summary>
-/// <param name="points">List of points to process.</param>
-/// <returns>List of points with collinear points removed.</returns>
-private List<Point> RemoveCollinearPoints(List<Point> points)
+    /// Removes collinear points from a list while preserving the polygon shape.
+    /// This method iterates through consecutive triplets of points and removes
+    /// the middle point if it lies on the line segment between the other two.
+    /// </summary>
+    /// <param name="points">List of points to process.</param>
+    /// <returns>List of points with collinear points removed.</returns>
+    private List<Point> RemoveCollinearPoints(List<Point> points)
     {
         Logger.EnterFunction("RemoveCollinearPoints", $"count={points.Count}");
         if (points.Count <= 3)

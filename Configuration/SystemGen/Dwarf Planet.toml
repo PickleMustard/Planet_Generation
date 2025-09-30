@@ -1,3 +1,6 @@
+[categories]
+potential = ["mythology", "scientists", "explorers", "adjectives"]
+
 [mythology]
 names = [
   "Skadi",

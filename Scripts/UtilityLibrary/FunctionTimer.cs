@@ -330,7 +330,7 @@ namespace UtilityLibrary
             GD.PrintRaw("\x1b[?25h");
         }
 
-        private static void ResetScrollRegionAndClear()
+        public static void ResetScrollRegionAndClear()
         {
             if (!scrollRegionApplied) return;
 

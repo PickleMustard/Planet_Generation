@@ -1,3 +1,6 @@
+[categories]
+potential = ["mythology", "scientists", "explorers", "adjectives"]
+
 [mythology]
 names = [
   "Hephaestus",
@@ -215,9 +218,12 @@ names = [
 ]
 
 [template]
-position = [100, 0, 0]
+position = [150, 0, 0]
 velocity = [0, 10, 0]
 mass = 10
+
+[mesh]
+size = 12
 
 [mesh.base_mesh]
 subdivisions = 2

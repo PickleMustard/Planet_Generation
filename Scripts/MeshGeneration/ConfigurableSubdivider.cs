@@ -19,12 +19,12 @@ public class ConfigurableSubdivider
     /// The structure database used for managing points, edges, and faces during subdivision.
     /// </summary>
     private StructureDatabase StrDb;
-    
+
     /// <summary>
     /// Dictionary mapping vertex distribution types to their corresponding vertex generators.
     /// </summary>
     private readonly Dictionary<VertexDistribution, IVertexGenerator> _generators;
-    
+
     /// <summary>
     /// Initializes a new instance of the ConfigurableSubdivider class.
     /// </summary>
@@ -50,7 +50,7 @@ public class ConfigurableSubdivider
     /// <returns>An array of new faces created from the subdivision process.</returns>
     /// <remarks>
     /// This method generates vertices along each edge of the face and creates interior points,
-    /// then constructs new triangular faces using barycentric subdivision. The number of 
+    /// then constructs new triangular faces using barycentric subdivision. The number of
     /// resulting faces depends on the verticesToGenerate parameter.
     /// </remarks>
     public Face[] SubdivideFace(Face face, int verticesToGenerate, VertexDistribution distribution = VertexDistribution.Linear)
@@ -162,10 +162,10 @@ public class ConfigurableSubdivider
         List<Face> faces = new List<Face>();
         if (verticesToGenerate == 1)
         {
-            faces.Add(new Face(face.v[0], edgePoints[0][0], edgePoints[2][0], new Edge(face.v[0], edgePoints[0][0]), new Edge(edgePoints[0][0], edgePoints[2][0]), new Edge(edgePoints[2][0], face.v[0])));
-            faces.Add(new Face(edgePoints[0][0], face.v[1], edgePoints[1][0], new Edge(edgePoints[0][0], face.v[1]), new Edge(face.v[1], edgePoints[1][0]), new Edge(edgePoints[1][0], edgePoints[0][0])));
-            faces.Add(new Face(edgePoints[1][0], face.v[2], edgePoints[2][0], new Edge(edgePoints[1][0], face.v[2]), new Edge(face.v[2], edgePoints[2][0]), new Edge(edgePoints[2][0], edgePoints[1][0])));
-            faces.Add(new Face(edgePoints[2][0], edgePoints[0][0], edgePoints[1][0], new Edge(edgePoints[2][0], edgePoints[0][0]), new Edge(edgePoints[0][0], edgePoints[1][0]), new Edge(edgePoints[1][0], edgePoints[2][0])));
+            faces.Add(new Face(face.v[0], edgePoints[0][0], edgePoints[2][0], StrDb.AddEdge(face.v[0], edgePoints[0][0]), StrDb.AddEdge(edgePoints[0][0], edgePoints[2][0]), StrDb.AddEdge(edgePoints[2][0], face.v[0])));
+            faces.Add(new Face(edgePoints[0][0], face.v[1], edgePoints[1][0], StrDb.AddEdge(edgePoints[0][0], face.v[1]), StrDb.AddEdge(face.v[1], edgePoints[1][0]), StrDb.AddEdge(edgePoints[1][0], edgePoints[0][0])));
+            faces.Add(new Face(edgePoints[1][0], face.v[2], edgePoints[2][0], StrDb.AddEdge(edgePoints[1][0], face.v[2]), StrDb.AddEdge(face.v[2], edgePoints[2][0]), StrDb.AddEdge(edgePoints[2][0], edgePoints[1][0])));
+            faces.Add(new Face(edgePoints[2][0], edgePoints[0][0], edgePoints[1][0], StrDb.AddEdge(edgePoints[2][0], edgePoints[0][0]), StrDb.AddEdge(edgePoints[0][0], edgePoints[1][0]), StrDb.AddEdge(edgePoints[1][0], edgePoints[2][0])));
         }
         else if (verticesToGenerate == 2)
         {

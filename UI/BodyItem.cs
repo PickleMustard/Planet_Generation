@@ -19,6 +19,7 @@ public partial class BodyItem : VBoxContainer
     public Action<BodyItem> OnRemoveRequested;
 
     private const float Limit = 10000f; // constrain within ±10,000 units (mass 0..10,000)
+    private const float MassLimit = 100000000f; // constrain within ±100,000,000,000 units (mass 0..100,000,000,000)
 
     public override void _Ready()
     {
@@ -81,8 +82,8 @@ public partial class BodyItem : VBoxContainer
         if (mass != null)
         {
             mass.MinValue = 0.0;
-            mass.MaxValue = Limit;
-            mass.AllowGreater = false;
+            mass.MaxValue = MassLimit;
+            mass.AllowGreater = true;
             mass.AllowLesser = false;
         }
     }
@@ -101,7 +102,7 @@ public partial class BodyItem : VBoxContainer
         if (velY != null) velY.Value = Mathf.Clamp(t.Velocity.Y, -Limit, Limit);
         if (velZ != null) velZ.Value = Mathf.Clamp(t.Velocity.Z, -Limit, Limit);
 
-        if (mass != null) mass.Value = Mathf.Clamp(t.Mass, 0f, Limit);
+        if (mass != null) mass.Value = Mathf.Clamp(t.Mass, 0f, MassLimit);
     }
 
     public void UpdateHeaderFromBodyType(string typeName)
@@ -125,7 +126,7 @@ public partial class BodyItem : VBoxContainer
         float cvy = Mathf.Clamp((float)GetNode<SpinBox>("Content/VelocityContent/velY").Value, -Limit, Limit);
         float cvz = Mathf.Clamp((float)GetNode<SpinBox>("Content/VelocityContent/velZ").Value, -Limit, Limit);
 
-        float cm = Mathf.Clamp((float)GetNode<SpinBox>("Content/MassContent/mass").Value, 0f, Limit);
+        float cm = Mathf.Clamp((float)GetNode<SpinBox>("Content/MassContent/mass").Value, 0f, MassLimit);
 
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
         dict.Add("Position", new Vector3(cx, cy, cz));

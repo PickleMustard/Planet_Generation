@@ -19,27 +19,27 @@ public class BaseMeshGeneration
     /// Static counter used for vertex deformation calculations.
     /// </summary>
     private static int currentIndex = 0;
-    
+
     /// <summary>
     /// The golden ratio constant (1 + sqrt(5)) / 2, used for dodecahedron vertex calculations.
     /// </summary>
     static private float TAU = (1 + (float)Math.Sqrt(5)) / 2;
-    
+
     /// <summary>
     /// Random number generator for procedural generation and deformation.
     /// </summary>
     private RandomNumberGenerator rand;
-    
+
     /// <summary>
     /// Number of subdivision levels to apply to the base mesh.
     /// </summary>
     private int subdivide;
-    
+
     /// <summary>
     /// Array specifying the number of vertices to generate per edge at each subdivision level.
     /// </summary>
     private int[] VerticesPerEdge;
-    
+
     /// <summary>
     /// Reference to the configurable subdivider for mesh subdivision operations.
     /// </summary>
@@ -49,27 +49,27 @@ public class BaseMeshGeneration
     /// Current vertex index counter for mesh generation.
     /// </summary>
     private int VertexIndex = 0;
-    
+
     /// <summary>
     /// List of vertex normals for the generated mesh.
     /// </summary>
     private List<Vector3> normals;
-    
+
     /// <summary>
     /// List of UV coordinates for texture mapping.
     /// </summary>
     private List<Vector2> uvs;
-    
+
     /// <summary>
     /// List of triangle indices defining the mesh topology.
     /// </summary>
     private List<int> indices;
-    
+
     /// <summary>
     /// List of faces that make up the current mesh state.
     /// </summary>
     private List<Face> faces;
-    
+
     /// <summary>
     /// Reference to the structure database for managing mesh data.
     /// </summary>
@@ -112,18 +112,18 @@ public class BaseMeshGeneration
     {
         Logger.EnterFunction("PopulateArrays");
         List<Point> cartesionPoints = new List<Point> {
-                        new Point(new Vector3(0, 1, TAU)),
-                        new Point( new Vector3(0, -1, TAU)),
-                        new Point( new Vector3(0, -1, -TAU)),
-                        new Point( new Vector3(0, 1, -TAU)),
-                        new Point(new Vector3(1, TAU, 0)),
-                        new Point( new Vector3(-1, TAU, 0)),
-                        new Point( new Vector3(-1, -TAU, 0)),
-                        new Point( new Vector3(1, -TAU, 0)),
-                        new Point(new Vector3(TAU, 0, 1)),
-                        new Point( new Vector3(TAU, 0, -1)),
-                        new Point( new Vector3(-TAU, 0, -1)),
-                        new Point( new Vector3(-TAU, 0, 1))
+                        new Point(new Vector3(0, 1, TAU).Normalized() * 100f),
+                        new Point( new Vector3(0, -1, TAU).Normalized() * 100f),
+                        new Point( new Vector3(0, -1, -TAU).Normalized() * 100f),
+                        new Point( new Vector3(0, 1, -TAU).Normalized() * 100f),
+                        new Point(new Vector3(1, TAU, 0).Normalized() * 100f),
+                        new Point( new Vector3(-1, TAU, 0).Normalized() * 100f),
+                        new Point( new Vector3(-1, -TAU, 0).Normalized() * 100f),
+                        new Point( new Vector3(1, -TAU, 0).Normalized() * 100f),
+                        new Point(new Vector3(TAU, 0, 1).Normalized() * 100f),
+                        new Point( new Vector3(TAU, 0, -1).Normalized() * 100f),
+                        new Point( new Vector3(-TAU, 0, -1).Normalized() * 100f),
+                        new Point( new Vector3(-TAU, 0, 1).Normalized() * 100f)
         };
         VertexIndex = 12;
         normals = new List<Vector3>();
@@ -131,7 +131,7 @@ public class BaseMeshGeneration
         for (int i = 0; i < cartesionPoints.Count; i++)
         {
             var p = cartesionPoints[i];
-            var pos = p.Position.Normalized() * 100f;
+            var pos = p.Position.Normalized();
             var rp = StrDb.GetOrCreatePoint(p.Index, pos);
             cartesionPoints[i] = rp;
             normals.Add(new Vector3(rp.Position.X, rp.Position.Y, rp.Position.Z));
@@ -228,7 +228,7 @@ public class BaseMeshGeneration
             // Legacy edge additions are handled internally by AddTriangle
             added++;
         }
-        Logger.Info($"GenerateTriangleList: added={added} triangles, totalEdges={StrDb.Edges.Count}, BaseTris={StrDb.BaseTris.Count}");
+        //Logger.Info($"GenerateTriangleList: added={added} triangles, totalEdges={StrDb.Edges.Count}, BaseTris={StrDb.BaseTris.Count}");
         Logger.ExitFunction("GenerateTriangleList");
     }
 
@@ -244,7 +244,7 @@ public class BaseMeshGeneration
     /// The deformation process involves two main phases:
     /// 1. Edge flipping: Randomly selects edges and flips them if it improves triangle quality
     /// 2. Vertex smoothing: Moves vertices toward the average center of adjacent triangles
-    /// 
+    ///
     /// This process helps create more evenly distributed triangles and reduces mesh artifacts.
     /// The method uses parallel processing for better performance with multiple deformation cycles.
     /// </remarks>
@@ -341,7 +341,7 @@ public class BaseMeshGeneration
                     HashSet<Triangle> trianglesWithPoint = new HashSet<Triangle>();
                     foreach (Edge e in edgesWithPoint)
                     {
-                        foreach (Triangle t in StrDb.EdgeTriangles[e])
+                        foreach (Triangle t in StrDb.GetTrianglesByEdgeIndex(e.Index))
                         {
                             trianglesWithPoint.Add(t);
                         }
@@ -367,6 +367,7 @@ public class BaseMeshGeneration
         }
         catch (Exception e)
         {
+            GD.PrintRaw($"\u001b[2J\u001b[H");
             Logger.Error($"DeformMesh Error: {e.Message}\n{e.StackTrace}", "ERROR");
             GD.PrintErr($"Error in DeformMesh: {e.Message}\n{e.StackTrace}");
         }

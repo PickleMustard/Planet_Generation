@@ -1,5 +1,5 @@
 namespace PlanetGeneration;
 public static class OrbitalMath
 {
-    public const float GRAVITATIONAL_CONSTANT = 6.6743f;
+    public const float GRAVITATIONAL_CONSTANT = .0067394967f;
 }
