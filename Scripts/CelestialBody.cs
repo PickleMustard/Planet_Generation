@@ -26,6 +26,7 @@ public partial class CelestialBody : Node3D
         this.Velocity = velocity;
         this.Mesh = mesh;
         this.AddChild(mesh);
+
     }
 
     override public void _Ready()
@@ -49,7 +50,7 @@ public partial class CelestialBody : Node3D
             }
         }
 
-        var deltaV = TotalForce * (float)delta;
+        var deltaV = (TotalForce / Mass) * (float)delta;
         Velocity += deltaV;
         GlobalPosition += Velocity * (float)delta;
     }
@@ -57,6 +58,7 @@ public partial class CelestialBody : Node3D
     public void GenerateMesh()
     {
         var meshParams = SystemGenTemplates.GetMeshParams(Type, Mesh.Seed);
+        this.Name = (String)meshParams["name"];
         Mesh.ConfigureFrom(meshParams);
         Mesh.GenerateMesh();
     }

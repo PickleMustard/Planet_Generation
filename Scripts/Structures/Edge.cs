@@ -52,7 +52,7 @@ public class Edge : IEdge, IEquatable<Edge>
 
     public bool Equals(Edge other)
     {
-        return P == other.P && Q == other.Q;
+        return other.Index == Index;
     }
 
     public Edge ReverseEdge()
@@ -62,15 +62,19 @@ public class Edge : IEdge, IEquatable<Edge>
 
     public static bool operator ==(Edge e1, Edge e2)
     {
+        if (e1 is null || e2 is null) return false;
         return e1.Equals(e2);
     }
 
     public static bool operator !=(Edge e1, Edge e2)
     {
+        if (e1 is null || e2 is null) return false;
         return !e1.Equals(e2);
     }
     public override bool Equals(Object obj)
     {
+        if (obj is null) return false;
+        if (obj is Edge e) return Equals(e);
         return false;
     }
 
