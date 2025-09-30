@@ -61,10 +61,24 @@ namespace UtilityLibrary
                 int subdivisions = 1;
                 int numAbberations = 3;
                 int numDeformationCycles = 3;
+                int size = 5;
+                String category = "mythology";
+                String name = "";
                 (int minVpe, int maxVpe) vpeRange = (1, 2);
 
+                if (table.HasKey("categories") && table["categories"] is TomlTable categories)
+                {
+                    var potentialCategories = ReadStringArray(categories, "potential", new String[] { "mythology" });
+                    category = potentialCategories[RandomInRangeInt(rng, (0, potentialCategories.Length - 1))];
+                }
+                if (table.HasKey(category) && table[category] is TomlTable nameArray)
+                {
+                    var potentialNames = ReadStringArray(nameArray, "names", new String[] { "mythology" });
+                    name = potentialNames[RandomInRangeInt(rng, (0, potentialNames.Length - 1))];
+                }
                 if (table.HasKey("mesh") && table["mesh"] is TomlTable mesh)
                 {
+                    size = ReadInt(mesh, "size", 5);
                     if (mesh.HasKey("base_mesh") && mesh["base_mesh"] is TomlTable baseMesh)
                     {
                         subdivisions = ReadInt(baseMesh, "subdivisions", 1);
@@ -99,6 +113,8 @@ namespace UtilityLibrary
                     vpeArray[i] = pickMin ? vpeRange.minVpe : vpeRange.maxVpe;
                 }
 
+                dict["name"] = name;
+                dict["size"] = size;
                 dict["subdivisions"] = subdivisions;
                 dict["vertices_per_edge"] = vpeArray;
                 dict["num_abberations"] = numAbberations;
@@ -232,6 +248,21 @@ namespace UtilityLibrary
             }
             var single = ReadFloat(table, key, fallback.Item1);
             return (single, single);
+        }
+
+        private static String[] ReadStringArray(TomlTable table, String key, String[] fallback)
+        {
+            if (!table.HasKey(key)) return fallback;
+            if (table[key] is TomlArray arr && arr.ChildrenCount > 0)
+            {
+                String[] result = new String[arr.ChildrenCount];
+                for (int i = 0; i < arr.ChildrenCount; i++)
+                {
+                    result[i] = arr[i].ToString();
+                }
+                return result;
+            }
+            return fallback;
         }
 
         private static float NodeToFloat(TomlNode node, float fallback)

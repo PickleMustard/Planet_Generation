@@ -1,16 +1,244 @@
+[categories]
+potential = ["mythology", "scientists", "explorers", "adjectives"]
+
 [mythology]
-names = ["Ra","Amaterasu","Helios","Surya","Inti","Tonatiuh","Sol","Sunna","Apollo","Horus","Belenus","Lugh","Huitzilopochtli","Kinich Ahau","Utu","Shamash","Mithra","Malakbel","Sol Invictus","Dazhbog","Saule","Arinna","Tawa","Nanahuatzin","Xihe","Houyi","Kagutsuchi","Agni","Surtr","Brigid","Pele","Sekhmet","Bastet","Atum","Aten","Hathor","Hvare Khshaeta","Khors","Xiuhtecuhtli","Ushas","Eos","Aurora","Shapash","Hyperion","Theia","Anyanwu","Grannus","Mawu Lisa","Amun Ra","Aruna"]
+names = [
+  "Ra",
+  "Amaterasu",
+  "Helios",
+  "Surya",
+  "Inti",
+  "Tonatiuh",
+  "Sol",
+  "Sunna",
+  "Apollo",
+  "Horus",
+  "Belenus",
+  "Lugh",
+  "Huitzilopochtli",
+  "Kinich Ahau",
+  "Utu",
+  "Shamash",
+  "Mithra",
+  "Malakbel",
+  "Sol Invictus",
+  "Dazhbog",
+  "Saule",
+  "Arinna",
+  "Tawa",
+  "Nanahuatzin",
+  "Xihe",
+  "Houyi",
+  "Kagutsuchi",
+  "Agni",
+  "Surtr",
+  "Brigid",
+  "Pele",
+  "Sekhmet",
+  "Bastet",
+  "Atum",
+  "Aten",
+  "Hathor",
+  "Hvare Khshaeta",
+  "Khors",
+  "Xiuhtecuhtli",
+  "Ushas",
+  "Eos",
+  "Aurora",
+  "Shapash",
+  "Hyperion",
+  "Theia",
+  "Anyanwu",
+  "Grannus",
+  "Mawu Lisa",
+  "Amun Ra",
+  "Aruna",
+]
 
 [scientists]
-names = ["Galileo Galilei","Nicolaus Copernicus","Johannes Kepler","Isaac Newton","Albert Einstein","Edwin Hubble","Cecilia Payne Gaposchkin","Vera Rubin","Subrahmanyan Chandrasekhar","Annie Jump Cannon","Henrietta Leavitt","Harlow Shapley","Arthur Eddington","Tycho Brahe","Christiaan Huygens","Caroline Herschel","William Herschel","Fritz Zwicky","George Gamow","Meghnad Saha","Abdus Salam","Satyendra Nath Bose","Niels Bohr","Max Planck","Erwin Schrodinger","Werner Heisenberg","Marie Curie","Pierre Curie","Lise Meitner","Chien Shiung Wu","Lev Landau","Andrei Sakharov","Richard Feynman","Stephen Hawking","Kip Thorne","Jocelyn Bell Burnell","Beatrice Tinsley","Jan Oort","Al Khwarizmi","Ibn al Haytham","Aryabhata","Bhaskara II","Omar Khayyam","Hipparchus","Claudius Ptolemy","Karl Schwarzschild","Tsung Dao Lee","Chen Ning Yang","Hideki Yukawa","Hannes Alfven"]
+names = [
+  "Galileo Galilei",
+  "Nicolaus Copernicus",
+  "Johannes Kepler",
+  "Isaac Newton",
+  "Albert Einstein",
+  "Edwin Hubble",
+  "Cecilia Payne Gaposchkin",
+  "Vera Rubin",
+  "Subrahmanyan Chandrasekhar",
+  "Annie Jump Cannon",
+  "Henrietta Leavitt",
+  "Harlow Shapley",
+  "Arthur Eddington",
+  "Tycho Brahe",
+  "Christiaan Huygens",
+  "Caroline Herschel",
+  "William Herschel",
+  "Fritz Zwicky",
+  "George Gamow",
+  "Meghnad Saha",
+  "Abdus Salam",
+  "Satyendra Nath Bose",
+  "Niels Bohr",
+  "Max Planck",
+  "Erwin Schrodinger",
+  "Werner Heisenberg",
+  "Marie Curie",
+  "Pierre Curie",
+  "Lise Meitner",
+  "Chien Shiung Wu",
+  "Lev Landau",
+  "Andrei Sakharov",
+  "Richard Feynman",
+  "Stephen Hawking",
+  "Kip Thorne",
+  "Jocelyn Bell Burnell",
+  "Beatrice Tinsley",
+  "Jan Oort",
+  "Al Khwarizmi",
+  "Ibn al Haytham",
+  "Aryabhata",
+  "Bhaskara II",
+  "Omar Khayyam",
+  "Hipparchus",
+  "Claudius Ptolemy",
+  "Karl Schwarzschild",
+  "Tsung Dao Lee",
+  "Chen Ning Yang",
+  "Hideki Yukawa",
+  "Hannes Alfven",
+]
 
 [explorers]
-names = ["Ferdinand Magellan","Christopher Columbus","Vasco da Gama","James Cook","Zheng He","Ibn Battuta","Marco Polo","Roald Amundsen","Robert Falcon Scott","Ernest Shackleton","David Livingstone","Henry Morton Stanley","Bartolomeu Dias","Amerigo Vespucci","Leif Erikson","Erik the Red","John Cabot","Vitus Bering","Abel Tasman","Samuel de Champlain","Juan Ponce de Leon","Francisco de Orellana","Alexander von Humboldt","Mungo Park","Nikolai Przhevalsky","Xuanzang","Kupe","Tupaia","Jacques Cousteau","Sylvia Earle","Yuri Gagarin","Valentina Tereshkova","Neil Armstrong","Buzz Aldrin","Michael Collins","John Glenn","Sally Ride","Mae Jemison","Chris Hadfield","Peggy Whitson","Tim Peake","Sunita Williams","Kalpana Chawla","Guion Bluford","Alan Shepard","Jim Lovell","Frank Borman","Alexei Leonov","Yang Liwei","Samantha Cristoforetti"]
+names = [
+  "Ferdinand Magellan",
+  "Christopher Columbus",
+  "Vasco da Gama",
+  "James Cook",
+  "Zheng He",
+  "Ibn Battuta",
+  "Marco Polo",
+  "Roald Amundsen",
+  "Robert Falcon Scott",
+  "Ernest Shackleton",
+  "David Livingstone",
+  "Henry Morton Stanley",
+  "Bartolomeu Dias",
+  "Amerigo Vespucci",
+  "Leif Erikson",
+  "Erik the Red",
+  "John Cabot",
+  "Vitus Bering",
+  "Abel Tasman",
+  "Samuel de Champlain",
+  "Juan Ponce de Leon",
+  "Francisco de Orellana",
+  "Alexander von Humboldt",
+  "Mungo Park",
+  "Nikolai Przhevalsky",
+  "Xuanzang",
+  "Kupe",
+  "Tupaia",
+  "Jacques Cousteau",
+  "Sylvia Earle",
+  "Yuri Gagarin",
+  "Valentina Tereshkova",
+  "Neil Armstrong",
+  "Buzz Aldrin",
+  "Michael Collins",
+  "John Glenn",
+  "Sally Ride",
+  "Mae Jemison",
+  "Chris Hadfield",
+  "Peggy Whitson",
+  "Tim Peake",
+  "Sunita Williams",
+  "Kalpana Chawla",
+  "Guion Bluford",
+  "Alan Shepard",
+  "Jim Lovell",
+  "Frank Borman",
+  "Alexei Leonov",
+  "Yang Liwei",
+  "Samantha Cristoforetti",
+]
 
 [adjectives]
-names = ["Radiant","Luminous","Blazing","Incandescent","Aureate","Gilded","Solar","Stellar","Dazzling","Fiery","Resplendent","Effulgent","Glimmering","Scintillant","Shimmering","Gleaming","Beaming","Brilliant","Flaming","Sunlit","Sunbright","Golden","Auroral","Dawnlit","Starborn","Starfire","Fire Crowned","Lightforged","Flame Kissed","Emberbright","Skybright","Coronal","Photospheric","Scorching","Searing","Smoldering","Glowing","Iridescent","Opalescent","Lambent","Glittering","Glistening","Sunward","Solarborn","Heliacal","Aflame","Starry","Flamewreathed","Emberlit","Celestial"]
+names = [
+  "Radiant",
+  "Luminous",
+  "Blazing",
+  "Incandescent",
+  "Aureate",
+  "Gilded",
+  "Solar",
+  "Stellar",
+  "Dazzling",
+  "Fiery",
+  "Resplendent",
+  "Effulgent",
+  "Glimmering",
+  "Scintillant",
+  "Shimmering",
+  "Gleaming",
+  "Beaming",
+  "Brilliant",
+  "Flaming",
+  "Sunlit",
+  "Sunbright",
+  "Golden",
+  "Auroral",
+  "Dawnlit",
+  "Starborn",
+  "Starfire",
+  "Fire Crowned",
+  "Lightforged",
+  "Flame Kissed",
+  "Emberbright",
+  "Skybright",
+  "Coronal",
+  "Photospheric",
+  "Scorching",
+  "Searing",
+  "Smoldering",
+  "Glowing",
+  "Iridescent",
+  "Opalescent",
+  "Lambent",
+  "Glittering",
+  "Glistening",
+  "Sunward",
+  "Solarborn",
+  "Heliacal",
+  "Aflame",
+  "Starry",
+  "Flamewreathed",
+  "Emberlit",
+  "Celestial",
+]
 
 [template]
 position = [0, 0, 0]
 velocity = [0, 0, 0]
-mass = 5000
+mass = 500000
+
+[mesh]
+size = 75
+
+[mesh.base_mesh]
+subdivisions = 1
+vertices_per_edge = [12, 17]
+num_abberations = 0
+num_deformation_cycles = 0
+
+[mesh.tectonic]
+num_continents = [1, 2]
+stress_scale = [0.8, 3.0]
+shear_scale = [0.2, 1.7]
+max_propagation_distance = [0.01, 0.1]
+propagation_falloff = [0.8, 1.5]
+inactive_stress_threshold = [0.01, 0.1]
+general_height_scale = [0.8, 1.2]
+general_shear_scale = [0.8, 1.2]
+general_compression_scale = [1.0, 1.75]
+general_transform_scale = [1.1, 1.4]

@@ -21,7 +21,7 @@ using static Structures.Biome;
 /// 4. Tectonic simulation with stress calculations
 /// 5. Biome assignment based on height and moisture
 /// 6. Final mesh rendering with appropriate materials
-/// 
+///
 /// This class extends Godot's MeshInstance3D to provide a complete celestial body generation solution
 /// that can be used directly in Godot scenes. The generation process is asynchronous to prevent
 /// blocking the main thread during complex calculations.
@@ -33,25 +33,25 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// Used to monitor and report progress during the asynchronous mesh generation process.
     /// </summary>
     public static GenericPercent percent;
-    
+
     /// <summary>
     /// Origin point for the celestial body (typically at world origin).
     /// Serves as the center point for all mesh generation calculations.
     /// </summary>
     private Vector3 origin = new Vector3(0, 0, 0);
-    
+
     /// <summary>
     /// Current vertex index used during mesh generation.
     /// Tracks the current position when iterating through vertices during mesh creation.
     /// </summary>
     public int VertexIndex = 0;
-    
+
     /// <summary>
     /// Test index used for debugging and development purposes.
     /// Used to track specific cells or vertices during debugging sessions.
     /// </summary>
     public int testIndex = 0;
-    
+
     /// <summary>
     /// Maximum height value found during terrain generation.
     /// Used for normalization and scaling of height values across the mesh.
@@ -63,7 +63,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// Tracks the total number of Voronoi cells created during the generation process.
     /// </summary>
     public static int VoronoiCellCount = 0;
-    
+
     /// <summary>
     /// Number of Voronoi cells currently being processed.
     /// Used for progress tracking during parallel processing of Voronoi cells.
@@ -75,13 +75,13 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// Stores the dual mesh faces created during the Voronoi diagram generation process.
     /// </summary>
     public List<Face> dualFaces = new List<Face>();
-    
+
     /// <summary>
     /// List of edges generated during mesh creation.
     /// Contains all edges created during the mesh generation process for reference and processing.
     /// </summary>
     public List<Edge> generatedEdges = new List<Edge>();
-    
+
     /// <summary>
     /// Random number generator for procedural generation.
     /// Provides deterministic random values for consistent terrain and feature generation.
@@ -93,13 +93,13 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// Provides access to the current instance for external components and systems.
     /// </summary>
     public CelestialBodyMesh Instance { get; }
-    
+
     /// <summary>
     /// Structure database containing all mesh data and relationships.
     /// Central repository for all mesh structures including vertices, edges, faces, and their relationships.
     /// </summary>
     private StructureDatabase StrDb;
-    
+
     /// <summary>
     /// Tectonic generation system for simulating plate tectonics.
     /// Handles the simulation of tectonic plate movement, stress calculations, and terrain deformation.
@@ -108,7 +108,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
     [ExportCategory("Planet Generation")]
     [ExportGroup("Mesh Generation")]
-    
+
     /// <summary>
     /// Number of subdivision levels for the base mesh. Higher values create more detailed meshes.
     /// Each subdivision level increases the number of faces by a factor of 4, exponentially increasing mesh complexity.
@@ -118,7 +118,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public int subdivide = 1;
-    
+
     /// <summary>
     /// Array specifying the number of vertices per edge at each subdivision level.
     /// Controls the density of vertices along each edge of the base mesh triangles.
@@ -129,7 +129,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public int[] VerticesPerEdge = new int[] { 1, 2, 4 };
-    
+
     /// <summary>
     /// Base radius of the celestial body.
     /// Defines the fundamental size of the generated celestial body in world units.
@@ -140,7 +140,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public int size = 5;
-    
+
     /// <summary>
     /// Whether to project vertices onto a sphere for spherical mesh generation.
     /// When enabled, all vertices are normalized to create a perfect spherical shape.
@@ -151,7 +151,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public bool ProjectToSphere = true;
-    
+
     /// <summary>
     /// Random seed for procedural generation. Set to 0 for random seed.
     /// Controls the deterministic generation of terrain features for reproducible results.
@@ -162,7 +162,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public ulong Seed = 0;
-    
+
     /// <summary>
     /// Number of aberrations to introduce during mesh deformation for terrain variety.
     /// Controls the number of random perturbations applied to the mesh during deformation.
@@ -173,7 +173,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public int NumAbberations = 3;
-    
+
     /// <summary>
     /// Number of deformation cycles to apply for terrain generation.
     /// Determines how many iterations of mesh deformation are performed to create terrain features.
@@ -186,7 +186,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     public int NumDeformationCycles = 3;
 
     [ExportGroup("Tectonic Settings")]
-    
+
     /// <summary>
     /// Number of continents to generate on the celestial body.
     /// Determines how many distinct continental landmasses are created during generation.
@@ -197,7 +197,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public int NumContinents = 5;
-    
+
     /// <summary>
     /// Scale factor for stress calculations in tectonic simulation.
     /// Multiplier applied to stress values during tectonic plate interactions.
@@ -208,7 +208,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float StressScale = 4.0f;
-    
+
     /// <summary>
     /// Scale factor for shear forces in tectonic simulation.
     /// Controls the magnitude of shear deformation during tectonic plate movement.
@@ -219,7 +219,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float ShearScale = 1.2f;
-    
+
     /// <summary>
     /// Maximum distance for stress propagation between tectonic plates.
     /// Defines how far tectonic stress can propagate from plate boundaries.
@@ -230,7 +230,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float MaxPropagationDistance = 0.1f;
-    
+
     /// <summary>
     /// Falloff rate for stress propagation over distance.
     /// Controls how quickly tectonic stress diminishes with distance from plate boundaries.
@@ -242,7 +242,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float PropagationFalloff = 1.5f;
-    
+
     /// <summary>
     /// Threshold below which stress is considered inactive.
     /// Minimum stress level required to trigger terrain deformation.
@@ -253,7 +253,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float InactiveStressThreshold = 0.1f;
-    
+
     /// <summary>
     /// General scale factor for height variations in terrain.
     /// Overall multiplier applied to all height variations during terrain generation.
@@ -264,7 +264,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float GeneralHeightScale = 1f;
-    
+
     /// <summary>
     /// General scale factor for shear transformations.
     /// Overall multiplier applied to shear deformation effects during tectonic simulation.
@@ -275,7 +275,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float GeneralShearScale = 1.2f;
-    
+
     /// <summary>
     /// General scale factor for compression transformations.
     /// Overall multiplier applied to compression effects during tectonic simulation.
@@ -286,7 +286,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public float GeneralCompressionScale = 1.75f;
-    
+
     /// <summary>
     /// General scale factor for coordinate transformations.
     /// Overall multiplier applied to coordinate transformations during mesh generation.
@@ -300,7 +300,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
 
     [ExportGroup("Finalized Object")]
-    
+
     /// <summary>
     /// Whether to generate realistic terrain features.
     /// Controls whether the generation process uses realistic physical parameters.
@@ -311,7 +311,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public bool GenerateRealistic = true;
-    
+
     /// <summary>
     /// Whether to display biome colors on the final mesh.
     /// Controls whether biome-specific colors are applied to the mesh surface.
@@ -325,7 +325,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
     [ExportCategory("Generation Debug")]
     [ExportGroup("Debug")]
-    
+
     /// <summary>
     /// Whether to render all triangles for debugging purposes.
     /// When enabled, renders all mesh triangles for visual inspection of the mesh structure.
@@ -336,7 +336,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public bool AllTriangles = false;
-    
+
     /// <summary>
     /// Interface control for drawing tectonic movement arrows.
     /// When enabled, draws arrows showing tectonic plate movement directions.
@@ -382,7 +382,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// - Base mesh settings (subdivisions, vertices per edge, etc.)
     /// - Deformation parameters (aberrations, deformation cycles)
     /// - Tectonic settings (continents, stress scales, propagation settings)
-    /// 
+    ///
     /// The method handles various data types and includes error handling for invalid parameters.
     /// It automatically adjusts array lengths to match subdivision levels and provides
     /// fallback values for missing or invalid parameters.
@@ -392,10 +392,21 @@ public partial class CelestialBodyMesh : MeshInstance3D
         GD.Print($"Configuring {meshParams}");
         if (meshParams == null) return;
 
+        if (meshParams.ContainsKey("name"))
+        {
+            String name = "";
+            try { name = meshParams["name"].As<string>(); } catch { }
+            this.Name = name + "_mesh";
+        }
+        if (meshParams.ContainsKey("size"))
+        {
+            try { size = meshParams["size"].As<int>(); } catch { }
+        }
+
         // Base mesh settings
         if (meshParams.ContainsKey("subdivisions"))
         {
-            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { Logger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
+            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
         }
 
         if (meshParams.ContainsKey("vertices_per_edge"))
@@ -424,7 +435,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
                         assigned = true;
                     }
                 }
-                catch (Exception e) { Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+                catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
             }
         }
 
@@ -478,7 +489,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 1. Setting up the mesh structure and random number generator
     /// 2. Creating the structure database and tectonic generation system
     /// 3. Starting the asynchronous planet generation process
-    /// 
+    ///
     /// The generation runs in a separate task to avoid blocking the main thread.
     /// This allows the game to remain responsive during the computationally expensive
     /// mesh generation process. The method sets up all necessary components and
@@ -508,6 +519,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             GeneralShearScale,
             GeneralCompressionScale);
         Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync());
+        //GenerateFirstPass();
         GD.Print($"Number of Vertices: {StrDb.LegacyCircumcenters.Values.Count}\n");
     }
 
@@ -519,11 +531,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// This method coordinates the two main phases of planet generation:
     /// 1. First Pass: Base mesh generation and deformation
     /// 2. Second Pass: Voronoi cell generation, tectonic simulation, and biome assignment
-    /// 
+    ///
     /// The passes are executed sequentially to ensure proper data dependencies.
     /// The first pass creates the fundamental mesh structure, while the second pass
     /// adds the detailed features like continents, tectonics, and biomes.
-    /// 
+    ///
     /// This method uses Task-based asynchronous programming to avoid blocking the main thread.
     /// </remarks>
     private void GeneratePlanetAsync()
@@ -543,11 +555,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 1. Base mesh generation using subdivided icosahedron
     /// 2. Mesh deformation for realistic terrain features
     /// 3. Optional triangle rendering for debugging
-    /// 
+    ///
     /// The base mesh serves as the foundation for all subsequent generation phases.
     /// This method uses the BaseMeshGeneration class to create the initial icosahedral
     /// mesh and then applies deformation cycles to create terrain variety.
-    /// 
+    ///
     /// Performance timing is applied to each major operation for optimization analysis.
     /// </remarks>
     private void GenerateFirstPass()
@@ -568,8 +580,10 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 }
                 catch (Exception e)
                 {
+                    FunctionTimer.ResetScrollRegionAndClear();
                     Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
-                    GD.PrintRaw($"\nBase Mesh Generation Error:  {e.Message}\n");
+                    GD.PrintRaw($"\x1b0;0r\x1b[2J\x1b[H\n");
+                    GD.PrintRaw($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
                 }
                 return 0;
             }, emptyPercent);
@@ -577,7 +591,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
         var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb.Base.Triangles.Count;
         float OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
-        StrDb.Validate("pre-deform");
         function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Deformed Mesh Generation", () =>
         {
             try
@@ -586,20 +599,20 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             catch (Exception e)
             {
-                //GD.PrintRaw($"\nDeform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
+                FunctionTimer.ResetScrollRegionAndClear();
+                GD.PrintRaw($"x1b0;0r\x1b[2J\x1b[H\nDeform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
             }
             return 0;
         }, emptyPercent);
 
         GD.Print("Deformed Base Mesh");
-        if (AllTriangles)
-        {
-            foreach (var triangle in StrDb.Base.Triangles)
-            {
-                RenderTriangleAndConnections(triangle.Value);
-            }
-        }
-        StrDb.Validate("end-of-base-pass");
+        //if (AllTriangles)
+        //{
+        //    foreach (var triangle in StrDb.Base.Triangles)
+        //    {
+        //        RenderTriangleAndConnections(triangle.Value);
+        //    }
+        //}
 
     }
 
@@ -615,11 +628,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 4. Tectonic simulation with stress application
     /// 5. Biome assignment based on height and moisture
     /// 6. Final mesh generation from continent data
-    /// 
+    ///
     /// Each step is timed and logged for performance analysis.
     /// This phase builds upon the base mesh created in the first pass and adds
     /// the detailed features that make the celestial body realistic and varied.
-    /// 
+    ///
     /// The method uses multiple helper classes and algorithms to achieve the complex
     /// terrain generation, including VoronoiCellGeneration, TectonicGeneration, and BiomeAssigner.
     /// </remarks>
@@ -634,13 +647,14 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 try
                 {
                     voronoiCellGeneration.GenerateVoronoiCells(percent);
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
-            }
-            return 0;
-        }, percent);
+                }
+                catch (Exception e)
+                {
+                    GD.PrintRaw($"\u001b[2J\u001b[H");
+                    Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
+                }
+                return 0;
+            }, percent);
 
         Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
         function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Flood Filling", () =>
@@ -649,7 +663,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             {
                 continents = FloodFillContinentGeneration(StrDb.VoronoiCells);
             }
-            catch (Exception e) { Logger.Error($"Flood Filling Error: {e.Message}\n{e.StackTrace}"); }
+            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Flood Filling Error: {e.Message}\n{e.StackTrace}"); }
             return 0;
         }, emptyPercent);
         percent.Reset();
@@ -704,6 +718,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             catch (Exception e)
             {
+                GD.PrintRaw($"\u001b[2J\u001b[H");
                 Logger.Error($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
             }
             foreach (Point p in StrDb.VoronoiCellVertices)
@@ -787,8 +802,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             return 0;
         }, percent);
 
-         StrDb.Validate("post-voronoi");
-     }
+    }
 
 
     /// <summary>
@@ -802,9 +816,9 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 1. Calculates moisture levels for each continent
     /// 2. Assigns appropriate biomes to each point based on height and moisture
     /// 3. Uses threading for performance optimization
-    /// 
+    ///
     /// Biome types include: Tundra, Icecap, Desert, Grassland, Forest, Rainforest, Taiga, Ocean, Coastal, Mountain
-    /// 
+    ///
     /// The method uses the BiomeAssigner class to determine the appropriate biome for each point
     /// based on its height and the continent's moisture level. Parallel processing is used
     /// to improve performance on multi-core systems.
@@ -845,7 +859,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 1. Vertices in no continent (error case, logs warning)
     /// 2. Vertices in one continent (direct height assignment)
     /// 3. Vertices in multiple continents (averaged height calculation)
-    /// 
+    ///
     /// The averaging ensures smooth transitions at continent boundaries.
     /// This is particularly important for vertices that lie on the boundaries between
     /// multiple continents, as it prevents sharp height discontinuities that would
@@ -897,7 +911,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// This method finds neighbors by examining all points in the origin cell
     /// and finding all other cells that share those points. The includeSameContinent
     /// parameter allows filtering for cross-continent neighbors only.
-    /// 
+    ///
     /// When includeSameContinent is false, only cells from different continents are returned,
     /// which is useful for identifying continent boundaries and calculating tectonic interactions.
     /// The method uses a HashSet to ensure each neighbor is only included once.
@@ -934,7 +948,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// for continent generation during the flood fill algorithm. The number
     /// of starting cells is limited by both the NumContinents parameter and
     /// the total number of available cells.
-    /// 
+    ///
     /// The method uses a HashSet to ensure unique starting positions and continues
     /// selecting random cells until either the desired number of continents is reached
     /// or all available cells are exhausted. This ensures that the continent generation
@@ -943,7 +957,8 @@ public partial class CelestialBodyMesh : MeshInstance3D
     public HashSet<int> GenerateStartingCells(List<VoronoiCell> cells)
     {
         HashSet<int> startingCells = new HashSet<int>();
-        while (startingCells.Count < NumContinents && startingCells.Count < cells.Count)
+        int numStartingCells = Mathf.Min(NumContinents, cells.Count);
+        while (startingCells.Count < numStartingCells)
         {
             int position = rand.RandiRange(0, cells.Count - 1);
             startingCells.Add(position);
@@ -961,7 +976,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// It processes boundary cells and draws lines along their outside edges,
     /// accounting for height variations in the terrain. The method includes
     /// a safety check to prevent infinite loops.
-    /// 
+    ///
     /// The visualization is particularly useful for understanding the results
     /// of the continent generation process and for debugging issues with
     /// continent boundary detection. The lines are drawn using the PolygonRendererSDL
@@ -1011,16 +1026,20 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 3. Expands each continent by assigning neighboring cells to the nearest continent
     /// 4. Calculates continent properties like center, axes, and movement vectors
     /// 5. Sets up tectonic movement parameters for each continent
-    /// 
+    ///
     /// The algorithm ensures that continents are reasonably sized and distributed
     /// across the celestial body surface. Each continent gets unique properties that
     /// influence its appearance and behavior during tectonic simulation.
     /// </remarks>
     public Dictionary<int, Continent> FloodFillContinentGeneration(List<VoronoiCell> cells)
     {
+        //Dicitonary of continent indices to their smallest potential size (5, 8)
+        Dictionary<int, int> continentMinSize = new Dictionary<int, int>();
+        //Dictionary of cell indicies that can be popped in 1st phase
+        Dictionary<int, List<int>> continentNeighbors = new Dictionary<int, List<int>>();
         Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
         HashSet<int> startingCells = GenerateStartingCells(cells);
-        //List of cells that can be popped to pull neighbors from
+        //List of cells that can be popped to pull neighbors from in 2nd phase
         List<int> poppableCells = startingCells.ToList();
         //List containing all Voronoi Cells. Value at the index is the Starting Cell Index of the continent it belongs to
         // Or -1 if it is not yet part of a continent
@@ -1063,14 +1082,51 @@ public partial class CelestialBodyMesh : MeshInstance3D
             continents[startingCellIndex] = continent;
 
             var neighborIndices = GetCellNeighbors(cells[startingCellIndex]);
+            continentNeighbors[startingCellIndex] = new List<int>();
             foreach (var nb in neighborIndices)
             {
                 if (neighborChart[nb.Index] == -1)
                 {
                     neighborChart[nb.Index] = neighborChart[startingCellIndex];
-                    poppableCells.Add(nb.Index);
+                    continentNeighbors[startingCellIndex].Add(nb.Index);
+                    //poppableCells.Add(nb.Index);
                 }
             }
+            continentMinSize.Add(startingCellIndex, rand.RandiRange(5, 8));
+        }
+        while (true)
+        {
+            foreach (var continent in continentMinSize)
+            {
+                var index = continent.Key;
+                var minSize = continent.Value;
+                var continentObj = continents[index];
+                if (continents[index].cells.Count < minSize)
+                {
+                    int randomNeighbor;
+                    if (continentNeighbors[index].Count == 0)
+                        randomNeighbor = continentNeighbors[index][0];
+                    else
+                        randomNeighbor = continentNeighbors[index][rand.RandiRange(0, continentNeighbors[index].Count - 1)];
+                    continentObj.cells.Add(cells[randomNeighbor]);
+                    continentNeighbors[index].Remove(randomNeighbor);
+                    var neighborIndices = GetCellNeighbors(cells[randomNeighbor]);
+                    foreach (var nb in neighborIndices)
+                    {
+                        if (neighborChart[nb.Index] == -1)
+                        {
+                            neighborChart[nb.Index] = neighborChart[index];
+                            continentNeighbors[index].Add(nb.Index);
+                        }
+                    }
+                }
+                else
+                {
+                    poppableCells.AddRange(continentNeighbors[index]);
+                    continentMinSize.Remove(index);
+                }
+            }
+            if (continentMinSize.Count == 0) break;
         }
         testIndex = poppableCells[0];
         while (poppableCells.Count > 0)
@@ -1199,11 +1255,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// This method draws the triangle edges and vertices with different colors:
     /// - Red, Green, Blue for the three vertices respectively
     /// - Lines connecting the vertices to show the triangle structure
-    /// 
+    ///
     /// The rendering can be done in either spherical or cartesian coordinates
     /// based on the ProjectToSphere setting. This is primarily a debugging tool
     /// for visualizing the mesh structure and understanding the triangulation.
-    /// 
+    ///
     /// The method also renders all incident edges from the triangle's vertices,
     /// providing a complete view of the local mesh connectivity.
     /// </remarks>
@@ -1212,10 +1268,10 @@ public partial class CelestialBodyMesh : MeshInstance3D
         int i = 0;
         //var edgesFromTri = baseEdges.Where(e => tri.Points.Any(a => a == e.P || a == e.Q));
         List<Edge> edgesFromTri = new List<Edge>();
-            foreach (Point p in tri.Points)
-            {
-                edgesFromTri.AddRange(StrDb.GetIncidentHalfEdges(p));
-            }
+        foreach (Point p in tri.Points)
+        {
+            edgesFromTri.AddRange(StrDb.GetIncidentHalfEdges(p));
+        }
         if (!ProjectToSphere)
         {
             PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[0]).ToVector3(), ((Point)tri.Points[1]).ToVector3());
@@ -1275,7 +1331,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// - X component: radius (distance from origin)
     /// - Y component: theta (polar angle from positive Z axis)
     /// - Z component: phi (azimuthal angle in XY plane from positive X axis)
-    /// 
+    ///
     /// This conversion is useful for various calculations involving spherical
     /// geometry and for positioning elements on the celestial body surface.
     /// </remarks>
@@ -1299,7 +1355,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// This method performs the inverse operation of ConvertToSpherical,
     /// converting from spherical coordinates back to cartesian coordinates.
     /// The conversion uses standard spherical to cartesian transformation formulas.
-    /// 
+    ///
     /// This is useful for converting calculations done in spherical coordinates
     /// back to the cartesian coordinate system used by the rendering engine.
     /// </remarks>
@@ -1322,7 +1378,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// This method iterates through all continents and calls GenerateSurfaceMesh
     /// for each continent's cells. This creates the final renderable mesh that
     /// includes all terrain features, biomes, and visual properties.
-    /// 
+    ///
     /// The method updates the progress tracking system as it processes each continent,
     /// providing feedback about the generation progress. This is typically the final
     /// step in the mesh generation pipeline before the celestial body is ready for rendering.
@@ -1346,11 +1402,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// This method uses a continuous mathematical formula to generate smooth
     /// color transitions across different height ranges:
     /// - Deep water: Blue hues
-    /// - Shallow water: Cyan hues  
+    /// - Shallow water: Cyan hues
     /// - Low land: Green hues
     /// - Medium land: Yellow to brown hues
     /// - High land: Dark brown hues
-    /// 
+    ///
     /// The formula uses HSV color space with smooth mathematical transitions
     /// to create natural-looking terrain coloring without sharp boundaries.
     /// The height range is normalized from -10 (deep water) to +10 (mountains).
@@ -1399,7 +1455,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// - Coastal: Light blue
     /// - Mountain: Brown-gray
     /// - Default: Gray (fallback for unknown biomes)
-    /// 
+    ///
     /// The colors are chosen to be visually distinct and representative of
     /// real-world biome appearances. The height parameter is included for
     /// potential future enhancements where color might vary within a biome
@@ -1448,7 +1504,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 5. Assigns colors based on biome or height (depending on settings)
     /// 6. Positions vertices accounting for the base size and height variations
     /// 7. Commits the surface to the ArrayMesh
-    /// 
+    ///
     /// The method handles both spherical projection and cartesian coordinate modes,
     /// and can display either biome colors or height-based colors. The resulting
     /// mesh is ready for rendering in the Godot engine.
@@ -1524,11 +1580,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// 1. Calculating the midpoint of each edge of the original triangle
     /// 2. Creating four new triangles from the original vertices and midpoints
     /// 3. Returning the four resulting faces
-    /// 
+    ///
     /// The subdivision creates a more detailed mesh by replacing each triangle
     /// with four smaller triangles. This is a key operation in the mesh refinement
     /// process and is used during the base mesh generation phase.
-    /// 
+    ///
     /// The method ensures that the new vertices are properly managed through the
     /// structure database to maintain consistency across the mesh.
     /// </remarks>
@@ -1560,12 +1616,12 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// This method calculates the average position between the original point
     /// and the jitter point, then normalizes the result to maintain the
     /// spherical shape of the celestial body.
-    /// 
+    ///
     /// The jitter operation helps break up the regular geometric patterns
     /// that can result from purely mathematical mesh generation, creating
     /// more natural-looking terrain variations. The normalization ensures
     /// that the modified vertex remains on the sphere surface.
-    /// 
+    ///
     /// This is typically used during the mesh deformation phase to add
     /// realistic irregularities to the terrain.
     /// </remarks>
@@ -1588,7 +1644,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// and creates a new Point object at that location. The method uses the
     /// structure database to either retrieve an existing point at that location
     /// or create a new one, ensuring point consistency across the mesh.
-    /// 
+    ///
     /// This is a fundamental operation used in mesh subdivision, edge splitting,
     /// and various geometric calculations throughout the mesh generation process.
     /// The point indexing system helps maintain efficient lookups and prevents
