@@ -2,6 +2,11 @@ using Godot;
 
 public partial class InputHandler : Node
 {
+    private bool _isMouseButtonPressed = false;
+    private Vector3 _moveDirection = Vector3.Zero;
+    private Vector3 _verticalMovement = Vector3.Zero;
+    private float _rotation = 0.0f;
+
     [Signal]
     public delegate void MoveEventHandler(Vector3 direction);
 
@@ -17,56 +22,91 @@ public partial class InputHandler : Node
     [Signal]
     public delegate void RotateAxisEventHandler(float rotation);
 
-    private Vector2 _lastMousePosition;
+    [Signal]
+    public delegate void CameraLookEventHandler(Vector2 mouseDelta);
 
-    public override void _Ready()
+    [Signal]
+    public delegate void IndependentRotatationEventHandler(bool IsMouseButtonPressed);
+
+    public override void _Input(InputEvent @event)
     {
-        _lastMousePosition = GetViewport().GetMousePosition();
-    }
-
-    public override void _Process(double delta)
-    {
-        // Movement input (WASD)
-        Vector3 moveDirection = Vector3.Zero;
-        if (Input.IsKeyPressed(Key.W)) moveDirection.Z -= 1;
-        if (Input.IsKeyPressed(Key.S)) moveDirection.Z += 1;
-        if (Input.IsKeyPressed(Key.A)) moveDirection.X -= 1;
-        if (Input.IsKeyPressed(Key.D)) moveDirection.X += 1;
-        moveDirection = moveDirection.Normalized();
-        if (moveDirection != Vector3.Zero)
+        if (@event is InputEventMouseButton mouseEvent && mouseEvent.ButtonIndex == MouseButton.Right)
         {
-            EmitSignal(SignalName.Move, moveDirection);
+            if (mouseEvent.Pressed)
+            {
+                _isMouseButtonPressed = true;
+                EmitSignal(SignalName.IndependentRotatation, true);
+            }
+            else if (!mouseEvent.Pressed)
+            {
+                _isMouseButtonPressed = false;
+                EmitSignal(SignalName.IndependentRotatation, false);
+            }
         }
-
-        // Mouse look
-        Vector2 currentMousePosition = GetViewport().GetMousePosition();
-        Vector2 mouseDelta = currentMousePosition - _lastMousePosition;
-        _lastMousePosition = currentMousePosition;
-        if (mouseDelta != Vector2.Zero)
+        else if (@event is InputEventMouseMotion mouseMotion)
         {
-            EmitSignal(SignalName.Look, mouseDelta);
+            EmitSignal(SignalName.CameraLook, mouseMotion.Relative);
         }
-
-        // Acceleration (Shift)
-        bool accelerate = Input.IsKeyPressed(Key.Shift);
-        EmitSignal(SignalName.Accelerate, accelerate);
-
-        // Vertical movement (Space/Ctrl)
-        float vertical = 0.0f;
-        if (Input.IsKeyPressed(Key.Space)) vertical += 1;
-        if (Input.IsKeyPressed(Key.Ctrl)) vertical -= 1;
-        if (vertical != 0.0f)
+        //Button Press
+        else if (@event is InputEventKey keyEvent && keyEvent.Pressed)
         {
-            EmitSignal(SignalName.VerticalMove, vertical);
+            if (keyEvent.Keycode == Key.W || keyEvent.Keycode == Key.S || keyEvent.Keycode == Key.A || keyEvent.Keycode == Key.D)
+            {
+                if (keyEvent.Keycode == Key.W) _moveDirection.Z -= 1;
+                else if (keyEvent.Keycode == Key.S) _moveDirection.Z += 1;
+                if (keyEvent.Keycode == Key.A) _moveDirection.X -= 1;
+                else if (keyEvent.Keycode == Key.D) _moveDirection.X += 1;
+                _moveDirection = _moveDirection.Normalized();
+                EmitSignal(SignalName.Move, _moveDirection);
+            }
+            if (keyEvent.Keycode == Key.Space || keyEvent.Keycode == Key.Ctrl)
+            {
+                if (keyEvent.Keycode == Key.Space) _verticalMovement.Y += 1;
+                else if (keyEvent.Keycode == Key.Ctrl) _verticalMovement.Y -= 1;
+                _verticalMovement = _verticalMovement.Normalized();
+                EmitSignal(SignalName.VerticalMove, _verticalMovement);
+            }
+            if (keyEvent.Keycode == Key.Q || keyEvent.Keycode == Key.E)
+            {
+                if (keyEvent.Keycode == Key.Q) _rotation -= 1;
+                else if (keyEvent.Keycode == Key.E) _rotation += 1;
+                EmitSignal(SignalName.RotateAxis, _rotation);
+            }
+            if (keyEvent.Keycode == Key.Shift)
+            {
+                EmitSignal(SignalName.Accelerate, true);
+            }
         }
-
-        // Rotation around camera axis (Q/E)
-        float rotation = 0.0f;
-        if (Input.IsKeyPressed(Key.Q)) rotation -= 1;
-        if (Input.IsKeyPressed(Key.E)) rotation += 1;
-        if (rotation != 0.0f)
+        //Button release
+        else if (@event is InputEventKey keyUpEvent && !keyUpEvent.IsPressed())
         {
-            EmitSignal(SignalName.RotateAxis, rotation);
+            if (keyUpEvent.Keycode == Key.W || keyUpEvent.Keycode == Key.S || keyUpEvent.Keycode == Key.A || keyUpEvent.Keycode == Key.D)
+            {
+                if (keyUpEvent.Keycode == Key.W) _moveDirection.Z += 1;
+                else if (keyUpEvent.Keycode == Key.S) _moveDirection.Z -= 1;
+                if (keyUpEvent.Keycode == Key.A) _moveDirection.X += 1;
+                else if (keyUpEvent.Keycode == Key.D) _moveDirection.X -= 1;
+                _moveDirection = _moveDirection.Normalized();
+                EmitSignal(SignalName.Move, _moveDirection);
+            }
+            if (keyUpEvent.Keycode == Key.Space || keyUpEvent.Keycode == Key.Ctrl)
+            {
+                if (keyUpEvent.Keycode == Key.Space) _verticalMovement.Y -= 1;
+                else if (keyUpEvent.Keycode == Key.Ctrl) _verticalMovement.Y += 1;
+                _verticalMovement = _verticalMovement.Normalized();
+                EmitSignal(SignalName.VerticalMove, _verticalMovement);
+            }
+            if (keyUpEvent.Keycode == Key.Q || keyUpEvent.Keycode == Key.E)
+            {
+                if (keyUpEvent.Keycode == Key.Q) _rotation += 1;
+                else if (keyUpEvent.Keycode == Key.E) _rotation -= 1;
+                EmitSignal(SignalName.RotateAxis, _rotation);
+            }
+            if (keyUpEvent.Keycode == Key.Shift)
+            {
+                EmitSignal(SignalName.Accelerate, false);
+            }
+
         }
     }
 }

@@ -1,19 +1,52 @@
-[gd_scene load_steps=10 format=3 uid="uid://dt8sw4jlumdml"]
+[gd_scene load_steps=16 format=3 uid="uid://dt8sw4jlumdml"]
 
 [ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/SystemGenerator.cs" id="1_6ftxy"]
 [ext_resource type="PackedScene" uid="uid://ca805w5kf1f7q" path="res://UI/PlanetSystemGenerator.tscn" id="3_qqilr"]
-[ext_resource type="PackedScene" uid="uid://buy1y4gmiix27" path="res://Mesh/player_ship.glb" id="4_8cch0"]
+[ext_resource type="Shader" uid="uid://dr001fqq1ikuy" path="res://Shaders/space_sky_shader.gdshader" id="4_al28a"]
 [ext_resource type="Script" uid="uid://ccfxuom517kn0" path="res://Scripts/PlayerInteraction/PlayerController.cs" id="4_dl6d0"]
+[ext_resource type="Script" uid="uid://6cu37byqa6it" path="res://Scripts/PlayerInteraction/ShipMovement.cs" id="4_nd1sr"]
 [ext_resource type="Script" uid="uid://c66no17i3tpjj" path="res://Scripts/MeshGeneration/CelestialBodyMesh.cs" id="4_qqilr"]
 [ext_resource type="Script" uid="uid://biapc0eaifxvd" path="res://Scripts/PlayerInteraction/InputHandler.cs" id="5_al28a"]
+[ext_resource type="ArrayMesh" uid="uid://ddtc31bpd6cd3" path="res://Mesh/player_ship.res" id="7_nd1sr"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_dl6d0"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_al28a"]
+frequency = 0.001
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_nd1sr"]
+noise = SubResource("FastNoiseLite_al28a")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_nd1sr"]
+noise_type = 5
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_hv05t"]
+noise = SubResource("FastNoiseLite_nd1sr")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nd1sr"]
+shader = ExtResource("4_al28a")
+shader_parameter/star_density = 20000.0
+shader_parameter/star_brightness = 1.0
+shader_parameter/star_twinkle_speed = 2.0
+shader_parameter/nebula_density = 0.3
+shader_parameter/nebula_brightness = 0.5
+shader_parameter/nebula_color1 = Color(0.8, 0.3, 0.9, 1)
+shader_parameter/nebula_color2 = Color(0.3, 0.5, 0.9, 1)
+shader_parameter/nebula_scale = 0.2
+shader_parameter/supernova_count = 1
+shader_parameter/supernova_brightness = 4.0
+shader_parameter/supernova_expansion_speed = 0.6
+shader_parameter/neutron_star_count = 1
+shader_parameter/neutron_star_brightness = 15.0
+shader_parameter/neutron_star_pulse_speed = 20.0
+shader_parameter/noise_texture = SubResource("NoiseTexture2D_nd1sr")
+shader_parameter/star_noise_texture = SubResource("NoiseTexture2D_hv05t")
 
 [sub_resource type="Sky" id="Sky_al28a"]
-sky_material = SubResource("ProceduralSkyMaterial_dl6d0")
+sky_material = SubResource("ShaderMaterial_nd1sr")
+process_mode = 2
 
 [sub_resource type="Environment" id="Environment_nd1sr"]
 background_mode = 2
+background_energy_multiplier = 0.3
 sky = SubResource("Sky_al28a")
 
 [node name="root" type="Node3D"]
@@ -25,26 +58,35 @@ offset_bottom = -13.0
 [node name="system_generator" type="Node" parent="."]
 script = ExtResource("1_6ftxy")
 
-[node name="player_ship" parent="." instance=ExtResource("4_8cch0")]
-transform = Transform3D(0.596936, 0, 0, 0, -2.60929e-08, 0.596936, 0, -0.596936, -2.60929e-08, 0.00016582, -7.83201, 5.66404)
+[node name="PlayerShip" type="Node3D" parent="."]
+rotation_edit_mode = 2
+script = ExtResource("4_nd1sr")
 
-[node name="Camera3D" type="Camera3D" parent="player_ship"]
-transform = Transform3D(1.67522, 0, 0, 0, 0.545399, -1.58395, 0, 1.58395, 0.545399, 0, 1.96417, 13.1204)
+[node name="Camera3D" type="Camera3D" parent="PlayerShip"]
+transform = Transform3D(1, 0, 0, 0, 0.945518, 0.325569, 0, -0.325569, 0.945518, 0, 0, 0)
+top_level = true
 keep_aspect = 0
 environment = SubResource("Environment_nd1sr")
 doppler_tracking = 1
 fov = 90.0
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="player_ship"]
-transform = Transform3D(1.67522, 0, 0, 0, -7.32263e-08, -1.67522, 0, 1.67522, -7.32263e-08, -0.595972, 14.3833, 8.26452)
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="PlayerShip"]
+transform = Transform3D(1, 0, 0, 0, 1, -6.75016e-14, 0, 6.75016e-14, 1, -0.355591, 4.26202, -0.961511)
 light_bake_mode = 1
 sky_mode = 1
 
-[node name="PlayerController" type="Node3D" parent="player_ship"]
+[node name="PlayerController" type="Node3D" parent="PlayerShip"]
+transform = Transform3D(0.596936, 0, 0, 0, -2.60929e-08, 0.596936, 0, -0.596936, -2.60929e-08, 0, 0, 0)
 script = ExtResource("4_dl6d0")
 
-[node name="InputHandler" type="Node3D" parent="player_ship"]
+[node name="InputHandler" type="Node3D" parent="PlayerShip"]
+transform = Transform3D(0.596936, 0, 0, 0, -2.60929e-08, 0.596936, 0, -0.596936, -2.60929e-08, 0, 0, 0)
 script = ExtResource("5_al28a")
+
+[node name="ShipMesh" type="MeshInstance3D" parent="PlayerShip"]
+transform = Transform3D(-1, -8.74228e-08, 3.82137e-15, 0, -4.37114e-08, -1, 8.74228e-08, -1, 4.37114e-08, 0, 0, -4.71053)
+mesh = ExtResource("7_nd1sr")
+skeleton = NodePath("../..")
 
 [node name="Node3D" type="Node3D" parent="."]
 
