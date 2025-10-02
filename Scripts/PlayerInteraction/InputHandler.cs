@@ -3,6 +3,7 @@ using Godot;
 public partial class InputHandler : Node
 {
     private bool _isMouseButtonPressed = false;
+    private bool _isMiddleMousePressed = false;
     private Vector3 _moveDirection = Vector3.Zero;
     private Vector3 _verticalMovement = Vector3.Zero;
     private float _rotation = 0.0f;
@@ -28,19 +29,31 @@ public partial class InputHandler : Node
     [Signal]
     public delegate void IndependentRotatationEventHandler(bool IsMouseButtonPressed);
 
+    public override void _Ready()
+    {
+        Input.SetMouseMode(Input.MouseModeEnum.Captured);
+    }
+
     public override void _Input(InputEvent @event)
     {
-        if (@event is InputEventMouseButton mouseEvent && mouseEvent.ButtonIndex == MouseButton.Right)
+        if (@event is InputEventMouseButton mouseEvent)
         {
-            if (mouseEvent.Pressed)
+            if (mouseEvent.ButtonIndex == MouseButton.Right && mouseEvent.Pressed)
             {
-                _isMouseButtonPressed = true;
-                EmitSignal(SignalName.IndependentRotatation, true);
+                _isMouseButtonPressed = !_isMouseButtonPressed;
+                EmitSignal(SignalName.IndependentRotatation, _isMouseButtonPressed);
             }
-            else if (!mouseEvent.Pressed)
+            if (mouseEvent.ButtonIndex == MouseButton.Middle && mouseEvent.Pressed)
             {
-                _isMouseButtonPressed = false;
-                EmitSignal(SignalName.IndependentRotatation, false);
+                _isMiddleMousePressed = !_isMiddleMousePressed;
+                if (_isMiddleMousePressed)
+                {
+                    Input.SetMouseMode(Input.MouseModeEnum.Confined);
+                }
+                else
+                {
+                    Input.SetMouseMode(Input.MouseModeEnum.Captured);
+                }
             }
         }
         else if (@event is InputEventMouseMotion mouseMotion)
@@ -48,8 +61,9 @@ public partial class InputHandler : Node
             EmitSignal(SignalName.CameraLook, mouseMotion.Relative);
         }
         //Button Press
-        else if (@event is InputEventKey keyEvent && keyEvent.Pressed)
+        else if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.IsEcho())
         {
+            GD.Print($"KeyDown: {keyEvent.Keycode}");
             if (keyEvent.Keycode == Key.W || keyEvent.Keycode == Key.S || keyEvent.Keycode == Key.A || keyEvent.Keycode == Key.D)
             {
                 if (keyEvent.Keycode == Key.W) _moveDirection.Z -= 1;
@@ -57,6 +71,7 @@ public partial class InputHandler : Node
                 if (keyEvent.Keycode == Key.A) _moveDirection.X -= 1;
                 else if (keyEvent.Keycode == Key.D) _moveDirection.X += 1;
                 _moveDirection = _moveDirection.Normalized();
+                GD.Print($"Movement: {_moveDirection}");
                 EmitSignal(SignalName.Move, _moveDirection);
             }
             if (keyEvent.Keycode == Key.Space || keyEvent.Keycode == Key.Ctrl)
@@ -78,15 +93,17 @@ public partial class InputHandler : Node
             }
         }
         //Button release
-        else if (@event is InputEventKey keyUpEvent && !keyUpEvent.IsPressed())
+        else if (@event is InputEventKey keyUpEvent && !keyUpEvent.Pressed)
         {
+            GD.Print($"KeyUp: {keyUpEvent.Keycode}");
             if (keyUpEvent.Keycode == Key.W || keyUpEvent.Keycode == Key.S || keyUpEvent.Keycode == Key.A || keyUpEvent.Keycode == Key.D)
             {
-                if (keyUpEvent.Keycode == Key.W) _moveDirection.Z += 1;
-                else if (keyUpEvent.Keycode == Key.S) _moveDirection.Z -= 1;
-                if (keyUpEvent.Keycode == Key.A) _moveDirection.X += 1;
-                else if (keyUpEvent.Keycode == Key.D) _moveDirection.X -= 1;
+                if (keyUpEvent.Keycode == Key.W) _moveDirection.Z += -_moveDirection.Z;
+                else if (keyUpEvent.Keycode == Key.S) _moveDirection.Z += -_moveDirection.Z;
+                if (keyUpEvent.Keycode == Key.A) _moveDirection.X += -_moveDirection.X;
+                else if (keyUpEvent.Keycode == Key.D) _moveDirection.X += -_moveDirection.X;
                 _moveDirection = _moveDirection.Normalized();
+                GD.Print($"Movement: {_moveDirection}");
                 EmitSignal(SignalName.Move, _moveDirection);
             }
             if (keyUpEvent.Keycode == Key.Space || keyUpEvent.Keycode == Key.Ctrl)

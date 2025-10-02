@@ -3,40 +3,46 @@ using Godot;
 public partial class PlayerController : Node3D
 {
     [Export] public float MaxSpeed { get; set; } = 10.0f;
-    [Export] public float Acceleration { get; set; } = 5.0f;
-    [Export] public float DecelerationTime { get; set; } = 2.0f;
+    [Export] public float Acceleration { get; set; } = 9.0f;
+    [Export] public float DecelerationTime { get; set; } = .8f;
     [Export] public float CameraSensitivity { get; set; } = .1f;
     [Export] public float ShipRotationSpeed { get; set; } = 2.0f;
     [Export] public float CameraSnapSpeed { get; set; } = 5.0f;
 
+    //Scene Objects
+    private Node3D _parent;
+    private Node3D _pointerNode;
+    private Camera3D _camera;
     private InputHandler _inputHandler;
     private ShipMovement _shipMovement;
-    private Vector3 _currentVelocity = Vector3.Zero;
-    private float _currentRotation = 0.0f;
-    private Node3D _parent;
-    private Camera3D _camera;
+
+    //Local Variables
     private Quaternion _defaultCameraRotation;
-    private Vector3 _defaultCameraOffset;
-    private float _totalPitch = 0.0f;
     private Vector2 _mousePosition = Vector2.Zero;
-    private Vector3 _currentCameraRotation;
+    private Vector3 _movementDirection = Vector3.Zero;
+    private Vector3 _verticalMovement = Vector3.Zero;
+
+    [Export]
+    public Vector3 currentVelocity = Vector3.Zero;
+
     private bool _isRightMousePressed = false;
+    private float _decelerateFactor;
 
     public override void _Ready()
     {
         _inputHandler = GetNode<InputHandler>("../InputHandler"); // Assuming InputHandler is a sibling
-        _parent = GetParent<Node3D>();
+        _parent = GetParent() as Node3D;
         _camera = GetNode<Camera3D>("../Camera3D"); // Assuming camera is a child
+        _pointerNode = GetNode<Node3D>("../Camera3D/Pointer");
         _shipMovement = GetParent() as ShipMovement;
-        _defaultCameraOffset = _camera.Position;
-        _currentCameraRotation = Vector3.Zero;
+        _decelerateFactor = Mathf.Log(DecelerationTime);
+        GD.Print($"Deceleration Factor: {_decelerateFactor}");
 
         if (_inputHandler != null)
         {
             _inputHandler.Move += OnMove;
             _inputHandler.Accelerate += OnAccelerate;
             _inputHandler.VerticalMove += OnVerticalMove;
-            _inputHandler.RotateAxis += OnRotateAxis;
             _inputHandler.CameraLook += OnCameraLook;
             _inputHandler.IndependentRotatation += OnMakeCameraIndependent;
         }
@@ -45,16 +51,27 @@ public partial class PlayerController : Node3D
     public override void _PhysicsProcess(double delta)
     {
         float deltaTime = (float)delta;
+        Vector3 worldDirection = _parent.Basis * _movementDirection;
+        Vector3 worldVertical = _parent.Basis * _verticalMovement;
+        // Strafe in any direction
+        Vector3 accelerationVector = worldDirection * Acceleration;
 
-        // Apply deceleration if no input
-        if (_currentVelocity.Length() > 0)
+        // Cap at max speed
+
+        // Add vertical component to velocity
+        if (_movementDirection.Length() <= 0)
+            currentVelocity = currentVelocity.MoveToward(Vector3.Zero, _decelerateFactor);
+        else
         {
-            float deceleration = MaxSpeed / DecelerationTime;
-            _currentVelocity = _currentVelocity.MoveToward(Vector3.Zero, deceleration * deltaTime);
+            currentVelocity += accelerationVector;
+            currentVelocity += worldVertical * Acceleration;
+            var magnitude = currentVelocity.Length();
+            currentVelocity = currentVelocity.Normalized() * Mathf.Min(MaxSpeed, magnitude);
         }
 
         // Set velocity for movement
-        //_parent.GlobalPosition = _parent.GlobalPosition + _currentVelocity * deltaTime;
+        _parent.GlobalPosition = _parent.GlobalPosition + currentVelocity * deltaTime;
+        _camera.GlobalPosition = _camera.GlobalPosition + currentVelocity * deltaTime;
 
         UpdateCamera();
     }
@@ -67,14 +84,12 @@ public partial class PlayerController : Node3D
         var pitch = _mousePosition.Y;
         _mousePosition = Vector2.Zero;
 
-        _totalPitch += pitch;
-
         if (_isRightMousePressed)
         {
             // Camera rotation: pitch around local right, yaw around world up
             Quaternion cameraRotation = _camera.Basis.GetRotationQuaternion();
-            Quaternion pitchRotation = new Quaternion(GlobalBasis.X.Normalized(), Mathf.DegToRad(-pitch));
-            Quaternion yawRotation = new Quaternion(Vector3.Up, Mathf.DegToRad(-yaw));
+            Quaternion pitchRotation = new Quaternion(Basis.X.Normalized(), Mathf.DegToRad(pitch));
+            Quaternion yawRotation = new Quaternion(Basis.Z.Normalized(), Mathf.DegToRad(-yaw));
             cameraRotation = yawRotation * cameraRotation * pitchRotation;
             _camera.Basis = new Basis(cameraRotation);
         }
@@ -82,8 +97,8 @@ public partial class PlayerController : Node3D
         {
             // Ship rotation: pitch around local right, yaw around local up
             Quaternion cameraRotation = _camera.Basis.GetRotationQuaternion();
-            Quaternion pitchRotation = new Quaternion(GlobalBasis.X.Normalized(), Mathf.DegToRad(-pitch));
-            Quaternion yawRotation = new Quaternion(Vector3.Up, Mathf.DegToRad(-yaw));
+            Quaternion pitchRotation = new Quaternion(Basis.X.Normalized(), Mathf.DegToRad(pitch));
+            Quaternion yawRotation = new Quaternion(Basis.Z.Normalized(), Mathf.DegToRad(-yaw));
             cameraRotation = yawRotation * cameraRotation * pitchRotation;
             _camera.Basis = new Basis(cameraRotation);
             _shipMovement.SetDesiredRotation(yaw, pitch);
@@ -92,15 +107,8 @@ public partial class PlayerController : Node3D
 
     private void OnMove(Vector3 direction)
     {
-        // Strafe in any direction
-        Vector3 accelerationVector = direction * Acceleration;
-        _currentVelocity += accelerationVector;
-
-        // Cap at max speed
-        if (_currentVelocity.Length() > MaxSpeed)
-        {
-            _currentVelocity = _currentVelocity.Normalized() * MaxSpeed;
-        }
+        GD.Print($"Movement: {direction}, _movementDirection: {_movementDirection}");
+        _movementDirection = direction;
     }
 
     private void OnAccelerate(bool accelerate)
@@ -112,7 +120,7 @@ public partial class PlayerController : Node3D
         }
         else
         {
-            Acceleration = MaxSpeed / 2.0f; // Reset
+            Acceleration /= 2.0f; // Reset
         }
     }
 
@@ -121,27 +129,19 @@ public partial class PlayerController : Node3D
         if (isMouseButtonPressed)
         {
             _defaultCameraRotation = _camera.Quaternion;
+            _pointerNode.TopLevel = true;
         }
         else
         {
-            GD.Print($"{_defaultCameraRotation}");
             _camera.Quaternion = _defaultCameraRotation;
+            _pointerNode.TopLevel = false;
         }
         _isRightMousePressed = isMouseButtonPressed;
     }
 
     private void OnVerticalMove(float vertical)
     {
-        // Add vertical component to velocity
-        _currentVelocity.Y += vertical * Acceleration;
-        if (_currentVelocity.Y > MaxSpeed) _currentVelocity.Y = MaxSpeed;
-        if (_currentVelocity.Y < -MaxSpeed) _currentVelocity.Y = -MaxSpeed;
-    }
-
-    private void OnRotateAxis(float rotation)
-    {
-        // Rotate around Y-axis
-        _currentRotation = rotation * Mathf.Pi; // Adjust speed
+        _verticalMovement = new Vector3(0, vertical, 0);
     }
 
     private void OnCameraLook(Vector2 mouseDelta)

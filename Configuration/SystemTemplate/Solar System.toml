@@ -1,0 +1,17 @@
+[[bodies]]
+type = "Star"
+position = [0, 0, 0]
+velocity = [0, 0, 0]
+mass = 500000
+
+[[bodies]]
+type = "Rocky Planet"
+position = [150, 0, 0]
+velocity = [0, 10, 0]
+mass = 10
+
+[[bodies]]
+type = "Gas Giant"
+position = [500, 0, 0]
+velocity = [0, 7, 0]
+mass = 100

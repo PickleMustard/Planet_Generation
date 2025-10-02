@@ -31,46 +31,76 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Panel/MarginContainer"]
+[node name="TabContainer" type="TabContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="BodiesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
+metadata/_tab_index = 0
 
-[node name="ControlsRow" type="HBoxContainer" parent="Panel/MarginContainer/VBox"]
+[node name="ControlsRow" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
 layout_mode = 2
 
-[node name="BodiesLabel" type="Label" parent="Panel/MarginContainer/VBox/ControlsRow"]
+[node name="BodiesLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
 layout_mode = 2
 text = "Bodies"
 
-[node name="AddBody" type="Button" parent="Panel/MarginContainer/VBox/ControlsRow"]
+[node name="AddBody" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
 layout_mode = 2
 text = "+"
 
-[node name="RemoveBody" type="Button" parent="Panel/MarginContainer/VBox/ControlsRow"]
+[node name="RemoveBody" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
 layout_mode = 2
 text = "-"
 
-[node name="CountLabel" type="Label" parent="Panel/MarginContainer/VBox/ControlsRow"]
+[node name="CountLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
 layout_mode = 2
 text = "0 bodies"
 
-[node name="Scroll" type="ScrollContainer" parent="Panel/MarginContainer/VBox"]
+[node name="Scroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="BodiesList" type="VBoxContainer" parent="Panel/MarginContainer/VBox/Scroll"]
+[node name="BodiesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="Separator" type="HSeparator" parent="Panel/MarginContainer/VBox"]
+[node name="Separator" type="HSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
 layout_mode = 2
 
-[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/VBox"]
+[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Generate System"
+
+[node name="TemplatesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+metadata/_tab_index = 1
+
+[node name="TemplatesLabel" type="Label" parent="Panel/MarginContainer/TabContainer/TemplatesTab"]
+layout_mode = 2
+text = "System Templates"
+
+[node name="TemplatesScroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/TemplatesTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TemplatesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/TemplatesTab/TemplatesScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
