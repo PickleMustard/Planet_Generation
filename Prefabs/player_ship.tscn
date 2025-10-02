@@ -1,0 +1,41 @@
+[gd_scene load_steps=6 format=3 uid="uid://brice0jo72tpo"]
+
+[ext_resource type="Script" uid="uid://6cu37byqa6it" path="res://Scripts/PlayerInteraction/ShipMovement.cs" id="1_bc0l8"]
+[ext_resource type="Script" uid="uid://ccfxuom517kn0" path="res://Scripts/PlayerInteraction/PlayerController.cs" id="3_2llaf"]
+[ext_resource type="Script" uid="uid://biapc0eaifxvd" path="res://Scripts/PlayerInteraction/InputHandler.cs" id="4_bce5k"]
+[ext_resource type="ArrayMesh" uid="uid://ck1odkdr604ba" path="res://Mesh/player_ship.res" id="5_rool1"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_nd1sr"]
+
+[node name="PlayerShip" type="Node3D" node_paths=PackedStringArray("Target")]
+top_level = true
+script = ExtResource("1_bc0l8")
+ShipTurnSpeed = 0.02
+Target = NodePath("Camera3D/Pointer")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.991983, 0.126372, 0, -0.126372, 0.991983, 0, 8.16296, 1.92236)
+top_level = true
+keep_aspect = 0
+doppler_tracking = 1
+fov = 90.0
+
+[node name="Pointer" type="MeshInstance3D" parent="Camera3D"]
+transform = Transform3D(1, 1.42109e-14, 0, 0, 1, -2.98023e-08, 0, 0, 1, 2.45018e-06, -4.17917, -31.0807)
+mesh = SubResource("SphereMesh_nd1sr")
+
+[node name="PlayerController" type="Node3D" parent="."]
+transform = Transform3D(-0.596936, 5.21858e-08, 2.28111e-15, 0, -2.60929e-08, 0.596936, 5.21858e-08, 0.596936, 2.60929e-08, 0, 0, 0)
+script = ExtResource("3_2llaf")
+MaxSpeed = 100.0
+Acceleration = 4.0
+DecelerationTime = 1.4
+
+[node name="InputHandler" type="Node3D" parent="."]
+transform = Transform3D(-0.596936, 5.21858e-08, 2.28111e-15, 0, -2.60929e-08, 0.596936, 5.21858e-08, 0.596936, 2.60929e-08, 0, 0, 0)
+script = ExtResource("4_bce5k")
+
+[node name="ShipMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(-1, 8.74228e-08, -3.82137e-15, 0, -4.37114e-08, -1, -8.74228e-08, -1, 4.37114e-08, 0, 0, 0)
+mesh = ExtResource("5_rool1")
+skeleton = NodePath("../..")

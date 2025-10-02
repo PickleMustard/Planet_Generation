@@ -27,6 +27,17 @@ public partial class CelestialBody : Node3D
         this.Mesh = mesh;
         this.AddChild(mesh);
 
+        switch (Type)
+        {
+            case CelestialBodyType.Star:
+                //Add a omnidirectional light source
+                OmniLight3D emision = new OmniLight3D();
+                emision.OmniRange = 4096f;
+                emision.OmniAttenuation = .14f;
+                this.AddChild(emision);
+                break;
+        }
+
     }
 
     override public void _Ready()

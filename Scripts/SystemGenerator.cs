@@ -8,7 +8,7 @@ public partial class SystemGenerator : Node
 
     override public void _Ready()
     {
-        root = GetNode("/root");
+        root = GetNode("..");
         var GenerateButton = GetTree().GetFirstNodeInGroup("GenerationMenu");
         ((UI.PlanetSystemGenerator)GenerateButton).GeneratePressed += GenerateMesh;
     }

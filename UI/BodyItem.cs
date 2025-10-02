@@ -5,6 +5,9 @@ using UtilityLibrary;
 
 public partial class BodyItem : VBoxContainer
 {
+    [Signal]
+    public delegate void ItemUpdateEventHandler();
+
     [Export] public Button Toggle;
     [Export] public Button RemoveItem;
     [Export] public OptionButton OptionButton;
@@ -43,6 +46,31 @@ public partial class BodyItem : VBoxContainer
         // Apply input constraints to fields
         ApplyConstraints();
 
+        if (X != null)
+        {
+            X.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
+        }
+        if (Y != null)
+        {
+            Y.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
+        }
+        if (Z != null)
+        {
+            Z.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
+        }
+        if (velX != null)
+        {
+            velX.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
+        }
+        if (velY != null)
+        {
+            velY.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
+        }
+        if (velZ != null)
+        {
+            velZ.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
+        }
+
         // Populate body types and hook selection
         if (OptionButton != null)
         {
@@ -55,6 +83,7 @@ public partial class BodyItem : VBoxContainer
                 var type = (CelestialBodyType)(int)idx;
                 UpdateHeaderFromBodyType(OptionButton.GetItemText((int)idx));
                 ApplyTemplate(type);
+                EmitSignal(SignalName.ItemUpdate);
             };
 
             // Ensure a valid initial selection and template
@@ -112,6 +141,28 @@ public partial class BodyItem : VBoxContainer
         {
             headerBtn.Text = typeName;
         }
+    }
+
+    public void SetPosition(Vector3 position)
+    {
+        if (X != null) X.Value = Mathf.Clamp(position.X, -Limit, Limit);
+        if (Y != null) Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
+        if (Z != null) Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+    }
+
+    public Vector3 GetVelocity()
+    {
+        float vx = Mathf.Clamp((float)velX.Value, -Limit, Limit);
+        float vy = Mathf.Clamp((float)velY.Value, -Limit, Limit);
+        float vz = Mathf.Clamp((float)velZ.Value, -Limit, Limit);
+        return new Vector3(vx, vy, vz);
+    }
+
+    public void SetVelocity(Vector3 velocity)
+    {
+        if (velX != null) velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
+        if (velY != null) velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
+        if (velZ != null) velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
     }
 
     public Godot.Collections.Dictionary ToParams()
