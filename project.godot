@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Delaunay Triangulation Map Generation"
-run/main_scene="res://delauney_sphere.tscn"
+run/main_scene="uid://dt8sw4jlumdml"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -22,3 +22,9 @@ project/assembly_name="Delaunay Triangulation Map Generation"
 [filesystem]
 
 import/blender/enabled=false
+
+[rendering]
+
+environment/glow/upscale_mode=0
+mesh_lod/lod_change/threshold_pixels=43.2
+vrs/mode=1
