@@ -221,3 +221,4 @@ names = [
 position = [800, 0, 0]
 velocity = [0, 5, 0]
 mass = 50
+size = 45

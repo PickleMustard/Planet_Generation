@@ -13,18 +13,19 @@ public enum CelestialBodyType
 ///Its position can be modified by the forces acting upon it</summary>
 public partial class CelestialBody : Node3D
 {
-    Vector3 Velocity;
-    float Mass;
-    Vector3 TotalForce;
-    CelestialBodyType Type;
-    CelestialBodyMesh Mesh;
+    public Vector3 Velocity;
+    public float Mass;
+    public Vector3 TotalForce;
+    public CelestialBodyType Type;
+    public CelestialBodyMesh Mesh;
 
-    public CelestialBody(String type, float mass, Vector3 velocity, CelestialBodyMesh mesh)
+    public CelestialBody(String type, float mass, Vector3 velocity, int size, CelestialBodyMesh mesh)
     {
         this.Type = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
         this.Mass = mass;
         this.Velocity = velocity;
         this.Mesh = mesh;
+        mesh.size = size;
         this.AddChild(mesh);
 
         switch (Type)
@@ -57,7 +58,7 @@ public partial class CelestialBody : Node3D
                 Vector3 direction = (body.GlobalPosition - this.GlobalPosition);
 
                 float force = OrbitalMath.GRAVITATIONAL_CONSTANT * Mass * body.Mass / (distance * distance);
-                TotalForce += direction * force;
+                TotalForce += direction.Normalized() * force;
             }
         }
 

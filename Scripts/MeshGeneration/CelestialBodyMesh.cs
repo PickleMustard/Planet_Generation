@@ -86,7 +86,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// Random number generator for procedural generation.
     /// Provides deterministic random values for consistent terrain and feature generation.
     /// </summary>
-    private RandomNumberGenerator rand = new RandomNumberGenerator();
+    protected RandomNumberGenerator rand = new RandomNumberGenerator();
 
     /// <summary>
     /// Instance reference to this CelestialBodyMesh.
@@ -98,13 +98,13 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// Structure database containing all mesh data and relationships.
     /// Central repository for all mesh structures including vertices, edges, faces, and their relationships.
     /// </summary>
-    private StructureDatabase StrDb;
+    protected StructureDatabase StrDb;
 
     /// <summary>
     /// Tectonic generation system for simulating plate tectonics.
     /// Handles the simulation of tectonic plate movement, stress calculations, and terrain deformation.
     /// </summary>
-    private TectonicGeneration tectonics;
+    protected TectonicGeneration tectonics;
 
     [ExportCategory("Planet Generation")]
     [ExportGroup("Mesh Generation")]
@@ -370,6 +370,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     public override void _Ready()
     {
         // Initialization handled in GenerateMesh method
+        //GenerateMesh();
     }
 
     /// <summary>
@@ -400,7 +401,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
         }
         if (meshParams.ContainsKey("size"))
         {
-            try { size = meshParams["size"].As<int>(); } catch { }
+            try { size = meshParams["size"].As<int>(); } catch { GD.Print("Couldn't find size in meshParams"); }
         }
 
         // Base mesh settings
@@ -495,7 +496,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// mesh generation process. The method sets up all necessary components and
     /// initiates the two-pass generation system.
     /// </remarks>
-    public void GenerateMesh()
+    public virtual void GenerateMesh()
     {
         this.Mesh = new ArrayMesh();
         ShouldDrawArrows = ShouldDrawArrowsInterface;
@@ -519,8 +520,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             GeneralShearScale,
             GeneralCompressionScale);
         Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync());
-        //GenerateFirstPass();
-        GD.Print($"Number of Vertices: {StrDb.LegacyCircumcenters.Values.Count}\n");
+        GD.Print($"Number of Vertices: {StrDb.VoronoiVertices.Values.Count}\n");
     }
 
     /// <summary>
@@ -562,11 +562,11 @@ public partial class CelestialBodyMesh : MeshInstance3D
     ///
     /// Performance timing is applied to each major operation for optimization analysis.
     /// </remarks>
-    private void GenerateFirstPass()
+    protected virtual void GenerateFirstPass()
     {
         GD.Print($"Rand Seed: {rand.Seed}");
         GenericPercent emptyPercent = new GenericPercent();
-        BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge);
+        BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge, this);
         emptyPercent.PercentTotal = 0;
         var function = FunctionTimer.TimeFunction<int>(Name.ToString(),
             "Base Mesh Generation",
@@ -636,17 +636,17 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// The method uses multiple helper classes and algorithms to achieve the complex
     /// terrain generation, including VoronoiCellGeneration, TectonicGeneration, and BiomeAssigner.
     /// </remarks>
-    private void GenerateSecondPass()
+    protected virtual void GenerateSecondPass()
     {
         VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
         GenericPercent emptyPercent = new GenericPercent();
         emptyPercent.PercentTotal = 0;
-        percent.PercentTotal = StrDb.LegacyVertexPoints.Count;
+        percent.PercentTotal = StrDb.BaseVertices.Count;
         var function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Voronoi Cell Generation", () =>
             {
                 try
                 {
-                    voronoiCellGeneration.GenerateVoronoiCells(percent);
+                    voronoiCellGeneration.GenerateVoronoiCells(percent, this);
                 }
                 catch (Exception e)
                 {
@@ -701,7 +701,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
                             {
                                 foreach (Edge e2 in neighbor.Edges)
                                 {
-                                    if (e.Equals(e2) || e.ReverseEdge().Equals(e2))
+                                    if (e.key.Equals(e2.key))
                                     {
                                         vc.EdgeBoundaryMap.Add(e, neighbor.ContinentIndex);
                                         OutsideEdges.Add(e);
@@ -794,6 +794,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             try
             {
                 GenerateFromContinents(continents);
+                //DrawContinentBorders(continents);
             }
             catch (Exception genError)
             {
@@ -985,7 +986,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
     public void DrawContinentBorders(Dictionary<int, Continent> continents)
     {
         int maxAttempts = continents.Count * 10;
-        int currentAttempts = 0;
         foreach (var vc in continents)
         {
             var boundaries = vc.Value.boundaryCells;
@@ -998,17 +998,12 @@ public partial class CelestialBodyMesh : MeshInstance3D
                         Edge e1 = b.OutsideEdges[i];
                         Point p1 = (Point)e1.P;
                         Point p2 = (Point)e1.Q;
-                        Vector3 pos1 = p1.ToVector3().Normalized() * (size + p1.Height / 100f);
-                        Vector3 pos2 = p2.ToVector3().Normalized() * (size + p2.Height / 100f);
+                        Vector3 pos1 = p1.ToVector3().Normalized();
+                        Vector3 pos2 = p2.ToVector3().Normalized();
                         Color lineColor = Colors.Black;
-                        PolygonRendererSDL.DrawLine(this, 1.005f, pos1, pos2, lineColor);
+                        PolygonRendererSDL.DrawLine(this, size, pos1, pos2, Colors.Black);
                     }
                 }
-            }
-            currentAttempts++;
-            if (currentAttempts > maxAttempts)
-            {
-                break;
             }
         }
     }

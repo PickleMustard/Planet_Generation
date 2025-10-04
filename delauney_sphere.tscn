@@ -1,10 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://dt8sw4jlumdml"]
+[gd_scene load_steps=7 format=3 uid="uid://dt8sw4jlumdml"]
 
 [ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/SystemGenerator.cs" id="1_6ftxy"]
 [ext_resource type="Environment" uid="uid://s4wyheed0x8r" path="res://Shaders/stary_background.tres" id="1_8cch0"]
 [ext_resource type="PackedScene" uid="uid://brice0jo72tpo" path="res://Prefabs/player_ship.tscn" id="3_8cch0"]
 [ext_resource type="PackedScene" uid="uid://ca805w5kf1f7q" path="res://UI/PlanetSystemGenerator.tscn" id="3_qqilr"]
-[ext_resource type="Script" uid="uid://c66no17i3tpjj" path="res://Scripts/MeshGeneration/CelestialBodyMesh.cs" id="4_qqilr"]
 
 [sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_dl6d0"]
 exposure_multiplier = 1.169
@@ -24,12 +23,10 @@ compositor = SubResource("Compositor_al28a")
 offset_right = -772.0
 offset_bottom = -13.0
 
-[node name="system_generator" type="Node" parent="."]
+[node name="system_generator" type="Node" parent="." node_paths=PackedStringArray("SystemContainer")]
 script = ExtResource("1_6ftxy")
-
-[node name="Node3D" type="Node3D" parent="."]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Node3D"]
-script = ExtResource("4_qqilr")
+SystemContainer = NodePath("../system_container")
 
 [node name="PlayerShip" parent="." instance=ExtResource("3_8cch0")]
+
+[node name="system_container" type="Node" parent="."]

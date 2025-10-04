@@ -3,15 +3,72 @@ type = "Star"
 position = [-100, 0, 0]
 velocity = [0, 5, 0]
 mass = 500000
+size = 75
+
+[[bodies.mesh.base_mesh]]
+subdivisions = 1
+vertices_per_edge = [12, 17]
+num_abberations = 0
+num_deformation_cycles = 0
+
+[[bodies.mesh.tectonic]]
+num_continents = [1, 2]
+stress_scale = [0.8, 3.0]
+shear_scale = [0.2, 1.7]
+max_propagation_distance = [0.01, 0.1]
+propagation_falloff = [0.8, 1.5]
+inactive_stress_threshold = [0.01, 0.1]
+general_height_scale = [0.8, 1.2]
+general_shear_scale = [0.8, 1.2]
+general_compression_scale = [1.0, 1.75]
+general_transform_scale = [1.1, 1.4]
 
 [[bodies]]
 type = "Star"
 position = [100, 0, 0]
 velocity = [0, -5, 0]
 mass = 500000
+size = 75
+
+[[bodies.mesh.base_mesh]]
+subdivisions = 1
+vertices_per_edge = [12, 17]
+num_abberations = 0
+num_deformation_cycles = 0
+
+[[bodies.mesh.tectonic]]
+num_continents = [1, 2]
+stress_scale = [0.8, 3.0]
+shear_scale = [0.2, 1.7]
+max_propagation_distance = [0.01, 0.1]
+propagation_falloff = [0.8, 1.5]
+inactive_stress_threshold = [0.01, 0.1]
+general_height_scale = [0.8, 1.2]
+general_shear_scale = [0.8, 1.2]
+general_compression_scale = [1.0, 1.75]
+general_transform_scale = [1.1, 1.4]
 
 [[bodies]]
-type = "Rocky Planet"
+type = "RockyPlanet"
 position = [200, 0, 0]
 velocity = [0, 8, 0]
 mass = 10
+size = 12
+
+[[bodies.mesh.base_mesh]]
+subdivisions = 2
+vertices_per_edge = [5, 7]
+num_abberations = 3
+num_deformation_cycles = 3
+
+[[bodies.mesh.tectonic]]
+num_continents = [12, 48]
+stress_scale = [0.8, 3.0]
+shear_scale = [0.2, 1.7]
+max_propagation_distance = [0.01, 0.1]
+propagation_falloff = [0.8, 1.5]
+inactive_stress_threshold = [0.01, 0.1]
+general_height_scale = [0.8, 1.2]
+general_shear_scale = [0.8, 1.2]
+general_compression_scale = [1.0, 1.75]
+general_transform_scale = [1.1, 1.4]

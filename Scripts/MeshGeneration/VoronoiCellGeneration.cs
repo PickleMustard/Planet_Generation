@@ -4,7 +4,6 @@ using System.Linq;
 using Godot;
 using Structures;
 using UtilityLibrary;
-using static MeshGeneration.StructureDatabase;
 
 namespace MeshGeneration;
 
@@ -34,20 +33,24 @@ public class VoronoiCellGeneration
         StrDb = db;
     }
 
+    private CelestialBodyMesh mesh;
+
     /// <summary>
     /// Generates Voronoi cells for all sites in the structure database.
     /// This method processes each site point, finds incident triangles, computes circumcenters,
     /// and creates Voronoi cells by triangulating the projected circumcenters.
     /// </summary>
     /// <param name="percent">Progress tracking object for monitoring generation progress.</param>
-    public void GenerateVoronoiCells(GenericPercent percent)
+    public void GenerateVoronoiCells(GenericPercent percent, CelestialBodyMesh mesh)
     {
+        this.mesh = mesh;
         Logger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");
+        GD.Print($"Generating Voronoi Cells: {StrDb.BaseVertices.Count} Sites");
         Logger.Info($"Structure Database: {StrDb.Index}");
         try
         {
-            Logger.Info($"Generating Voronoi Cells: {StrDb.PointsById.Count} Sites");
-            Point[] initialPoints = StrDb.PointsById.Values.ToArray();
+            Logger.Info($"Generating Voronoi Cells: {StrDb.BaseVertices.Count} Sites");
+            Point[] initialPoints = StrDb.BaseVertices.Values.ToArray();
             foreach (Point p in initialPoints)
             {
                 // Find all base triangles incident to this site using existing half-edge maps
@@ -56,7 +59,7 @@ public class VoronoiCellGeneration
 
                 foreach (Edge e in edgesWithPointFrom)
                 {
-                    foreach (Triangle t in StrDb.GetTrianglesByEdgeIndex(e.Index))
+                    foreach (Triangle t in StrDb.GetTrianglesByEdge(e))
                     {
                         trianglesWithPoint.Add(t);
                     }
@@ -78,16 +81,18 @@ public class VoronoiCellGeneration
                         Logger.Debug($"Duplicate circumcenter encountered: {cc.Index}");
                         continue;
                     }
-                    if (StrDb.circumcenters.ContainsKey(cc.Index))
+                    if (StrDb.VoronoiVertices.ContainsKey(cc.Index))
                     {
-                        Point existing = StrDb.circumcenters[cc.Index];
+                        Point existing = StrDb.VoronoiVertices[cc.Index];
                         triCircumcenters.Add(existing);
+                        StrDb.VoronoiCellVertices.Add(existing);
                         Logger.Debug($"Reused existing circumcenter: {existing.Index}");
                     }
                     else
                     {
                         var stored = StrDb.GetOrCreateCircumcenter(cc.Index, cc.Position);
                         triCircumcenters.Add(stored);
+                        StrDb.VoronoiCellVertices.Add(stored);
                         Logger.Debug($"Added new circumcenter: {stored.Index}");
                     }
                 }
@@ -119,14 +124,11 @@ public class VoronoiCellGeneration
                 VoronoiCell calculated = TriangulatePoints(unitNorm, triCircumcenters, StrDb.VoronoiCells.Count);
                 Logger.Info($"Generated Voronoi Cell: {calculated.Index} with {calculated.Points.Length} points, {calculated.Edges.Length} edges");
                 calculated.IsBorderTile = false;
-                foreach (Point vertex in calculated.Points)
-                {
-                    StrDb.VoronoiCellVertices.Add(vertex);
-                }
                 if (calculated != null)
                 {
                     StrDb.VoronoiCells.Add(calculated);
                 }
+                triCircumcenters.Clear();
                 percent.PercentCurrent++;
             }
         }
@@ -185,6 +187,7 @@ public class VoronoiCellGeneration
         foreach (Triangle t in Triangles)
         {
             TriangulatedIndices.AddRange(t.Points);
+            //PolygonRendererSDL.RenderTriangleAndConnections(mesh, 10, t);
         }
         foreach (Triangle t in Triangles)
         {
@@ -212,24 +215,6 @@ public class VoronoiCellGeneration
             //    StrDb.CellMap[p].Add(GeneratedCell);
             //    Logger.Debug($"CellMap: appended cell={GeneratedCell.Index} to pointIndex={p.Index}");
             //}
-        }
-        foreach (Edge e in CellEdges)
-        {
-            // Canonical registration via undirected key
-            StrDb.AddCellForEdge(EdgeKey.From(e.P, e.Q), GeneratedCell);
-            // Legacy mirror preserved below
-            if (!StrDb.EdgeMap.ContainsKey(e))
-            {
-                StrDb.EdgeMap.Add(e, new HashSet<VoronoiCell>());
-                StrDb.EdgeMap[e].Add(GeneratedCell);
-            }
-            if (!StrDb.EdgeMap.ContainsKey(e.ReverseEdge()))
-            {
-                StrDb.EdgeMap.Add(e.ReverseEdge(), new HashSet<VoronoiCell>());
-                StrDb.EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
-            }
-            StrDb.EdgeMap[e].Add(GeneratedCell);
-            StrDb.EdgeMap[e.ReverseEdge()].Add(GeneratedCell);
         }
         Logger.ExitFunction("TriangulatePoints", $"returned cellIndex={GeneratedCell.Index}");
         return GeneratedCell;

@@ -221,8 +221,6 @@ names = [
 position = [0, 0, 0]
 velocity = [0, 0, 0]
 mass = 500000
-
-[mesh]
 size = 75
 
 [mesh.base_mesh]
