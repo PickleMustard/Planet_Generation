@@ -18,13 +18,31 @@ public partial class BodyItem : VBoxContainer
     [Export] public SpinBox velY;
     [Export] public SpinBox velZ;
     [Export] public SpinBox mass;
+    [Export] public SpinBox size;
 
     public Action<BodyItem> OnRemoveRequested;
 
+    // Mesh parameters
+    public int Subdivisions = 1;
+    public int[] VerticesPerEdge = { 2 };
+    public int NumAbberations = 3;
+    public int NumDeformationCycles = 3;
+    public int NumContinents = 5;
+    public float StressScale = 4.0f;
+    public float ShearScale = 1.2f;
+    public float MaxPropagationDistance = 0.1f;
+    public float PropagationFalloff = 1.5f;
+    public float InactiveStressThreshold = 0.1f;
+    public float GeneralHeightScale = 1.0f;
+    public float GeneralShearScale = 1.2f;
+    public float GeneralCompressionScale = 1.75f;
+    public float GeneralTransformScale = 1.1f;
+
     private const float Limit = 10000f; // constrain within ±10,000 units (mass 0..10,000)
     private const float MassLimit = 100000000f; // constrain within ±100,000,000,000 units (mass 0..100,000,000,000)
+    private const float SizeLimit = 10000f; // constrain within ±10,000 units (size 0..10,000)
 
-    public override void _Ready()
+    public override void _EnterTree()
     {
         // Hook remove
         var remove = GetNodeOrNull<Button>("Header/RemoveItem");
@@ -42,6 +60,7 @@ public partial class BodyItem : VBoxContainer
         velY ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/velY");
         velZ ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/velZ");
         mass ??= GetNodeOrNull<SpinBox>("Content/MassContent/mass");
+        size ??= GetNodeOrNull<SpinBox>("Content/SizeContent/size");
 
         // Apply input constraints to fields
         ApplyConstraints();
@@ -117,7 +136,7 @@ public partial class BodyItem : VBoxContainer
         }
     }
 
-    private void ApplyTemplate(CelestialBodyType type)
+    public void ApplyTemplate(CelestialBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = SystemGenTemplates.GetDefaults(type);
@@ -132,6 +151,11 @@ public partial class BodyItem : VBoxContainer
         if (velZ != null) velZ.Value = Mathf.Clamp(t.Velocity.Z, -Limit, Limit);
 
         if (mass != null) mass.Value = Mathf.Clamp(t.Mass, 0f, MassLimit);
+        if (size != null) size.Value = Mathf.Clamp(t.Size, 0f, SizeLimit);
+    }
+
+    public void UpdateBody()
+    {
     }
 
     public void UpdateHeaderFromBodyType(string typeName)
@@ -165,6 +189,11 @@ public partial class BodyItem : VBoxContainer
         if (velZ != null) velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
     }
 
+    public void SetSize(float size)
+    {
+        if (this.size != null) this.size.Value = Mathf.Clamp(size, 0f, SizeLimit);
+    }
+
     public Godot.Collections.Dictionary ToParams()
     {
         var ob = GetNode<OptionButton>("Content/BodyTypeContent/OptionButton");
@@ -178,12 +207,37 @@ public partial class BodyItem : VBoxContainer
         float cvz = Mathf.Clamp((float)GetNode<SpinBox>("Content/VelocityContent/velZ").Value, -Limit, Limit);
 
         float cm = Mathf.Clamp((float)GetNode<SpinBox>("Content/MassContent/mass").Value, 0f, MassLimit);
+        float cs = Mathf.Clamp((float)GetNode<SpinBox>("Content/SizeContent/size").Value, 0f, SizeLimit);
 
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
         dict.Add("Position", new Vector3(cx, cy, cz));
         dict.Add("Velocity", new Vector3(cvx, cvy, cvz));
         dict.Add("Mass", cm);
         dict.Add("Type", Enum.GetName(typeof(CelestialBodyType), (CelestialBodyType)ob.Selected));
+        dict.Add("Size", cs);
+
+        // Add mesh parameters
+        var meshDict = new Godot.Collections.Dictionary();
+        meshDict.Add("subdivisions", Subdivisions);
+        meshDict.Add("vertices_per_edge", VerticesPerEdge);
+        meshDict.Add("num_abberations", NumAbberations);
+        meshDict.Add("num_deformation_cycles", NumDeformationCycles);
+
+        var tectonicDict = new Godot.Collections.Dictionary();
+        tectonicDict.Add("num_continents", NumContinents);
+        tectonicDict.Add("stress_scale", StressScale);
+        tectonicDict.Add("shear_scale", ShearScale);
+        tectonicDict.Add("max_propagation_distance", MaxPropagationDistance);
+        tectonicDict.Add("propagation_falloff", PropagationFalloff);
+        tectonicDict.Add("inactive_stress_threshold", InactiveStressThreshold);
+        tectonicDict.Add("general_height_scale", GeneralHeightScale);
+        tectonicDict.Add("general_shear_scale", GeneralShearScale);
+        tectonicDict.Add("general_compression_scale", GeneralCompressionScale);
+        tectonicDict.Add("general_transform_scale", GeneralTransformScale);
+
+        meshDict.Add("tectonic", tectonicDict);
+        dict.Add("mesh", meshDict);
+
         return dict;
     }
 }

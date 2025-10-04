@@ -220,8 +220,6 @@ names = [
 position = [500, 0, 0]
 velocity = [0, 7, 0]
 mass = 1000
-
-[mesh]
 size = 35
 
 [mesh.base_mesh]
@@ -241,4 +239,3 @@ general_height_scale = [0.8, 1.2]
 general_shear_scale = [0.8, 1.2]
 general_compression_scale = [1.0, 1.75]
 general_transform_scale = [1.1, 1.4]
-

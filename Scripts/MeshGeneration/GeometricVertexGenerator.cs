@@ -49,7 +49,7 @@ namespace MeshGeneration
             {
                 float t = GetParameterization(i, count);
                 Vector3 pos = startVector.Lerp(endVector, t);
-                vertices[i] = new Point(pos);
+                vertices[i] = db.GetOrCreatePoint(pos);
             }
 
             Logger.ExitFunction("GeometricVertexGenerator.GenerateVertices", $"returned {vertices.Length} points");

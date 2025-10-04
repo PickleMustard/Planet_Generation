@@ -39,8 +39,8 @@ namespace MeshGeneration
 
             for (int i = 0; i < count; ++i)
             {
-                float t = (i + 1) * step;
-                Vector3 pos = start.ToVector3().Lerp(end.ToVector3(), t);
+                float t = ((float)(i + 1)) * step;
+                Vector3 pos = start.ToVector3().Lerp(end.ToVector3(), t).Round();
                 vertices[i] = db.GetOrCreatePoint(pos);
             }
 
