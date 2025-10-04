@@ -221,18 +221,16 @@ names = [
 position = [150, 0, 0]
 velocity = [0, 10, 0]
 mass = 10
-
-[mesh]
 size = 12
 
 [mesh.base_mesh]
-subdivisions = 2
+subdivisions = 1
 vertices_per_edge = [5, 7]
 num_abberations = 3
-num_deformation_cycles = 3
+num_deformation_cycles = 5
 
 [mesh.tectonic]
-num_continents = [12, 48]
+num_continents = [1, 1]
 stress_scale = [0.8, 3.0]
 shear_scale = [0.2, 1.7]
 max_propagation_distance = [0.01, 0.1]
@@ -242,4 +240,3 @@ general_height_scale = [0.8, 1.2]
 general_shear_scale = [0.8, 1.2]
 general_compression_scale = [1.0, 1.75]
 general_transform_scale = [1.1, 1.4]
-

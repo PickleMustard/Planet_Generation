@@ -14,6 +14,7 @@ namespace UtilityLibrary
         {
             public Vector3 Position;
             public Vector3 Velocity;
+            public float Size;
             public float Mass;
         }
 
@@ -61,7 +62,6 @@ namespace UtilityLibrary
                 int subdivisions = 1;
                 int numAbberations = 3;
                 int numDeformationCycles = 3;
-                int size = 5;
                 String category = "mythology";
                 String name = "";
                 (int minVpe, int maxVpe) vpeRange = (1, 2);
@@ -78,7 +78,6 @@ namespace UtilityLibrary
                 }
                 if (table.HasKey("mesh") && table["mesh"] is TomlTable mesh)
                 {
-                    size = ReadInt(mesh, "size", 5);
                     if (mesh.HasKey("base_mesh") && mesh["base_mesh"] is TomlTable baseMesh)
                     {
                         subdivisions = ReadInt(baseMesh, "subdivisions", 1);
@@ -114,7 +113,6 @@ namespace UtilityLibrary
                 }
 
                 dict["name"] = name;
-                dict["size"] = size;
                 dict["subdivisions"] = subdivisions;
                 dict["vertices_per_edge"] = vpeArray;
                 dict["num_abberations"] = numAbberations;
@@ -183,8 +181,9 @@ namespace UtilityLibrary
                 var pos = ReadVector3(tmpl, "position", Vector3.Zero);
                 var vel = ReadVector3(tmpl, "velocity", Vector3.Zero);
                 var mass = ReadFloat(tmpl, "mass", 1f);
+                var size = ReadFloat(tmpl, "size", 1f);
 
-                template = new Template { Position = pos, Velocity = vel, Mass = mass };
+                template = new Template { Position = pos, Velocity = vel, Mass = mass, Size = size };
                 return true;
             }
             catch

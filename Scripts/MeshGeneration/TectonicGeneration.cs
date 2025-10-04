@@ -17,47 +17,47 @@ public class TectonicGeneration
     /// Database containing all structural data for the mesh including vertices, edges, and cells.
     /// </summary>
     private readonly StructureDatabase StrDb;
-    
+
     /// <summary>
     /// Random number generator for procedural generation and random sampling.
     /// </summary>
     private readonly RandomNumberGenerator rand;
-    
+
     /// <summary>
     /// Scaling factor for compression stress calculations.
     /// </summary>
     private readonly float StressScale;
-    
+
     /// <summary>
     /// Scaling factor for shear stress calculations.
     /// </summary>
     private readonly float ShearScale;
-    
+
     /// <summary>
     /// Maximum distance that stress can propagate from its source edge.
     /// </summary>
     private readonly float MaxPropagationDistance;
-    
+
     /// <summary>
     /// Rate at which stress magnitude decreases with distance from source.
     /// </summary>
     private readonly float PropagationFalloff;
-    
+
     /// <summary>
     /// Threshold below which stress is considered inactive and doesn't affect terrain.
     /// </summary>
     private readonly float InactiveStressThreshold;
-    
+
     /// <summary>
     /// General scaling factor for height modifications due to inactive stress.
     /// </summary>
     private readonly float GeneralHeightScale;
-    
+
     /// <summary>
     /// Scaling factor for height modifications due to shear stress.
     /// </summary>
     private readonly float GeneralShearScale;
-    
+
     /// <summary>
     /// Scaling factor for height modifications due to compression stress.
     /// </summary>

@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://ca805w5kf1f7q"]
+[gd_scene load_steps=3 format=3 uid="uid://ca805w5kf1f7q"]
 
 [ext_resource type="Script" uid="uid://btbyafcvgv7bv" path="res://UI/PlanetSystemGenerator.cs" id="1_pj1xb"]
+[ext_resource type="Texture2D" uid="uid://brr6hxw3n4roy" path="res://UI/xmark.svg" id="2_pj1xb"]
 
 [node name="PlanetSystemGeneratorUI" type="Control"]
 layout_mode = 3
@@ -77,10 +78,27 @@ theme_override_constants/separation = 8
 [node name="Separator" type="HSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
 layout_mode = 2
 
-[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
+[node name="GenerationRow" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
+layout_mode = 2
+
+[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
+size_flags_stretch_ratio = 3.0
 text = "Generate System"
+
+[node name="ValidateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+text = "Validate System"
+
+[node name="StabilityIndicator" type="TextureRect" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationRow"]
+layout_mode = 2
+texture = ExtResource("2_pj1xb")
+expand_mode = 3
+stretch_mode = 5
 
 [node name="TemplatesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer"]
 visible = false

@@ -1,7 +1,6 @@
 using System;
-using Structures;
 
-namespace MeshGeneration
+namespace Structures
 {
     /// <summary>
     /// Represents a canonical, direction-agnostic identity for an undirected edge in mesh generation.
@@ -150,6 +149,6 @@ namespace MeshGeneration
         /// and display purposes. The normalized format ensures consistent string representation
         /// for edges that are logically equivalent.
         /// </remarks>
-        public override string ToString() => $"EdgeKey({A},{B})";
+        public override string ToString() => $"EdgeKey({A},{B}: {GetHashCode()})";
     }
 }

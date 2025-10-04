@@ -19,6 +19,7 @@ public class ConfigurableSubdivider
     /// The structure database used for managing points, edges, and faces during subdivision.
     /// </summary>
     private StructureDatabase StrDb;
+    private CelestialBodyMesh mesh;
 
     /// <summary>
     /// Dictionary mapping vertex distribution types to their corresponding vertex generators.
@@ -29,8 +30,9 @@ public class ConfigurableSubdivider
     /// Initializes a new instance of the ConfigurableSubdivider class.
     /// </summary>
     /// <param name="db">The structure database to use for managing mesh data during subdivision.</param>
-    public ConfigurableSubdivider(StructureDatabase db)
+    public ConfigurableSubdivider(StructureDatabase db, CelestialBodyMesh mesh)
     {
+        this.mesh = mesh;
         this.StrDb = db;
         Logger.EnterFunction("ConfigurableSubdivider::.ctor");
         _generators = new Dictionary<VertexDistribution, IVertexGenerator>(){
@@ -137,7 +139,7 @@ public class ConfigurableSubdivider
         Vector3 bVec = b.ToVector3();
         Vector3 cVec = c.ToVector3();
         Vector3 result = aVec * u + bVec * v + cVec * w;
-        Point resultPoint = StrDb.GetOrCreatePoint(result);
+        Point resultPoint = StrDb.GetOrCreatePoint(result.Round());
         Logger.ExitFunction("CalculateBarycentricPoint", $"returned pointIndex={resultPoint.Index}");
         return resultPoint;
     }
@@ -259,18 +261,26 @@ public class ConfigurableSubdivider
                     {
                         faces.Add(new Face(p1, p2, p3, e1, e2, e3));
                     }
+                    else
+                    {
+                        Logger.Error($"Could not create face {p1}, {p2}, {p3}");
+                    }
                 }
                 if (i + 1 <= resolution && j - 1 >= 0 && k - 1 >= 0)
                 {
-                    Point p1 = barycentricMap[(i, j, k)];
+                    Point p3 = barycentricMap[(i, j, k)];
                     Point p2 = barycentricMap[(i + 1, j - 1, k)];
-                    Point p3 = barycentricMap[(i + 1, j, k - 1)];
-                    Edge e1 = StrDb.AddEdge(p1, p2);
-                    Edge e2 = StrDb.AddEdge(p2, p3);
-                    Edge e3 = StrDb.AddEdge(p3, p1);
+                    Point p1 = barycentricMap[(i + 1, j, k - 1)];
+                    Edge e1 = StrDb.AddEdge(p2, p1);
+                    Edge e2 = StrDb.AddEdge(p3, p2);
+                    Edge e3 = StrDb.AddEdge(p1, p3);
                     if (p1 != null && p2 != null && p3 != null)
                     {
                         faces.Add(new Face(p1, p2, p3, e1, e2, e3));
+                    }
+                    else
+                    {
+                        Logger.Error($"Could not create face {p1}, {p2}, {p3}");
                     }
                 }
             }

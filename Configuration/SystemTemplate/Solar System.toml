@@ -3,15 +3,72 @@ type = "Star"
 position = [0, 0, 0]
 velocity = [0, 0, 0]
 mass = 500000
+size = 75
+
+[[bodies.mesh.base_mesh]]
+subdivisions = 1
+vertices_per_edge = [12, 17]
+num_abberations = 0
+num_deformation_cycles = 0
+
+[[bodies.mesh.tectonic]]
+num_continents = [1, 2]
+stress_scale = [0.8, 3.0]
+shear_scale = [0.2, 1.7]
+max_propagation_distance = [0.01, 0.1]
+propagation_falloff = [0.8, 1.5]
+inactive_stress_threshold = [0.01, 0.1]
+general_height_scale = [0.8, 1.2]
+general_shear_scale = [0.8, 1.2]
+general_compression_scale = [1.0, 1.75]
+general_transform_scale = [1.1, 1.4]
 
 [[bodies]]
-type = "Rocky Planet"
-position = [150, 0, 0]
+type = "RockyPlanet"
+position = [400, 0, 0]
 velocity = [0, 10, 0]
 mass = 10
+size = 12
+
+[[bodies.mesh.base_mesh]]
+subdivisions = 1
+vertices_per_edge = [5, 7]
+num_abberations = 3
+num_deformation_cycles = 3
+
+[[bodies.mesh.tectonic]]
+num_continents = [3, 5]
+stress_scale = [0.8, 3.0]
+shear_scale = [0.2, 1.7]
+max_propagation_distance = [0.01, 0.1]
+propagation_falloff = [0.8, 1.5]
+inactive_stress_threshold = [0.01, 0.1]
+general_height_scale = [0.8, 1.2]
+general_shear_scale = [0.8, 1.2]
+general_compression_scale = [1.0, 1.75]
+general_transform_scale = [1.1, 1.4]
 
 [[bodies]]
-type = "Gas Giant"
-position = [500, 0, 0]
+type = "GasGiant"
+position = [700, 0, 0]
 velocity = [0, 7, 0]
 mass = 100
+size = 35
+
+[[bodies.mesh.base_mesh]]
+subdivisions = 1
+vertices_per_edge = [8, 12]
+num_abberations = 2
+num_deformation_cycles = 2
+
+[[bodies.mesh.tectonic]]
+num_continents = [3, 8]
+stress_scale = [1.0, 2.0]
+shear_scale = [0.5, 1.5]
+max_propagation_distance = [0.02, 0.08]
+propagation_falloff = [1.0, 2.0]
+inactive_stress_threshold = [0.02, 0.08]
+general_height_scale = [0.9, 1.1]
+general_shear_scale = [0.9, 1.1]
+general_compression_scale = [1.2, 1.8]
+general_transform_scale = [1.0, 1.3]

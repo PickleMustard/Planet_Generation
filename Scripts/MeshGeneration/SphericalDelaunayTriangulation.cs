@@ -15,7 +15,7 @@ namespace MeshGeneration;
 /// The class uses two different triangulation strategies based on the number of points:
 /// - For small convex hulls (≤ 6 points): Fan triangulation from centroid
 /// - For larger convex hulls: Incremental Delaunay triangulation with edge flipping
-/// 
+///
 /// The algorithm ensures that the resulting triangulation satisfies the Delaunay property,
 /// which means no point lies inside the circumcircle of any triangle.
 /// </remarks>
@@ -25,22 +25,22 @@ public class SphericalDelaunayTriangulation
     /// Original 3D points from the sphere surface
     /// </summary>
     private List<Point> originalPoints;
-    
+
     /// <summary>
     /// Points projected onto a 2D plane for triangulation
     /// </summary>
     private List<Point> projectedPoints;
-    
+
     /// <summary>
     /// Generated triangles forming the triangulation
     /// </summary>
     private List<Triangle> triangles;
-    
+
     /// <summary>
     /// Mapping from index to original point for quick lookup
     /// </summary>
     private Dictionary<int, Point> pointMap;
-    
+
     /// <summary>
     /// Structure database containing circumcenters and other geometric data
     /// </summary>
@@ -68,7 +68,7 @@ public class SphericalDelaunayTriangulation
     /// This method performs validation to ensure:
     /// - Projected and original point counts match
     /// - At least 3 points are provided (minimum for triangulation)
-    /// 
+    ///
     /// For 3 points, creates a single triangle. For 4-6 points, uses fan triangulation.
     /// For more than 6 points, uses incremental Delaunay triangulation with edge flipping.
     /// </remarks>
@@ -141,7 +141,7 @@ public class SphericalDelaunayTriangulation
     /// This method is used for convex hulls with 6 or fewer points. It works by:
     /// 1. Sorting points by angle from the centroid
     /// 2. Creating triangles by connecting the first point to all other consecutive point pairs
-    /// 
+    ///
     /// This approach is efficient for small convex polygons and ensures proper triangulation
     /// without the need for complex Delaunay checks.
     /// </remarks>
@@ -175,7 +175,7 @@ public class SphericalDelaunayTriangulation
     /// 2. Creates an initial triangle with the first three points
     /// 3. Incrementally inserts remaining points into the triangulation
     /// 4. Performs edge flipping to ensure the Delaunay property is maintained
-    /// 
+    ///
     /// The edge flipping process iteratively checks adjacent triangles and flips edges
     /// when a point lies inside the circumcircle of a triangle, ensuring optimal triangle quality.
     /// </remarks>
@@ -239,7 +239,7 @@ public class SphericalDelaunayTriangulation
             }
 
             iterations++;
-        } while (changed && iterations < maxIterations);
+        } while (changed && iterations <= maxIterations);
 
         Logger.Info($"Edge flipping completed after {iterations} iterations");
         Logger.ExitFunction("PerformIncrementalDelaunay", $"created {triangles.Count} triangles");
@@ -255,7 +255,7 @@ public class SphericalDelaunayTriangulation
     /// 2. Identifies horizon edges (boundary edges of visible triangles)
     /// 3. Removes visible triangles from the triangulation
     /// 4. Creates new triangles connecting the new point to each horizon edge
-    /// 
+    ///
     /// For convex hulls, the new point should always be visible from some triangles,
     /// as it lies on the convex hull boundary.
     /// </remarks>
@@ -396,7 +396,7 @@ public class SphericalDelaunayTriangulation
     /// 2. Retrieves the original 3D points from the sphere surface
     /// 3. Creates edges between the three points
     /// 4. Constructs a Triangle object with proper indexing
-    /// 
+    ///
     /// The method attempts to find points in the circumcenters database first,
     /// falling back to the original points if not found.
     /// </remarks>
@@ -405,8 +405,10 @@ public class SphericalDelaunayTriangulation
         // Ensure consistent winding order
         if (Orient2D(projectedPoints[i1], projectedPoints[i2], projectedPoints[i3]) < 0)
         {
-            // Swap to ensure counter-clockwise order
             (i2, i3) = (i3, i2);
+            //var temp = i2;
+            //i2 = i3;
+            //i3 = temp;
         }
 
         // Get the original points from the sphere
@@ -421,9 +423,9 @@ public class SphericalDelaunayTriangulation
         }
 
         // Create edges
-        var e1 = new Edge(p1, p2);
-        var e2 = new Edge(p2, p3);
-        var e3 = new Edge(p3, p1);
+        var e1 = Edge.MakeEdge(p1, p2);
+        var e2 = Edge.MakeEdge(p2, p3);
+        var e3 = Edge.MakeEdge(p3, p1);
 
         // Create triangle
         var tri = new Triangle(
@@ -454,9 +456,9 @@ public class SphericalDelaunayTriangulation
         var original = originalPoints[index];
 
         // Try to find the point in the circumcenters database
-        if (StrDb.LegacyCircumcenters.ContainsKey(original.Index))
+        if (StrDb.VoronoiVertices.ContainsKey(original.Index))
         {
-            return StrDb.LegacyCircumcenters[original.Index];
+            return StrDb.VoronoiVertices[original.Index];
         }
 
         // If not found, return the original point
@@ -585,7 +587,7 @@ public class SphericalDelaunayTriangulation
     /// 1. Identifies the opposite vertices of each triangle (not on the shared edge)
     /// 2. Removes the original two triangles from the triangulation
     /// 3. Creates two new triangles by connecting the opposite vertices
-    /// 
+    ///
     /// The flip operation replaces the shared edge with a new edge between the
     /// opposite vertices, which often improves triangle quality and maintains
     /// the Delaunay property.
@@ -641,7 +643,7 @@ public class SphericalDelaunayTriangulation
     /// 1. It is not null and has exactly 3 points
     /// 2. All three points are distinct (no duplicate vertices)
     /// 3. The triangle has non-zero area (points are not collinear)
-    /// 
+    ///
     /// This method uses a cross product test to check for collinearity by ensuring
     /// the squared length of the cross product exceeds a small epsilon value.
     /// </remarks>
@@ -674,17 +676,17 @@ public class SphericalDelaunayTriangulation
     /// <param name="b">Second point</param>
     /// <param name="c">Third point</param>
     /// <returns>
-    /// Positive if points are counter-clockwise, 
-    /// negative if clockwise, 
+    /// Positive if points are counter-clockwise,
+    /// negative if clockwise,
     /// zero if collinear
     /// </returns>
     /// <remarks>
     /// This method computes the signed area of the parallelogram formed by vectors
     /// (b-a) and (c-a). The sign indicates the orientation of the three points:
     /// - Positive: counter-clockwise orientation
-    /// - Negative: clockwise orientation  
+    /// - Negative: clockwise orientation
     /// - Zero: collinear points
-    /// 
+    ///
     /// This is a fundamental geometric predicate used in many triangulation algorithms.
     /// </remarks>
     private static float Orient2D(Point a, Point b, Point c)
@@ -707,7 +709,7 @@ public class SphericalDelaunayTriangulation
     /// formed by points a, b, and c. This is a key test for Delaunay triangulation,
     /// as the Delaunay property requires that no point lies inside the circumcircle
     /// of any triangle.
-    /// 
+    ///
     /// The test uses a 4x4 determinant computation optimized for efficiency.
     /// </remarks>
     private static bool InCircle(Point a, Point b, Point c, Point d)

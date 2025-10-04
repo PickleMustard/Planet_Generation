@@ -47,10 +47,9 @@ public class StructureDatabase
     /// </summary>
     private object lockObject = new object();
 
-    public Dictionary<int, Point> VertexPoints = new Dictionary<int, Point>();
-    public Dictionary<int, Edge> Edges = new Dictionary<int, Edge>();
     public HashSet<Triangle> BaseTris = new HashSet<Triangle>();
-    public Dictionary<Point, HashSet<Edge>> HalfEdgesFrom = new Dictionary<Point, HashSet<Edge>>();
+    public HashSet<Edge> UsedEdges = new HashSet<Edge>();
+    public HashSet<Point> UsedPoints = new HashSet<Point>();
     public Dictionary<Edge, List<Triangle>> EdgeTriangles = new Dictionary<Edge, List<Triangle>>();
     /// <summary>
     /// Gets or sets the current mesh generation state. Starts at Ungenerated and increments after each mesh generation phase.
@@ -60,7 +59,7 @@ public class StructureDatabase
     /// <summary>
     /// Dictionary mapping circumcenter indices to Point objects.
     /// </summary>
-    public Dictionary<int, Point> circumcenters = new Dictionary<int, Point>();
+    public Dictionary<int, Point> VoronoiVertices = new Dictionary<int, Point>();
 
     /// <summary>
     /// List of all Voronoi cells in the mesh.
@@ -106,7 +105,7 @@ public class StructureDatabase
     /// <summary>
     /// Canonical registry mapping point indices to Point objects.
     /// </summary>
-    internal Dictionary<int, Point> PointsById = new Dictionary<int, Point>();
+    internal Dictionary<int, Point> BaseVertices = new Dictionary<int, Point>();
 
     /// <summary>
     /// Canonical registry mapping half-edge IDs to HalfEdge objects.
@@ -116,7 +115,7 @@ public class StructureDatabase
     /// <summary>
     /// Canonical registry mapping undirected edge keys to their indices.
     /// </summary>
-    internal Dictionary<EdgeKey, int> UndirectedEdgeIndex = new Dictionary<EdgeKey, int>();
+    internal Dictionary<EdgeKey, Edge> UndirectedEdgeIndex = new Dictionary<EdgeKey, Edge>();
 
     /// <summary>
     /// Canonical registry mapping triangle IDs to Triangle objects.
@@ -207,13 +206,16 @@ public class StructureDatabase
     {
         lock (lockObject)
         {
-            if (PointsById.TryGetValue(index, out var existing))
+            if (BaseVertices.TryGetValue(index, out var existing))
             {
                 return existing;
             }
-            Point p = new Point(pos, index);
-            PointsById[index] = p;
-            return p;
+            else
+            {
+                Point p = new Point(pos, index);
+                BaseVertices[index] = p;
+                return p;
+            }
         }
     }
 
@@ -239,13 +241,9 @@ public class StructureDatabase
             {
                 foreach (var h in set)
                 {
-                    if (h.To == b)
+                    if (h.Twin.From == b)
                     {
                         int idx = Edge.DefineIndex(a, b);
-                        if (Edges.TryGetValue(idx, out edge))
-                        {
-                            return true;
-                        }
                         break;
                     }
                 }
@@ -269,9 +267,12 @@ public class StructureDatabase
     {
         lock (lockObject)
         {
-            if (TryGetEdge(a, b, out var found)) return found;
+            if (TryGetEdge(a, b, out var found))
+            {
+                return found;
+            }
             // Create new legacy edge and mirror canonicals
-            var e = new Edge(a, b);
+            var e = Edge.MakeEdge(a, b);
             RegisterEdgeCanonicalAndLegacy(e);
             return e;
         }
@@ -295,7 +296,7 @@ public class StructureDatabase
         lock (lockObject)
         {
             if (TryGetEdge(a, b, out var found)) return found;
-            var e = new Edge(index, a, b);
+            var e = Edge.MakeEdge(index, a, b);
             RegisterEdgeCanonicalAndLegacy(e);
             Logger.ExitFunction("GetOrCreateEdge");
             return e;
@@ -324,9 +325,9 @@ public class StructureDatabase
             {
                 HashSet<Edge> result = new HashSet<Edge>();
                 // Prefer HalfEdgesFrom when available
-                if (HalfEdgesFrom.TryGetValue(p, out var edgesFrom) && edgesFrom.Count > 0)
+                if (OutHalfEdgesByPoint.TryGetValue(p, out var edgesFrom) && edgesFrom.Count > 0)
                 {
-                    foreach (var e in edgesFrom) result.Add(e);
+                    foreach (var e in edgesFrom) result.Add(UndirectedEdgeIndex[e.Key]);
                 }
                 else
                 {
@@ -334,9 +335,9 @@ public class StructureDatabase
                     switch (state)
                     {
                         case MeshState.BaseMesh:
-                            if (HalfEdgesFrom.TryGetValue(p, out var baseEdges))
+                            if (OutHalfEdgesByPoint.TryGetValue(p, out var baseEdges))
                             {
-                                foreach (var e in baseEdges) result.Add(e);
+                                foreach (var e in baseEdges) result.Add(UndirectedEdgeIndex[e.Key]);
                             }
                             break;
                         case MeshState.DualMesh:
@@ -374,7 +375,7 @@ public class StructureDatabase
     /// - Ensures all points exist in registries
     /// - Creates or retrieves edges between the points
     /// - Allocates a unique triangle ID
-    /// - Registers the triangle in both canonical and legacy systems
+    /// - Registers the triangle in both canonical and le 3, 10, 2,gacy systems
     /// - Updates edge-triangle relationships
     /// </remarks>
     public Triangle AddTriangle(List<Point> points)
@@ -386,8 +387,7 @@ public class StructureDatabase
             // Ensure points exist
             foreach (var p in points)
             {
-                if (!PointsById.ContainsKey(p.Index)) PointsById[p.Index] = p;
-                if (!VertexPoints.ContainsKey(p.Index)) VertexPoints[p.Index] = p;
+                if (!BaseVertices.ContainsKey(p.Index)) BaseVertices[p.Index] = p;
             }
             // Create/wire edges in order
             var e0 = GetOrCreateEdge(points[0], points[1]);
@@ -457,26 +457,15 @@ public class StructureDatabase
     /// via EdgeKey. If that fails, it falls back to the legacy system by checking both directions
     /// of the edge and combining the results.
     /// </remarks>
-    public List<Triangle> GetTrianglesByEdgeIndex(int index)
+    public List<Triangle> GetTrianglesByEdge(Edge e)
     {
         lock (lockObject)
         {
             List<Triangle> result = new List<Triangle>();
-            if (Edges.TryGetValue(index, out var edge))
+            if (TrianglesByEdgeKey.TryGetValue(e.key, out var list))
             {
-                var key = EdgeKey.From(edge.P, edge.Q);
-                if (TrianglesByEdgeKey.TryGetValue(key, out var list))
-                {
-                    result.AddRange(list);
-                    return result;
-                }
-            }
-            // Fallback legacy path: union of both directions by index
-            if (Edges.TryGetValue(index, out var e1))
-            {
-                if (EdgeTriangles.TryGetValue(e1, out var l1)) result.AddRange(l1);
-                var rev = e1.ReverseEdge();
-                if (EdgeTriangles.TryGetValue(rev, out var l2)) result.AddRange(l2);
+                result.AddRange(list);
+                return result;
             }
             return result;
         }
@@ -517,8 +506,8 @@ public class StructureDatabase
             // Legacy fallback
             List<Triangle> tmp = new List<Triangle>();
             if (EdgeTriangles.TryGetValue(e, out var l1)) tmp.AddRange(l1);
-            var rev = e.ReverseEdge();
-            if (EdgeTriangles.TryGetValue(rev, out var l2)) tmp.AddRange(l2);
+            //var rev = e.ReverseEdge();
+            //if (EdgeTriangles.TryGetValue(rev, out var l2)) tmp.AddRange(l2);
             if (tmp.Count == 2)
             {
                 t1 = tmp[0]; t2 = tmp[1];
@@ -563,8 +552,7 @@ public class StructureDatabase
         lock (lockObject)
         {
             // Registry first
-            if (!PointsById.ContainsKey(point.Index)) PointsById[point.Index] = point;
-            if (!VertexPoints.ContainsKey(point.Index)) VertexPoints.Add(point.Index, point);
+            if (!BaseVertices.ContainsKey(point.Index)) BaseVertices[point.Index] = point;
 
             // Preserve legacy structure/actions by state (currently only Ungenerated branch mutates)
             switch (state)
@@ -628,7 +616,7 @@ public class StructureDatabase
     /// </remarks>
     public void AddEdge(Edge edge)
     {
-        Logger.EnterFunction("AddEdge", $"MeshState: {state}, edgeIndex={edge.Index}, reverse={edge.ReverseEdge().Index}");
+        Logger.EnterFunction("AddEdge", $"MeshState: {state}, edgeIndex={edge.Index}");
         lock (lockObject)
         {
             RegisterEdgeCanonicalAndLegacy(edge);
@@ -704,8 +692,7 @@ public class StructureDatabase
         Logger.EnterFunction("UpdatePointBaseMesh", $"pointIndex={point.Index} -> newIndex={newPoint.Index}");
         lock (lockObject)
         {
-            VertexPoints[point.Index] = newPoint;
-            PointsById[newPoint.Index] = newPoint;
+            BaseVertices[newPoint.Index] = newPoint;
         }
         Logger.ExitFunction("UpdatePointBaseMesh");
     }
@@ -724,7 +711,7 @@ public class StructureDatabase
     public Edge UpdateWorldEdgeMap(Point p1, Point p2)
     {
         Logger.EnterFunction("UpdateWorldEdgeMap", $"p1={p1.Index}, p2={p2.Index}");
-        Edge generatedEdge = new Edge(p1, p2);
+        Edge generatedEdge = Edge.MakeEdge(p1, p2);
         // Ensure canonical/legacy half-edges exist
         AddEdge(generatedEdge);
 
@@ -774,41 +761,11 @@ public class StructureDatabase
     /// </remarks>
     public void UpdateEdge(Edge edge, Edge newEdge)
     {
-        Logger.EnterFunction("UpdateEdge", $"edgeIndex={edge.Index} | reverse={edge.ReverseEdge().Index} -> newIndex={newEdge.Index} | reverse={newEdge.ReverseEdge().Index}");
+        Logger.EnterFunction("UpdateEdge", $"edgeIndex={edge.Index}  -> newIndex={newEdge.Index}");
         lock (lockObject)
         {
             // Remove canonical half-edges for old edge
             RemoveCanonicalHalfEdges(edge.P, edge.Q);
-
-            // Legacy update
-            if (HalfEdgesFrom.ContainsKey((Point)edge.P))
-            {
-                HalfEdgesFrom[(Point)edge.P].Remove(edge);
-            }
-            if (HalfEdgesFrom.ContainsKey((Point)edge.Q))
-            {
-                HalfEdgesFrom[(Point)edge.Q].Remove(edge);
-            }
-            Edges[edge.Index] = newEdge;
-            Edges[edge.ReverseEdge().Index] = newEdge.ReverseEdge();
-            if (HalfEdgesFrom.ContainsKey((Point)newEdge.P))
-            {
-                HalfEdgesFrom[(Point)newEdge.P].Add(newEdge);
-            }
-            else
-            {
-                HalfEdgesFrom.Add((Point)newEdge.P, new HashSet<Edge>());
-                HalfEdgesFrom[(Point)newEdge.P].Add(newEdge);
-            }
-            if (HalfEdgesFrom.ContainsKey((Point)newEdge.Q))
-            {
-                HalfEdgesFrom[(Point)newEdge.Q].Add(newEdge.ReverseEdge());
-            }
-            else
-            {
-                HalfEdgesFrom.Add((Point)newEdge.Q, new HashSet<Edge>());
-                HalfEdgesFrom[(Point)newEdge.Q].Add(newEdge.ReverseEdge());
-            }
 
             // Recreate canonical half-edges for new edge
             RegisterEdgeCanonicalAndLegacy(newEdge);
@@ -848,6 +805,10 @@ public class StructureDatabase
                         if (list[i].Index == triangle.Index) { list[i] = newTriangle; }
                     }
                 }
+                else
+                {
+                    TrianglesByEdgeKey.Add(key, new List<Triangle> { newTriangle });
+                }
             }
 
             // Legacy mirrors
@@ -880,10 +841,18 @@ public class StructureDatabase
         Logger.EnterFunction("SelectRandomPoint");
         lock (lockObject)
         {
-            List<Point> points = new List<Point>(VertexPoints.Values);
+            List<Point> points = new List<Point>(BaseVertices.Values.Where(p => !UsedPoints.Contains(p)));
             Point selected = points[rand.RandiRange(0, points.Count - 1)];
             Logger.ExitFunction("SelectRandomPoint", $"returned pointIndex={selected.Index}");
             return selected;
+        }
+    }
+
+    public void RemoveFromRandom(List<Point> points)
+    {
+        foreach (Point p in points)
+        {
+            UsedPoints.Add(p);
         }
     }
 
@@ -906,14 +875,6 @@ public class StructureDatabase
         {
             // Canonical removal
             RemoveCanonicalHalfEdges(edge.P, edge.Q);
-
-            // Legacy behavior (preserved)
-            Edges.Remove(edge.Index);
-            Edges.Remove(edge.ReverseEdge().Index);
-            EdgeTriangles.Remove(edge);
-            EdgeTriangles.Remove(edge.ReverseEdge());
-            HalfEdgesFrom.Remove((Point)edge.P);
-            HalfEdgesFrom.Remove((Point)edge.Q);
         }
         Logger.ExitFunction("RemoveEdge");
     }
@@ -934,10 +895,10 @@ public class StructureDatabase
     {
         lock (lockObject)
         {
-            if (circumcenters.TryGetValue(index, out var p)) return p;
+            if (VoronoiVertices.TryGetValue(index, out var p)) return p;
             var point = new Point(pos, index);
-            circumcenters[index] = point;
-            if (!PointsById.ContainsKey(index)) PointsById[index] = point;
+            VoronoiVertices[index] = point;
+            if (!BaseVertices.ContainsKey(index)) BaseVertices[index] = point;
             return point;
         }
     }
@@ -989,7 +950,7 @@ public class StructureDatabase
             set.Add(cell);
 
             // Mirror to legacy EdgeMap only if a matching legacy key (same endpoints, any instance) exists
-            if (VertexPoints.TryGetValue(key.A, out var pa) && VertexPoints.TryGetValue(key.B, out var pb))
+            if (BaseVertices.TryGetValue(key.A, out var pa) && BaseVertices.TryGetValue(key.B, out var pb))
             {
                 Edge matchAB = null;
                 Edge matchBA = null;
@@ -1069,28 +1030,15 @@ public class StructureDatabase
     private void RegisterEdgeCanonicalAndLegacy(Edge e)
     {
         // Points registry
-        if (!PointsById.ContainsKey(e.P.Index)) PointsById[e.P.Index] = e.P;
-        if (!PointsById.ContainsKey(e.Q.Index)) PointsById[e.Q.Index] = e.Q;
-        if (!VertexPoints.ContainsKey(e.P.Index)) VertexPoints[e.P.Index] = e.P;
-        if (!VertexPoints.ContainsKey(e.Q.Index)) VertexPoints[e.Q.Index] = e.Q;
+        if (!BaseVertices.ContainsKey(e.P.Index)) BaseVertices[e.P.Index] = e.P;
+        if (!BaseVertices.ContainsKey(e.Q.Index)) BaseVertices[e.Q.Index] = e.Q;
 
         // Canonical half-edges (both directions, twin-linked)
         EnsureHalfEdgePair(e.P, e.Q);
 
         // Canonical undirected index (do not overwrite once present)
         var key = EdgeKey.From(e.P, e.Q);
-        if (!UndirectedEdgeIndex.ContainsKey(key)) UndirectedEdgeIndex[key] = e.Index;
-
-        // Legacy Edges map should contain both directions
-        if (!Edges.ContainsKey(e.Index)) Edges[e.Index] = e;
-        var rev = e.ReverseEdge();
-        if (!Edges.ContainsKey(rev.Index)) Edges[rev.Index] = rev;
-
-        // Legacy HalfEdgesFrom symmetry
-        if (!HalfEdgesFrom.TryGetValue(e.P, out var setFrom)) { setFrom = new HashSet<Edge>(); HalfEdgesFrom[e.P] = setFrom; }
-        setFrom.Add(e);
-        if (!HalfEdgesFrom.TryGetValue(e.Q, out var setFromQ)) { setFromQ = new HashSet<Edge>(); HalfEdgesFrom[e.Q] = setFromQ; }
-        setFromQ.Add(rev);
+        if (!UndirectedEdgeIndex.ContainsKey(key)) UndirectedEdgeIndex[key] = e;
     }
 
     /// <summary>
@@ -1167,7 +1115,8 @@ public class StructureDatabase
     private HalfEdge CreateHalfEdge(Point from, Point to)
     {
         int id = HalfEdgeById.Count;
-        var h = new HalfEdge(id, from, to);
+        EdgeKey key = EdgeKey.From(from, to);
+        var h = new HalfEdge(from, to, key);
         HalfEdgeById[id] = h;
         if (!OutHalfEdgesByPoint.TryGetValue(from, out var set))
         {
@@ -1194,7 +1143,7 @@ public class StructureDatabase
         {
             foreach (var h in set)
             {
-                if (h.To == to) return h;
+                if (h.Twin.From == to) return h;
             }
         }
         return null;
@@ -1217,12 +1166,12 @@ public class StructureDatabase
         if (fwd != null)
         {
             if (OutHalfEdgesByPoint.TryGetValue(a, out var set)) set.Remove(fwd);
-            HalfEdgeById.Remove(fwd.Id);
+            //HalfEdgeById.Remove(fwd.Id);
         }
         if (rev != null)
         {
             if (OutHalfEdgesByPoint.TryGetValue(b, out var set2)) set2.Remove(rev);
-            HalfEdgeById.Remove(rev.Id);
+            //HalfEdgeById.Remove(rev.Id);
         }
     }
 
@@ -1264,21 +1213,9 @@ public class StructureDatabase
         return map[p1] != null;
     }
 
-    // ===== Phase 3–4: Legacy read-only views =====
-    [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<int, Point> LegacyVertexPoints => new System.Collections.ObjectModel.ReadOnlyDictionary<int, Point>(VertexPoints);
-
-    [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<int, Edge> LegacyEdges => new System.Collections.ObjectModel.ReadOnlyDictionary<int, Edge>(Edges);
 
     [Obsolete("Use canonical registries and facades; this view is read-only.")]
     public System.Collections.ObjectModel.ReadOnlyDictionary<Edge, List<Triangle>> LegacyEdgeTriangles => new System.Collections.ObjectModel.ReadOnlyDictionary<Edge, List<Triangle>>(EdgeTriangles);
-
-    [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<Point, HashSet<Edge>> LegacyHalfEdgesFrom => new System.Collections.ObjectModel.ReadOnlyDictionary<Point, HashSet<Edge>>(HalfEdgesFrom);
-
-    //[Obsolete("Use canonical registries and facades; this view is read-only.")]
-    //public System.Collections.ObjectModel.ReadOnlyDictionary<(Point, Point, Point), Triangle> LegacyBaseTris => new System.Collections.ObjectModel.ReadOnlyDictionary<(Point, Point, Point), Triangle>(BaseTris);
 
     [Obsolete("Use canonical registries and facades; this view is read-only.")]
     public System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>> LegacyWorldHalfEdgeMapFrom => new System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>>(worldHalfEdgeMapFrom);
@@ -1287,7 +1224,7 @@ public class StructureDatabase
     public System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>> LegacyWorldHalfEdgeMapTo => new System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>>(worldHalfEdgeMapTo);
 
     [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<int, Point> LegacyCircumcenters => new System.Collections.ObjectModel.ReadOnlyDictionary<int, Point>(circumcenters);
+    public System.Collections.ObjectModel.ReadOnlyDictionary<int, Point> LegacyCircumcenters => new System.Collections.ObjectModel.ReadOnlyDictionary<int, Point>(VoronoiVertices);
 
     // ===== Phase 3–4: Internal container types =====
     /// <summary>
@@ -1312,11 +1249,6 @@ public class StructureDatabase
         public System.Collections.ObjectModel.ReadOnlyCollection<Triangle> Triangles =>
             new System.Collections.ObjectModel.ReadOnlyCollection<Triangle>(db.BaseTris.ToList());
 
-        /// <summary>
-        /// Gets a read-only dictionary mapping points to their outgoing half-edges.
-        /// </summary>
-        public System.Collections.ObjectModel.ReadOnlyDictionary<Point, HashSet<Edge>> OutHalfEdges =>
-            new System.Collections.ObjectModel.ReadOnlyDictionary<Point, HashSet<Edge>>(db.HalfEdgesFrom);
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ namespace MeshGeneration;
 /// 2. Incrementally insert vertices while maintaining Delaunay properties
 /// 3. Recover constrained edges (polygon boundaries) through edge flipping
 /// 4. Remove the super-triangle and perform flood fill to identify interior triangles
-/// 
+///
 /// This implementation uses efficient data structures including edge lookup tables and neighbor tracking
 /// to optimize performance during triangulation operations.
 /// </remarks>
@@ -33,7 +33,7 @@ public class ConstrainedDelauneyTriangulation
         /// The first vertex index (always the smaller of the two).
         /// </summary>
         public int a;
-        
+
         /// <summary>
         /// The second vertex index (always the larger of the two).
         /// </summary>
@@ -58,7 +58,7 @@ public class ConstrainedDelauneyTriangulation
         /// The index of the triangle containing this edge.
         /// </summary>
         public int tri { get; set; }
-        
+
         /// <summary>
         /// The edge index within the triangle (0, 1, or 2).
         /// </summary>
@@ -74,17 +74,17 @@ public class ConstrainedDelauneyTriangulation
         /// Array of three vertex indices that form this triangle.
         /// </summary>
         public int[] vertices { get; set; }
-        
+
         /// <summary>
         /// Array of three neighbor triangle indices (-1 if no neighbor exists).
         /// </summary>
         public int[] neighbors { get; set; }
-        
+
         /// <summary>
         /// Array indicating which edges are constrained (true = constrained, false = unconstrained).
         /// </summary>
         public bool[] constrained { get; set; }
-        
+
         /// <summary>
         /// Flag indicating whether this triangle is still active in the triangulation.
         /// </summary>
@@ -111,12 +111,12 @@ public class ConstrainedDelauneyTriangulation
         /// The index of the located triangle.
         /// </summary>
         public int triangle { get; set; }
-        
+
         /// <summary>
         /// The edge index within the triangle.
         /// </summary>
         public int edge { get; set; }
-        
+
         /// <summary>
         /// Initializes a new WalkResult with default invalid values.
         /// </summary>
@@ -131,17 +131,17 @@ public class ConstrainedDelauneyTriangulation
     /// List of all vertices in the triangulation.
     /// </summary>
     private List<Point> vertices { get; set; }
-    
+
     /// <summary>
     /// List of all triangles in the triangulation.
     /// </summary>
     private List<Triangle> triangles { get; set; }
-    
+
     /// <summary>
     /// Dictionary for fast edge lookup and neighbor finding.
     /// </summary>
     private Dictionary<EdgeKey, EdgeRecord> edgeLookup { get; set; }
-    
+
     /// <summary>
     /// Array containing the indices of the three super-triangle vertices.
     /// </summary>
@@ -379,7 +379,7 @@ public class ConstrainedDelauneyTriangulation
     /// 3. Recovers all constrained edges (polygon boundaries) through edge flipping
     /// 4. Removes the super-triangle and performs flood fill to identify interior triangles
     /// 5. Converts internal triangle representations to the public Triangle structure
-    /// 
+    ///
     /// The resulting triangulation preserves all polygon boundary edges as constrained
     /// while maintaining Delaunay properties for the interior mesh.
     /// </remarks>
@@ -454,9 +454,9 @@ public class ConstrainedDelauneyTriangulation
             StrDb.LegacyCircumcenters[a.Index],
             StrDb.LegacyCircumcenters[b.Index],
             StrDb.LegacyCircumcenters[c.Index] };
-        Structures.Edge e1 = new Structures.Edge(triVerts[0], triVerts[1]);
-        Structures.Edge e2 = new Structures.Edge(triVerts[1], triVerts[2]);
-        Structures.Edge e3 = new Structures.Edge(triVerts[2], triVerts[0]);
+        Structures.Edge e1 = Structures.Edge.MakeEdge(triVerts[0], triVerts[1]);
+        Structures.Edge e2 = Structures.Edge.MakeEdge(triVerts[1], triVerts[2]);
+        Structures.Edge e3 = Structures.Edge.MakeEdge(triVerts[2], triVerts[0]);
 
         Structures.Triangle newTri = new Structures.Triangle(index,
                 new List<Point>() { triVerts[0], triVerts[1], triVerts[2] },

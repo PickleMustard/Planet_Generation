@@ -31,9 +31,9 @@ public class Point : IPoint, IEquatable<Point>
     private static int QuantizeKey(float x, float y, float z)
     {
         // Normalize tiny values to 0 to avoid -0 vs +0 differences, then round
-        float qx = MathF.Abs(x) < 1e-6f ? 0f : MathF.Round(x, 6);
-        float qy = MathF.Abs(y) < 1e-6f ? 0f : MathF.Round(y, 6);
-        float qz = MathF.Abs(z) < 1e-6f ? 0f : MathF.Round(z, 6);
+        float qx = MathF.Round(x, 6);
+        float qy = MathF.Round(y, 6);
+        float qz = MathF.Round(z, 6);
 
         String key = $"{qx},{qy},{qz}";
         return HashCode.Combine(qx, qy, qz);
@@ -58,7 +58,7 @@ public class Point : IPoint, IEquatable<Point>
 
     public override int GetHashCode()
     {
-        return this.Index.GetHashCode();
+        return this.Index;
     }
 
     public static bool operator ==(Point p1, Point p2)

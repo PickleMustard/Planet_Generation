@@ -1,7 +1,5 @@
-using System;
-using Structures;
 
-namespace MeshGeneration
+namespace Structures
 {
     /// <summary>
     /// Directed half-edge representation for canonical mesh topology traversal.
@@ -10,19 +8,9 @@ namespace MeshGeneration
     public class HalfEdge
     {
         /// <summary>
-        /// Gets the unique identifier for this half-edge.
-        /// </summary>
-        public int Id { get; internal set; }
-
-        /// <summary>
         /// Gets the starting point (vertex) of this half-edge.
         /// </summary>
         public Point From { get; internal set; }
-
-        /// <summary>
-        /// Gets the ending point (vertex) of this half-edge.
-        /// </summary>
-        public Point To { get; internal set; }
 
         /// <summary>
         /// Gets the twin half-edge that points in the opposite direction.
@@ -52,18 +40,16 @@ namespace MeshGeneration
         /// This constructor is internal and should only be called by mesh generation systems.
         /// The edge key is automatically generated from the from and to points.
         /// </remarks>
-        internal HalfEdge(int id, Point from, Point to)
+        internal HalfEdge(Point from, Point to, EdgeKey key)
         {
-            Id = id;
             From = from;
-            To = to;
-            Key = EdgeKey.From(from, to);
+            Key = key;
         }
 
         /// <summary>
         /// Returns a string representation of this half-edge.
         /// </summary>
         /// <returns>A string containing the edge ID and the indices of the from and to points.</returns>
-        public override string ToString() => $"HalfEdge(Id={Id}, From={From.Index}, To={To.Index})";
+        public override string ToString() => $"HalfEdge(Id={Key}, From={From.Index})";
     }
 }
