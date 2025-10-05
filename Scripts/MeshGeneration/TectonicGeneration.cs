@@ -239,10 +239,10 @@ public class TectonicGeneration
                         alteredHeight += e.Stress.ShearStress * GeneralShearScale;
                         break;
                     case EdgeType.divergent:
-                        alteredHeight -= e.Stress.CompressionStress * GeneralCompressionScale;
+                        alteredHeight -= e.Stress.CompressionStress * GeneralCompressionScale * 3.4f;
                         break;
                     case EdgeType.convergent:
-                        alteredHeight += e.Stress.CompressionStress * GeneralCompressionScale;
+                        alteredHeight += e.Stress.CompressionStress * GeneralCompressionScale * 12f;
                         break;
                 }
             }
@@ -277,7 +277,7 @@ public class TectonicGeneration
 
         float compressionFactor = normalizedCompression / (totalStress + .0001f);
         float shearFactor = normalizedShear / (totalStress + .0001f);
-        if (compressionFactor > 0.56f)
+        if (compressionFactor > 0.7f)
         {
             if (es.CompressionStress >= 0.0f)
             {

@@ -14,10 +14,16 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11.9559)
 mesh = SubResource("ArrayMesh_ia1lp")
 script = ExtResource("1_uhqqe")
 subdivide = 2
-VerticesPerEdge = PackedInt32Array(4, 3, 4)
+VerticesPerEdge = PackedInt32Array(5, 3, 4)
+Seed = 284
 NumAbberations = 6
 NumDeformationCycles = 6
 NumContinents = 45
+StressScale = 8.0
+MaxPropagationDistance = 1.0
+InactiveStressThreshold = 0.4
+GeneralShearScale = 3.3
+GeneralCompressionScale = 32.0
 
 [node name="Camera3D" type="Camera3D" parent="."]
 script = ExtResource("2_ia1lp")

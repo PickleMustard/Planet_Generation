@@ -15,30 +15,69 @@ public partial class SystemGenerator : Node
         ((UI.PlanetSystemGenerator)GenerateButton).GeneratePressed += GenerateMesh;
     }
 
-    private void GenerateMesh(Godot.Collections.Array<Godot.Collections.Dictionary> bodies)
-    {
-        if (SystemContainer.GetChildCount() > 0)
-        {
-            var children = SystemContainer.GetChildren();
-            foreach (Node child in children)
-            {
-                child.QueueFree();
-            }
-        }
-        foreach (Godot.Collections.Dictionary body in bodies)
-        {
-            var type = (String)body["Type"];
-            var mass = (float)body["Mass"];
-            var velocity = (Vector3)body["Velocity"];
-            var position = (Vector3)body["Position"];
-            var size = (int)body["Size"];
-            var mesh = new CelestialBodyMesh();
-            CelestialBody celBody = new CelestialBody(type, mass, velocity, size, mesh);
-            SystemContainer.AddChild(celBody);
-            celBody.Position = position;
-            celBody.GenerateMesh();
-        }
-    }
+     private void GenerateMesh(Godot.Collections.Array<Godot.Collections.Dictionary> bodies)
+     {
+         if (SystemContainer.GetChildCount() > 0)
+         {
+             var children = SystemContainer.GetChildren();
+             foreach (Node child in children)
+             {
+                 child.QueueFree();
+             }
+         }
+         foreach (Godot.Collections.Dictionary body in bodies)
+         {
+             var type = (String)body["Type"];
+             var mass = (float)body["Mass"];
+             var velocity = (Vector3)body["Velocity"];
+             var position = (Vector3)body["Position"];
+             var size = (int)body["Size"];
+
+             // Handle special body types that consist of multiple satellites
+             if (type == "AsteroidBelt" || type == "Comet" || type == "IceBelt")
+             {
+                 GenerateSatelliteGroup(type, mass, velocity, position, size, body);
+             }
+             else
+             {
+                 var mesh = new CelestialBodyMesh();
+                 CelestialBody celBody = new CelestialBody(type, mass, velocity, size, mesh);
+                 SystemContainer.AddChild(celBody);
+                 celBody.Position = position;
+                 celBody.GenerateMesh();
+             }
+         }
+     }
+
+     private void GenerateSatelliteGroup(string type, float mass, Vector3 velocity, Vector3 position, int size, Godot.Collections.Dictionary bodyParams)
+     {
+         // Create a parent CelestialBody with no mass to act as the center
+         var parentMesh = new CelestialBodyMesh();
+         CelestialBody parentBody = new CelestialBody(type, 0.0f, velocity, size, parentMesh); // No mass
+         parentBody.Position = position;
+         SystemContainer.AddChild(parentBody);
+         parentBody.GenerateMesh();
+
+         // For simplicity, create a few satellites around the parent
+         int numSatellites = 5;
+         float radius = size * 2.0f; // Orbital radius based on size
+
+         for (int i = 0; i < numSatellites; i++)
+         {
+             float angle = (i * 2 * Mathf.Pi) / numSatellites;
+             Vector3 satellitePosition = new Vector3(radius * Mathf.Cos(angle), radius * Mathf.Sin(angle), 0);
+
+             // Calculate orbital velocity
+             float orbitalSpeed = Mathf.Sqrt(OrbitalMath.GRAVITATIONAL_CONSTANT * mass / radius);
+             Vector3 satelliteVelocity = new Vector3(-orbitalSpeed * Mathf.Sin(angle), orbitalSpeed * Mathf.Cos(angle), 0);
+
+             var mesh = new CelestialBodyMesh();
+             SatelliteBody satellite = new SatelliteBody("Asteroid", 0.1f, satelliteVelocity, mesh);
+             satellite.Position = satellitePosition;
+             parentBody.AddChild(satellite);
+             satellite.GenerateMesh();
+         }
+     }
 
     public bool CheckGravitationalStability(Godot.Collections.Array<Godot.Collections.Dictionary> bodies, float simulationTime = 1000000.0f, int steps = 1000000)
     {

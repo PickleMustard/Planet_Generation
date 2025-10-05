@@ -5,7 +5,15 @@ using UtilityLibrary;
 namespace PlanetGeneration;
 public enum CelestialBodyType
 {
-    Star, RockyPlanet, GasGiant, IceGiant, DwarfPlanet
+    BlackHole,
+    Star,
+    RockyPlanet,
+    GasGiant,
+    IceGiant,
+    DwarfPlanet,
+    AsteroidBelt,
+    Comet,
+    IceBelt
 }
 ///<class>CelestialBody</class>
 ///<summary>A CelestialBody is a single point in space that has a mass and velocity.

@@ -8,7 +8,7 @@ public enum EdgeType
 }
 public class Edge : IEquatable<Edge>
 {
-    HalfEdge[] halfEdges = new HalfEdge[2];
+    public HalfEdge[] halfEdges = new HalfEdge[2];
     public EdgeKey key;
     public static int DefineIndex(Point p, Point q)
     {
