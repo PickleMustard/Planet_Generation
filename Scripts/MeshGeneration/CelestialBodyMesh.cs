@@ -765,6 +765,10 @@ public partial class CelestialBodyMesh : MeshInstance3D
             try
             {
                 tectonics.ApplyStressToTerrain(continents, StrDb.VoronoiCells);
+                for (int i = 0; i < 5; i++)
+                {
+                    FinalzeVertexHeights(StrDb.VoronoiCellVertices, continents);
+                }
             }
             catch (Exception stressError)
             {
@@ -870,34 +874,29 @@ public partial class CelestialBodyMesh : MeshInstance3D
     {
         foreach (Point p in Vertices)
         {
-            if (p.ContinentIndecies.Count == 0)
+            float height = 0;
+            foreach (int continentIndex in p.ContinentIndecies)
             {
-                GD.PrintRaw("This should never happen\n");
+                height += Continents[continentIndex].averageHeight;
             }
-            if (p.ContinentIndecies.Count == 1)
+            height /= p.ContinentIndecies.Count;
+            p.Height = height;
+        }
+    }
+
+    public void FinalzeVertexHeights(HashSet<Point> Vertices, Dictionary<int, Continent> Continents)
+    {
+        foreach (Point p in Vertices)
+        {
+            var edges = StrDb.GetIncidentHalfEdges(p);
+            float averagedHeight = p.Height;
+            int num = 1;
+            foreach (Edge e in edges)
             {
-                if (p.ContinentIndecies.ElementAt(0) == -1)
-                {
-                    var cells = StrDb.CellMap[p];
-                    string str = "";
-                    foreach (VoronoiCell vc in cells)
-                    {
-                        str += $"{vc}, ";
-                    }
-                    GD.PrintRaw($"Encountered a point with no continent: {p}, part of {str}\n");
-                }
-                p.Height = Continents[p.ContinentIndecies.ElementAt(0)].averageHeight;
+                averagedHeight = averagedHeight + (e.Q.Height - p.Height) / num;
+                num++;
             }
-            else if (p.ContinentIndecies.Count > 1)
-            {
-                float height = 0;
-                foreach (int continentIndex in p.ContinentIndecies)
-                {
-                    height += Continents[continentIndex].averageHeight;
-                }
-                height /= p.ContinentIndecies.Count;
-                p.Height = height;
-            }
+            p.Height = averagedHeight;
         }
     }
 
@@ -1509,10 +1508,9 @@ public partial class CelestialBodyMesh : MeshInstance3D
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
-        var material = new StandardMaterial3D();
-        material.ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded;
-        material.VertexColorUseAsAlbedo = true;
-        //material.AlbedoColor = Colors.Pink;
+        var material = new ShaderMaterial();
+        material.Shader = GD.Load<Shader>("res://Shaders/rocky_planet_shader.gdshader");
+        material.NextPass = GD.Load<ShaderMaterial>("res://Materials/voronoi_outliner_material.tres");
         st.SetMaterial(material);
         foreach (VoronoiCell vor in VoronoiList)
         {
@@ -1547,6 +1545,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
                     var uv = new Vector2((u - min_u) / (max_u - min_u), (v - min_v) / (max_v - min_v));
                     st.SetUV(uv);
+                    st.SetUV2(new Vector2(vor.Index, 0));
                     st.SetNormal(tangent);
                     if (ProjectToSphere)
                     {

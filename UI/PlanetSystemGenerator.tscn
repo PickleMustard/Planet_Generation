@@ -68,6 +68,7 @@ text = "0 bodies"
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+draw_focus_border = true
 
 [node name="BodiesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/Scroll"]
 layout_mode = 2

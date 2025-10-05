@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_opaque, depth_test_disabled;
+render_mode unshaded, cull_back;
 
 // Star parameters
 uniform float temperature : hint_range(3000.0, 40000.0, 100.0) = 5778.0; // Sun's temperature in Kelvin
@@ -59,9 +59,9 @@ float noise3D(vec3 p) {
 
 void vertex() {
     // Add some subtle vertex displacement for a more dynamic look
-    vec3 world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+    vec3 world_pos = (MODEL_MATRIX * -vec4(VERTEX, 1.0)).xyz;
     float noise = noise3D(world_pos * 0.5 + vec3(TIME * pulse_speed * 0.2));
-    VERTEX += NORMAL * noise * turbulence_strength * 0.02;
+    VERTEX += TANGENT * turbulence_strength * 0.02;
 }
 
 void fragment() {
@@ -85,16 +85,16 @@ void fragment() {
     float surface_variation = mix(0.7, 1.0, combined_noise) * pulse;
 
     // Apply color with variations
-    vec3 final_color = star_color * surface_variation;
+    vec3 final_color = star_color;// * surface_variation;
 
     // Add corona/atmosphere glow at edges
     vec3 corona_color = star_color * 1.5;
     corona_color = mix(corona_color, vec3(1.0), 0.2); // Slightly whiten the corona
-    final_color = mix(final_color, corona_color, fresnel * corona_size);
+    //final_color = mix(final_color, corona_color, corona_size);
 
     // Add bright spots (simulating solar flares/prominences)
     float bright_spots = smoothstep(0.7, 0.9, combined_noise) * pulse;
-    final_color += star_color * bright_spots * 0.5;
+    //final_color += star_color;// * bright_spots * 0.5;
 
     // Set albedo and emission
     ALBEDO = final_color;

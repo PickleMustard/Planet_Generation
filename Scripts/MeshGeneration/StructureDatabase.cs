@@ -94,12 +94,7 @@ public class StructureDatabase
     /// <summary>
     /// Dictionary mapping source points to destination points and their connecting edges for dual mesh.
     /// </summary>
-    public Dictionary<Point, Dictionary<Point, Edge>> worldHalfEdgeMapFrom = new Dictionary<Point, Dictionary<Point, Edge>>();
-
-    /// <summary>
-    /// Dictionary mapping destination points to source points and their connecting edges for dual mesh.
-    /// </summary>
-    public Dictionary<Point, Dictionary<Point, Edge>> worldHalfEdgeMapTo = new Dictionary<Point, Dictionary<Point, Edge>>();
+    public Dictionary<Point, HashSet<HalfEdge>> worldHalfEdgeMap = new Dictionary<Point, HashSet<HalfEdge>>();
 
     // Canonical registries (Phase 0)
     /// <summary>
@@ -325,32 +320,21 @@ public class StructureDatabase
             {
                 HashSet<Edge> result = new HashSet<Edge>();
                 // Prefer HalfEdgesFrom when available
-                if (OutHalfEdgesByPoint.TryGetValue(p, out var edgesFrom) && edgesFrom.Count > 0)
+                // Preserve current logic using world maps in DualMesh
+                switch (state)
                 {
-                    foreach (var e in edgesFrom) result.Add(UndirectedEdgeIndex[e.Key]);
-                }
-                else
-                {
-                    // Preserve current logic using world maps in DualMesh
-                    switch (state)
-                    {
-                        case MeshState.BaseMesh:
-                            if (OutHalfEdgesByPoint.TryGetValue(p, out var baseEdges))
-                            {
-                                foreach (var e in baseEdges) result.Add(UndirectedEdgeIndex[e.Key]);
-                            }
-                            break;
-                        case MeshState.DualMesh:
-                            if (worldHalfEdgeMapFrom.TryGetValue(p, out var fromDict))
-                            {
-                                foreach (var e in fromDict.Values) result.Add(e);
-                            }
-                            if (worldHalfEdgeMapTo.TryGetValue(p, out var toDict))
-                            {
-                                foreach (var e in toDict.Values) result.Add(e);
-                            }
-                            break;
-                    }
+                    case MeshState.BaseMesh:
+                        if (OutHalfEdgesByPoint.TryGetValue(p, out var baseEdges))
+                        {
+                            foreach (var e in baseEdges) result.Add(UndirectedEdgeIndex[e.Key]);
+                        }
+                        break;
+                    case MeshState.DualMesh:
+                        if (worldHalfEdgeMap.TryGetValue(p, out var EdgeSet))
+                        {
+                            foreach (var e in EdgeSet) result.Add(UndirectedEdgeIndex[e.Key]);
+                        }
+                        break;
                 }
                 var arr = result.ToArray();
                 Logger.ExitFunction("GetIncidentHalfEdges", $"returned {arr.Length} edges");
@@ -708,42 +692,37 @@ public class StructureDatabase
     /// then updates the worldHalfEdgeMapFrom and worldHalfEdgeMapTo dictionaries for dual mesh operations.
     /// It maintains bidirectional mapping between points and their connecting edges.
     /// </remarks>
-    public Edge UpdateWorldEdgeMap(Point p1, Point p2)
+    public void UpdateWorldEdgeMap(Point p1, Point p2)
     {
         Logger.EnterFunction("UpdateWorldEdgeMap", $"p1={p1.Index}, p2={p2.Index}");
-        Edge generatedEdge = Edge.MakeEdge(p1, p2);
-        // Ensure canonical/legacy half-edges exist
-        AddEdge(generatedEdge);
+        Edge e = Edge.MakeEdge(p1, p2);
+        // Canonical half-edges (both directions, twin-linked)
+        //EnsureHalfEdgePair(e.P, e.Q);
 
-        Edge toUpdate = null;
-        if (!MapContains(worldHalfEdgeMapTo, p1))
+        // Canonical undirected index (do not overwrite once present)
+        var key = EdgeKey.From(e.P, e.Q);
+        if (!UndirectedEdgeIndex.ContainsKey(key)) UndirectedEdgeIndex[key] = e;
+
+        if (!worldHalfEdgeMap.TryGetValue(p1, out var set))
         {
-            worldHalfEdgeMapTo.Add(p1, new Dictionary<Point, Edge>());
-        }
-        if (!MapContains(worldHalfEdgeMapFrom, p2))
-        {
-            worldHalfEdgeMapFrom.Add(p2, new Dictionary<Point, Edge>());
-        }
-        if (MapContains(worldHalfEdgeMapTo, p1, p2))
-        {
-            toUpdate = worldHalfEdgeMapTo[p1][p2];
+            worldHalfEdgeMap.Add(p1, new HashSet<HalfEdge>());
+            worldHalfEdgeMap[p1].Add(e.halfEdges[0]);
         }
         else
         {
-            worldHalfEdgeMapTo[p1].Add(p2, generatedEdge);
-            toUpdate = generatedEdge;
+            worldHalfEdgeMap[p1].Add(e.halfEdges[0]);
         }
-        if (MapContains(worldHalfEdgeMapFrom, p2, p1))
+        if (!worldHalfEdgeMap.TryGetValue(p2, out var set2))
         {
-            toUpdate = worldHalfEdgeMapFrom[p2][p1];
+            worldHalfEdgeMap.Add(p2, new HashSet<HalfEdge>());
+            worldHalfEdgeMap[p2].Add(e.halfEdges[1]);
         }
         else
         {
-            worldHalfEdgeMapFrom[p2].Add(p1, generatedEdge);
-            toUpdate = generatedEdge;
+            worldHalfEdgeMap[p2].Add(e.halfEdges[1]);
         }
-        Logger.ExitFunction("UpdateWorldEdgeMap", $"returned edgeIndex={toUpdate.Index}");
-        return toUpdate;
+        Logger.ExitFunction("UpdateWorldEdgeMap");
+
     }
 
     /// <summary>
@@ -997,8 +976,7 @@ public class StructureDatabase
                     break;
                 case MeshState.BaseMesh:
                     // Reset dual-related containers
-                    worldHalfEdgeMapFrom.Clear();
-                    worldHalfEdgeMapTo.Clear();
+                    worldHalfEdgeMap.Clear();
                     VoronoiCells.Clear();
                     VoronoiCellVertices.Clear();
                     CellMap.Clear();
@@ -1218,12 +1196,6 @@ public class StructureDatabase
     public System.Collections.ObjectModel.ReadOnlyDictionary<Edge, List<Triangle>> LegacyEdgeTriangles => new System.Collections.ObjectModel.ReadOnlyDictionary<Edge, List<Triangle>>(EdgeTriangles);
 
     [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>> LegacyWorldHalfEdgeMapFrom => new System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>>(worldHalfEdgeMapFrom);
-
-    [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>> LegacyWorldHalfEdgeMapTo => new System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>>(worldHalfEdgeMapTo);
-
-    [Obsolete("Use canonical registries and facades; this view is read-only.")]
     public System.Collections.ObjectModel.ReadOnlyDictionary<int, Point> LegacyCircumcenters => new System.Collections.ObjectModel.ReadOnlyDictionary<int, Point>(VoronoiVertices);
 
     // ===== Phase 3–4: Internal container types =====
@@ -1266,18 +1238,6 @@ public class StructureDatabase
         /// </summary>
         /// <param name="db">The parent StructureDatabase instance.</param>
         internal DualContainer(StructureDatabase db) { this.db = db; }
-
-        /// <summary>
-        /// Gets a read-only dictionary mapping source points to destination points and their connecting edges for dual mesh.
-        /// </summary>
-        public System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>> WorldFrom =>
-            new System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>>(db.worldHalfEdgeMapFrom);
-
-        /// <summary>
-        /// Gets a read-only dictionary mapping destination points to source points and their connecting edges for dual mesh.
-        /// </summary>
-        public System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>> WorldTo =>
-            new System.Collections.ObjectModel.ReadOnlyDictionary<Point, Dictionary<Point, Edge>>(db.worldHalfEdgeMapTo);
 
         /// <summary>
         /// Gets a read-only dictionary mapping edges to the Voronoi cells that contain them.

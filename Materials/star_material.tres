@@ -1,13 +1,13 @@
 [gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://b2mool10pogte"]
 
-[ext_resource type="Shader" uid="uid://bus08gucwgwr3" path="res://Shaders/star_shader.gdshader" id="1_yeoui"]
+[ext_resource type="Shader" uid="uid://bus08gucwgwr3" path="res://Shaders/star_shader.gdshader" id="2_0guf4"]
 
 [resource]
 render_priority = 0
-shader = ExtResource("1_yeoui")
-shader_parameter/temperature = 5778.0
-shader_parameter/emission_strength = 10.0
-shader_parameter/corona_size = 0.3
+shader = ExtResource("2_0guf4")
+shader_parameter/temperature = 18200.0
+shader_parameter/emission_strength = 23.5
+shader_parameter/corona_size = 2.0
 shader_parameter/turbulence_strength = 0.15
 shader_parameter/pulse_speed = 1.0
 shader_parameter/fresnel_power = 2.0
