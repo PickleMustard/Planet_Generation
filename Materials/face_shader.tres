@@ -1,7 +1,19 @@
-[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://bxfp0hgm5ofjq"]
+[gd_resource type="ShaderMaterial" load_steps=5 format=3 uid="uid://bxfp0hgm5ofjq"]
 
-[ext_resource type="Shader" uid="uid://dj2brxel7x7qq" path="res://Shaders/per_face_color.gdshader" id="1_mkjan"]
+[ext_resource type="Shader" uid="uid://cwf6223slstu1" path="res://Shaders/test_shader.gdshader" id="1_1juxa"]
+
+[sub_resource type="Gradient" id="Gradient_1juxa"]
+colors = PackedColorArray(1, 0, 0, 1, 1, 1, 1, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_djkat"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_1uet8"]
+width = 4867
+color_ramp = SubResource("Gradient_1juxa")
+noise = SubResource("FastNoiseLite_djkat")
 
 [resource]
 render_priority = 0
-shader = ExtResource("1_mkjan")
+shader = ExtResource("1_1juxa")
+shader_parameter/grass_texture = SubResource("NoiseTexture2D_1uet8")
+shader_parameter/texture_scale = 1.0

@@ -1,17 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://14km67grwjbh"]
+[gd_scene load_steps=2 format=3 uid="uid://cpdvi7fr08wme"]
 
-[ext_resource type="Script" uid="uid://cwakjbtw2pqm3" path="res://UI/BodyItem.cs" id="1_v7n1y"]
-[ext_resource type="Script" uid="uid://cl0fnsihfju2q" path="res://UI/ToggleSection.cs" id="2_q7k4c"]
+[ext_resource type="Script" uid="uid://dfy0ak3t2iquc" path="res://UI/SatelliteItem.cs" id="1"]
 
-[node name="BodyItem" type="VBoxContainer"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-script = ExtResource("1_v7n1y")
+[node name="SatelliteItem" type="VBoxContainer"]
+custom_minimum_size = Vector2(0, 8)
+script = ExtResource("1")
 
 [node name="Header" type="HBoxContainer" parent="."]
 layout_mode = 2
@@ -19,9 +12,7 @@ layout_mode = 2
 [node name="Toggle" type="Button" parent="Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Star"
-script = ExtResource("2_q7k4c")
-content_path = NodePath("../../Content")
+text = "Satellite"
 
 [node name="RemoveItem" type="Button" parent="Header"]
 layout_mode = 2
@@ -29,7 +20,6 @@ text = "-"
 
 [node name="Content" type="VBoxContainer" parent="."]
 layout_mode = 2
-size_flags_vertical = 3
 
 [node name="PositionContent" type="GridContainer" parent="Content"]
 layout_mode = 2
@@ -105,14 +95,14 @@ min_value = -10000.0
 max_value = 10000.0
 step = 0.1
 
-[node name="BodyTypeContent" type="HBoxContainer" parent="Content"]
+[node name="TypeContent" type="HBoxContainer" parent="Content"]
 layout_mode = 2
 
-[node name="BodyTypeLabel" type="Label" parent="Content/BodyTypeContent"]
+[node name="TypeLabel" type="Label" parent="Content/TypeContent"]
 layout_mode = 2
-text = "BodyType"
+text = "Type"
 
-[node name="OptionButton" type="OptionButton" parent="Content/BodyTypeContent"]
+[node name="OptionButton" type="OptionButton" parent="Content/TypeContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -141,40 +131,3 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 10000.0
 step = 0.1
-
-[node name="SatellitesContent" type="VBoxContainer" parent="Content"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="SatellitesHeader" type="HBoxContainer" parent="Content/SatellitesContent"]
-layout_mode = 2
-
-[node name="SatellitesLabel" type="Label" parent="Content/SatellitesContent/SatellitesHeader"]
-layout_mode = 2
-text = "Satellites"
-
-[node name="AddSatellite" type="Button" parent="Content/SatellitesContent/SatellitesHeader"]
-layout_mode = 2
-text = "+"
-
-[node name="RemoveSatellite" type="Button" parent="Content/SatellitesContent/SatellitesHeader"]
-layout_mode = 2
-text = "-"
-
-[node name="SatellitesCountLabel" type="Label" parent="Content/SatellitesContent/SatellitesHeader"]
-layout_mode = 2
-text = "0 satellites"
-
-[node name="SatellitesScroll" type="ScrollContainer" parent="Content/SatellitesContent"]
-custom_minimum_size = Vector2(0, 150)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-focus_mode = 2
-vertical_scroll_mode = 2
-
-[node name="SatellitesList" type="VBoxContainer" parent="Content/SatellitesContent/SatellitesScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8

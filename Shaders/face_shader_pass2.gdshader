@@ -13,6 +13,7 @@ uniform float metallic;
 uniform float roughness : hint_range(0,1);
 uniform float edge_strength : hint_range(0,1) = 0.2;
 uniform vec4 edge_color : source_color = vec4(0.5, 0.5, 0.5, 1.0);
+uniform sampler2D SCREEN_TEXTURE: hint_screen_texture, filter_linear_mipmap;
 
 // essentially a cheap "lightness" function
 // returns the average of red, green and blue color channels
@@ -36,7 +37,7 @@ void fragment() {
 	vec3 neighbour_top = texture(SCREEN_TEXTURE, pixel_to_screen_uv(VIEWPORT_SIZE, iuv + vec2(0, 0.0))).rgb;
 	vec3 neighbour_bottom = texture(SCREEN_TEXTURE, pixel_to_screen_uv(VIEWPORT_SIZE, iuv + vec2(0, 0.5))).rgb;
 
-	ALBEDO = albedo.rgb * texture(texture_albedo, UV).rgb;
+	ALBEDO = albedo.rgb;
 
 	// compare normals: if they differ, we draw an edge
 	// by mixing in the edge_color, by edge_strength amount

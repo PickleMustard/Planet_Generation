@@ -21,7 +21,7 @@ varying vec3 baryCoord;
 
 void vertex()
 {
-	baryCoord = vectors[VERTEX_ID % 3];
+	baryCoord = vectors[VERTEX_ID % 3] * 1.05f;
 }
 
 void fragment() {
@@ -37,7 +37,8 @@ void fragment() {
 
 	remap = filtered ? remap : step(.1, remap);
 
-	float closestEdge = min(min(remap.z, remap.y), remap.x);
+	float closestEdge = remap.z;
 
 	ALBEDO = mix(wireframeColor, modelColor, closestEdge).xyz;
+	ALPHA = mix(wireframeColor, modelColor, closestEdge).w;
 }

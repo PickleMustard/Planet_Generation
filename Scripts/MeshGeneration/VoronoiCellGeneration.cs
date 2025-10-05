@@ -187,6 +187,7 @@ public class VoronoiCellGeneration
         foreach (Triangle t in Triangles)
         {
             TriangulatedIndices.AddRange(t.Points);
+            StrDb.AddTriangle(t);
             //PolygonRendererSDL.RenderTriangleAndConnections(mesh, 10, t);
         }
         foreach (Triangle t in Triangles)

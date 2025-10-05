@@ -37,7 +37,7 @@ float random(vec2 st) {
     return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
 }
 
-float hash11( uint n ) 
+float hash11( uint n )
 {
     // integer hash copied from Hugo Elias
 	n = (n << 13U) ^ n;
@@ -270,10 +270,10 @@ vec3 hash(vec3 x) {
 vec2 voronoi(in vec3 x) {
 	vec3 integer = floor(x);
 	vec3 fractional = fract(x);
-	
+
 	float res = 100.;
 	float id = 0.;
-	
+
 	for (float k = -1.; k <= 1.; k += 1.) {
 		for (float j = -1.; j <= 1.; j += 1.) {
 			for (float i = -1.; i <= 1.; i += 1.) {
@@ -287,7 +287,7 @@ vec2 voronoi(in vec3 x) {
 		    }
 		}
 	}
-	
+
 	return vec2(sqrt(res), id);
 }
 
@@ -297,7 +297,7 @@ void sky() {
 	vec3 pos = EYEDIR * (60.);
 	vec2 layer = voronoi(pos);
     float time = TIME;
-	
+
 	vec3 rand = hash(vec3(layer.y));
 	float star = smoothstep(star_intensity, 0., layer.x);
 	vec3 star_color = star * hue((COLOR + star_base_color), rand.y * star_hue_offset, 1);

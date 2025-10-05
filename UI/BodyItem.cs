@@ -20,7 +20,15 @@ public partial class BodyItem : VBoxContainer
     [Export] public SpinBox mass;
     [Export] public SpinBox size;
 
+    // Satellites UI
+    [Export] public Button AddSatellite;
+    [Export] public Button RemoveSatellite;
+    [Export] public Label SatellitesCountLabel;
+    [Export] public VBoxContainer SatellitesList;
+
     public Action<BodyItem> OnRemoveRequested;
+
+    private PackedScene _satelliteItemScene;
 
     // Mesh parameters
     public int Subdivisions = 1;
@@ -62,6 +70,14 @@ public partial class BodyItem : VBoxContainer
         mass ??= GetNodeOrNull<SpinBox>("Content/MassContent/mass");
         size ??= GetNodeOrNull<SpinBox>("Content/SizeContent/size");
 
+        // Satellites UI
+        AddSatellite ??= GetNodeOrNull<Button>("Content/SatellitesContent/SatellitesHeader/AddSatellite");
+        RemoveSatellite ??= GetNodeOrNull<Button>("Content/SatellitesContent/SatellitesHeader/RemoveSatellite");
+        SatellitesCountLabel ??= GetNodeOrNull<Label>("Content/SatellitesContent/SatellitesHeader/SatellitesCountLabel");
+        SatellitesList ??= GetNodeOrNull<VBoxContainer>("Content/SatellitesContent/SatellitesScroll/SatellitesList");
+
+        _satelliteItemScene = GD.Load<PackedScene>("res://UI/SatelliteItem.tscn");
+
         // Apply input constraints to fields
         ApplyConstraints();
 
@@ -102,6 +118,7 @@ public partial class BodyItem : VBoxContainer
                 var type = (CelestialBodyType)(int)idx;
                 UpdateHeaderFromBodyType(OptionButton.GetItemText((int)idx));
                 ApplyTemplate(type);
+                HandleSpecialBodyTypes(type);
                 EmitSignal(SignalName.ItemUpdate);
             };
 
@@ -111,8 +128,26 @@ public partial class BodyItem : VBoxContainer
                 if (OptionButton.Selected < 0) OptionButton.Select(0);
                 UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
                 ApplyTemplate((CelestialBodyType)OptionButton.Selected);
+                HandleSpecialBodyTypes((CelestialBodyType)OptionButton.Selected);
             }
         }
+
+        // Satellites UI handlers
+        if (AddSatellite != null)
+        {
+            AddSatellite.Pressed += AddSatelliteItem;
+        }
+        if (RemoveSatellite != null)
+        {
+            RemoveSatellite.Pressed += RemoveLastSatelliteItem;
+        }
+
+        // Ensure at least one satellite
+        if (SatellitesList.GetChildCount() == 0)
+        {
+            AddSatelliteItem();
+        }
+        UpdateSatellitesCountLabel();
     }
 
     private void ApplyConstraints()
@@ -239,6 +274,85 @@ public partial class BodyItem : VBoxContainer
         dict.Add("mesh", meshDict);
 
         return dict;
+    }
+
+    private void HandleSpecialBodyTypes(CelestialBodyType type)
+    {
+        // For AsteroidBelt, Comet, IceBelt, generate multiple satellites
+        if (type == CelestialBodyType.AsteroidBelt || type == CelestialBodyType.Comet || type == CelestialBodyType.IceBelt)
+        {
+            // Clear existing satellites
+            foreach (Node child in SatellitesList.GetChildren())
+            {
+                child.QueueFree();
+            }
+
+            // Add multiple satellites based on type
+            int numSatellites = 5; // Default number
+            for (int i = 0; i < numSatellites; i++)
+            {
+                AddSatelliteItem();
+            }
+        }
+        else
+        {
+            // For other types, clear satellites
+            foreach (Node child in SatellitesList.GetChildren())
+            {
+                child.QueueFree();
+            }
+        }
+        UpdateSatellitesCountLabel();
+    }
+
+    private void AddSatelliteItem()
+    {
+        if (SatellitesList == null || _satelliteItemScene == null) return;
+        var satelliteItem = _satelliteItemScene.Instantiate<SatelliteItem>();
+        satelliteItem.OnRemoveRequested += RemoveSatelliteItem;
+        satelliteItem.ItemUpdate += OnSatelliteItemUpdate;
+        SatellitesList.AddChild(satelliteItem);
+        UpdateSatellitesCountLabel();
+    }
+
+    private void RemoveLastSatelliteItem()
+    {
+        if (SatellitesList.GetChildCount() <= 1) return; // Keep at least one satellite
+        var last = SatellitesList.GetChild(SatellitesList.GetChildCount() - 1);
+        last.QueueFree();
+        UpdateSatellitesCountLabel();
+    }
+
+    private void RemoveSatelliteItem(Node item)
+    {
+        if (IsInstanceValid(item) && item.GetParent() == SatellitesList)
+        {
+            item.QueueFree();
+            UpdateSatellitesCountLabel();
+        }
+    }
+
+    private void UpdateSatellitesCountLabel()
+    {
+        if (SatellitesCountLabel != null)
+        {
+            int count = SatellitesList.GetChildCount();
+            SatellitesCountLabel.Text = count == 1 ? "1 satellite" : $"{count} satellites";
+        }
+    }
+
+    private void OnSatelliteItemUpdate()
+    {
+        EmitSignal(SignalName.ItemUpdate);
+    }
+
+    private void RemoveSatelliteItem(SatelliteItem item)
+    {
+        if (IsInstanceValid(item) && item.GetParent() == SatellitesList && SatellitesList.GetChildCount() > 1)
+        {
+            item.QueueFree();
+            UpdateSatellitesCountLabel();
+        }
     }
 }
 
