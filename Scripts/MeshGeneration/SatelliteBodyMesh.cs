@@ -82,6 +82,100 @@ public partial class SatelliteBodyMesh : CelestialBodyMesh
         GenerateMesh();
     }
 
+    public override void ConfigureFrom(Godot.Collections.Dictionary meshParams)
+    {
+        GD.Print($"Configuring {meshParams}");
+        if (meshParams == null) return;
+
+        if (meshParams.ContainsKey("name"))
+        {
+            String name = "";
+            try { name = meshParams["name"].As<string>(); } catch { }
+            this.Name = name + "_mesh";
+        }
+        if (meshParams.ContainsKey("size"))
+        {
+            try { size = meshParams["size"].As<int>(); } catch { GD.Print("Couldn't find size in meshParams"); }
+        }
+
+        // Base mesh settings
+        if (meshParams.ContainsKey("subdivisions"))
+        {
+            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
+        }
+
+        if (meshParams.ContainsKey("vertices_per_edge"))
+        {
+            var v = meshParams["vertices_per_edge"];
+            bool assigned = false;
+            try
+            {
+                var ia = v.As<int[]>();
+                if (ia != null && ia.Length > 0)
+                {
+                    VerticesPerEdge = ia;
+                    assigned = true;
+                }
+            }
+            catch (Exception e) { Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+
+            if (!assigned)
+            {
+                try
+                {
+                    var ga = v.As<Godot.Collections.Array<int>>();
+                    if (ga != null && ga.Count > 0)
+                    {
+                        VerticesPerEdge = ga.ToArray();
+                        assigned = true;
+                    }
+                }
+                catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+            }
+        }
+
+        if (VerticesPerEdge != null && subdivide > 0 && VerticesPerEdge.Length != subdivide)
+        {
+            var adjusted = new int[subdivide];
+            for (int i = 0; i < subdivide; i++)
+                adjusted[i] = VerticesPerEdge.Length > 0 ? VerticesPerEdge[Math.Min(i, VerticesPerEdge.Length - 1)] : 2;
+            VerticesPerEdge = adjusted;
+        }
+
+        if (meshParams.ContainsKey("num_abberations"))
+        {
+            try { NumAbberations = meshParams["num_abberations"].As<int>(); } catch { }
+        }
+        if (meshParams.ContainsKey("num_deformation_cycles"))
+        {
+            try { NumDeformationCycles = meshParams["num_deformation_cycles"].As<int>(); } catch { }
+        }
+
+        // Tectonic settings
+        if (meshParams.ContainsKey("tectonic"))
+        {
+            try
+            {
+                var tect = meshParams["tectonic"].As<Godot.Collections.Dictionary>();
+                if (tect != null)
+                {
+                    if (tect.ContainsKey("num_continents")) { try { NumContinents = tect["num_continents"].As<int>(); } catch { } }
+                    if (tect.ContainsKey("stress_scale")) { try { StressScale = tect["stress_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("shear_scale")) { try { ShearScale = tect["shear_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("max_propagation_distance")) { try { MaxPropagationDistance = tect["max_propagation_distance"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("propagation_falloff")) { try { PropagationFalloff = tect["propagation_falloff"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("inactive_stress_threshold")) { try { InactiveStressThreshold = tect["inactive_stress_threshold"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_height_scale")) { try { GeneralHeightScale = tect["general_height_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_shear_scale")) { try { GeneralShearScale = tect["general_shear_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_compression_scale")) { try { GeneralCompressionScale = tect["general_compression_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("general_transform_scale")) { try { GeneralTransformScale = tect["general_transform_scale"].As<float>(); } catch { } }
+                }
+            }
+            catch { }
+        }
+
+    }
+
     public override void GenerateMesh()
     {
         this.Mesh = new ArrayMesh();
@@ -92,7 +186,6 @@ public partial class SatelliteBodyMesh : CelestialBodyMesh
         GenerateFirstPass();
         GenerateSecondPass();
         GenerateSurfaceMesh(StrDb.VoronoiCells);
-
     }
 
     /// <summary>

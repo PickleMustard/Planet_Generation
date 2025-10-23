@@ -216,19 +216,19 @@ names = [
   "Monsoon Hearted",
 ]
 
-[template]
+[celestial.template]
 position = [500, 0, 0]
 velocity = [0, 7, 0]
 mass = 1000
 size = 35
 
-[mesh.base_mesh]
+[celestial.mesh.base_mesh]
 subdivisions = 1
 vertices_per_edge = [10, 13]
 num_abberations = 0
 num_deformation_cycles = 0
 
-[mesh.tectonic]
+[celestial.mesh.tectonic]
 num_continents = [3, 8]
 stress_scale = [0.8, 3.0]
 shear_scale = [0.2, 1.7]

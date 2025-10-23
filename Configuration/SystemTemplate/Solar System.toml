@@ -23,6 +23,19 @@ general_shear_scale = [0.8, 1.2]
 general_compression_scale = [1.0, 1.75]
 general_transform_scale = [1.1, 1.4]
 
+[[bodies.satellites]]
+type = "Asteroid Belt"
+position = [-100, 0, 0]
+velocity = [0, -2, 0]
+size = 1
+
+[[bodies.satellites.template]]
+number_asteroids= [25, 75]
+grouping = ["balanced", "clustered", "dual grouping"]
+ring_velocity = [0, 2, 0]
+size_range = [1, 5]
+possible_subtypes = ["planet", "asteroid"]
+
 [[bodies]]
 type = "RockyPlanet"
 position = [400, 0, 0]
@@ -47,6 +60,46 @@ general_height_scale = [0.8, 1.2]
 general_shear_scale = [0.8, 1.2]
 general_compression_scale = [20.0, 40.0]
 general_transform_scale = [1.1, 1.4]
+
+[[bodies.satellites]]
+type = "Moon"
+position = [100, 0, 0]
+velocity = [0, 2, 0]
+size = 1
+[[bodies.satellites.base_mesh]]
+subdivisions = 1
+vertices_per_edge = [3, 5]
+num_abberations = 0
+num_deformation_cycles = 0
+[[bodies.satellites.scaling]]
+scaling_range_x = [0.8, 1.8]
+scaling_range_y = [0.8, 1.5]
+scaling_range_z = [0.8, 1.8]
+
+[[bodies.satellites.noise_settings]]
+amplitude_range = [0.5, 1.2]
+scaling_range = [0.2, 1.7]
+octave_range = [2, 4]
+
+[[bodies.satellites]]
+type = "Moon"
+position = [-100, 0, 0]
+velocity = [0, -2, 0]
+size = 1
+[[bodies.satellites.base_mesh]]
+subdivisions = 1
+vertices_per_edge = [3, 5]
+num_abberations = 0
+num_deformation_cycles = 0
+[[bodies.satellites.scaling]]
+scaling_range_x = [0.8, 1.8]
+scaling_range_y = [0.8, 1.5]
+scaling_range_z = [0.8, 1.8]
+
+[[bodies.satellites.noise_settings]]
+amplitude_range = [0.5, 1.2]
+scaling_range = [0.2, 1.7]
+octave_range = [2, 4]
 
 [[bodies]]
 type = "GasGiant"

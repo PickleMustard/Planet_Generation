@@ -388,7 +388,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// It automatically adjusts array lengths to match subdivision levels and provides
     /// fallback values for missing or invalid parameters.
     /// </remarks>
-    public void ConfigureFrom(Godot.Collections.Dictionary meshParams)
+    public virtual void ConfigureFrom(Godot.Collections.Dictionary meshParams)
     {
         GD.Print($"Configuring {meshParams}");
         if (meshParams == null) return;
