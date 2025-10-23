@@ -1,0 +1,8 @@
+[satellite_group.template]
+number_asteroids= [25, 75]
+grouping = "Balanced"
+ring_distance = [0, 500, 0]
+ring_velocity = [0, 2, 0]
+size_range = [1, 5]
+mass_range = [1, 10]
+possible_subtypes = ["Dwarf Planet", "Asteroid"]

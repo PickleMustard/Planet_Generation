@@ -1,43 +1,69 @@
 using System;
 using Godot;
-using UtilityLibrary;
 
 namespace PlanetGeneration;
+
+public enum SatelliteGroupTypes
+{
+    AsteroidBelt,
+    IceBelt,
+    Comet,
+}
+
+public enum GroupingCategories
+{
+    Balanced,
+    Clustered,
+    DualGrouping,
+}
+
 public enum SatelliteBodyType
 {
-    Asteroid, Comet, Moon, Planet, Satellite
+    Asteroid,
+    Comet,
+    Moon,
+    Planet,
+    Satellite,
+    Rings,
 }
+
 public partial class SatelliteBody : Node3D
 {
     Vector3 Velocity;
     float Mass;
     Vector3 TotalForce;
-    SatelliteBodyType Type;
+    bool isSatelliteGroup = false;
+    SatelliteBodyType SatelliteType;
+    SatelliteGroupTypes GroupType;
     CelestialBodyMesh Mesh;
 
-    public SatelliteBody(String type, float mass, Vector3 velocity, CelestialBodyMesh mesh)
+    public SatelliteBody(
+        CelestialBodyType parentType,
+        String type,
+        float mass,
+        Vector3 velocity,
+        CelestialBodyMesh mesh
+    )
     {
-        this.Type = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
+        this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
         this.Mass = mass;
         this.Velocity = velocity;
         this.Mesh = mesh;
         this.AddChild(mesh);
 
-        switch (Type)
+        switch (SatelliteType)
         {
             case SatelliteBodyType.Asteroid:
-                //Add a omnidirectional light source
                 break;
         }
-
     }
 
-    override public void _Ready()
+    public override void _Ready()
     {
-        AddToGroup("CelestialBody");
+        // Satellites do not affect other bodies' gravity
     }
 
-    override public void _PhysicsProcess(double delta)
+    public override void _PhysicsProcess(double delta)
     {
         TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
         var parent = GetParent() as CelestialBody;
@@ -59,5 +85,4 @@ public partial class SatelliteBody : Node3D
         //Mesh.ConfigureFrom(meshParams);
         //Mesh.GenerateMesh();
     }
-
 }

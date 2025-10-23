@@ -131,3 +131,26 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 10000.0
 step = 0.1
+
+[node name="BeltContent" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="BeltLabelLower" type="Label" parent="Content/BeltContent"]
+layout_mode = 2
+text = "Belt Upper"
+
+[node name="beltNumLower" type="SpinBox" parent="Content/BeltContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1
+
+[node name="BeltLabelUpper" type="Label" parent="Content/BeltContent"]
+layout_mode = 2
+text = "Lower"
+
+[node name="beltNumUpper" type="SpinBox" parent="Content/BeltContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1

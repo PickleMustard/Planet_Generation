@@ -217,19 +217,19 @@ names = [
   "Dustblown",
 ]
 
-[template]
+[celestial.template]
 position = [150, 0, 0]
 velocity = [0, 10, 0]
 mass = 10
 size = 12
 
-[mesh.base_mesh]
+[celestial.mesh.base_mesh]
 subdivisions = 2
 vertices_per_edge = [3, 5]
 num_abberations = 3
 num_deformation_cycles = 3
 
-[mesh.tectonic]
+[celestial.mesh.tectonic]
 num_continents = [25, 40]
 stress_scale = [3.0, 8.0]
 shear_scale = [1.0, 1.7]

@@ -217,7 +217,7 @@ names = [
   "Aphelion-far",
 ]
 
-[template]
+[celestial.template]
 position = [800, 0, 0]
 velocity = [0, 5, 0]
 mass = 50

@@ -1,50 +1,74 @@
-using Godot;
 using System;
+using Godot;
 using PlanetGeneration;
 using UtilityLibrary;
+
+namespace UI;
 
 public partial class BodyItem : VBoxContainer
 {
     [Signal]
     public delegate void ItemUpdateEventHandler();
 
-    [Export] public Button Toggle;
-    [Export] public Button RemoveItem;
-    [Export] public OptionButton OptionButton;
-    [Export] public SpinBox X;
-    [Export] public SpinBox Y;
-    [Export] public SpinBox Z;
-    [Export] public SpinBox velX;
-    [Export] public SpinBox velY;
-    [Export] public SpinBox velZ;
-    [Export] public SpinBox mass;
-    [Export] public SpinBox size;
+    [Export]
+    public Button Toggle;
+
+    [Export]
+    public Button RemoveItem;
+
+    [Export]
+    public OptionButton OptionButton;
+
+    [Export]
+    public SpinBox X;
+
+    [Export]
+    public SpinBox Y;
+
+    [Export]
+    public SpinBox Z;
+
+    [Export]
+    public SpinBox velX;
+
+    [Export]
+    public SpinBox velY;
+
+    [Export]
+    public SpinBox velZ;
+
+    [Export]
+    public SpinBox mass;
+
+    [Export]
+    public SpinBox size;
 
     // Satellites UI
-    [Export] public Button AddSatellite;
-    [Export] public Button RemoveSatellite;
-    [Export] public Label SatellitesCountLabel;
-    [Export] public VBoxContainer SatellitesList;
+    [Export]
+    public Button AddSatellite;
+
+    [Export]
+    public Button RemoveSatellite;
+
+    [Export]
+    public Label SatellitesCountLabel;
+
+    [Export]
+    public VBoxContainer SatellitesList;
 
     public Action<BodyItem> OnRemoveRequested;
 
     private PackedScene _satelliteItemScene;
+    private PackedScene _satelliteBeltItemScene;
+    private Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
 
-    // Mesh parameters
-    public int Subdivisions = 1;
-    public int[] VerticesPerEdge = { 2 };
-    public int NumAbberations = 3;
-    public int NumDeformationCycles = 3;
-    public int NumContinents = 5;
-    public float StressScale = 4.0f;
-    public float ShearScale = 1.2f;
-    public float MaxPropagationDistance = 0.1f;
-    public float PropagationFalloff = 1.5f;
-    public float InactiveStressThreshold = 0.1f;
-    public float GeneralHeightScale = 1.0f;
-    public float GeneralShearScale = 1.2f;
-    public float GeneralCompressionScale = 1.75f;
-    public float GeneralTransformScale = 1.1f;
+    private Godot.Collections.Array individualSatelliteHolder;
+    private Godot.Collections.Array satelliteBeltHolder;
+
+    public void SetTemplateDict(Godot.Collections.Dictionary dict)
+    {
+        templateDict = dict;
+    }
 
     private const float Limit = 10000f; // constrain within ±10,000 units (mass 0..10,000)
     private const float MassLimit = 100000000f; // constrain within ±100,000,000,000 units (mass 0..100,000,000,000)
@@ -54,6 +78,8 @@ public partial class BodyItem : VBoxContainer
     {
         // Hook remove
         var remove = GetNodeOrNull<Button>("Header/RemoveItem");
+        individualSatelliteHolder = new Godot.Collections.Array();
+        satelliteBeltHolder = new Godot.Collections.Array();
         if (remove != null)
         {
             remove.Pressed += () => OnRemoveRequested?.Invoke(this);
@@ -71,12 +97,21 @@ public partial class BodyItem : VBoxContainer
         size ??= GetNodeOrNull<SpinBox>("Content/SizeContent/size");
 
         // Satellites UI
-        AddSatellite ??= GetNodeOrNull<Button>("Content/SatellitesContent/SatellitesHeader/AddSatellite");
-        RemoveSatellite ??= GetNodeOrNull<Button>("Content/SatellitesContent/SatellitesHeader/RemoveSatellite");
-        SatellitesCountLabel ??= GetNodeOrNull<Label>("Content/SatellitesContent/SatellitesHeader/SatellitesCountLabel");
-        SatellitesList ??= GetNodeOrNull<VBoxContainer>("Content/SatellitesContent/SatellitesScroll/SatellitesList");
+        AddSatellite ??= GetNodeOrNull<Button>(
+            "Content/SatellitesContent/SatellitesHeader/AddSatellite"
+        );
+        RemoveSatellite ??= GetNodeOrNull<Button>(
+            "Content/SatellitesContent/SatellitesHeader/RemoveSatellite"
+        );
+        SatellitesCountLabel ??= GetNodeOrNull<Label>(
+            "Content/SatellitesContent/SatellitesHeader/SatellitesCountLabel"
+        );
+        SatellitesList ??= GetNodeOrNull<VBoxContainer>(
+            "Content/SatellitesContent/SatellitesScroll/SatellitesList"
+        );
 
         _satelliteItemScene = GD.Load<PackedScene>("res://UI/SatelliteItem.tscn");
+        _satelliteBeltItemScene = GD.Load<PackedScene>("res://UI/SatelliteBeltItem.tscn");
 
         // Apply input constraints to fields
         ApplyConstraints();
@@ -117,18 +152,18 @@ public partial class BodyItem : VBoxContainer
             {
                 var type = (CelestialBodyType)(int)idx;
                 UpdateHeaderFromBodyType(OptionButton.GetItemText((int)idx));
+                PropogateChangeDown(type);
                 ApplyTemplate(type);
-                HandleSpecialBodyTypes(type);
                 EmitSignal(SignalName.ItemUpdate);
             };
 
             // Ensure a valid initial selection and template
             if (OptionButton.ItemCount > 0)
             {
-                if (OptionButton.Selected < 0) OptionButton.Select(0);
+                if (OptionButton.Selected < 0)
+                    OptionButton.Select(0);
                 UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
                 ApplyTemplate((CelestialBodyType)OptionButton.Selected);
-                HandleSpecialBodyTypes((CelestialBodyType)OptionButton.Selected);
             }
         }
 
@@ -142,11 +177,6 @@ public partial class BodyItem : VBoxContainer
             RemoveSatellite.Pressed += RemoveLastSatelliteItem;
         }
 
-        // Ensure at least one satellite
-        if (SatellitesList.GetChildCount() == 0)
-        {
-            AddSatelliteItem();
-        }
         UpdateSatellitesCountLabel();
     }
 
@@ -155,7 +185,8 @@ public partial class BodyItem : VBoxContainer
         // Positions and velocities: clamp to [-Limit, Limit]
         foreach (var sb in new[] { X, Y, Z, velX, velY, velZ })
         {
-            if (sb == null) continue;
+            if (sb == null)
+                continue;
             sb.MinValue = -Limit;
             sb.MaxValue = Limit;
             sb.AllowGreater = false;
@@ -171,27 +202,67 @@ public partial class BodyItem : VBoxContainer
         }
     }
 
+    public void PropogateChangeDown(CelestialBodyType type)
+    {
+        foreach (var si in SatellitesList.GetChildren())
+        {
+            SatellitesList.RemoveChild(si);
+        }
+        if (type == CelestialBodyType.BlackHole || type == CelestialBodyType.Star)
+        {
+            if (satelliteBeltHolder.Count > 0)
+            {
+                foreach (SatelliteBeltItem item in satelliteBeltHolder)
+                {
+                    SatellitesList.AddChild((SatelliteBeltItem)item);
+                }
+            }
+        }
+        else
+        {
+            if (individualSatelliteHolder.Count > 0)
+            {
+                foreach (SatelliteItem item in individualSatelliteHolder)
+                {
+                    SatellitesList.AddChild((SatelliteItem)item);
+                }
+            }
+        }
+        UpdateSatellitesCountLabel();
+    }
+
     public void ApplyTemplate(CelestialBodyType type)
     {
+        GD.Print($"ApplyTemplate: {type}");
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetDefaults(type);
+        var t = SystemGenTemplates.GetCelestialBodyDefaults(type);
+        var template = (Godot.Collections.Dictionary)t["Template"];
 
         // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
-        if (X != null) X.Value = Mathf.Clamp(t.Position.X, -Limit, Limit);
-        if (Y != null) Y.Value = Mathf.Clamp(t.Position.Y, -Limit, Limit);
-        if (Z != null) Z.Value = Mathf.Clamp(t.Position.Z, -Limit, Limit);
+        var position = (Vector3)template["position"];
+        var velocity = (Vector3)template["velocity"];
+        if (X != null)
+            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
+        if (Y != null)
+            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
+        if (Z != null)
+            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
 
-        if (velX != null) velX.Value = Mathf.Clamp(t.Velocity.X, -Limit, Limit);
-        if (velY != null) velY.Value = Mathf.Clamp(t.Velocity.Y, -Limit, Limit);
-        if (velZ != null) velZ.Value = Mathf.Clamp(t.Velocity.Z, -Limit, Limit);
+        if (velX != null)
+            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
+        if (velY != null)
+            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
+        if (velZ != null)
+            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
 
-        if (mass != null) mass.Value = Mathf.Clamp(t.Mass, 0f, MassLimit);
-        if (size != null) size.Value = Mathf.Clamp(t.Size, 0f, SizeLimit);
+        if (mass != null)
+            mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
+        if (size != null)
+            size.Value = Mathf.Clamp((float)template["size"], 0f, SizeLimit);
+        templateDict = t;
     }
 
-    public void UpdateBody()
-    {
-    }
+    public void UpdateBody() { }
 
     public void UpdateHeaderFromBodyType(string typeName)
     {
@@ -204,9 +275,12 @@ public partial class BodyItem : VBoxContainer
 
     public void SetPosition(Vector3 position)
     {
-        if (X != null) X.Value = Mathf.Clamp(position.X, -Limit, Limit);
-        if (Y != null) Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
-        if (Z != null) Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+        if (X != null)
+            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
+        if (Y != null)
+            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
+        if (Z != null)
+            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
     }
 
     public Vector3 GetVelocity()
@@ -219,106 +293,180 @@ public partial class BodyItem : VBoxContainer
 
     public void SetVelocity(Vector3 velocity)
     {
-        if (velX != null) velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
-        if (velY != null) velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
-        if (velZ != null) velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+        if (velX != null)
+            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
+        if (velY != null)
+            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
+        if (velZ != null)
+            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
     }
 
     public void SetSize(float size)
     {
-        if (this.size != null) this.size.Value = Mathf.Clamp(size, 0f, SizeLimit);
+        if (this.size != null)
+            this.size.Value = Mathf.Clamp(size, 0f, SizeLimit);
     }
 
     public Godot.Collections.Dictionary ToParams()
     {
         var ob = GetNode<OptionButton>("Content/BodyTypeContent/OptionButton");
         // Clamp outgoing values as a final safeguard
-        float cx = Mathf.Clamp((float)GetNode<SpinBox>("Content/PositionContent/X").Value, -Limit, Limit);
-        float cy = Mathf.Clamp((float)GetNode<SpinBox>("Content/PositionContent/Y").Value, -Limit, Limit);
-        float cz = Mathf.Clamp((float)GetNode<SpinBox>("Content/PositionContent/Z").Value, -Limit, Limit);
+        float cx = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/PositionContent/X").Value,
+            -Limit,
+            Limit
+        );
+        float cy = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/PositionContent/Y").Value,
+            -Limit,
+            Limit
+        );
+        float cz = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/PositionContent/Z").Value,
+            -Limit,
+            Limit
+        );
 
-        float cvx = Mathf.Clamp((float)GetNode<SpinBox>("Content/VelocityContent/velX").Value, -Limit, Limit);
-        float cvy = Mathf.Clamp((float)GetNode<SpinBox>("Content/VelocityContent/velY").Value, -Limit, Limit);
-        float cvz = Mathf.Clamp((float)GetNode<SpinBox>("Content/VelocityContent/velZ").Value, -Limit, Limit);
+        float cvx = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/VelocityContent/velX").Value,
+            -Limit,
+            Limit
+        );
+        float cvy = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/VelocityContent/velY").Value,
+            -Limit,
+            Limit
+        );
+        float cvz = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/VelocityContent/velZ").Value,
+            -Limit,
+            Limit
+        );
 
-        float cm = Mathf.Clamp((float)GetNode<SpinBox>("Content/MassContent/mass").Value, 0f, MassLimit);
-        float cs = Mathf.Clamp((float)GetNode<SpinBox>("Content/SizeContent/size").Value, 0f, SizeLimit);
+        float cm = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/MassContent/mass").Value,
+            0f,
+            MassLimit
+        );
+        float cs = Mathf.Clamp(
+            (float)GetNode<SpinBox>("Content/SizeContent/size").Value,
+            0f,
+            SizeLimit
+        );
 
-        Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
-        dict.Add("Position", new Vector3(cx, cy, cz));
-        dict.Add("Velocity", new Vector3(cvx, cvy, cvz));
-        dict.Add("Mass", cm);
-        dict.Add("Type", Enum.GetName(typeof(CelestialBodyType), (CelestialBodyType)ob.Selected));
-        dict.Add("Size", cs);
+        templateDict["Type"] = Enum.GetName(
+            typeof(CelestialBodyType),
+            (CelestialBodyType)ob.Selected
+        );
+        ((Godot.Collections.Dictionary)templateDict["Template"])["position"] = new Vector3(
+            cx,
+            cy,
+            cz
+        );
+        ((Godot.Collections.Dictionary)templateDict["Template"])["velocity"] = new Vector3(
+            cvx,
+            cvy,
+            cvz
+        );
+        ((Godot.Collections.Dictionary)templateDict["Template"])["mass"] = cm;
+        ((Godot.Collections.Dictionary)templateDict["Template"])["size"] = cs;
 
-        // Add mesh parameters
-        var meshDict = new Godot.Collections.Dictionary();
-        meshDict.Add("subdivisions", Subdivisions);
-        meshDict.Add("vertices_per_edge", VerticesPerEdge);
-        meshDict.Add("num_abberations", NumAbberations);
-        meshDict.Add("num_deformation_cycles", NumDeformationCycles);
-
-        var tectonicDict = new Godot.Collections.Dictionary();
-        tectonicDict.Add("num_continents", NumContinents);
-        tectonicDict.Add("stress_scale", StressScale);
-        tectonicDict.Add("shear_scale", ShearScale);
-        tectonicDict.Add("max_propagation_distance", MaxPropagationDistance);
-        tectonicDict.Add("propagation_falloff", PropagationFalloff);
-        tectonicDict.Add("inactive_stress_threshold", InactiveStressThreshold);
-        tectonicDict.Add("general_height_scale", GeneralHeightScale);
-        tectonicDict.Add("general_shear_scale", GeneralShearScale);
-        tectonicDict.Add("general_compression_scale", GeneralCompressionScale);
-        tectonicDict.Add("general_transform_scale", GeneralTransformScale);
-
-        meshDict.Add("tectonic", tectonicDict);
-        dict.Add("mesh", meshDict);
-
-        return dict;
-    }
-
-    private void HandleSpecialBodyTypes(CelestialBodyType type)
-    {
-        // For AsteroidBelt, Comet, IceBelt, generate multiple satellites
-        if (type == CelestialBodyType.AsteroidBelt || type == CelestialBodyType.Comet || type == CelestialBodyType.IceBelt)
+        // Add satellites
+        var satellitesList = new Godot.Collections.Array<Godot.Collections.Dictionary>();
+        if (
+            (CelestialBodyType)ob.Selected == CelestialBodyType.Star
+            || (CelestialBodyType)ob.Selected == CelestialBodyType.BlackHole
+        )
         {
-            // Clear existing satellites
             foreach (Node child in SatellitesList.GetChildren())
             {
-                child.QueueFree();
+                if (child is SatelliteBeltItem sbi)
+                {
+                    satellitesList.Add(sbi.ToParams());
+                }
             }
-
-            // Add multiple satellites based on type
-            int numSatellites = 5; // Default number
-            for (int i = 0; i < numSatellites; i++)
+            if (templateDict.ContainsKey("Satellites"))
             {
-                AddSatelliteItem();
+                templateDict["Satellites"] = satellitesList;
             }
+            else
+            {
+                templateDict.Add("Satellites", satellitesList);
+            }
+            GD.Print($"Satellites List Size: {satellitesList.Count}");
         }
         else
         {
-            // For other types, clear satellites
             foreach (Node child in SatellitesList.GetChildren())
             {
-                child.QueueFree();
+                if (child is SatelliteItem si)
+                {
+                    satellitesList.Add(si.ToParams());
+                }
+            }
+            if (templateDict.ContainsKey("Satellites"))
+            {
+                templateDict["Satellites"] = satellitesList;
+            }
+            else
+            {
+                templateDict.Add("Satellites", satellitesList);
             }
         }
-        UpdateSatellitesCountLabel();
+
+        return templateDict;
     }
 
     private void AddSatelliteItem()
     {
-        if (SatellitesList == null || _satelliteItemScene == null) return;
-        var satelliteItem = _satelliteItemScene.Instantiate<SatelliteItem>();
-        satelliteItem.OnRemoveRequested += RemoveSatelliteItem;
-        satelliteItem.ItemUpdate += OnSatelliteItemUpdate;
-        SatellitesList.AddChild(satelliteItem);
+        var ob = GetNode<OptionButton>("Content/BodyTypeContent/OptionButton");
+        if (SatellitesList == null || _satelliteItemScene == null)
+            return;
+        if (
+            (CelestialBodyType)ob.Selected == CelestialBodyType.BlackHole
+            || (CelestialBodyType)ob.Selected == CelestialBodyType.Star
+        )
+        {
+            var satelliteBeltItem = _satelliteBeltItemScene.Instantiate<SatelliteBeltItem>();
+            satelliteBeltItem.SetParentType((CelestialBodyType)ob.Selected);
+            satelliteBeltItem.OnRemoveRequested += RemoveSatelliteItem;
+            satelliteBeltItem.ItemUpdate += OnSatelliteItemUpdate;
+            SatellitesList.AddChild(satelliteBeltItem);
+            satelliteBeltItem.SubscribeEvents();
+            satelliteBeltHolder.Add(satelliteBeltItem);
+        }
+        else
+        {
+            var satelliteItem = _satelliteItemScene.Instantiate<SatelliteItem>();
+            satelliteItem.SetParentType((CelestialBodyType)ob.Selected);
+            satelliteItem.OnRemoveRequested += RemoveSatelliteItem;
+            satelliteItem.ItemUpdate += OnSatelliteItemUpdate;
+            SatellitesList.AddChild(satelliteItem);
+            satelliteItem.SubscribeEvents();
+            individualSatelliteHolder.Add(satelliteItem);
+        }
         UpdateSatellitesCountLabel();
     }
 
     private void RemoveLastSatelliteItem()
     {
-        if (SatellitesList.GetChildCount() <= 1) return; // Keep at least one satellite
-        var last = SatellitesList.GetChild(SatellitesList.GetChildCount() - 1);
+        var ob = GetNode<OptionButton>("Content/BodyTypeContent/OptionButton");
+        if (SatellitesList.GetChildCount() <= 0)
+            return; // No negatives
+        var index = SatellitesList.GetChildCount() - 1;
+        var last = SatellitesList.GetChild(index);
+        if (
+            (CelestialBodyType)ob.Selected == CelestialBodyType.BlackHole
+            || (CelestialBodyType)ob.Selected == CelestialBodyType.Star
+        )
+        {
+            satelliteBeltHolder.RemoveAt(index);
+        }
+        else
+        {
+            individualSatelliteHolder.RemoveAt(index);
+        }
+        SatellitesList.RemoveChild(last);
         last.QueueFree();
         UpdateSatellitesCountLabel();
     }
@@ -327,9 +475,18 @@ public partial class BodyItem : VBoxContainer
     {
         if (IsInstanceValid(item) && item.GetParent() == SatellitesList)
         {
+            if (individualSatelliteHolder.Contains(item))
+            {
+                individualSatelliteHolder.Remove(item);
+            }
+            if (satelliteBeltHolder.Contains(item))
+            {
+                satelliteBeltHolder.Remove(item);
+            }
+            SatellitesList.RemoveChild(item);
             item.QueueFree();
-            UpdateSatellitesCountLabel();
         }
+        UpdateSatellitesCountLabel();
     }
 
     private void UpdateSatellitesCountLabel()
@@ -337,7 +494,7 @@ public partial class BodyItem : VBoxContainer
         if (SatellitesCountLabel != null)
         {
             int count = SatellitesList.GetChildCount();
-            SatellitesCountLabel.Text = count == 1 ? "1 satellite" : $"{count} satellites";
+            SatellitesCountLabel.Text = count <= 1 ? $"{count} satellite" : $"{count} satellites";
         }
     }
 
@@ -348,11 +505,22 @@ public partial class BodyItem : VBoxContainer
 
     private void RemoveSatelliteItem(SatelliteItem item)
     {
-        if (IsInstanceValid(item) && item.GetParent() == SatellitesList && SatellitesList.GetChildCount() > 1)
+        if (
+            IsInstanceValid(item)
+            && item.GetParent() == SatellitesList
+            && SatellitesList.GetChildCount() > 1
+        )
         {
+            if (individualSatelliteHolder.Contains(item))
+            {
+                individualSatelliteHolder.Remove(item);
+            }
+            if (satelliteBeltHolder.Contains(item))
+            {
+                satelliteBeltHolder.Remove(item);
+            }
             item.QueueFree();
             UpdateSatellitesCountLabel();
         }
     }
 }
-
