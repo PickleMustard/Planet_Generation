@@ -58,17 +58,31 @@ public partial class BodyItem : VBoxContainer
 
     public Action<BodyItem> OnRemoveRequested;
 
+    private String bodyName;
+
+    //Hidden Values
+    //Base Mesh
+    private int subdivisions;
+    private int[,] verticesPerEdge;
+    private int numAbberations;
+    private int numDeformationCycles;
+    //Tectonics
+    private int[] numContinents;
+    private float[] stressScale;
+    private float[] shearScale;
+    private float[] maxPropagationDistance;
+    private float[] propagationFalloff;
+    private float[] inactiveStressThreshold;
+    private float[] generalHeightScale;
+    private float[] generalShearScale;
+    private float[] generalCompressionScale;
+    private float[] generalTransformScale;
+
     private PackedScene _satelliteItemScene;
     private PackedScene _satelliteBeltItemScene;
-    private Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
 
     private Godot.Collections.Array individualSatelliteHolder;
     private Godot.Collections.Array satelliteBeltHolder;
-
-    public void SetTemplateDict(Godot.Collections.Dictionary dict)
-    {
-        templateDict = dict;
-    }
 
     private const float Limit = 10000f; // constrain within ±10,000 units (mass 0..10,000)
     private const float MassLimit = 100000000f; // constrain within ±100,000,000,000 units (mass 0..100,000,000,000)
@@ -162,8 +176,8 @@ public partial class BodyItem : VBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
                 ApplyTemplate((CelestialBodyType)OptionButton.Selected);
+                UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
             }
         }
 
@@ -236,7 +250,9 @@ public partial class BodyItem : VBoxContainer
         GD.Print($"ApplyTemplate: {type}");
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = SystemGenTemplates.GetCelestialBodyDefaults(type);
-        var template = (Godot.Collections.Dictionary)t["Template"];
+        var template = (Godot.Collections.Dictionary)t["template"];
+        bodyName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
+
 
         // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
         var position = (Vector3)template["position"];
@@ -259,7 +275,104 @@ public partial class BodyItem : VBoxContainer
             mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
         if (size != null)
             size.Value = Mathf.Clamp((float)template["size"], 0f, SizeLimit);
-        templateDict = t;
+
+        var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
+        subdivisions = (int)baseMesh["subdivisions"];
+        GD.Print($"Vertices Per Edge: {baseMesh["vertices_per_edge"]}");
+        verticesPerEdge = new int[subdivisions, 2];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        for (int i = 0; i < subdivisions; i++)
+        {
+            verticesPerEdge[i, 0] = (int)vpeArray[i][0];
+            verticesPerEdge[i, 1] = (int)vpeArray[i][1];
+        }
+        numAbberations = (int)baseMesh["num_abberations"];
+        numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
+
+        var tectonics = (Godot.Collections.Dictionary)t["tectonics"];
+        numContinents = (int[])tectonics["num_continents"];
+        stressScale = (float[])tectonics["stress_scale"];
+        shearScale = (float[])tectonics["shear_scale"];
+        maxPropagationDistance = (float[])tectonics["max_propagation_distance"];
+        propagationFalloff = (float[])tectonics["propagation_falloff"];
+        inactiveStressThreshold = (float[])tectonics["inactive_stress_threshold"];
+        generalHeightScale = (float[])tectonics["general_height_scale"];
+        generalShearScale = (float[])tectonics["general_shear_scale"];
+        generalCompressionScale = (float[])tectonics["general_compression_scale"];
+        generalTransformScale = (float[])tectonics["general_transform_scale"];
+
+    }
+
+    public void SetTemplate(Godot.Collections.Dictionary t)
+    {
+        GD.Print($"SetTemplate: {t}");
+        var template = (Godot.Collections.Dictionary)t["template"];
+
+        // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
+        var position = (Vector3)template["position"];
+        var velocity = (Vector3)template["velocity"];
+        if (X != null)
+            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
+        if (Y != null)
+            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
+        if (Z != null)
+            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+
+        if (velX != null)
+            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
+        if (velY != null)
+            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
+        if (velZ != null)
+            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+
+        if (mass != null)
+            mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
+        if (size != null)
+            size.Value = Mathf.Clamp((float)template["size"], 0f, SizeLimit);
+
+        var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
+        subdivisions = (int)baseMesh["subdivisions"];
+        verticesPerEdge = new int[subdivisions, 2];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        for (int i = 0; i < subdivisions; i++)
+        {
+            verticesPerEdge[i, 0] = (int)vpeArray[i][0];
+            verticesPerEdge[i, 1] = (int)vpeArray[i][1];
+        }
+        numAbberations = (int)baseMesh["num_abberations"];
+        numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
+
+        var tectonics = (Godot.Collections.Dictionary)t["tectonics"];
+        numContinents = (int[])tectonics["num_continents"];
+        stressScale = (float[])tectonics["stress_scale"];
+        shearScale = (float[])tectonics["shear_scale"];
+        maxPropagationDistance = (float[])tectonics["max_propagation_distance"];
+        propagationFalloff = (float[])tectonics["propagation_falloff"];
+        inactiveStressThreshold = (float[])tectonics["inactive_stress_threshold"];
+        generalHeightScale = (float[])tectonics["general_height_scale"];
+        generalShearScale = (float[])tectonics["general_shear_scale"];
+        generalCompressionScale = (float[])tectonics["general_compression_scale"];
+        generalTransformScale = (float[])tectonics["general_transform_scale"];
+
+    }
+
+    public String PickName(Godot.Collections.Dictionary nameDict)
+    {
+        if (nameDict == null || nameDict.Count == 0)
+            return "";
+
+        var categories = new Godot.Collections.Array(nameDict.Keys);
+        if (categories.Count == 0)
+            return "";
+
+        var random = UtilityLibrary.Randomizer.rng;
+        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
+
+        var names = (Godot.Collections.Array)nameDict[selectedCategory];
+        if (names == null || names.Count == 0)
+            return "";
+
+        return (string)names[random.RandiRange(0, names.Count - 1)];
     }
 
     public void UpdateBody() { }
@@ -269,10 +382,14 @@ public partial class BodyItem : VBoxContainer
         var headerBtn = GetNodeOrNull<Button>("Header/Toggle");
         if (headerBtn != null)
         {
-            headerBtn.Text = typeName;
+            headerBtn.Text = $"{bodyName} ({typeName})";
         }
     }
 
+    public Vector3 GetBodyPosition()
+    {
+        return new Vector3(Mathf.Clamp((float)X.Value, -Limit, Limit), Mathf.Clamp((float)Y.Value, -Limit, Limit), Mathf.Clamp((float)Z.Value, -Limit, Limit));
+    }
     public void SetPosition(Vector3 position)
     {
         if (X != null)
@@ -309,6 +426,7 @@ public partial class BodyItem : VBoxContainer
 
     public Godot.Collections.Dictionary ToParams()
     {
+        Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
         var ob = GetNode<OptionButton>("Content/BodyTypeContent/OptionButton");
         // Clamp outgoing values as a final safeguard
         float cx = Mathf.Clamp(
@@ -354,22 +472,44 @@ public partial class BodyItem : VBoxContainer
             SizeLimit
         );
 
-        templateDict["Type"] = Enum.GetName(
+        dict["type"] = Enum.GetName(
             typeof(CelestialBodyType),
             (CelestialBodyType)ob.Selected
         );
-        ((Godot.Collections.Dictionary)templateDict["Template"])["position"] = new Vector3(
-            cx,
-            cy,
-            cz
-        );
-        ((Godot.Collections.Dictionary)templateDict["Template"])["velocity"] = new Vector3(
-            cvx,
-            cvy,
-            cvz
-        );
-        ((Godot.Collections.Dictionary)templateDict["Template"])["mass"] = cm;
-        ((Godot.Collections.Dictionary)templateDict["Template"])["size"] = cs;
+        dict.Add("name", bodyName);
+        var templateDict = new Godot.Collections.Dictionary();
+        templateDict.Add("position", new Vector3(cx, cy, cz));
+        templateDict.Add("velocity", new Vector3(cvx, cvy, cvz));
+        templateDict.Add("mass", cm);
+        templateDict.Add("size", cs);
+        dict.Add("template", templateDict);
+        var baseMesh = new Godot.Collections.Dictionary();
+        baseMesh.Add("subdivisions", subdivisions);
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = new Godot.Collections.Array<Godot.Collections.Array<int>>();
+        for (int i = 0; i < subdivisions; i++)
+        {
+            Godot.Collections.Array<int> row = new Godot.Collections.Array<int>();
+            row.Add(verticesPerEdge[i, 0]);
+            row.Add(verticesPerEdge[i, 1]);
+            vpeArray.Add(row);
+        }
+        baseMesh.Add("vertices_per_edge", vpeArray);
+        baseMesh.Add("num_abberations", numAbberations);
+        baseMesh.Add("num_deformation_cycles", numDeformationCycles);
+        dict.Add("base_mesh", baseMesh);
+        var tectonics = new Godot.Collections.Dictionary();
+        tectonics.Add("num_continents", numContinents);
+        tectonics.Add("stress_scale", stressScale);
+        tectonics.Add("shear_scale", shearScale);
+        tectonics.Add("max_propagation_distance", maxPropagationDistance);
+        tectonics.Add("propagation_falloff", propagationFalloff);
+        tectonics.Add("inactive_stress_threshold", inactiveStressThreshold);
+        tectonics.Add("general_height_scale", generalHeightScale);
+        tectonics.Add("general_shear_scale", generalShearScale);
+        tectonics.Add("general_compression_scale", generalCompressionScale);
+        tectonics.Add("general_transform_scale", generalTransformScale);
+        dict.Add("tectonics", tectonics);
+
 
         // Add satellites
         var satellitesList = new Godot.Collections.Array<Godot.Collections.Dictionary>();
@@ -385,13 +525,13 @@ public partial class BodyItem : VBoxContainer
                     satellitesList.Add(sbi.ToParams());
                 }
             }
-            if (templateDict.ContainsKey("Satellites"))
+            if (dict.ContainsKey("Satellites"))
             {
-                templateDict["Satellites"] = satellitesList;
+                dict["Satellites"] = satellitesList;
             }
             else
             {
-                templateDict.Add("Satellites", satellitesList);
+                dict.Add("Satellites", satellitesList);
             }
             GD.Print($"Satellites List Size: {satellitesList.Count}");
         }
@@ -404,17 +544,17 @@ public partial class BodyItem : VBoxContainer
                     satellitesList.Add(si.ToParams());
                 }
             }
-            if (templateDict.ContainsKey("Satellites"))
+            if (dict.ContainsKey("Satellites"))
             {
-                templateDict["Satellites"] = satellitesList;
+                dict["Satellites"] = satellitesList;
             }
             else
             {
-                templateDict.Add("Satellites", satellitesList);
+                dict.Add("Satellites", satellitesList);
             }
         }
 
-        return templateDict;
+        return dict;
     }
 
     private void AddSatelliteItem()
@@ -444,8 +584,58 @@ public partial class BodyItem : VBoxContainer
             SatellitesList.AddChild(satelliteItem);
             satelliteItem.SubscribeEvents();
             individualSatelliteHolder.Add(satelliteItem);
+            RedistributeSatelliteRings();
         }
         UpdateSatellitesCountLabel();
+    }
+
+    private void RedistributeSatelliteRings()
+    {
+        var bodiesByRing = new System.Collections.Generic.Dictionary<
+            float,
+            System.Collections.Generic.List<SatelliteItem>
+        >();
+        foreach (Node child in SatellitesList.GetChildren())
+        {
+            if (child is SatelliteItem bi)
+            {
+                //var pos = ((Godot.Collections.Dictionary)bi.ToParams()["Template"])["position"]
+                //    .AsVector3();
+                var pos = bi.GetBodyPosition();
+                float radius = pos.Length();
+                if (!bodiesByRing.ContainsKey(radius))
+                    bodiesByRing[radius] = new System.Collections.Generic.List<SatelliteItem>();
+                bodiesByRing[radius].Add(bi);
+            }
+        }
+
+        foreach (var kvp in bodiesByRing)
+        {
+            var bodies = kvp.Value;
+            if (bodies.Count > 1)
+            {
+                RedistributeBodiesInRing(bodies, kvp.Key);
+            }
+        }
+    }
+
+    private void RedistributeBodiesInRing(
+        System.Collections.Generic.List<SatelliteItem> bodies,
+        float radius
+    )
+    {
+        int n = bodies.Count;
+        for (int i = 0; i < n; i++)
+        {
+            float angle = (i * 2 * Mathf.Pi) / n;
+            var newPos = new Vector3(radius * Mathf.Cos(angle), radius * Mathf.Sin(angle), 0); // Assuming Z=0 for rings
+            var body = bodies[i];
+            var originalVel = body.GetVelocity();
+            float speed = originalVel.Length();
+            var newVel = new Vector3(-newPos.Y, newPos.X, 0).Normalized() * speed;
+            body.SetPosition(newPos);
+            body.SetVelocity(newVel);
+        }
     }
 
     private void RemoveLastSatelliteItem()
@@ -484,6 +674,7 @@ public partial class BodyItem : VBoxContainer
                 satelliteBeltHolder.Remove(item);
             }
             SatellitesList.RemoveChild(item);
+            RedistributeSatelliteRings();
             item.QueueFree();
         }
         UpdateSatellitesCountLabel();
@@ -520,6 +711,7 @@ public partial class BodyItem : VBoxContainer
                 satelliteBeltHolder.Remove(item);
             }
             item.QueueFree();
+            RedistributeSatelliteRings();
             UpdateSatellitesCountLabel();
         }
     }

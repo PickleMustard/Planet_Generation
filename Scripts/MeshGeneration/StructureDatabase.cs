@@ -1242,8 +1242,8 @@ public class StructureDatabase
         /// <summary>
         /// Gets a read-only dictionary mapping edges to the Voronoi cells that contain them.
         /// </summary>
-        public System.Collections.ObjectModel.ReadOnlyDictionary<Edge, HashSet<VoronoiCell>> EdgeCells =>
-            new System.Collections.ObjectModel.ReadOnlyDictionary<Edge, HashSet<VoronoiCell>>(db.EdgeMap);
+        public System.Collections.ObjectModel.ReadOnlyDictionary<EdgeKey, HashSet<VoronoiCell>> EdgeCells =>
+            new System.Collections.ObjectModel.ReadOnlyDictionary<EdgeKey, HashSet<VoronoiCell>>(db.EdgeKeyCellMap);
 
         /// <summary>
         /// Gets a read-only dictionary mapping points to the Voronoi cells that contain them.

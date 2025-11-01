@@ -225,7 +225,7 @@ mass_range = [4, 10]
 
 [satellite.mesh.base_mesh]
 subdivisions = 1
-vertices_per_edge = [2, 3]
+vertices_per_edge = [[2, 3]]
 num_abberations = 0
 num_deformation_cycles = 0
 

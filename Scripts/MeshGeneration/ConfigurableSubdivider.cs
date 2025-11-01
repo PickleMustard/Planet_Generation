@@ -19,7 +19,7 @@ public class ConfigurableSubdivider
     /// The structure database used for managing points, edges, and faces during subdivision.
     /// </summary>
     private StructureDatabase StrDb;
-    private CelestialBodyMesh mesh;
+    private UnifiedCelestialMesh mesh;
 
     /// <summary>
     /// Dictionary mapping vertex distribution types to their corresponding vertex generators.
@@ -30,7 +30,7 @@ public class ConfigurableSubdivider
     /// Initializes a new instance of the ConfigurableSubdivider class.
     /// </summary>
     /// <param name="db">The structure database to use for managing mesh data during subdivision.</param>
-    public ConfigurableSubdivider(StructureDatabase db, CelestialBodyMesh mesh)
+    public ConfigurableSubdivider(StructureDatabase db, UnifiedCelestialMesh mesh)
     {
         this.mesh = mesh;
         this.StrDb = db;

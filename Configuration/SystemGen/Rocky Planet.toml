@@ -219,24 +219,24 @@ names = [
 
 [celestial.template]
 position = [150, 0, 0]
-velocity = [0, 10, 0]
-mass = 10
-size = 12
+velocity = [0, 0, 0]
+mass = 100
+size = 50
 
 [celestial.mesh.base_mesh]
 subdivisions = 2
-vertices_per_edge = [3, 5]
+vertices_per_edge = [[5, 7], [2, 4]]
 num_abberations = 3
 num_deformation_cycles = 3
 
 [celestial.mesh.tectonic]
-num_continents = [25, 40]
-stress_scale = [3.0, 8.0]
-shear_scale = [1.0, 1.7]
-max_propagation_distance = [0.1, 0.4]
-propagation_falloff = [0.8, 1.5]
-inactive_stress_threshold = [0.01, 0.1]
-general_height_scale = [0.8, 1.2]
-general_shear_scale = [10.0, 18.0]
-general_compression_scale = [20.0, 40.0]
-general_transform_scale = [1.1, 1.4]
+num_continents = [13, 25]
+stress_scale = [1.1, 1.5]
+shear_scale = [1.1, 1.2]
+max_propagation_distance = [0.13, 0.15]
+propagation_falloff = [0.015, 0.02]
+inactive_stress_threshold = [0.01, 0.015]
+general_height_scale = [0.5, 0.5]
+general_shear_scale = [1.0, 1.2]
+general_compression_scale = [1.1, 1.2]
+general_transform_scale = [1.0, 1.2]
