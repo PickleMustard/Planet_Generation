@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Godot;
 using Structures;
 using UtilityLibrary;
+using PlanetGeneration;
 
 namespace MeshGeneration;
 
@@ -19,7 +20,7 @@ public class BaseMeshGeneration
     /// Static counter used for vertex deformation calculations.
     /// </summary>
     private static int currentIndex = 0;
-    private CelestialBodyMesh mesh;
+    private UnifiedCelestialMesh mesh;
 
     /// <summary>
     /// The golden ratio constant (1 + sqrt(5)) / 2, used for dodecahedron vertex calculations.
@@ -83,7 +84,7 @@ public class BaseMeshGeneration
     /// <param name="StrDb">Structure database for managing mesh data</param>
     /// <param name="subdivide">Number of times to subdivide the dodecahedron</param>
     /// <param name="VerticesPerEdge">Number of points to generate per edge at each subdivision level</param>
-    public BaseMeshGeneration(RandomNumberGenerator rand, StructureDatabase StrDb, int subdivide, int[] VerticesPerEdge, CelestialBodyMesh mesh)
+    public BaseMeshGeneration(RandomNumberGenerator rand, StructureDatabase StrDb, int subdivide, int[] VerticesPerEdge, UnifiedCelestialMesh mesh)
     {
         Logger.EnterFunction("BaseMeshGeneration::.ctor", $"subdivide={subdivide}, VPE=[{string.Join(",", VerticesPerEdge ?? Array.Empty<int>())}]");
         this.rand = rand;
@@ -236,10 +237,10 @@ public class BaseMeshGeneration
 
     /// <summary>
     /// Initiates the mesh deformation process to create more natural-looking planetary surfaces.
-    /// This method runs multiple deformation cycles in parallel to optimize the mesh topology
+    /// This method runs multiple deformation cycles using the thread pool to optimize the mesh topology
     /// by performing edge flips and vertex smoothing operations.
     /// </summary>
-    /// <param name="numDeformationCycles">Number of parallel deformation cycles to execute</param>
+    /// <param name="numDeformationCycles">Number of deformation cycles to execute</param>
     /// <param name="numAbberations">Number of edge flip operations to perform per cycle</param>
     /// <param name="optimalSideLength">Target edge length for deformation decisions</param>
     /// <remarks>
@@ -248,19 +249,27 @@ public class BaseMeshGeneration
     /// 2. Vertex smoothing: Moves vertices toward the average center of adjacent triangles
     ///
     /// This process helps create more evenly distributed triangles and reduces mesh artifacts.
-    /// The method uses parallel processing for better performance with multiple deformation cycles.
+    /// The method uses the thread pool for controlled parallel processing to prevent system overload.
     /// </remarks>
-    public void InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
+    public async Task InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
     {
         Logger.EnterFunction("InitiateDeformation", $"cycles={numDeformationCycles}, abberations={numAbberations}, optimalSideLength={optimalSideLength}");
-        HashSet<Point> usedPoints = new HashSet<Point>();
-        Task[] deformationPasses = new Task[numDeformationCycles];
-        for (int deforms = 0; deforms < numDeformationCycles; deforms++)
+        
+        var tasks = new List<Task>();
+
+        for (int i = 0; i < numDeformationCycles; i++)
         {
-            Task firstPass = Task.Factory.StartNew(() => DeformMesh(numAbberations, optimalSideLength));
-            deformationPasses[deforms] = firstPass;
+            var taskId = $"{mesh.Name}_deform_{i}";
+            var task = MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => DeformMesh(numAbberations, optimalSideLength),
+                taskId,
+                TaskPriority.Medium,
+                mesh.Name
+            );
+            tasks.Add(task);
         }
-        Task.WaitAll(deformationPasses);
+
+        await Task.WhenAll(tasks);
         Logger.ExitFunction("InitiateDeformation");
     }
 

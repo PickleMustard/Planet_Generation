@@ -6,51 +6,68 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UtilityLibrary;
+using PlanetGeneration;
 
 using static Structures.Biome;
 
 /// <summary>
-/// Main class responsible for generating procedural celestial body meshes including planets, moons, and other spherical objects.
-/// This class handles the complete generation pipeline from base mesh creation through tectonic simulation to final mesh rendering.
+/// Unified celestial body mesh generation system that consolidates functionality from CelestialBodyMesh and SatelliteBodyMesh.
+/// This class provides a single interface for generating various types of celestial bodies with different generation pipelines.
 /// </summary>
 /// <remarks>
-/// The generation process involves multiple phases:
+/// The generation process involves multiple phases that can be dynamically selected based on configuration:
 /// 1. Base mesh generation using subdivided icosahedron
-/// 2. Mesh deformation for realistic terrain
-/// 3. Voronoi cell generation for continent formation
-/// 4. Tectonic simulation with stress calculations
-/// 5. Biome assignment based on height and moisture
-/// 6. Final mesh rendering with appropriate materials
+/// 2. Optional mesh deformation for realistic terrain
+/// 3. Optional non-uniform scaling for ellipsoidal shapes
+/// 4. Optional noise-based deformation for irregular surfaces
+/// 5. Voronoi cell generation for continent formation
+/// 6. Optional tectonic simulation with stress calculations
+/// 7. Biome assignment based on height and moisture
+/// 8. Final mesh rendering with appropriate materials
 ///
 /// This class extends Godot's MeshInstance3D to provide a complete celestial body generation solution
 /// that can be used directly in Godot scenes. The generation process is asynchronous to prevent
 /// blocking the main thread during complex calculations.
 /// </remarks>
-public partial class CelestialBodyMesh : MeshInstance3D
+public partial class UnifiedCelestialMesh : MeshInstance3D
 {
+    /// <summary>
+    /// Enumeration defining different generation pipeline types for celestial bodies.
+    /// Each type represents a specific combination of features and processing steps.
+    /// </summary>
+    public enum BodyGenerationType
+    {
+        /// <summary>
+        /// Generate using only tectonic processes without additional noise or scaling.
+        /// Suitable for standard planets with realistic terrain features.
+        /// </summary>
+        TectonicsOnly,
+
+        /// <summary>
+        /// Generate using tectonic processes combined with noise-based surface deformation.
+        /// Creates more varied and detailed terrain while maintaining tectonic structure.
+        /// </summary>
+        TectonicsWithNoise,
+
+        /// <summary>
+        /// Generate using non-uniform scaling combined with noise-based deformation.
+        /// Suitable for asteroids, moons, and irregular celestial bodies.
+        /// </summary>
+        ScalingWithNoise,
+
+        /// <summary>
+        /// Generate using only noise-based deformation without tectonic processes or scaling.
+        /// Creates purely procedural terrain features.
+        /// </summary>
+        NoiseOnly
+    }
+
     /// <summary>
     /// Static progress tracking object for generation operations.
     /// Used to monitor and report progress during the asynchronous mesh generation process.
     /// </summary>
     public static GenericPercent percent;
 
-    /// <summary>
-    /// Origin point for the celestial body (typically at world origin).
-    /// Serves as the center point for all mesh generation calculations.
-    /// </summary>
-    private Vector3 origin = new Vector3(0, 0, 0);
-
-    /// <summary>
-    /// Current vertex index used during mesh generation.
-    /// Tracks the current position when iterating through vertices during mesh creation.
-    /// </summary>
-    public int VertexIndex = 0;
-
-    /// <summary>
-    /// Test index used for debugging and development purposes.
-    /// Used to track specific cells or vertices during debugging sessions.
-    /// </summary>
-    public int testIndex = 0;
 
     /// <summary>
     /// Maximum height value found during terrain generation.
@@ -71,28 +88,16 @@ public partial class CelestialBodyMesh : MeshInstance3D
     public static int CurrentlyProcessingVoronoiCount = 0;
 
     /// <summary>
-    /// List of dual faces used in mesh generation.
-    /// Stores the dual mesh faces created during the Voronoi diagram generation process.
-    /// </summary>
-    public List<Face> dualFaces = new List<Face>();
-
-    /// <summary>
-    /// List of edges generated during mesh creation.
-    /// Contains all edges created during the mesh generation process for reference and processing.
-    /// </summary>
-    public List<Edge> generatedEdges = new List<Edge>();
-
-    /// <summary>
     /// Random number generator for procedural generation.
     /// Provides deterministic random values for consistent terrain and feature generation.
     /// </summary>
-    protected RandomNumberGenerator rand = new RandomNumberGenerator();
+    protected RandomNumberGenerator rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
 
     /// <summary>
-    /// Instance reference to this CelestialBodyMesh.
+    /// Instance reference to this UnifiedCelestialMesh.
     /// Provides access to the current instance for external components and systems.
     /// </summary>
-    public CelestialBodyMesh Instance { get; }
+    public UnifiedCelestialMesh Instance { get; }
 
     /// <summary>
     /// Structure database containing all mesh data and relationships.
@@ -105,6 +110,12 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// Handles the simulation of tectonic plate movement, stress calculations, and terrain deformation.
     /// </summary>
     protected TectonicGeneration tectonics;
+
+    /// <summary>
+    /// The detected generation type based on configuration parameters.
+    /// Determines which pipeline will be used for mesh generation.
+    /// </summary>
+    public BodyGenerationType GenerationType { get; private set; }
 
     [ExportCategory("Planet Generation")]
     [ExportGroup("Mesh Generation")]
@@ -139,7 +150,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// All vertex positions are scaled relative to this base size.
     /// </remarks>
     [Export]
-    public int size = 5;
+    public float size = 5;
 
     /// <summary>
     /// Whether to project vertices onto a sphere for spherical mesh generation.
@@ -298,79 +309,105 @@ public partial class CelestialBodyMesh : MeshInstance3D
     [Export]
     public float GeneralTransformScale = 1.1f;
 
-
-    [ExportGroup("Finalized Object")]
+    [ExportCategory("Asteroid Generation")]
+    [ExportGroup("Scaling Settings")]
 
     /// <summary>
-    /// Whether to generate realistic terrain features.
-    /// Controls whether the generation process uses realistic physical parameters.
+    /// Scale factors for non-uniform scaling along X, Y, Z axes.
+    /// Values greater than 1 elongate the axis, less than 1 compress it.
+    /// Example: (2.0f, 0.5f, 1.0f) creates an elongated ellipsoid.
     /// </summary>
-    /// <remarks>
-    /// When enabled, the generation uses physically-based parameters for terrain formation.
-    /// When disabled, simplified or stylized terrain generation may be used.
-    /// </remarks>
     [Export]
-    public bool GenerateRealistic = true;
+    public Vector3 ScaleFactors { get; set; } = new Vector3(1.0f, 1.0f, 1.0f);
+
+    [ExportGroup("Noise Settings")]
 
     /// <summary>
-    /// Whether to display biome colors on the final mesh.
-    /// Controls whether biome-specific colors are applied to the mesh surface.
+    /// Amplitude of noise displacement. Higher values create more exaggerated surface irregularities.
+    /// Typical range: 0.1f (subtle) to 0.5f (extreme).
     /// </summary>
-    /// <remarks>
-    /// When enabled, different biomes (ocean, forest, desert, etc.) are rendered
-    /// with appropriate colors. When disabled, height-based coloring may be used instead.
-    /// </remarks>
     [Export]
-    public bool ShouldDisplayBiomes = true;
-
-    [ExportCategory("Generation Debug")]
-    [ExportGroup("Debug")]
+    public float NoiseAmplitude { get; set; } = 0.2f;
 
     /// <summary>
-    /// Whether to render all triangles for debugging purposes.
-    /// When enabled, renders all mesh triangles for visual inspection of the mesh structure.
+    /// Frequency of the noise pattern. Lower values create broader features, higher values create finer details.
+    /// Typical range: 1.0f (broad) to 5.0f (fine).
     /// </summary>
-    /// <remarks>
-    /// This is primarily a debugging tool that helps visualize the underlying mesh topology.
-    /// Enabling this may impact performance due to the increased number of rendered elements.
-    /// </remarks>
     [Export]
-    public bool AllTriangles = false;
+    public float NoiseFrequency { get; set; } = 2.0f;
 
     /// <summary>
-    /// Interface control for drawing tectonic movement arrows.
-    /// When enabled, draws arrows showing tectonic plate movement directions.
+    /// Number of octaves for fractal noise. More octaves add complexity and detail to the surface.
+    /// Typical range: 1 (simple) to 6 (highly detailed).
     /// </summary>
-    /// <remarks>
-    /// This is a debugging and visualization tool that helps understand tectonic plate dynamics.
-    /// The arrows show the direction and relative magnitude of plate movement.
-    /// </remarks>
     [Export]
-    public bool ShouldDrawArrowsInterface = false;
+    public int NoiseOctaves { get; set; } = 4;
 
     /// <summary>
-    /// Static flag controlling whether tectonic movement arrows are drawn.
-    /// Internal flag used by the rendering system to control arrow visualization.
+    /// Random seed for noise generation. Set to 0 for random seed.
+    /// Ensures reproducible noise patterns for consistent asteroid shapes.
     /// </summary>
-    /// <remarks>
-    /// This flag is set based on the ShouldDrawArrowsInterface property and is used
-    /// internally during the mesh generation process to determine whether to draw arrows.
-    /// </remarks>
-    public static bool ShouldDrawArrows = false;
+    [Export]
+    public int NoiseSeed { get; set; } = 0;
 
     /// <summary>
-    /// Called when the node is ready. Initializes the celestial body mesh.
-    /// This method is part of Godot's node lifecycle and is called when the node enters the scene tree.
+    /// Noise generator instance for procedural deformation.
+    /// Uses Godot's FastNoiseLite for efficient 3D noise computation.
     /// </summary>
-    /// <remarks>
-    /// Actual initialization is handled in the GenerateMesh method, which should be called
-    /// explicitly when mesh generation is desired. This allows for deferred initialization
-    /// and better control over when the computationally expensive generation process begins.
-    /// </remarks>
+    private FastNoiseLite noise;
+
+    [ExportCategory("Thread Pool Settings")]
+    [Export] public bool UseThreadPool = true;
+    [Export] public TaskPriority TaskPriority = TaskPriority.High;
+
     public override void _Ready()
     {
-        // Initialization handled in GenerateMesh method
-        //GenerateMesh();
+        // Initialize noise generator
+        noise = new FastNoiseLite();
+        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.ValueCubic;
+        noise.FractalType = FastNoiseLite.FractalTypeEnum.Ridged;
+        noise.FractalOctaves = NoiseOctaves;
+        noise.FractalLacunarity = 5.0f;
+        noise.FractalGain = 4.5f;
+    }
+
+    /// <summary>
+    /// Dynamically detects the generation type based on configuration parameters.
+    /// This method analyzes the configuration dictionary to determine which generation pipeline to use.
+    /// </summary>
+    /// <param name="meshParams">Dictionary containing mesh generation parameters.</param>
+    /// <returns>The detected BodyGenerationType.</returns>
+    /// <remarks>
+    /// The detection logic follows these rules:
+    /// - If "tectonic" key exists: TectonicsOnly or TectonicsWithNoise (depending on noise_settings)
+    /// - If "scaling_settings" key exists: ScalingWithNoise (if noise_settings exists) or fallback
+    /// - If "noise_settings" key exists without tectonic or scaling: NoiseOnly
+    /// - Default: TectonicsOnly
+    /// </remarks>
+    private BodyGenerationType DetectGenerationType(Godot.Collections.Dictionary meshParams)
+    {
+        if (meshParams == null)
+            return BodyGenerationType.TectonicsOnly;
+
+        bool hasTectonic = meshParams.ContainsKey("tectonic");
+        bool hasScaling = meshParams.ContainsKey("scaling_settings");
+        bool hasNoise = meshParams.ContainsKey("noise_settings");
+
+        // Priority order: Tectonics > Scaling > Noise
+        if (hasTectonic)
+        {
+            return hasNoise ? BodyGenerationType.TectonicsWithNoise : BodyGenerationType.TectonicsOnly;
+        }
+        else if (hasScaling)
+        {
+            return hasNoise ? BodyGenerationType.ScalingWithNoise : BodyGenerationType.NoiseOnly; // Fallback
+        }
+        else if (hasNoise)
+        {
+            return BodyGenerationType.NoiseOnly;
+        }
+
+        return BodyGenerationType.TectonicsOnly; // Default
     }
 
     /// <summary>
@@ -383,6 +420,8 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// - Base mesh settings (subdivisions, vertices per edge, etc.)
     /// - Deformation parameters (aberrations, deformation cycles)
     /// - Tectonic settings (continents, stress scales, propagation settings)
+    /// - Scaling settings for non-uniform scaling
+    /// - Noise settings for procedural deformation
     ///
     /// The method handles various data types and includes error handling for invalid parameters.
     /// It automatically adjusts array lengths to match subdivision levels and provides
@@ -390,24 +429,28 @@ public partial class CelestialBodyMesh : MeshInstance3D
     /// </remarks>
     public virtual void ConfigureFrom(Godot.Collections.Dictionary meshParams)
     {
-        GD.Print($"Configuring {meshParams}");
         if (meshParams == null) return;
+        GD.Print($"ConfigureFrom: {meshParams}");
+
+        // Detect generation type first
+        GenerationType = DetectGenerationType(meshParams);
+        GD.Print($"Detected generation type: {GenerationType}");
 
         if (meshParams.ContainsKey("name"))
         {
             String name = "";
             try { name = meshParams["name"].As<string>(); } catch { }
-            this.Name = name + "_mesh";
+            this.CallDeferred("set_name", name + "_mesh");
         }
         if (meshParams.ContainsKey("size"))
         {
-            try { size = meshParams["size"].As<int>(); } catch { GD.Print("Couldn't find size in meshParams"); }
+            try { size = meshParams["size"].As<float>(); } catch { GD.PrintErr("Couldn't find size in meshParams"); }
         }
 
         // Base mesh settings
         if (meshParams.ContainsKey("subdivisions"))
         {
-            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
+            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); Logger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
         }
 
         if (meshParams.ContainsKey("vertices_per_edge"))
@@ -436,7 +479,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
                         assigned = true;
                     }
                 }
-                catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+                catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
             }
         }
 
@@ -479,27 +522,54 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             catch { }
         }
+        if (meshParams.ContainsKey("scaling_settings"))
+        {
+            var scaling = meshParams["scaling_settings"].As<Godot.Collections.Dictionary>();
+            try
+            {
+                var xScaleRange = (float)scaling["x_scale_range"];
+                var yScaleRange = (float)scaling["y_scale_range"];
+                var zScaleRange = (float)scaling["z_scale_range"];
+                ScaleFactors = new Vector3(xScaleRange, yScaleRange, zScaleRange);
+            }
+            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Scaling Settings: {e.Message}\n{e.StackTrace}"); }
+        }
+        if (meshParams.ContainsKey("noise_settings"))
+        {
+            var noiseSettings = meshParams["noise_settings"].As<Godot.Collections.Dictionary>();
+            try
+            {
+                var amplitude = (float)noiseSettings["amplitude"];
+                var scaling = (float)noiseSettings["scaling"];
+                var octaves = (int)noiseSettings["octaves"];
+
+                NoiseAmplitude = amplitude;
+                NoiseFrequency = scaling;
+                noise.FractalOctaves = octaves;
+
+            }
+            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Noise Settings: {e.Message}\n{e.StackTrace}"); }
+        }
     }
 
     /// <summary>
     /// Main entry point for generating the celestial body mesh.
-    /// This method orchestrates the complete mesh generation process.
+    /// This method orchestrates the complete mesh generation process using the detected generation type.
     /// </summary>
     /// <remarks>
     /// This method initializes the mesh generation process by:
     /// 1. Setting up the mesh structure and random number generator
-    /// 2. Creating the structure database and tectonic generation system
-    /// 3. Starting the asynchronous planet generation process
+    /// 2. Creating the structure database and tectonic generation system (if needed)
+    /// 3. Starting the asynchronous planet generation process using the appropriate pipeline
     ///
     /// The generation runs in a separate task to avoid blocking the main thread.
     /// This allows the game to remain responsive during the computationally expensive
     /// mesh generation process. The method sets up all necessary components and
-    /// initiates the two-pass generation system.
+    /// initiates the generation system based on the detected generation type.
     /// </remarks>
     public virtual void GenerateMesh()
     {
-        this.Mesh = new ArrayMesh();
-        ShouldDrawArrows = ShouldDrawArrowsInterface;
+        this.CallDeferred("set_mesh", new ArrayMesh());
         StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
         percent = new GenericPercent();
         if (Seed != 0)
@@ -507,64 +577,203 @@ public partial class CelestialBodyMesh : MeshInstance3D
             rand.Seed = Seed;
         }
         GD.Print($"Rand Seed: {rand.Seed}\n");
-        List<MeshInstance3D> meshInstances = new List<MeshInstance3D>();
-        tectonics = new TectonicGeneration(
-            StrDb,
-            rand,
-            StressScale,
-            ShearScale,
-            MaxPropagationDistance,
-            PropagationFalloff,
-            InactiveStressThreshold,
-            GeneralHeightScale,
-            GeneralShearScale,
-            GeneralCompressionScale);
+
+        // Initialize tectonics only if needed
+        if (GenerationType == BodyGenerationType.TectonicsOnly || GenerationType == BodyGenerationType.TectonicsWithNoise)
+        {
+            tectonics = new TectonicGeneration(
+                StrDb,
+                rand,
+                StressScale,
+                ShearScale,
+                MaxPropagationDistance,
+                PropagationFalloff,
+                InactiveStressThreshold,
+                GeneralHeightScale,
+                GeneralShearScale,
+                GeneralCompressionScale);
+        }
+
         Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync());
         GD.Print($"Number of Vertices: {StrDb.VoronoiVertices.Values.Count}\n");
     }
 
     /// <summary>
-    /// Asynchronous method that orchestrates the complete planet generation process.
-    /// This method coordinates the two main generation phases in sequence.
+    /// Unified asynchronous method that orchestrates the complete planet generation process.
+    /// This method routes to the appropriate generation pipeline based on the detected generation type.
     /// </summary>
     /// <remarks>
-    /// This method coordinates the two main phases of planet generation:
-    /// 1. First Pass: Base mesh generation and deformation
-    /// 2. Second Pass: Voronoi cell generation, tectonic simulation, and biome assignment
+    /// This method coordinates the generation process by selecting the appropriate pipeline:
+    /// - TectonicsOnly: Standard tectonic generation without noise
+    /// - TectonicsWithNoise: Tectonic generation with noise-based deformation
+    /// - ScalingWithNoise: Non-uniform scaling with noise-based deformation
+    /// - NoiseOnly: Pure noise-based deformation
     ///
-    /// The passes are executed sequentially to ensure proper data dependencies.
-    /// The first pass creates the fundamental mesh structure, while the second pass
-    /// adds the detailed features like continents, tectonics, and biomes.
-    ///
-    /// This method uses Task-based asynchronous programming to avoid blocking the main thread.
+    /// Each pipeline implements the appropriate combination of features while maintaining
+    /// compatibility with the existing mesh generation infrastructure.
     /// </remarks>
-    private void GeneratePlanetAsync()
+    protected virtual async void GeneratePlanetAsync()
     {
-        Task firstPass = Task.Factory.StartNew(() => GenerateFirstPass());
-        Task.WaitAll(firstPass);
-        StrDb.IncrementMeshState();
-        Task secondPass = Task.Factory.StartNew(() => GenerateSecondPass());
+        switch (GenerationType)
+        {
+            case BodyGenerationType.TectonicsOnly:
+                await GenerateTectonicsOnlyPipeline();
+                break;
+            case BodyGenerationType.TectonicsWithNoise:
+                await GenerateTectonicsWithNoisePipeline();
+                break;
+            case BodyGenerationType.ScalingWithNoise:
+                await GenerateScalingWithNoisePipeline();
+                break;
+            case BodyGenerationType.NoiseOnly:
+                await GenerateNoiseOnlyPipeline();
+                break;
+            default:
+                await GenerateTectonicsOnlyPipeline(); // Fallback
+                break;
+        }
     }
 
     /// <summary>
-    /// First phase of planet generation: creates and deforms the base mesh.
-    /// This method establishes the fundamental mesh structure for the celestial body.
+    /// Pipeline for generating celestial bodies using only tectonic processes.
+    /// This is the standard planet generation pipeline without additional noise or scaling.
     /// </summary>
-    /// <remarks>
-    /// This phase handles:
-    /// 1. Base mesh generation using subdivided icosahedron
-    /// 2. Mesh deformation for realistic terrain features
-    /// 3. Optional triangle rendering for debugging
-    ///
-    /// The base mesh serves as the foundation for all subsequent generation phases.
-    /// This method uses the BaseMeshGeneration class to create the initial icosahedral
-    /// mesh and then applies deformation cycles to create terrain variety.
-    ///
-    /// Performance timing is applied to each major operation for optimization analysis.
-    /// </remarks>
+    private async Task GenerateTectonicsOnlyPipeline()
+    {
+        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
+        {
+            GD.Print($"Using thread pool for TectonicsOnly mesh generation");
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateFirstPass(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPass: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_firstpass",
+                TaskPriority.High,
+                Name
+            );
+
+            StrDb.IncrementMeshState();
+
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateSecondPass(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPass: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_secondpass",
+                TaskPriority.High,
+                Name
+            );
+        }
+        else
+        {
+            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPass());
+            Task.WaitAll(firstPass);
+            StrDb.IncrementMeshState();
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPass());
+        }
+    }
+
+    /// <summary>
+    /// Pipeline for generating celestial bodies using tectonic processes with noise-based deformation.
+    /// This combines realistic tectonic features with procedural noise for enhanced detail.
+    /// </summary>
+    private async Task GenerateTectonicsWithNoisePipeline()
+    {
+        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
+        {
+            GD.Print($"Using thread pool for TectonicsWithNoise mesh generation");
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateFirstPassWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPassWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_firstpass_noise",
+                TaskPriority.High,
+                Name
+            );
+
+            StrDb.IncrementMeshState();
+
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateSecondPassWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_secondpass_noise",
+                TaskPriority.High,
+                Name
+            );
+        }
+        else
+        {
+            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassWithNoise());
+            Task.WaitAll(firstPass);
+            StrDb.IncrementMeshState();
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassWithNoise());
+        }
+    }
+
+    /// <summary>
+    /// Pipeline for generating celestial bodies using non-uniform scaling with noise-based deformation.
+    /// This is suitable for asteroids, moons, and irregular celestial bodies.
+    /// </summary>
+    private async Task GenerateScalingWithNoisePipeline()
+    {
+        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
+        {
+            GD.Print($"Using thread pool for ScalingWithNoise mesh generation");
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateFirstPassScalingWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPassScalingWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_firstpass_scaling",
+                TaskPriority.High,
+                Name
+            );
+
+            StrDb.IncrementMeshState();
+
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateSecondPassScalingWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassScalingWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_secondpass_scaling",
+                TaskPriority.High,
+                Name
+            );
+        }
+        else
+        {
+            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassScalingWithNoise());
+            Task.WaitAll(firstPass);
+            StrDb.IncrementMeshState();
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassScalingWithNoise());
+        }
+    }
+
+    /// <summary>
+    /// Pipeline for generating celestial bodies using only noise-based deformation.
+    /// This creates purely procedural terrain features without tectonic processes or scaling.
+    /// </summary>
+    private async Task GenerateNoiseOnlyPipeline()
+    {
+        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
+        {
+            GD.Print($"Using thread pool for NoiseOnly mesh generation");
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateFirstPassNoiseOnly(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPassNoiseOnly: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_firstpass_noiseonly",
+                TaskPriority.High,
+                Name
+            );
+
+            StrDb.IncrementMeshState();
+
+            await MeshGenerationThreadPool.Instance.EnqueueTask(
+                () => { try { GenerateSecondPassNoiseOnly(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassNoiseOnly: {e.Message}\n{e.StackTrace}"); return 1; } },
+                $"{Name}_secondpass_noiseonly",
+                TaskPriority.High,
+                Name
+            );
+        }
+        else
+        {
+            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassNoiseOnly());
+            Task.WaitAll(firstPass);
+            StrDb.IncrementMeshState();
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassNoiseOnly());
+        }
+    }
+
+    // Include all the existing methods from CelestialBodyMesh and SatelliteBodyMesh
+    // First pass methods
     protected virtual void GenerateFirstPass()
     {
-        GD.Print($"Rand Seed: {rand.Seed}");
         GenericPercent emptyPercent = new GenericPercent();
         BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge, this);
         emptyPercent.PercentTotal = 0;
@@ -582,61 +791,145 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 {
                     FunctionTimer.ResetScrollRegionAndClear();
                     Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
-                    GD.PrintRaw($"\x1b0;0r\x1b[2J\x1b[H\n");
-                    GD.PrintRaw($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
+                    GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
+                    GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
                 }
                 return 0;
             }, emptyPercent);
 
-
         var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb.Base.Triangles.Count;
         float OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Deformed Mesh Generation", () =>
+
+        Task<int> deformationTask = FunctionTimer.TimeFunction<Task<int>>(Name.ToString(), "Deformed Mesh Generation", async () =>
         {
             try
             {
-                baseMesh.InitiateDeformation(NumDeformationCycles, NumAbberations, OptimalSideLength);
+                await baseMesh.InitiateDeformation(NumDeformationCycles, NumAbberations, OptimalSideLength);
             }
             catch (Exception e)
             {
                 FunctionTimer.ResetScrollRegionAndClear();
-                GD.PrintRaw($"x1b0;0r\x1b[2J\x1b[H\nDeform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
+                GD.PrintErr($"x1b0;0r\x1b[2J\x1b[H\nDeform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
             }
             return 0;
         }, emptyPercent);
 
-        GD.Print("Deformed Base Mesh");
-        //if (AllTriangles)
-        //{
-        //    foreach (var triangle in StrDb.Base.Triangles)
-        //    {
-        //        RenderTriangleAndConnections(triangle.Value);
-        //    }
-        //}
-
+        deformationTask.Wait();
     }
 
-    /// <summary>
-    /// Second phase of planet generation: creates continents, simulates tectonics, and generates final mesh.
-    /// This method handles the complex processes of continent formation and terrain simulation.
-    /// </summary>
-    /// <remarks>
-    /// This complex phase handles multiple interconnected processes:
-    /// 1. Voronoi cell generation for continent boundaries
-    /// 2. Flood fill algorithm to create continents
-    /// 3. Boundary calculation and stress analysis
-    /// 4. Tectonic simulation with stress application
-    /// 5. Biome assignment based on height and moisture
-    /// 6. Final mesh generation from continent data
-    ///
-    /// Each step is timed and logged for performance analysis.
-    /// This phase builds upon the base mesh created in the first pass and adds
-    /// the detailed features that make the celestial body realistic and varied.
-    ///
-    /// The method uses multiple helper classes and algorithms to achieve the complex
-    /// terrain generation, including VoronoiCellGeneration, TectonicGeneration, and BiomeAssigner.
-    /// </remarks>
-    protected virtual void GenerateSecondPass()
+    protected virtual void GenerateFirstPassWithNoise()
+    {
+        // Call base implementation first
+        GenerateFirstPass();
+
+        // Apply noise-based deformation for additional detail
+        foreach (var vertex in StrDb.BaseVertices.Values)
+        {
+            float noiseValue = noise.GetNoise3D(
+                vertex.Position.X * NoiseFrequency,
+                vertex.Position.Y * NoiseFrequency,
+                vertex.Position.Z * NoiseFrequency
+            );
+
+            Vector3 normal = vertex.Position.Normalized();
+            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
+            vertex.Position += displacement;
+            vertex.Height += displacement.Length();
+        }
+    }
+
+    protected virtual void GenerateFirstPassScalingWithNoise()
+    {
+        // Generate base mesh first
+        GenericPercent emptyPercent = new GenericPercent();
+        BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge, this);
+        emptyPercent.PercentTotal = 0;
+        var function = FunctionTimer.TimeFunction<int>(Name.ToString(),
+            "Base Mesh Generation",
+            () =>
+            {
+                try
+                {
+                    baseMesh.PopulateArrays();
+                    baseMesh.GenerateNonDeformedFaces();
+                    baseMesh.GenerateTriangleList();
+                }
+                catch (Exception e)
+                {
+                    FunctionTimer.ResetScrollRegionAndClear();
+                    Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
+                    GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
+                    GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
+                }
+                return 0;
+            }, emptyPercent);
+
+        // Apply non-uniform scaling to create ellipsoidal base shape
+        foreach (var vertex in StrDb.BaseVertices.Values)
+        {
+            vertex.Position *= ScaleFactors;
+        }
+
+        // Apply noise-based deformation for irregularity
+        foreach (var vertex in StrDb.BaseVertices.Values)
+        {
+            float noiseValue = noise.GetNoise3D(
+                vertex.Position.X * NoiseFrequency,
+                vertex.Position.Y * NoiseFrequency,
+                vertex.Position.Z * NoiseFrequency
+            );
+
+            Vector3 normal = vertex.Position.Normalized();
+            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
+            vertex.Position += displacement;
+            vertex.Height += displacement.Length();
+        }
+    }
+
+    protected virtual void GenerateFirstPassNoiseOnly()
+    {
+        // Generate base mesh first
+        GenericPercent emptyPercent = new GenericPercent();
+        BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge, this);
+        emptyPercent.PercentTotal = 0;
+        var function = FunctionTimer.TimeFunction<int>(Name.ToString(),
+            "Base Mesh Generation",
+            () =>
+            {
+                try
+                {
+                    baseMesh.PopulateArrays();
+                    baseMesh.GenerateNonDeformedFaces();
+                    baseMesh.GenerateTriangleList();
+                }
+                catch (Exception e)
+                {
+                    FunctionTimer.ResetScrollRegionAndClear();
+                    Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
+                    GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
+                    GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
+                }
+                return 0;
+            }, emptyPercent);
+
+        // Apply only noise-based deformation
+        foreach (var vertex in StrDb.BaseVertices.Values)
+        {
+            float noiseValue = noise.GetNoise3D(
+                vertex.Position.X * NoiseFrequency,
+                vertex.Position.Y * NoiseFrequency,
+                vertex.Position.Z * NoiseFrequency
+            );
+
+            Vector3 normal = vertex.Position.Normalized();
+            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
+            vertex.Position += displacement;
+            vertex.Height += displacement.Length();
+        }
+    }
+
+    // Second pass methods
+    protected virtual async void GenerateSecondPass()
     {
         VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
         GenericPercent emptyPercent = new GenericPercent();
@@ -650,7 +943,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 }
                 catch (Exception e)
                 {
-                    GD.PrintRaw($"\u001b[2J\u001b[H");
+                    GD.PrintErr($"\u001b[2J\u001b[H");
                     Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
                 }
                 return 0;
@@ -663,7 +956,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             {
                 continents = FloodFillContinentGeneration(StrDb.VoronoiCells);
             }
-            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Flood Filling Error: {e.Message}\n{e.StackTrace}"); }
+            catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); GD.PrintErr($"Flood Filling Error: {e.Message}\n{e.StackTrace}"); }
             return 0;
         }, emptyPercent);
         percent.Reset();
@@ -718,7 +1011,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             catch (Exception e)
             {
-                GD.PrintRaw($"\u001b[2J\u001b[H");
+                GD.PrintErr($"\u001b[2J\u001b[H");
                 Logger.Error($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
             }
             foreach (Point p in StrDb.VoronoiCellVertices)
@@ -740,7 +1033,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             catch (Exception e)
             {
-                //GD.PrintRaw($"\nHeight Average Error:  {e.Message}\n{e.StackTrace}\n");
+                GD.PrintErr($"\nHeight Average Error:  {e.Message}\n{e.StackTrace}\n");
             }
 
             return 0;
@@ -755,7 +1048,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             catch (Exception boundsError)
             {
-                //GD.PrintRaw($"\nBoundary Stress Error:  {boundsError.Message}\n{boundsError.StackTrace}\n");
+                GD.PrintErr($"\nBoundary Stress Error:  {boundsError.Message}\n{boundsError.StackTrace}\n");
             }
             return 0;
         }, percent);
@@ -772,24 +1065,20 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             catch (Exception stressError)
             {
-                //GD.PrintRaw($"\nStress Error:  {stressError.Message}\n{stressError.StackTrace}\n");
+                GD.PrintErr($"\nStress Error:  {stressError.Message}\n{stressError.StackTrace}\n");
             }
             return 0;
         }, percent);
         percent.Reset();
         maxHeight = StrDb.VoronoiCellVertices.Max(p => p.Height);
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Assign Biomes", () =>
+        try
         {
-            try
-            {
-                AssignBiomes(continents, StrDb.VoronoiCells);
-            }
-            catch (Exception biomeError)
-            {
-                //GD.PrintRaw($"\nBiome Error:  {biomeError.Message}\n{biomeError.StackTrace}\n");
-            }
-            return 0;
-        }, percent);
+            await AssignBiomes(continents, StrDb.VoronoiCells);
+        }
+        catch (Exception biomeError)
+        {
+            GD.PrintErr($"\nBiome Error:  {biomeError.Message}\n{biomeError.StackTrace}\n");
+        }
         percent.Reset();
         percent.PercentTotal = continents.Values.Count;
         percent.PercentCurrent = 0;
@@ -798,78 +1087,172 @@ public partial class CelestialBodyMesh : MeshInstance3D
             try
             {
                 GenerateFromContinents(continents);
-                //DrawContinentBorders(continents);
             }
             catch (Exception genError)
             {
-                //GD.PrintRaw($"\nGenerate From Continents Error:  {genError.Message}\n{genError.StackTrace}\n");
+                GD.PrintErr($"\nGenerate From Continents Error:  {genError.Message}\n{genError.StackTrace}\n");
             }
             return 0;
         }, percent);
-
     }
 
-
-    /// <summary>
-    /// Assigns biomes to all points on the celestial body based on height and moisture.
-    /// This method uses parallel processing to efficiently assign biomes across all continents.
-    /// </summary>
-    /// <param name="continents">Dictionary of continents with their properties including moisture levels and height data.</param>
-    /// <param name="cells">List of Voronoi cells containing the points to biome.</param>
-    /// <remarks>
-    /// This method processes biome assignment in parallel across all continents:
-    /// 1. Calculates moisture levels for each continent
-    /// 2. Assigns appropriate biomes to each point based on height and moisture
-    /// 3. Uses threading for performance optimization
-    ///
-    /// Biome types include: Tundra, Icecap, Desert, Grassland, Forest, Rainforest, Taiga, Ocean, Coastal, Mountain
-    ///
-    /// The method uses the BiomeAssigner class to determine the appropriate biome for each point
-    /// based on its height and the continent's moisture level. Parallel processing is used
-    /// to improve performance on multi-core systems.
-    /// </remarks>
-    private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
+    protected virtual async void GenerateSecondPassWithNoise()
     {
-        Task[] BiomeThreader = new Task[continents.Count];
-        int continentCount = 0;
-        foreach (var continent in continents)
+        // Call base implementation first
+        GenerateSecondPass();
+
+        // Apply additional noise to Voronoi cell vertices
+        foreach (Point p in StrDb.VoronoiCellVertices)
         {
-            Task biomeThread = Task.Factory.StartNew(() =>
+            float noiseValue = noise.GetNoise3D(
+                p.Position.X * NoiseFrequency,
+                p.Position.Y * NoiseFrequency,
+                p.Position.Z * NoiseFrequency
+            );
+
+            Vector3 normal = p.Position.Normalized();
+            Vector3 displacement = normal * noiseValue * NoiseAmplitude * 0.5f; // Reduced amplitude for second pass
+            p.Position += displacement;
+            p.Height += displacement.Length();
+        }
+    }
+
+    protected virtual void GenerateSecondPassScalingWithNoise()
+    {
+        VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
+        try
+        {
+            GenericPercent emptyPercent = new GenericPercent();
+            GD.Print("Generating Voronoi Cells...");
+            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this);
+
+            // First pass: apply scaling and noise to all points
+            foreach (Point p in StrDb.VoronoiCellVertices)
             {
-                Continent c = continent.Value;
-                c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
-                foreach (var cell in c.cells)
-                {
-                    foreach (Point p in cell.Points)
+                p.Position *= ScaleFactors;
+
+                float noiseValue = noise.GetNoise3D(
+                    p.Position.X * NoiseFrequency,
+                    p.Position.Y * NoiseFrequency,
+                    p.Position.Z * NoiseFrequency
+                );
+
+                Vector3 normal = p.Position.Normalized();
+                Vector3 displacement = normal * noiseValue * NoiseAmplitude;
+                p.Position += displacement;
+                p.Height += displacement.Length();
+            }
+
+            // Second pass: normalize to size while preserving proportions
+            float maxDistance = StrDb.VoronoiCellVertices.Max(p => p.Position.Length());
+            foreach (Point p in StrDb.VoronoiCellVertices)
+            {
+                float currentDistance = p.Position.Length();
+                float scaleFactor = size * (currentDistance / maxDistance);
+                p.Position = p.Position.Normalized() * scaleFactor;
+            }
+            GenerateSurfaceMesh(StrDb.VoronoiCells);
+        }
+        catch (Exception e)
+        {
+            GD.PrintRaw($"\u001b[2J\u001b[H");
+            GD.PrintErr("Voronoi Cell Generation Error: " + e.Message + "\n" + e.StackTrace);
+            Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
+        }
+    }
+
+    protected virtual void GenerateSecondPassNoiseOnly()
+    {
+        VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
+        try
+        {
+            GenericPercent emptyPercent = new GenericPercent();
+            GD.Print("Generating Voronoi Cells...");
+            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this);
+
+            // Apply noise to all points
+            foreach (Point p in StrDb.VoronoiCellVertices)
+            {
+                float noiseValue = noise.GetNoise3D(
+                    p.Position.X * NoiseFrequency,
+                    p.Position.Y * NoiseFrequency,
+                    p.Position.Z * NoiseFrequency
+                );
+
+                Vector3 normal = p.Position.Normalized();
+                Vector3 displacement = normal * noiseValue * NoiseAmplitude;
+                p.Position += displacement;
+                p.Height += displacement.Length();
+            }
+
+            GenerateSurfaceMesh(StrDb.VoronoiCells);
+        }
+        catch (Exception e)
+        {
+            GD.PrintRaw($"\u001b[2J\u001b[H");
+            GD.PrintErr("Voronoi Cell Generation Error: " + e.Message + "\n" + e.StackTrace);
+            Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
+        }
+    }
+
+    // Include all the helper methods from the original classes
+    private async Task AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
+    {
+        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
+        {
+            var biomeTasks = new List<Task>();
+
+            foreach (var continent in continents)
+            {
+                var taskId = $"{Name}_biome_{continent.Key}";
+                var task = MeshGenerationThreadPool.Instance.EnqueueTask(
+                    () =>
                     {
-                        p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
+                        Continent c = continent.Value;
+                        c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
+                        foreach (var cell in c.cells)
+                        {
+                            foreach (Point p in cell.Points)
+                            {
+                                p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
+                            }
+                        }
+                    },
+                    taskId,
+                    TaskPriority.Low,
+                    Name
+                );
+                biomeTasks.Add(task);
+            }
+
+            await Task.WhenAll(biomeTasks);
+        }
+        else
+        {
+            Task[] BiomeThreader = new Task[continents.Count];
+            int continentCount = 0;
+            foreach (var continent in continents)
+            {
+                Task biomeThread = Task.Factory.StartNew(() =>
+                {
+                    Continent c = continent.Value;
+                    c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
+                    foreach (var cell in c.cells)
+                    {
+                        foreach (Point p in cell.Points)
+                        {
+                            p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
+                        }
                     }
                 }
+                );
+                BiomeThreader[continentCount] = biomeThread;
+                continentCount++;
             }
-            );
-            BiomeThreader[continentCount] = biomeThread;
-            continentCount++;
+            Task.WaitAll(BiomeThreader.ToArray());
         }
-        Task.WaitAll(BiomeThreader.ToArray());
     }
 
-    /// <summary>
-    /// Updates vertex heights based on the average height of their containing continents.
-    /// This method ensures smooth height transitions across continent boundaries.
-    /// </summary>
-    /// <param name="Vertices">Set of vertex points to update.</param>
-    /// <param name="Continents">Dictionary mapping continent indices to continent objects.</param>
-    /// <remarks>
-    /// This method handles three cases:
-    /// 1. Vertices in no continent (error case, logs warning)
-    /// 2. Vertices in one continent (direct height assignment)
-    /// 3. Vertices in multiple continents (averaged height calculation)
-    ///
-    /// The averaging ensures smooth transitions at continent boundaries.
-    /// This is particularly important for vertices that lie on the boundaries between
-    /// multiple continents, as it prevents sharp height discontinuities that would
-    /// create unrealistic terrain features.
-    /// </remarks>
     public void UpdateVertexHeights(HashSet<Point> Vertices, Dictionary<int, Continent> Continents)
     {
         foreach (Point p in Vertices)
@@ -900,22 +1283,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
         }
     }
 
-    /// <summary>
-    /// Retrieves all neighboring Voronoi cells for a given origin cell.
-    /// This method is essential for continent boundary detection and tectonic simulation.
-    /// </summary>
-    /// <param name="origin">The origin Voronoi cell to find neighbors for.</param>
-    /// <param name="includeSameContinent">Whether to include cells from the same continent. Defaults to true.</param>
-    /// <returns>Array of neighboring Voronoi cells.</returns>
-    /// <remarks>
-    /// This method finds neighbors by examining all points in the origin cell
-    /// and finding all other cells that share those points. The includeSameContinent
-    /// parameter allows filtering for cross-continent neighbors only.
-    ///
-    /// When includeSameContinent is false, only cells from different continents are returned,
-    /// which is useful for identifying continent boundaries and calculating tectonic interactions.
-    /// The method uses a HashSet to ensure each neighbor is only included once.
-    /// </remarks>
     public VoronoiCell[] GetCellNeighbors(VoronoiCell origin, bool includeSameContinent = true)
     {
         HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
@@ -937,23 +1304,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
         return neighbors.ToArray();
     }
 
-    /// <summary>
-    /// Generates random starting cell indices for continent formation.
-    /// This method provides the seed points for the flood fill continent generation algorithm.
-    /// </summary>
-    /// <param name="cells">List of all Voronoi cells.</param>
-    /// <returns>Set of randomly selected starting cell indices.</returns>
-    /// <remarks>
-    /// This method selects random cells to serve as the starting points
-    /// for continent generation during the flood fill algorithm. The number
-    /// of starting cells is limited by both the NumContinents parameter and
-    /// the total number of available cells.
-    ///
-    /// The method uses a HashSet to ensure unique starting positions and continues
-    /// selecting random cells until either the desired number of continents is reached
-    /// or all available cells are exhausted. This ensures that the continent generation
-    /// process has appropriate seed points distributed across the mesh.
-    /// </remarks>
     public HashSet<int> GenerateStartingCells(List<VoronoiCell> cells)
     {
         HashSet<int> startingCells = new HashSet<int>();
@@ -966,77 +1316,13 @@ public partial class CelestialBodyMesh : MeshInstance3D
         return startingCells;
     }
 
-    /// <summary>
-    /// Draws visual borders around continents for debugging and visualization.
-    /// This method provides visual feedback about continent boundaries.
-    /// </summary>
-    /// <param name="continents">Dictionary of continents to draw borders for.</param>
-    /// <remarks>
-    /// This method renders black lines along the boundaries between continents.
-    /// It processes boundary cells and draws lines along their outside edges,
-    /// accounting for height variations in the terrain. The method includes
-    /// a safety check to prevent infinite loops.
-    ///
-    /// The visualization is particularly useful for understanding the results
-    /// of the continent generation process and for debugging issues with
-    /// continent boundary detection. The lines are drawn using the PolygonRendererSDL
-    /// utility class and are positioned slightly above the terrain surface for visibility.
-    /// </remarks>
-    public void DrawContinentBorders(Dictionary<int, Continent> continents)
-    {
-        int maxAttempts = continents.Count * 10;
-        foreach (var vc in continents)
-        {
-            var boundaries = vc.Value.boundaryCells;
-            foreach (var b in boundaries)
-            {
-                if (b.IsBorderTile)
-                {
-                    for (int i = 0; i < b.OutsideEdges.Length; i++)
-                    {
-                        Edge e1 = b.OutsideEdges[i];
-                        Point p1 = (Point)e1.P;
-                        Point p2 = (Point)e1.Q;
-                        Vector3 pos1 = p1.ToVector3().Normalized();
-                        Vector3 pos2 = p2.ToVector3().Normalized();
-                        Color lineColor = Colors.Black;
-                        PolygonRendererSDL.DrawLine(this, size, pos1, pos2, Colors.Black);
-                    }
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Generates continents using a flood fill algorithm starting from random seed cells.
-    /// This method creates distinct continental landmasses by expanding from seed points.
-    /// </summary>
-    /// <param name="cells">List of all Voronoi cells to be assigned to continents.</param>
-    /// <returns>Dictionary mapping continent indices to Continent objects.</returns>
-    /// <remarks>
-    /// This method implements a sophisticated flood fill algorithm that:
-    /// 1. Selects random starting cells as continent seeds
-    /// 2. Assigns each seed random properties (crust type, height, movement direction)
-    /// 3. Expands each continent by assigning neighboring cells to the nearest continent
-    /// 4. Calculates continent properties like center, axes, and movement vectors
-    /// 5. Sets up tectonic movement parameters for each continent
-    ///
-    /// The algorithm ensures that continents are reasonably sized and distributed
-    /// across the celestial body surface. Each continent gets unique properties that
-    /// influence its appearance and behavior during tectonic simulation.
-    /// </remarks>
     public Dictionary<int, Continent> FloodFillContinentGeneration(List<VoronoiCell> cells)
     {
-        //Dicitonary of continent indices to their smallest potential size (5, 8)
         Dictionary<int, int> continentMinSize = new Dictionary<int, int>();
-        //Dictionary of cell indicies that can be popped in 1st phase
         Dictionary<int, List<int>> continentNeighbors = new Dictionary<int, List<int>>();
         Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
         HashSet<int> startingCells = GenerateStartingCells(cells);
-        //List of cells that can be popped to pull neighbors from in 2nd phase
         List<int> poppableCells = startingCells.ToList();
-        //List containing all Voronoi Cells. Value at the index is the Starting Cell Index of the continent it belongs to
-        // Or -1 if it is not yet part of a continent
         int[] neighborChart = new int[cells.Count];
         for (int i = 0; i < neighborChart.Length; i++)
         {
@@ -1049,15 +1335,15 @@ public partial class CelestialBodyMesh : MeshInstance3D
             float rotation = Mathf.DegToRad(rand.RandiRange(-360, 360));
             float velocity = rand.RandfRange(0.3f, 1.7f);
             var continent = new Continent(startingCellIndex,
-                    new List<VoronoiCell>(),//cells
-                    new HashSet<VoronoiCell>(), //Boundary cells
-                    new HashSet<Point>(), //points
-                    new List<Point>(), //Convex Hull
-                    new Vector3(0f, 0f, 0f), //averaged center
-                    new Vector3(0f, 0f, 0f), //u axis
-                    new Vector3(0f, 0f, 0f), //v axis
-                    new Vector2(rand.RandfRange(-1f, 1f), rand.RandfRange(-1f, 1f)), velocity, rotation,//movement direction, velocity & rotation
-                    crustType, averageHeight, rand.RandfRange(1.0f, 5.0f), //crust type, average height, average moisture
+                    new List<VoronoiCell>(),
+                    new HashSet<VoronoiCell>(),
+                    new HashSet<Point>(),
+                    new List<Point>(),
+                    new Vector3(0f, 0f, 0f),
+                    new Vector3(0f, 0f, 0f),
+                    new Vector3(0f, 0f, 0f),
+                    new Vector2(rand.RandfRange(-1f, 1f), rand.RandfRange(-1f, 1f)), velocity, rotation,
+                    crustType, averageHeight, rand.RandfRange(1.0f, 5.0f),
                     new HashSet<int>(), 0f,
                     new Dictionary<int, float>(),
                     new Dictionary<int, Continent.BOUNDARY_TYPE>());
@@ -1083,7 +1369,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 {
                     neighborChart[nb.Index] = neighborChart[startingCellIndex];
                     continentNeighbors[startingCellIndex].Add(nb.Index);
-                    //poppableCells.Add(nb.Index);
                 }
             }
             continentMinSize.Add(startingCellIndex, rand.RandiRange(5, 8));
@@ -1099,7 +1384,10 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 {
                     int randomNeighbor;
                     if (continentNeighbors[index].Count == 0)
-                        randomNeighbor = continentNeighbors[index][0];
+                    {
+                        continentMinSize.Remove(index);
+                        continue;
+                    }
                     else
                         randomNeighbor = continentNeighbors[index][rand.RandiRange(0, continentNeighbors[index].Count - 1)];
                     continentObj.cells.Add(cells[randomNeighbor]);
@@ -1122,7 +1410,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
             }
             if (continentMinSize.Count == 0) break;
         }
-        testIndex = poppableCells[0];
         while (poppableCells.Count > 0)
         {
             int poppedIndex = rand.RandiRange(0, (poppableCells.Count - 1));
@@ -1157,7 +1444,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
                     p.Height = continent.averageHeight;
                     continent.points.Add(p);
                     p.ContinentIndecies.Add(continent.StartingIndex);
-                    //GD.PrintRaw($"Point {p} is in Continent {continent.StartingIndex}\n");
                 }
             }
         }
@@ -1189,7 +1475,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
             vAxis = vAxis.Normalized();
             foreach (VoronoiCell vc in continent.cells)
             {
-                //Calculate the average center of the cell
                 Vector3 cellAverageCenter = Vector3.Zero;
                 foreach (Point p in vc.Points)
                 {
@@ -1198,7 +1483,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 cellAverageCenter /= vc.Points.Length;
                 cellAverageCenter = cellAverageCenter.Normalized();
 
-                //Project the cell's center onto the continent's 2D plane
                 float k = (1.0f - UnitNorm.X * cellAverageCenter.X - UnitNorm.Y * cellAverageCenter.Y - UnitNorm.Z * cellAverageCenter.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
                 Vector3 projectedCenter = new Vector3(cellAverageCenter.X + k * UnitNorm.X, cellAverageCenter.Y + k * UnitNorm.Y, cellAverageCenter.Z + k * UnitNorm.Z);
                 Vector3 projectedCenter2D = new Vector3(uAxis.Dot(projectedCenter), vAxis.Dot(projectedCenter), 0f);
@@ -1207,7 +1491,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 Vector3 positionFromCenter = continent.averagedCenter - projectedCenter;
 
                 vc.MovementDirection = new Vector2(continent.movementDirection.X * continent.velocity, continent.movementDirection.Y * continent.velocity) + new Vector2(-continent.rotation * projectedCenter2D.Y, continent.rotation * projectedCenter2D.X);
-                //Find Plane Equation
                 float vcRadius = 0.0f;
                 foreach (Point p in vc.Points)
                 {
@@ -1215,12 +1498,10 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 }
                 vcRadius /= vc.Points.Length;
 
-                //var vcRadius = (average - vc.Points[0].ToVector3().Normalized()).Length() * .9f;
                 var vcUnitNorm = v1.Cross(v2);
                 var projectionRatio = (uAxis - UnitNorm).Length() / vcRadius;
                 vcUnitNorm /= projectionRatio;
                 vcUnitNorm = vcUnitNorm.Normalized();
-
 
                 var d = UnitNorm.X * (vc.Points[0].Position.X) + UnitNorm.Y * (vc.Points[0].Position.Y) + UnitNorm.Z * (vc.Points[0].Position.Z);
                 var newZ = (d - (UnitNorm.X * vc.Points[0].Position.X) - (UnitNorm.Y * vc.Points[0].Position.Y)) / UnitNorm.Z;
@@ -1229,154 +1510,12 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 directionPoint *= vcRadius;
                 directionPoint += cellAverageCenter;
                 directionPoint = directionPoint.Normalized();
-                if (ShouldDrawArrows)
-                {
-                    PolygonRendererSDL.DrawArrow(this, size + (continent.averageHeight / 100f), cellAverageCenter, directionPoint, UnitNorm, vcRadius, Colors.Black);
-                }
             }
         }
 
         return continents;
     }
 
-    /// <summary>
-    /// Renders a triangle and its connections for debugging and visualization purposes.
-    /// This method provides visual feedback about the mesh structure.
-    /// </summary>
-    /// <param name="tri">The triangle to render.</param>
-    /// <param name="dualMesh">Whether to render the dual mesh. Defaults to false.</param>
-    /// <remarks>
-    /// This method draws the triangle edges and vertices with different colors:
-    /// - Red, Green, Blue for the three vertices respectively
-    /// - Lines connecting the vertices to show the triangle structure
-    ///
-    /// The rendering can be done in either spherical or cartesian coordinates
-    /// based on the ProjectToSphere setting. This is primarily a debugging tool
-    /// for visualizing the mesh structure and understanding the triangulation.
-    ///
-    /// The method also renders all incident edges from the triangle's vertices,
-    /// providing a complete view of the local mesh connectivity.
-    /// </remarks>
-    public void RenderTriangleAndConnections(Triangle tri, bool dualMesh = false)
-    {
-        int i = 0;
-        //var edgesFromTri = baseEdges.Where(e => tri.Points.Any(a => a == e.P || a == e.Q));
-        List<Edge> edgesFromTri = new List<Edge>();
-        foreach (Point p in tri.Points)
-        {
-            edgesFromTri.AddRange(StrDb.GetIncidentHalfEdges(p));
-        }
-        if (!ProjectToSphere)
-        {
-            PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[0]).ToVector3(), ((Point)tri.Points[1]).ToVector3());
-            PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[1]).ToVector3(), ((Point)tri.Points[2]).ToVector3());
-            PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[2]).ToVector3(), ((Point)tri.Points[0]).ToVector3());
-            foreach (Point p in tri.Points)
-            {
-                switch (i)
-                {
-                    case 0:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Red);
-                        break;
-                    case 1:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Green);
-                        break;
-                    case 2:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3(), 0.05f, Colors.Blue);
-                        break;
-                }
-                i++;
-            }
-        }
-        else
-        {
-            PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[0]).ToVector3().Normalized(), ((Point)tri.Points[1]).ToVector3().Normalized());
-            PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[1]).ToVector3().Normalized(), ((Point)tri.Points[2]).ToVector3().Normalized());
-            PolygonRendererSDL.DrawLine(this, size, ((Point)tri.Points[2]).ToVector3().Normalized(), ((Point)tri.Points[0]).ToVector3().Normalized());
-            foreach (Point p in tri.Points)
-            {
-                //GD.Print(p);
-                //GD.Print(p.ToVector3());
-                switch (i)
-                {
-                    case 0:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Red);
-                        break;
-                    case 1:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Green);
-                        break;
-                    case 2:
-                        PolygonRendererSDL.DrawPoint(this, size, p.ToVector3().Normalized(), p.Radius > 0 ? p.Radius : 0.05f, Colors.Blue);
-                        break;
-                }
-                i++;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Converts a 3D cartesian position to spherical coordinates.
-    /// This method transforms cartesian coordinates to spherical coordinate system.
-    /// </summary>
-    /// <param name="pos">The cartesian position to convert.</param>
-    /// <returns>A Vector3 representing spherical coordinates (radius, theta, phi).</returns>
-    /// <remarks>
-    /// The spherical coordinate system uses:
-    /// - X component: radius (distance from origin)
-    /// - Y component: theta (polar angle from positive Z axis)
-    /// - Z component: phi (azimuthal angle in XY plane from positive X axis)
-    ///
-    /// This conversion is useful for various calculations involving spherical
-    /// geometry and for positioning elements on the celestial body surface.
-    /// </remarks>
-    public Vector3 ConvertToSpherical(Vector3 pos)
-    {
-        Vector3 sphere = new Vector3(
-            Mathf.Sqrt(Mathf.Pow(pos.X, 2) + Mathf.Pow(pos.Y, 2) + Mathf.Pow(pos.Z, 2)),
-            Mathf.Acos(pos.Z / Mathf.Sqrt(Mathf.Pow(pos.X, 2) + Mathf.Pow(pos.Y, 2) + Mathf.Pow(pos.Z, 2))),
-            Mathf.Sign(pos.Y) * Mathf.Acos(pos.X / Mathf.Sqrt(Mathf.Pow(pos.X, 2) + Mathf.Pow(pos.Y, 2)))
-            );
-        return sphere;
-    }
-
-    /// <summary>
-    /// Converts spherical coordinates back to 3D cartesian position.
-    /// This method transforms spherical coordinates to cartesian coordinate system.
-    /// </summary>
-    /// <param name="sphere">The spherical coordinates (radius, theta, phi) to convert.</param>
-    /// <returns>A Vector3 representing the cartesian position.</returns>
-    /// <remarks>
-    /// This method performs the inverse operation of ConvertToSpherical,
-    /// converting from spherical coordinates back to cartesian coordinates.
-    /// The conversion uses standard spherical to cartesian transformation formulas.
-    ///
-    /// This is useful for converting calculations done in spherical coordinates
-    /// back to the cartesian coordinate system used by the rendering engine.
-    /// </remarks>
-    public Vector3 ConvertToCartesian(Vector3 sphere)
-    {
-        Vector3 cart = new Vector3(
-            sphere.X * Mathf.Sin(sphere.Y) * Mathf.Cos(sphere.Z),
-            sphere.X * Mathf.Sin(sphere.Y) * Mathf.Sin(sphere.Z),
-            sphere.X * Mathf.Cos(sphere.Y)
-            );
-        return cart;
-    }
-
-    /// <summary>
-    /// Generates the final surface mesh from continent data.
-    /// This method creates the renderable mesh from the processed continent information.
-    /// </summary>
-    /// <param name="continents">Dictionary of continents to generate mesh from.</param>
-    /// <remarks>
-    /// This method iterates through all continents and calls GenerateSurfaceMesh
-    /// for each continent's cells. This creates the final renderable mesh that
-    /// includes all terrain features, biomes, and visual properties.
-    ///
-    /// The method updates the progress tracking system as it processes each continent,
-    /// providing feedback about the generation progress. This is typically the final
-    /// step in the mesh generation pipeline before the celestial body is ready for rendering.
-    /// </remarks>
     public void GenerateFromContinents(Dictionary<int, Continent> continents)
     {
         foreach (var keyValuePair in continents)
@@ -1386,124 +1525,48 @@ public partial class CelestialBodyMesh : MeshInstance3D
         }
     }
 
-    /// <summary>
-    /// Calculates a color for a vertex based on its height value.
-    /// This method provides height-based coloring for terrain visualization.
-    /// </summary>
-    /// <param name="height">The height value of the vertex.</param>
-    /// <returns>A Color representing the appropriate color for the given height.</returns>
-    /// <remarks>
-    /// This method uses a continuous mathematical formula to generate smooth
-    /// color transitions across different height ranges:
-    /// - Deep water: Blue hues
-    /// - Shallow water: Cyan hues
-    /// - Low land: Green hues
-    /// - Medium land: Yellow to brown hues
-    /// - High land: Dark brown hues
-    ///
-    /// The formula uses HSV color space with smooth mathematical transitions
-    /// to create natural-looking terrain coloring without sharp boundaries.
-    /// The height range is normalized from -10 (deep water) to +10 (mountains).
-    /// </remarks>
     private Color GetVertexColor(float height)
     {
-        // Single continuous formula without branching
-        // Height range: -10 (deep water) to +10 (mountains)
-        float normalizedHeight = (height + 10f) / 20f; // 0-1 range
-
-        // Smooth color transition using mathematical functions
-        // Blue(220) -> Cyan(180) -> Green(120) -> Yellow(50) -> Brown(30) -> Dark Brown(10)
+        float normalizedHeight = (height + 10f) / 20f;
         float hue = 220f - (210f * normalizedHeight);
-
-        // Saturation curve: low for water, high for land
         float saturation = 0.3f + 0.5f * Mathf.Sin(normalizedHeight * Mathf.Pi);
-
-        // Value curve: darker for deep water and high mountains, brighter for land
         float value = 0.4f + 0.5f * Mathf.Sin(normalizedHeight * Mathf.Pi * 0.8f + 0.2f);
-
-        // Ensure values are within valid range
         hue = Mathf.Clamp(hue, 0f, 360f);
         saturation = Mathf.Clamp(saturation, 0.2f, 1f);
         value = Mathf.Clamp(value, 0.2f, 1f);
-
         return Color.FromHsv(hue / 360f, saturation, value);
     }
 
-    /// <summary>
-    /// Gets the appropriate color for a specific biome type.
-    /// This method provides biome-specific coloring for realistic terrain visualization.
-    /// </summary>
-    /// <param name="biome">The biome type to get the color for.</param>
-    /// <param name="height">The height value (currently unused but available for future enhancements).</param>
-    /// <returns>A Color representing the appropriate color for the specified biome.</returns>
-    /// <remarks>
-    /// This method returns predefined colors for each biome type:
-    /// - Tundra: Light gray-white
-    /// - Icecap: Pure white
-    /// - Desert: Sandy yellow
-    /// - Grassland: Green
-    /// - Forest: Dark green
-    /// - Rainforest: Very dark green
-    /// - Taiga: Dark green-brown
-    /// - Ocean: Deep blue
-    /// - Coastal: Light blue
-    /// - Mountain: Brown-gray
-    /// - Default: Gray (fallback for unknown biomes)
-    ///
-    /// The colors are chosen to be visually distinct and representative of
-    /// real-world biome appearances. The height parameter is included for
-    /// potential future enhancements where color might vary within a biome
-    /// based on elevation.
-    /// </remarks>
     private Color GetBiomeColor(BiomeType biome, float height)
     {
         switch (biome)
         {
             case BiomeType.Tundra:
-                return new Color(0.85f, 0.85f, 0.8f); // Light gray-white
+                return new Color(0.85f, 0.85f, 0.8f);
             case BiomeType.Icecap:
                 return Colors.White;
             case BiomeType.Desert:
-                return new Color(0.9f, 0.8f, 0.5f); // Sandy yellow
+                return new Color(0.9f, 0.8f, 0.5f);
             case BiomeType.Grassland:
-                return new Color(0.5f, 0.8f, 0.3f); // Green
+                return new Color(0.5f, 0.8f, 0.3f);
             case BiomeType.Forest:
-                return new Color(0.2f, 0.6f, 0.2f); // Dark green
+                return new Color(0.2f, 0.6f, 0.2f);
             case BiomeType.Rainforest:
-                return new Color(0.1f, 0.4f, 0.1f); // Very dark green
+                return new Color(0.1f, 0.4f, 0.1f);
             case BiomeType.Taiga:
-                return new Color(0.4f, 0.5f, 0.3f); // Dark green-brown
+                return new Color(0.4f, 0.5f, 0.3f);
             case BiomeType.Ocean:
-                return new Color(0.1f, 0.3f, 0.7f); // Deep blue
+                return new Color(0.1f, 0.3f, 0.7f);
             case BiomeType.Coastal:
-                return new Color(0.8f, 0.7f, 0.4f); // Light blue
+                return new Color(0.8f, 0.7f, 0.4f);
             case BiomeType.Mountain:
-                return new Color(0.6f, 0.5f, 0.4f); // Brown-gray
+                return new Color(0.6f, 0.5f, 0.4f);
             default:
                 return Colors.Gray;
         }
     }
 
-    /// <summary>
-    /// Generates the final renderable surface mesh from Voronoi cell data.
-    /// This method creates the actual Godot mesh that will be rendered.
-    /// </summary>
-    /// <param name="VoronoiList">List of Voronoi cells to generate the mesh from.</param>
-    /// <remarks>
-    /// This method creates the final mesh using Godot's SurfaceTool:
-    /// 1. Sets up the surface tool with triangle primitives
-    /// 2. Creates an unshaded material that uses vertex colors
-    /// 3. Iterates through all Voronoi cells and their triangles
-    /// 4. Calculates normals, tangents, and UV coordinates for each triangle
-    /// 5. Assigns colors based on biome or height (depending on settings)
-    /// 6. Positions vertices accounting for the base size and height variations
-    /// 7. Commits the surface to the ArrayMesh
-    ///
-    /// The method handles both spherical projection and cartesian coordinate modes,
-    /// and can display either biome colors or height-based colors. The resulting
-    /// mesh is ready for rendering in the Godot engine.
-    /// </remarks>
-    public void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList)
+    public virtual void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList)
     {
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
@@ -1549,7 +1612,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
                     st.SetNormal(tangent);
                     if (ProjectToSphere)
                     {
-                        st.SetColor(ShouldDisplayBiomes ? GetBiomeColor(((Point)vor.Points[3 * i + j]).Biome, ((Point)vor.Points[3 * i + j]).Height) : GetVertexColor(((Point)vor.Points[3 * i + j]).Height));
+                        st.SetColor(GetBiomeColor(((Point)vor.Points[3 * i + j]).Biome, ((Point)vor.Points[3 * i + j]).Height));
                         st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 10f));
                     }
                     else
@@ -1559,97 +1622,6 @@ public partial class CelestialBodyMesh : MeshInstance3D
                 }
             }
         }
-        //st.GenerateNormals();
         st.CallDeferred("commit", arrMesh);
     }
-
-    /// <summary>
-    /// Subdivides a triangular face into four smaller triangular faces.
-    /// This method increases mesh resolution by splitting triangles.
-    /// </summary>
-    /// <param name="face">The face to subdivide.</param>
-    /// <returns>An array of four new faces created from the subdivision.</returns>
-    /// <remarks>
-    /// This method performs triangle subdivision by:
-    /// 1. Calculating the midpoint of each edge of the original triangle
-    /// 2. Creating four new triangles from the original vertices and midpoints
-    /// 3. Returning the four resulting faces
-    ///
-    /// The subdivision creates a more detailed mesh by replacing each triangle
-    /// with four smaller triangles. This is a key operation in the mesh refinement
-    /// process and is used during the base mesh generation phase.
-    ///
-    /// The method ensures that the new vertices are properly managed through the
-    /// structure database to maintain consistency across the mesh.
-    /// </remarks>
-    public Face[] Subdivide(Face face)
-    {
-        List<Face> subfaces = new List<Face>();
-        var subVector1 = GetMiddle(face.v[0], face.v[1]);
-        var subVector2 = GetMiddle(face.v[1], face.v[2]);
-        var subVector3 = GetMiddle(face.v[2], face.v[0]);
-        //VertexPoints.Add(subVector1);
-        //VertexPoints.Add(subVector2);
-        //VertexPoints.Add(subVector3);
-
-        subfaces.Add(new Face(face.v[0], subVector1, subVector3));
-        subfaces.Add(new Face(subVector1, face.v[1], subVector2));
-        subfaces.Add(new Face(subVector2, face.v[2], subVector3));
-        subfaces.Add(new Face(subVector3, subVector1, subVector2));
-
-        return subfaces.ToArray();
-    }
-
-    /// <summary>
-    /// Adds jitter to a vertex position to create more natural terrain variation.
-    /// This method introduces controlled randomness to vertex positions.
-    /// </summary>
-    /// <param name="original">The original point to modify.</param>
-    /// <param name="jitter">The jitter point containing the random offset.</param>
-    /// <remarks>
-    /// This method calculates the average position between the original point
-    /// and the jitter point, then normalizes the result to maintain the
-    /// spherical shape of the celestial body.
-    ///
-    /// The jitter operation helps break up the regular geometric patterns
-    /// that can result from purely mathematical mesh generation, creating
-    /// more natural-looking terrain variations. The normalization ensures
-    /// that the modified vertex remains on the sphere surface.
-    ///
-    /// This is typically used during the mesh deformation phase to add
-    /// realistic irregularities to the terrain.
-    /// </remarks>
-    public void AddJitter(Point original, Point jitter)
-    {
-        var tempVector = (jitter.ToVector3() + original.ToVector3()) / 2.0f;
-        tempVector = tempVector.Normalized();
-        original.Position = tempVector;
-    }
-
-    /// <summary>
-    /// Calculates the midpoint between two points and returns it as a new Point.
-    /// This method is used for mesh subdivision and edge calculations.
-    /// </summary>
-    /// <param name="v1">The first point.</param>
-    /// <param name="v2">The second point.</param>
-    /// <returns>A new Point representing the midpoint between v1 and v2.</returns>
-    /// <remarks>
-    /// This method calculates the mathematical midpoint between two 3D points
-    /// and creates a new Point object at that location. The method uses the
-    /// structure database to either retrieve an existing point at that location
-    /// or create a new one, ensuring point consistency across the mesh.
-    ///
-    /// This is a fundamental operation used in mesh subdivision, edge splitting,
-    /// and various geometric calculations throughout the mesh generation process.
-    /// The point indexing system helps maintain efficient lookups and prevents
-    /// duplicate points at the same location.
-    /// </remarks>
-    public Point GetMiddle(Point v1, Point v2)
-    {
-        var tempVector = (v2.ToVector3() - v1.ToVector3()) * 0.5f + v1.ToVector3();
-        int idx = Point.DetermineIndex(tempVector.X, tempVector.Y, tempVector.Z);
-        return StrDb.GetOrCreatePoint(idx, tempVector);
-    }
 }
-
-

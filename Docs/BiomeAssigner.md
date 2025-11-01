@@ -23,13 +23,13 @@ public static class BiomeAssigner
 #### AssignBiome
 
 ```csharp
-public static BiomeType AssignBiome(CelestialBodyMesh generator, float height, float moisture, float latitude = 0f)
+public static BiomeType AssignBiome(UnifiedCelestialMesh generator, float height, float moisture, float latitude = 0f)
 ```
 
 **Purpose**: Assigns a biome type based on height, moisture, and latitude using a Whittaker Diagram mapping.
 
 **Parameters**:
-- `generator` (`CelestialBodyMesh`): The celestial body mesh generator containing height information.
+- `generator` (`UnifiedCelestialMesh`): The celestial body mesh generator containing height information.
 - `height` (`float`): The absolute height value at the location.
 - `moisture` (`float`): The moisture level at the location (0-1 range).
 - `latitude` (`float`, optional): The latitude of the location (-1 to 1 range, where 0 is equator). Defaults to `0f`.
@@ -83,7 +83,7 @@ This ensures the moisture value stays within expected ranges while incorporating
 ### Assigning a Biome
 
 ```csharp
-CelestialBodyMesh generator = GetGenerator();
+UnifiedCelestialMesh generator = GetGenerator();
 float height = 150.5f;
 float moisture = 0.6f;
 float latitude = 0.3f; // 30 degrees north

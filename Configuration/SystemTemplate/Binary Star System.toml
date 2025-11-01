@@ -1,74 +1,85 @@
 [[bodies]]
 type = "Star"
+
+[[bodies.celestial.template]]
 position = [-100, 0, 0]
 velocity = [0, 5, 0]
 mass = 500000
 size = 75
 
-[[bodies.mesh.base_mesh]]
-subdivisions = 1
-vertices_per_edge = [12, 17]
-num_abberations = 0
-num_deformation_cycles = 0
-
-[[bodies.mesh.tectonic]]
-num_continents = [1, 2]
-stress_scale = [0.8, 3.0]
-shear_scale = [0.2, 1.7]
-max_propagation_distance = [0.01, 0.1]
-propagation_falloff = [0.8, 1.5]
-inactive_stress_threshold = [0.01, 0.1]
-general_height_scale = [0.8, 1.2]
-general_shear_scale = [0.8, 1.2]
-general_compression_scale = [1.0, 1.75]
-general_transform_scale = [1.1, 1.4]
+[[bodies.celestial.mesh]]
+base_mesh = { subdivisions = 1, vertices_per_edge = [[12, 17]], num_abberations = 0, num_deformation_cycles = 0 }
+tectonic = { num_continents = [1, 2], stress_scale = [0.8, 3.0], shear_scale = [
+  0.2,
+  1.7,
+], max_propagation_distance = [0.01, 0.1], propagation_falloff = [0.8, 1.5], inactive_stress_threshold = [
+  0.01,
+  0.1,
+], general_height_scale = [0.8, 1.2], general_shear_scale = [0.8, 1.2], general_compression_scale = [
+  1.0,
+  1.75,
+], general_transform_scale = [1.1, 1.4] }
 
 [[bodies]]
 type = "Star"
+
+[[bodies.celestial.template]]
 position = [100, 0, 0]
 velocity = [0, -5, 0]
 mass = 500000
 size = 75
 
-[[bodies.mesh.base_mesh]]
-subdivisions = 1
-vertices_per_edge = [12, 17]
-num_abberations = 0
-num_deformation_cycles = 0
-
-[[bodies.mesh.tectonic]]
-num_continents = [1, 2]
-stress_scale = [0.8, 3.0]
-shear_scale = [0.2, 1.7]
-max_propagation_distance = [0.01, 0.1]
-propagation_falloff = [0.8, 1.5]
-inactive_stress_threshold = [0.01, 0.1]
-general_height_scale = [0.8, 1.2]
-general_shear_scale = [0.8, 1.2]
-general_compression_scale = [1.0, 1.75]
-general_transform_scale = [1.1, 1.4]
+[[bodies.celestial.mesh]]
+base_mesh = { subdivisions = 1, vertices_per_edge = [[12, 17]], num_abberations = 0, num_deformation_cycles = 0 }
+tectonic = { num_continents = [1, 2], stress_scale = [0.8, 3.0], shear_scale = [
+  0.2,
+  1.7,
+], max_propagation_distance = [0.01, 0.1], propagation_falloff = [0.8, 1.5], inactive_stress_threshold = [
+  0.01,
+  0.1,
+], general_height_scale = [0.8, 1.2], general_shear_scale = [0.8, 1.2], general_compression_scale = [
+  1.0,
+  1.75,
+], general_transform_scale = [1.1, 1.4] }
 
 [[bodies]]
 type = "RockyPlanet"
+
+[[bodies.celestial.template]]
 position = [200, 0, 0]
 velocity = [0, 8, 0]
 mass = 10
 size = 12
 
-[[bodies.mesh.base_mesh]]
-subdivisions = 2
-vertices_per_edge = [5, 7]
-num_abberations = 3
-num_deformation_cycles = 3
+[[bodies.celestial.mesh]]
+base_mesh = { subdivisions = 2, vertices_per_edge = [[5, 7], [2, 4]], num_abberations = 3, num_deformation_cycles = 3 }
+tectonic = { num_continents = [12, 48], stress_scale = [0.8, 3.0], shear_scale = [
+  0.2,
+  1.7,
+], max_propagation_distance = [0.01, 0.1], propagation_falloff = [0.8, 1.5], inactive_stress_threshold = [
+  0.01,
+  0.1,
+], general_height_scale = [0.8, 1.2], general_shear_scale = [0.8, 1.2], general_compression_scale = [
+  1.0,
+  1.75,
+], general_transform_scale = [1.1, 1.4] }
 
-[[bodies.mesh.tectonic]]
-num_continents = [12, 48]
-stress_scale = [0.8, 3.0]
-shear_scale = [0.2, 1.7]
-max_propagation_distance = [0.01, 0.1]
-propagation_falloff = [0.8, 1.5]
-inactive_stress_threshold = [0.01, 0.1]
-general_height_scale = [0.8, 1.2]
-general_shear_scale = [0.8, 1.2]
-general_compression_scale = [1.0, 1.75]
-general_transform_scale = [1.1, 1.4]
+[[bodies.celestial.satellites]]
+type = "Asteroid"
+
+[[bodies.celestial.satellites.template]]
+position = [0, 0, 0]
+velocity = [0, 0, 0]
+mass = 10
+size = 10
+
+[[bodies.celestial.satellites.mesh]]
+base_mesh = { subdivisions = 1, vertices_per_edge = [[2, 3]], num_abberations = 0, num_deformation_cycles = 0 }
+scaling = { scaling_range_x = [1.0, 1.2], scaling_range_y = [1.0, 1.2], scaling_range_z = [
+  1.0,
+  1.2,
+] }
+noise_settings = { amplitude_range = [5.0, 5.0], scaling_range = [5.0, 5.0], octave_range = [
+  4,
+  8,
+] }

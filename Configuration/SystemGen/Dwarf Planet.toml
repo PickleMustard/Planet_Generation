@@ -225,7 +225,7 @@ size = 3
 
 [celestial.mesh.base_mesh]
 subdivisions = 1
-vertices_per_edge = [6, 9]
+vertices_per_edge = [[6, 9]]
 num_abberations = 3
 num_deformation_cycles = 3
 
@@ -241,7 +241,6 @@ general_shear_scale = [10.0, 18.0]
 general_compression_scale = [20.0, 40.0]
 general_transform_scale = [1.1, 1.4]
 
-
 [satellite.template]
 position = [450, 0, 0]
 velocity = [0, 2, 0]
@@ -250,14 +249,21 @@ mass_range = [4, 10]
 
 [satellite.mesh.base_mesh]
 subdivisions = 1
-vertices_per_edge = [2, 3]
+vertices_per_edge = [[2, 3]]
 num_abberations = 0
 num_deformation_cycles = 0
 
-[satellite.mesh.scaling]
-scaling_range_x = [0.8, 1.8]
-scaling_range_y = [0.8, 1.5]
-scaling_range_z = [0.8, 1.8]
+[satellite.mesh.tectonic]
+num_continents = [25, 40]
+stress_scale = [3.0, 8.0]
+shear_scale = [1.0, 1.7]
+max_propagation_distance = [0.1, 0.4]
+propagation_falloff = [0.8, 1.5]
+inactive_stress_threshold = [0.01, 0.1]
+general_height_scale = [0.8, 1.2]
+general_shear_scale = [10.0, 18.0]
+general_compression_scale = [20.0, 40.0]
+general_transform_scale = [1.1, 1.4]
 
 [satellite.mesh.noise_settings]
 amplitude_range = [0.5, 1.2]

@@ -3,56 +3,56 @@ potential = ["mythology", "scientists", "explorers", "adjectives"]
 
 [mythology]
 names = [
-    "Hades",
-    "Persephone",
-    "Loki",
-    "Hel",
-    "Anubis",
-    "Osiris",
-    "Set",
-    "Kali",
-    "Shiva",
-    "Thanatos",
-    "Nyx",
-    "Erebus",
-    "Chaos",
-    "Tartarus",
-    "Azathoth",
-    "Yog-Sothoth",
-    "Nyarlathotep",
-    "Cthulhu",
-    "Shub-Niggurath",
-    "Hastur",
-    "Dagon",
-    "Nodens",
-    "Abhoth",
-    "Yibb-Tstll",
-    "Tsathoggua",
-    "Atlach-Nacha",
-    "Bokrug",
-    "Byatis",
-    "Chaugnar Faugn",
-    "Cyaegha",
-    "Daoloth",
-    "Eihort",
-    "Gla'aki",
-    "Ghroth",
-    "Ghatanothoa",
-    "Ithaqua",
-    "Mnomquah",
-    "Nyogtha",
-    "Quachil Uttaus",
-    "Rhan-Tegoth",
-    "Shudde M'ell",
-    "Tru'nembra",
-    "Ubbo-Sathla",
-    "Ythogtha",
-    "Zoth-Ommog",
-    "Zstylzhemghi",
-    "Zvilpogghua",
-    "Vorvadoss",
-    "Xalafu",
-    "Wamp"
+  "Hades",
+  "Persephone",
+  "Loki",
+  "Hel",
+  "Anubis",
+  "Osiris",
+  "Set",
+  "Kali",
+  "Shiva",
+  "Thanatos",
+  "Nyx",
+  "Erebus",
+  "Chaos",
+  "Tartarus",
+  "Azathoth",
+  "Yog-Sothoth",
+  "Nyarlathotep",
+  "Cthulhu",
+  "Shub-Niggurath",
+  "Hastur",
+  "Dagon",
+  "Nodens",
+  "Abhoth",
+  "Yibb-Tstll",
+  "Tsathoggua",
+  "Atlach-Nacha",
+  "Bokrug",
+  "Byatis",
+  "Chaugnar Faugn",
+  "Cyaegha",
+  "Daoloth",
+  "Eihort",
+  "Gla'aki",
+  "Ghroth",
+  "Ghatanothoa",
+  "Ithaqua",
+  "Mnomquah",
+  "Nyogtha",
+  "Quachil Uttaus",
+  "Rhan-Tegoth",
+  "Shudde M'ell",
+  "Tru'nembra",
+  "Ubbo-Sathla",
+  "Ythogtha",
+  "Zoth-Ommog",
+  "Zstylzhemghi",
+  "Zvilpogghua",
+  "Vorvadoss",
+  "Xalafu",
+  "Wamp",
 ]
 
 [scientists]
@@ -105,7 +105,7 @@ names = [
   "Gerard 't Hooft",
   "Juan Maldacena",
   "Edward Witten",
-  "Brian Greene"
+  "Brian Greene",
 ]
 
 [explorers]
@@ -159,7 +159,7 @@ names = [
   "HAL 9000",
   "Dr. Heywood Floyd",
   "Joseph Cooper",
-  "Dr. Amelia Brand"
+  "Dr. Amelia Brand",
 ]
 
 [adjectives]
@@ -213,7 +213,7 @@ names = [
   "Puzzling",
   "Incomprehensible",
   "Mind-bending",
-  "Unseen"
+  "Unseen",
 ]
 
 [celestial.template]
@@ -224,7 +224,7 @@ size = 10
 
 [celestial.mesh.base_mesh]
 subdivisions = 1
-vertices_per_edge = [5, 12]
+vertices_per_edge = [[5, 12]]
 num_abberations = 1
 num_deformation_cycles = 1
 

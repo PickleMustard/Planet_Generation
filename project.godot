@@ -15,6 +15,10 @@ run/main_scene="uid://dt8sw4jlumdml"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+MeshGenerationThreadPool="*res://Scripts/UtilityLibrary/MeshGenerationThreadPool.cs"
+
 [dotnet]
 
 project/assembly_name="Delaunay Triangulation Map Generation"

@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://siq1x1rneq14"]
+[gd_scene load_steps=4 format=3 uid="uid://c1hh45aeqg8ov"]
 
 [ext_resource type="Script" uid="uid://bgyl6k0gihttq" path="res://Scripts/MeshGeneration/UnifiedCelestialMesh.cs" id="1_uhqqe"]
 [ext_resource type="Script" uid="uid://dyn0u4dusj2j4" path="res://Scripts/camera_control.gd" id="2_ia1lp"]

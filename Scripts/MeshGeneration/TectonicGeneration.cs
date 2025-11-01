@@ -118,12 +118,12 @@ public class TectonicGeneration
     /// 5. Propagates stress from boundary edges to surrounding mesh using priority queue
     /// </remarks>
     public void CalculateBoundaryStress(
-        IReadOnlyDictionary<Edge, HashSet<VoronoiCell>> edgeMap,
+        IReadOnlyDictionary<EdgeKey, HashSet<VoronoiCell>> edgeMap,
         HashSet<Point> points,
         Dictionary<int, Continent> continents,
         GenericPercent percent)
     {
-        GD.PrintRaw($"Calculating Boundary Stress\n{continents.Count}\n");
+        GD.Print($"Calculating Boundary Stress\n{continents.Count}\n");
         // Calculate stress between neighboring continents
         foreach (KeyValuePair<int, Continent> continentPair in continents)
         {
@@ -140,11 +140,12 @@ public class TectonicGeneration
             Vector3 vAxis = UnitNorm.Cross(uAxis);
             uAxis = uAxis.Normalized();
             vAxis = vAxis.Normalized();
+            GD.Print($"Boundary Cells: {continent.boundaryCells.Count}");
             foreach (VoronoiCell borderCell in continent.boundaryCells)
             {
                 foreach (Edge e in borderCell.Edges)
                 {
-                    List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e]);
+                    List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e.key]);
                     VoronoiCell[] original = new VoronoiCell[] { borderCell };
                     List<VoronoiCell> neighbors2 = new List<VoronoiCell>(neighbors.Except(original));
                     VoronoiCell neighborCell = null;
@@ -239,10 +240,10 @@ public class TectonicGeneration
                         alteredHeight += e.Stress.ShearStress * GeneralShearScale;
                         break;
                     case EdgeType.divergent:
-                        alteredHeight -= e.Stress.CompressionStress * GeneralCompressionScale * 3.4f;
+                        alteredHeight -= e.Stress.CompressionStress * GeneralCompressionScale;
                         break;
                     case EdgeType.convergent:
-                        alteredHeight += e.Stress.CompressionStress * GeneralCompressionScale * 12f;
+                        alteredHeight += e.Stress.CompressionStress * GeneralCompressionScale;
                         break;
                 }
             }

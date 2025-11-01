@@ -127,8 +127,9 @@ public partial class PlanetSystemGenerator : Control
         {
             if (child is BodyItem bi)
             {
-                var pos = ((Godot.Collections.Dictionary)bi.ToParams()["Template"])["position"]
-                    .AsVector3();
+                //var pos = ((Godot.Collections.Dictionary)bi.ToParams()["Template"])["position"]
+                //    .AsVector3();
+                var pos = bi.GetBodyPosition();
                 float radius = pos.Length();
                 if (!bodiesByRing.ContainsKey(radius))
                     bodiesByRing[radius] = new System.Collections.Generic.List<BodyItem>();
@@ -210,21 +211,25 @@ public partial class PlanetSystemGenerator : Control
         // Clear existing bodies
         foreach (Node child in _bodiesList.GetChildren())
         {
+            child.RemoveFromGroup("CelestialBody");
             child.QueueFree();
         }
 
         // Load bodies from utility library
         var bodies = UtilityLibrary.SystemGenTemplates.LoadSolarSystemTemplate(fileName);
+        GD.Print($"Table: {bodies}");
         foreach (var bodyDict in bodies)
         {
-            var typeStr = (string)bodyDict["Type"];
-            var position = (Vector3)bodyDict["position"];
-            var velocity = (Vector3)bodyDict["velocity"];
-            var mass = (float)bodyDict["mass"];
-            var size = (int)bodyDict["size"];
+            var typeStr = (string)bodyDict["type"];
+            var template = (Godot.Collections.Dictionary)bodyDict["template"];
+            var position = (Vector3)template["position"];
+            var velocity = (Vector3)template["velocity"];
+            var mass = (float)template["mass"];
+            var size = (int)template["size"];
 
             var bodyItem = _bodyItemScene.Instantiate<BodyItem>();
             _bodiesList.AddChild(bodyItem);
+            GD.Print($"Type: {typeStr}");
             if (Enum.TryParse<CelestialBodyType>(typeStr, out var type))
             {
                 // Set the option button to the correct type
@@ -236,7 +241,8 @@ public partial class PlanetSystemGenerator : Control
                         {
                             bodyItem.OptionButton.Select(i);
                             bodyItem.UpdateHeaderFromBodyType(typeStr);
-                            bodyItem.ApplyTemplate(type);
+                            //bodyItem.ApplyTemplate(type);
+                            bodyItem.SetTemplate(bodyDict);
                             break;
                         }
                     }
@@ -249,7 +255,6 @@ public partial class PlanetSystemGenerator : Control
             if (bodyItem.mass != null)
                 bodyItem.mass.Value = Mathf.Clamp(mass, 0f, 100000000f);
             // Set templateDict directly from loaded data to preserve custom settings
-            bodyItem.SetTemplateDict(bodyDict);
             bodyItem.ItemUpdate += OnBodyItemUpdate;
         }
 

@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[node name="root" type="Node"]
+
+[node name="TestThreadPool" type="Node" parent="."]
+script = "res://Tests/test_thread_pool.cs"

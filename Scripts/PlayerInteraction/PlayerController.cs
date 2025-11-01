@@ -36,7 +36,6 @@ public partial class PlayerController : Node3D
         _pointerNode = GetNode<Node3D>("../Camera3D/Pointer");
         _shipMovement = GetParent() as ShipMovement;
         _decelerateFactor = Mathf.Log(DecelerationTime);
-        GD.Print($"Deceleration Factor: {_decelerateFactor}");
 
         if (_inputHandler != null)
         {
@@ -107,7 +106,6 @@ public partial class PlayerController : Node3D
 
     private void OnMove(Vector3 direction)
     {
-        GD.Print($"Movement: {direction}, _movementDirection: {_movementDirection}");
         _movementDirection = direction;
     }
 

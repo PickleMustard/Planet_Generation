@@ -1,13 +1,13 @@
-# CelestialBodyMesh Documentation
+# UnifiedCelestialMesh Documentation
 
 ## Overview
 
-The `CelestialBodyMesh` class is the main orchestrator for procedural celestial body generation in the planet generation system. This comprehensive class handles the complete pipeline from base mesh creation through tectonic simulation to final mesh rendering, extending Godot's `MeshInstance3D` to provide a complete celestial body generation solution.
+The `UnifiedCelestialMesh` class is the main orchestrator for procedural celestial body generation in the planet generation system. This comprehensive class consolidates functionality from the previous `CelestialBodyMesh` and `SatelliteBodyMesh` classes into a single, dynamic system that adapts its behavior based on configuration parameters. It handles the complete pipeline from base mesh creation through tectonic simulation to final mesh rendering, extending Godot's `MeshInstance3D` to provide a complete celestial body generation solution.
 
 ## Class Structure
 
 ```csharp
-public partial class CelestialBodyMesh : MeshInstance3D
+public partial class UnifiedCelestialMesh : MeshInstance3D
 ```
 
 ### Key Properties
@@ -241,7 +241,7 @@ public partial class CelestialBodyMesh : MeshInstance3D
 
 ```csharp
 // Create and configure celestial body mesh
-var celestialBody = new CelestialBodyMesh();
+var celestialBody = new UnifiedCelestialMesh();
 celestialBody.subdivide = 3;
 celestialBody.size = 10;
 celestialBody.NumContinents = 7;
@@ -314,4 +314,4 @@ celestialBody.GenerateMesh();
 - Asynchronous mesh generation phases
 - Non-blocking UI updates during generation
 
-This comprehensive documentation provides a complete reference for the `CelestialBodyMesh` class, covering its role as the central orchestrator in the planetary generation system.
+This comprehensive documentation provides a complete reference for the `UnifiedCelestialMesh` class, covering its role as the central orchestrator in the planetary generation system.

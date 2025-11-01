@@ -63,7 +63,6 @@ public partial class InputHandler : Node
         //Button Press
         else if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.IsEcho())
         {
-            GD.Print($"KeyDown: {keyEvent.Keycode}");
             if (keyEvent.Keycode == Key.W || keyEvent.Keycode == Key.S || keyEvent.Keycode == Key.A || keyEvent.Keycode == Key.D)
             {
                 if (keyEvent.Keycode == Key.W) _moveDirection.Z -= 1;
@@ -71,7 +70,6 @@ public partial class InputHandler : Node
                 if (keyEvent.Keycode == Key.A) _moveDirection.X -= 1;
                 else if (keyEvent.Keycode == Key.D) _moveDirection.X += 1;
                 _moveDirection = _moveDirection.Normalized();
-                GD.Print($"Movement: {_moveDirection}");
                 EmitSignal(SignalName.Move, _moveDirection);
             }
             if (keyEvent.Keycode == Key.Space || keyEvent.Keycode == Key.Ctrl)
@@ -95,7 +93,6 @@ public partial class InputHandler : Node
         //Button release
         else if (@event is InputEventKey keyUpEvent && !keyUpEvent.Pressed)
         {
-            GD.Print($"KeyUp: {keyUpEvent.Keycode}");
             if (keyUpEvent.Keycode == Key.W || keyUpEvent.Keycode == Key.S || keyUpEvent.Keycode == Key.A || keyUpEvent.Keycode == Key.D)
             {
                 if (keyUpEvent.Keycode == Key.W) _moveDirection.Z += -_moveDirection.Z;
@@ -103,7 +100,6 @@ public partial class InputHandler : Node
                 if (keyUpEvent.Keycode == Key.A) _moveDirection.X += -_moveDirection.X;
                 else if (keyUpEvent.Keycode == Key.D) _moveDirection.X += -_moveDirection.X;
                 _moveDirection = _moveDirection.Normalized();
-                GD.Print($"Movement: {_moveDirection}");
                 EmitSignal(SignalName.Move, _moveDirection);
             }
             if (keyUpEvent.Keycode == Key.Space || keyUpEvent.Keycode == Key.Ctrl)

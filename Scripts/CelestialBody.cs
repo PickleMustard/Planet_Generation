@@ -4,16 +4,6 @@ using UtilityLibrary;
 
 namespace PlanetGeneration;
 
-public enum CelestialBodyType
-{
-    BlackHole,
-    Star,
-    RockyPlanet,
-    GasGiant,
-    IceGiant,
-    DwarfPlanet,
-}
-
 ///<class>CelestialBody</class>
 ///<summary>A CelestialBody is a single point in space that has a mass and velocity.
 ///It has mass and gravity that will be used to calculate the attrational force on other objects.
@@ -24,14 +14,15 @@ public partial class CelestialBody : Node3D
     public float Mass;
     public Vector3 TotalForce;
     public CelestialBodyType Type;
-    public CelestialBodyMesh Mesh;
+    public UnifiedCelestialMesh Mesh;
     private Godot.Collections.Dictionary bodyDict;
 
-    public CelestialBody(Godot.Collections.Dictionary bodyDict, CelestialBodyMesh mesh)
+    public CelestialBody(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
     {
+        GD.Print($"BodyDict: {bodyDict}");
         this.bodyDict = bodyDict;
-        var baseTemplates = (Godot.Collections.Dictionary)bodyDict["Template"];
-        var type = (String)bodyDict["Type"];
+        var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
+        var type = (String)bodyDict["type"];
         var mass = (float)baseTemplates["mass"];
         var velocity = (Vector3)baseTemplates["velocity"];
         var size = (int)baseTemplates["size"];
@@ -84,29 +75,126 @@ public partial class CelestialBody : Node3D
 
     public void GenerateMesh()
     {
-        Godot.Collections.Dictionary meshParams;
+        Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
         if (
             bodyDict != null
-            && bodyDict.ContainsKey("Mesh")
-            && bodyDict["Mesh"].Obj is Godot.Collections.Dictionary customMesh
         )
         {
-            meshParams = ConvertCustomMeshToParams(customMesh);
+            meshParams.Add("type", bodyDict["type"]);
+            meshParams.Add("name", bodyDict["name"]);
+            if (bodyDict.ContainsKey("base_mesh") && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            {
+                CalculateBaseMeshFromParams(customMesh, meshParams);
+            }
+            if (bodyDict.ContainsKey("tectonics") && bodyDict["tectonics"].Obj is Godot.Collections.Dictionary tectonics)
+            {
+                CalculateTectonicMeshFromParams(tectonics, meshParams);
+            }
         }
         else
         {
-            meshParams = SystemGenTemplates.GetMeshParams(Type, Mesh.Seed);
+            var t = SystemGenTemplates.GetCelestialBodyDefaults(Type);
+            var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
+            meshParams.Add("name", name);
+            meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), Type));
+            var template = (Godot.Collections.Dictionary)t["template"];
+            var position = (Vector3)template["position"];
+            var velocity = (Vector3)template["velocity"];
+            meshParams.Add("position", position);
+            meshParams.Add("velocity", velocity);
+            var size = (int)template["size"];
+            var mass = (float)template["mass"];
+            meshParams.Add("size", size);
+            meshParams.Add("mass", mass);
+            if (t.ContainsKey("base_mesh") && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            {
+                CalculateBaseMeshFromParams(customMesh, meshParams);
+            }
+            if (t.ContainsKey("tectonics") && t["tectonics"].Obj is Godot.Collections.Dictionary tectonics)
+            {
+                CalculateTectonicMeshFromParams(tectonics, meshParams);
+            }
         }
-        this.Name = (String)meshParams["name"];
+        this.CallDeferred("set_name", (String)meshParams["name"]);
+        GD.Print($"Mesh Params: {meshParams}");
         Mesh.ConfigureFrom(meshParams);
         Mesh.GenerateMesh();
+    }
+
+    public String PickName(Godot.Collections.Dictionary nameDict)
+    {
+        if (nameDict == null || nameDict.Count == 0)
+            return "";
+
+        var categories = new Godot.Collections.Array(nameDict.Keys);
+        if (categories.Count == 0)
+            return "";
+
+        var random = UtilityLibrary.Randomizer.rng;
+        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
+
+        var names = (Godot.Collections.Array)nameDict[selectedCategory];
+        if (names == null || names.Count == 0)
+            return "";
+
+        return (string)names[random.RandiRange(0, names.Count - 1)];
+    }
+    private void CalculateTectonicMeshFromParams(Godot.Collections.Dictionary definedMesh, Godot.Collections.Dictionary meshParams)
+    {
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var tectDict = new Godot.Collections.Dictionary();
+        int[] numContinents = (int[])definedMesh["num_continents"];
+        tectDict.Add("num_continents", rng.RandiRange(numContinents[0], numContinents[1]));
+        float[] stressScale = (float[])definedMesh["stress_scale"];
+        tectDict.Add("stress_scale", rng.RandfRange(stressScale[0], stressScale[1]));
+        float[] shearScale = (float[])definedMesh["shear_scale"];
+        tectDict.Add("shear_scale", rng.RandfRange(shearScale[0], shearScale[1]));
+        float[] maxPropagationDistance = (float[])definedMesh["max_propagation_distance"];
+        tectDict.Add("max_propagation_distance", rng.RandfRange(maxPropagationDistance[0], maxPropagationDistance[1]));
+        float[] propagationFalloff = (float[])definedMesh["propagation_falloff"];
+        tectDict.Add("propagation_falloff", rng.RandfRange(propagationFalloff[0], propagationFalloff[1]));
+        float[] inactiveStressThreshold = (float[])definedMesh["inactive_stress_threshold"];
+        tectDict.Add("inactive_stress_threshold", rng.RandfRange(inactiveStressThreshold[0], inactiveStressThreshold[1]));
+        float[] generalHeightScale = (float[])definedMesh["general_height_scale"];
+        tectDict.Add("general_height_scale", rng.RandfRange(generalHeightScale[0], generalHeightScale[1]));
+        float[] generalShearScale = (float[])definedMesh["general_shear_scale"];
+        tectDict.Add("general_shear_scale", rng.RandfRange(generalShearScale[0], generalShearScale[1]));
+        float[] generalCompressionScale = (float[])definedMesh["general_compression_scale"];
+        tectDict.Add("general_compression_scale", rng.RandfRange(generalCompressionScale[0], generalCompressionScale[1]));
+        float[] generalTransformScale = (float[])definedMesh["general_transform_scale"];
+        tectDict.Add("general_transform_scale", rng.RandfRange(generalTransformScale[0], generalTransformScale[1]));
+        meshParams.Add("tectonic", tectDict);
+    }
+
+    private void CalculateBaseMeshFromParams(Godot.Collections.Dictionary definedMesh, Godot.Collections.Dictionary meshParams)
+    {
+        meshParams.Add("subdivisions", (int)definedMesh["subdivisions"]);
+        var vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)definedMesh["vertices_per_edge"];
+        int[] vertices_per_edge = new int[(int)definedMesh["subdivisions"]];
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        GD.Print($"VPE Array: {vpeArray}");
+        for (int i = 0; i < vertices_per_edge.Length; i++)
+        {
+            if (vpeArray.Count - 1 > i)//Defined subdivisions
+            {
+                vertices_per_edge[i] = rng.RandiRange(vpeArray[i][0], vpeArray[i][1]);
+            }
+            else
+            {
+                vertices_per_edge[i] = rng.RandiRange(vpeArray[vpeArray.Count - 1][0], vpeArray[vpeArray.Count - 1][1]);
+            }
+        }
+        meshParams.Add("vertices_per_edge", vertices_per_edge);
+        meshParams.Add("num_abberations", (int)definedMesh["num_abberations"]);
+        meshParams.Add("num_deformation_cycles", (int)definedMesh["num_deformation_cycles"]);
     }
 
     private Godot.Collections.Dictionary ConvertCustomMeshToParams(
         Godot.Collections.Dictionary customMesh
     )
     {
+        GD.Print($"Converting Custom Mesh: {customMesh}");
         var meshParams = new Godot.Collections.Dictionary();
         // Convert custom mesh data to the format expected by Mesh.ConfigureFrom
         if (
