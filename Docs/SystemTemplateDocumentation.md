@@ -98,7 +98,7 @@ The TOML templates are utilized in the Scripts directory to instantiate and mana
 - **Purpose**: Defines the `CelestialBody` class, which represents individual celestial objects (e.g., stars, planets) with physical properties and behaviors.
 - **Key Features**:
   - Handles physics simulation, including gravitational forces and orbital mechanics via `_PhysicsProcess`.
-  - Supports mesh generation using `CelestialBodyMesh` for visual representation.
+  - Supports mesh generation using `UnifiedCelestialMesh` for visual representation.
   - Body types are defined by the `CelestialBodyType` enum: `BlackHole`, `Star`, `RockyPlanet`, `GasGiant`, `IceGiant`, `DwarfPlanet`.
   - Constructor takes type, mass, velocity, size, and mesh, and adds special features like light sources for stars.
   - Integrates with `SystemGenTemplates` to configure meshes based on type and seed.

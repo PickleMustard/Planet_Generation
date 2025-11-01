@@ -224,7 +224,7 @@ size = 35
 
 [celestial.mesh.base_mesh]
 subdivisions = 1
-vertices_per_edge = [10, 13]
+vertices_per_edge = [[10, 13]]
 num_abberations = 0
 num_deformation_cycles = 0
 

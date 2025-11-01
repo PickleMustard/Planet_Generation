@@ -33,7 +33,7 @@ public class VoronoiCellGeneration
         StrDb = db;
     }
 
-    private CelestialBodyMesh mesh;
+    private UnifiedCelestialMesh mesh;
 
     /// <summary>
     /// Generates Voronoi cells for all sites in the structure database.
@@ -41,7 +41,7 @@ public class VoronoiCellGeneration
     /// and creates Voronoi cells by triangulating the projected circumcenters.
     /// </summary>
     /// <param name="percent">Progress tracking object for monitoring generation progress.</param>
-    public void GenerateVoronoiCells(GenericPercent percent, CelestialBodyMesh mesh)
+    public void GenerateVoronoiCells(GenericPercent percent, UnifiedCelestialMesh mesh)
     {
         this.mesh = mesh;
         Logger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");
@@ -128,13 +128,21 @@ public class VoronoiCellGeneration
                 {
                     StrDb.VoronoiCells.Add(calculated);
                 }
+                foreach (Edge e in calculated.Edges)
+                {
+                    StrDb.AddCellForEdge(e.key, calculated);
+                }
                 triCircumcenters.Clear();
                 percent.PercentCurrent++;
             }
+            GD.Print($"VoronoiCells Count: {StrDb.VoronoiCells.Count}");
+            GD.Print($"EdgeMap Count: {StrDb.EdgeMap.Count}");
+            GD.Print($"EdgeKeyCellMap: {StrDb.EdgeKeyCellMap.Count}");
         }
         catch (Exception e)
         {
             GD.PrintRaw($"\u001b[2J\u001b[H");
+            GD.PrintErr($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
             Logger.Error($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
         }
         Logger.ExitFunction("GenerateVoronoiCells", $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}");

@@ -32,7 +32,7 @@ public static class BiomeAssigner
     /// - Low elevation areas become ocean or coastal
     /// - Mid elevation areas vary based on moisture levels (desert, grassland, forest, rainforest)
     /// </remarks>
-    public static BiomeType AssignBiome(CelestialBodyMesh generator, float height, float moisture, float latitude = 0f)
+    public static BiomeType AssignBiome(UnifiedCelestialMesh generator, float height, float moisture, float latitude = 0f)
     {
         Logger.EnterFunction("AssignBiome", $"height={height:F3}, moisture={moisture:F3}, lat={latitude:F3}");
         // Normalize height to 0-1 range

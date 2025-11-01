@@ -19,14 +19,16 @@ public partial class SatelliteBeltItem : VBoxContainer
     [Export]
     public OptionButton OptionButton;
 
-    [Export]
-    public SpinBox RingDistanceX;
+    [Export] public SpinBox Apogee;
+    [Export] public SpinBox Perigee;
+    //[Export]
+    //public SpinBox RingDistanceX;
 
-    [Export]
-    public SpinBox RingDistanceY;
+    //[Export]
+    //public SpinBox RingDistanceY;
 
-    [Export]
-    public SpinBox RingDistanceZ;
+    //[Export]
+    //public SpinBox RingDistanceZ;
 
     [Export]
     public SpinBox RingVelocityX;
@@ -71,9 +73,8 @@ public partial class SatelliteBeltItem : VBoxContainer
     {
         // Cache field nodes if not set via exported references
         OptionButton ??= GetNodeOrNull<OptionButton>("Content/TypeContent/OptionButton");
-        RingDistanceX ??= GetNodeOrNull<SpinBox>("Content/PositionContent/RingPositionX");
-        RingDistanceY ??= GetNodeOrNull<SpinBox>("Content/PositionContent/RingPositionY");
-        RingDistanceZ ??= GetNodeOrNull<SpinBox>("Content/PositionContent/RingPositionZ");
+        Apogee ??= GetNodeOrNull<SpinBox>("Content/PositionContent/Apogee");
+        Perigee ??= GetNodeOrNull<SpinBox>("Content/PositionContent/Perigee");
         RingVelocityX ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/VelocityPositionX");
         RingVelocityY ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/VelocityPositionY");
         RingVelocityZ ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/VelocityPositionZ");
@@ -100,9 +101,8 @@ public partial class SatelliteBeltItem : VBoxContainer
         // Hook up input events for updates
         var spinBoxes = new[]
         {
-            RingDistanceX,
-            RingDistanceY,
-            RingDistanceZ,
+            Apogee,
+            Perigee,
             RingVelocityX,
             RingVelocityY,
             RingVelocityZ,
@@ -131,8 +131,8 @@ public partial class SatelliteBeltItem : VBoxContainer
             OptionButton.ItemSelected += idx =>
             {
                 var type = (SatelliteGroupTypes)(int)idx;
-                UpdateHeaderFromType(OptionButton.GetItemText((int)idx));
                 ApplyTemplate(type);
+                UpdateHeaderFromType(OptionButton.GetItemText((int)idx));
                 EmitSignal(SignalName.ItemUpdate);
             };
 
@@ -141,8 +141,8 @@ public partial class SatelliteBeltItem : VBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
                 ApplyTemplate((SatelliteGroupTypes)OptionButton.Selected);
+                UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
             }
         }
 
@@ -158,15 +158,37 @@ public partial class SatelliteBeltItem : VBoxContainer
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = SystemGenTemplates.GetSatelliteGroupDefaults(type);
-        t = (Godot.Collections.Dictionary)t["Template"];
+        t = (Godot.Collections.Dictionary)t["template"];
+        GD.Print($"Template: {t}");
 
         // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
-        var ringDistance = (Vector3)t["ring_distance"];
+        var apogee = (float)t["ring_apogee"];
+        var perigee = (float)t["ring_perigee"];
         var velocity = (Vector3)t["ring_velocity"];
         var lowerRange = (int)t["lower_range"];
         var upperRange = (int)t["upper_range"];
         var grouping = (String)t["grouping"];
 
+        if (Apogee != null)
+        {
+            Apogee.Value = Mathf.Clamp((float)apogee, 0f, Limit);
+        }
+        if (Perigee != null)
+        {
+            Perigee.Value = Mathf.Clamp((float)perigee, 0f, Limit);
+        }
+        if (RingVelocityX != null)
+        {
+            RingVelocityX.Value = Mathf.Clamp((float)velocity.X, 0f, Limit);
+        }
+        if (RingVelocityY != null)
+        {
+            RingVelocityY.Value = Mathf.Clamp((float)velocity.Y, 0f, Limit);
+        }
+        if (RingVelocityZ != null)
+        {
+            RingVelocityZ.Value = Mathf.Clamp((float)velocity.Z, 0f, Limit);
+        }
         if (MinMass != null)
             MinMass.Value = Mathf.Clamp((float)t["mass_min"], 0f, MassLimit);
         if (MaxMass != null)
@@ -197,9 +219,8 @@ public partial class SatelliteBeltItem : VBoxContainer
         foreach (
             var sb in new[]
             {
-                RingDistanceX,
-                RingDistanceY,
-                RingDistanceZ,
+                Apogee,
+                Perigee,
                 RingVelocityX,
                 RingVelocityY,
                 RingVelocityZ,
@@ -244,13 +265,23 @@ public partial class SatelliteBeltItem : VBoxContainer
         }
     }
 
-    public Vector3 GetRingPosition()
+    public float GetRingApogee()
     {
-        float x = Mathf.Clamp((float)RingDistanceX.Value, -Limit, Limit);
-        float y = Mathf.Clamp((float)RingDistanceY.Value, -Limit, Limit);
-        float z = Mathf.Clamp((float)RingDistanceZ.Value, -Limit, Limit);
-        return new Vector3(x, y, z);
+        return Mathf.Clamp((float)Apogee.Value, -Limit, Limit);
     }
+
+    public float GetRingPerigee()
+    {
+        return Mathf.Clamp((float)Perigee.Value, -Limit, Limit);
+    }
+
+    //public Vector3 GetRingPosition()
+    //{
+    //    float x = Mathf.Clamp((float)RingDistanceX.Value, -Limit, Limit);
+    //    float y = Mathf.Clamp((float)RingDistanceY.Value, -Limit, Limit);
+    //    float z = Mathf.Clamp((float)RingDistanceZ.Value, -Limit, Limit);
+    //    return new Vector3(x, y, z);
+    //}
 
     public Vector3 GetRingVelocity()
     {
@@ -303,8 +334,9 @@ public partial class SatelliteBeltItem : VBoxContainer
     public Godot.Collections.Dictionary ToParams()
     {
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
-        dict.Add("Type", GetSatelliteType());
-        dict.Add("ring_position", GetRingPosition());
+        dict.Add("type", GetSatelliteType());
+        dict.Add("ring_apogee", GetRingApogee());
+        dict.Add("ring_perigee", GetRingPerigee());
         dict.Add("ring_velocity", GetRingVelocity());
         dict.Add("size_min", GetSizeMin());
         dict.Add("size_max", GetSizeMax());

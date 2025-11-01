@@ -50,7 +50,6 @@ public partial class SatelliteItem : VBoxContainer
     public SpinBox numInBeltUpper;
 
     private HBoxContainer beltNumContainer;
-    private Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
 
     public Action<SatelliteItem> OnRemoveRequested;
 
@@ -59,6 +58,25 @@ public partial class SatelliteItem : VBoxContainer
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
+
+    //Hidden Values
+    //Base Mesh
+    private int subdivisions;
+    private int[,] verticesPerEdge;
+    private int numAbberations;
+    private int numDeformationCycles;
+
+    //Scaling
+    private float[] xScaleRange;
+    private float[] yScaleRange;
+    private float[] zScaleRange;
+
+    //Noise Settings
+    private float[] amplitudeRange;
+    private float[] scalingRange;
+    private int[] octaveRange;
+
+    private String satName;
 
     public void SetParentType(CelestialBodyType type)
     {
@@ -131,19 +149,13 @@ public partial class SatelliteItem : VBoxContainer
         if (OptionButton != null)
         {
             OptionButton.Clear();
-            if (parentType == CelestialBodyType.Star || parentType == CelestialBodyType.BlackHole)
-            {
-                foreach (var name in System.Enum.GetNames(typeof(SatelliteGroupTypes)))
-                    OptionButton.AddItem(name);
-            }
-            else
-            {
-                foreach (var name in System.Enum.GetNames(typeof(SatelliteBodyType)))
-                    OptionButton.AddItem(name);
-            }
+            foreach (var name in System.Enum.GetNames(typeof(SatelliteBodyType)))
+                OptionButton.AddItem(name);
 
             OptionButton.ItemSelected += idx =>
             {
+                var type = (SatelliteBodyType)(int)idx;
+                ApplyTemplate(type);
                 UpdateHeaderFromType(OptionButton.GetItemText((int)idx));
                 EmitSignal(SignalName.ItemUpdate);
             };
@@ -153,19 +165,22 @@ public partial class SatelliteItem : VBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
+                ApplyTemplate((SatelliteBodyType)OptionButton.Selected);
                 UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
             }
         }
     }
 
-    public void ApplyTemplate(CelestialBodyType type)
+    public void ApplyTemplate(SatelliteBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetCelestialBodyDefaults(type);
+        var t = SystemGenTemplates.GetSatelliteBodyDefaults(type);
+        var template = (Godot.Collections.Dictionary)t["template"];
+        satName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
 
         // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
-        var position = (Vector3)t["Position"];
-        var velocity = (Vector3)t["Velocity"];
+        var position = (Vector3)template["position"];
+        var velocity = (Vector3)template["velocity"];
         if (X != null)
             X.Value = Mathf.Clamp(position.X, -Limit, Limit);
         if (Y != null)
@@ -181,10 +196,50 @@ public partial class SatelliteItem : VBoxContainer
             velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
 
         if (mass != null)
-            mass.Value = Mathf.Clamp((float)t["Mass"], 0f, MassLimit);
+            mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
         if (size != null)
-            size.Value = Mathf.Clamp((float)t["Size"], 0f, SizeLimit);
-        templateDict = t;
+            size.Value = Mathf.Clamp((float)template["size"], 0f, SizeLimit);
+
+        var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
+        subdivisions = (int)baseMesh["subdivisions"];
+        verticesPerEdge = new int[subdivisions, 2];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        for (int i = 0; i < subdivisions; i++)
+        {
+            verticesPerEdge[i, 0] = (int)vpeArray[i][0];
+            verticesPerEdge[i, 1] = (int)vpeArray[i][1];
+        }
+        numAbberations = (int)baseMesh["num_abberations"];
+        numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
+
+        var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
+        xScaleRange = (float[])scaling["x_scale_range"];
+        yScaleRange = (float[])scaling["y_scale_range"];
+        zScaleRange = (float[])scaling["z_scale_range"];
+
+        var noiseSettings = (Godot.Collections.Dictionary)t["noise_settings"];
+        amplitudeRange = (float[])noiseSettings["amplitude_range"];
+        scalingRange = (float[])noiseSettings["scaling_range"];
+        octaveRange = (int[])noiseSettings["octave_range"];
+    }
+
+    public String PickName(Godot.Collections.Dictionary nameDict)
+    {
+        if (nameDict == null || nameDict.Count == 0)
+            return "";
+
+        var categories = new Godot.Collections.Array(nameDict.Keys);
+        if (categories.Count == 0)
+            return "";
+
+        var random = UtilityLibrary.Randomizer.rng;
+        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
+
+        var names = (Godot.Collections.Array)nameDict[selectedCategory];
+        if (names == null || names.Count == 0)
+            return "";
+
+        return (string)names[random.RandiRange(0, names.Count - 1)];
     }
 
     private void ApplyConstraints()
@@ -222,7 +277,7 @@ public partial class SatelliteItem : VBoxContainer
         var headerBtn = GetNodeOrNull<Button>("Header/Toggle");
         if (headerBtn != null)
         {
-            headerBtn.Text = typeName;
+            headerBtn.Text = $"{satName} ({typeName})";
         }
     }
 
@@ -293,6 +348,11 @@ public partial class SatelliteItem : VBoxContainer
         return "Asteroid";
     }
 
+    public Vector3 GetBodyPosition()
+    {
+        return new Vector3(Mathf.Clamp((float)X.Value, -Limit, Limit), Mathf.Clamp((float)Y.Value, -Limit, Limit), Mathf.Clamp((float)Z.Value, -Limit, Limit));
+    }
+
     public (int, int) GetNumberInBelt()
     {
         if (numInBeltLower != null && numInBeltUpper != null)
@@ -307,15 +367,38 @@ public partial class SatelliteItem : VBoxContainer
     public Godot.Collections.Dictionary ToParams()
     {
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
-        dict.Add("Type", GetSatelliteType());
+        dict.Add("type", GetSatelliteType());
+        dict.Add("name", satName);
         Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
-        templateDict.Add("BasePosition", GetPosition());
-        templateDict.Add("SatelliteVelocity", GetVelocity());
-        templateDict.Add("Size", GetSize());
-        templateDict.Add("Mass", GetMass());
-        dict.Add("Template", templateDict);
+        templateDict.Add("base_position", GetPosition());
+        templateDict.Add("satellite_velocity", GetVelocity());
+        templateDict.Add("size", GetSize());
+        templateDict.Add("mass", GetMass());
+        dict.Add("template", templateDict);
         Godot.Collections.Dictionary meshDict = new Godot.Collections.Dictionary();
-        //meshDict.Add("Subdivisions");
+        meshDict.Add("subdivisions", subdivisions);
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = new Godot.Collections.Array<Godot.Collections.Array<int>>();
+        for (int i = 0; i < subdivisions; i++)
+        {
+            Godot.Collections.Array<int> row = new Godot.Collections.Array<int>();
+            row.Add(verticesPerEdge[i, 0]);
+            row.Add(verticesPerEdge[i, 1]);
+            vpeArray.Add(row);
+        }
+        meshDict.Add("vertices_per_edge", vpeArray);
+        meshDict.Add("num_abberations", numAbberations);
+        meshDict.Add("num_deformation_cycles", numDeformationCycles);
+        dict.Add("base_mesh", meshDict);
+        Godot.Collections.Dictionary scalingDict = new Godot.Collections.Dictionary();
+        scalingDict.Add("x_scale_range", xScaleRange);
+        scalingDict.Add("y_scale_range", yScaleRange);
+        scalingDict.Add("z_scale_range", zScaleRange);
+        dict.Add("scaling_settings", scalingDict);
+        Godot.Collections.Dictionary noiseDict = new Godot.Collections.Dictionary();
+        noiseDict.Add("amplitude_range", amplitudeRange);
+        noiseDict.Add("scaling_range", scalingRange);
+        noiseDict.Add("octave_range", octaveRange);
+        dict.Add("noise_settings", noiseDict);
         return dict;
     }
 }
