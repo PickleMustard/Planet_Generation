@@ -1,0 +1,17 @@
+{
+   "$schema": "https://raw.githubusercontent.com/mfussenegger/dapconfig-schema/master/dapconfig-schema.json",
+   "version": "0.2.0",
+   "configurations": [
+
+       {
+            "name": "Launch Godot Editor",
+           "type": "coreclr",
+           "request": "launch",
+           "preLaunchTask": "build",
+           "program": "/usr/local/bin/godot",
+           "args": [],
+           "cwd": "${workspaceFolder}",
+           "stopAtEntry": false
+       }
+   ]
+}

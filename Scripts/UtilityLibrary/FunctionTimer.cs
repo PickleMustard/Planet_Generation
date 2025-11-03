@@ -181,7 +181,7 @@ namespace UtilityLibrary
             if (isAnimating) return;
 
             // Initialize ANSI capability lazily on first start
-            InitializeAnsiCapability();
+            //InitializeAnsiCapability();
 
             isAnimating = true;
             animationThread = new Thread(AnimateConsole);

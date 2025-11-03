@@ -96,6 +96,8 @@ public class StructureDatabase
     /// </summary>
     public Dictionary<Point, HashSet<HalfEdge>> worldHalfEdgeMap = new Dictionary<Point, HashSet<HalfEdge>>();
 
+    public Dictionary<Point, HashSet<VoronoiCell>> PlanetMap = new Dictionary<Point, HashSet<VoronoiCell>>();
+
     // Canonical registries (Phase 0)
     /// <summary>
     /// Canonical registry mapping point indices to Point objects.
@@ -952,6 +954,19 @@ public class StructureDatabase
         }
     }
 
+    public void AddPointForCellPlanet(Point p, VoronoiCell cell)
+    {
+        lock (lockObject)
+        {
+            if (!PlanetMap.TryGetValue(p, out var set))
+            {
+                set = new HashSet<VoronoiCell>();
+                PlanetMap[p] = set;
+            }
+            set.Add(cell);
+        }
+    }
+
     // ===== Phase 3–4: Phase reset hook =====
     /// <summary>
     /// Resets the mesh structure to prepare for a specific generation phase.
@@ -990,6 +1005,17 @@ public class StructureDatabase
             }
         }
         Logger.ExitFunction("ResetPhase");
+    }
+
+    public void FinalizeDB()
+    {
+        worldHalfEdgeMap.Clear();
+        VoronoiCells.Clear();
+        VoronoiCellVertices.Clear();
+        CellMap.Clear();
+        EdgeMap.Clear();
+        VoronoiTriMap.Clear();
+        VoronoiEdgeTriMap.Clear();
     }
 
     // ===== Helpers =====

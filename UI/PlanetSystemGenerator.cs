@@ -5,11 +5,15 @@ using Godot;
 using Godot.Collections;
 using PlanetGeneration;
 using Tommy;
+using FileAccess = Godot.FileAccess;
 
 namespace UI;
 
 public partial class PlanetSystemGenerator : Control
 {
+    Vector2 BASE_SIZE = new Vector2(400, 650);
+    Vector2 EXPANDED_SIZE = new Vector2(600, 650);
+
     [Signal]
     public delegate void GeneratePressedEventHandler(Array<Dictionary> bodies);
 
@@ -22,6 +26,7 @@ public partial class PlanetSystemGenerator : Control
     private Button _removeBtn;
     private Button _generateBtn;
     private Button _validateBtn;
+    private Button _saveBtn;
     private PackedScene _bodyItemScene;
     private TabContainer _tabContainer;
     private VBoxContainer _templatesList;
@@ -29,10 +34,14 @@ public partial class PlanetSystemGenerator : Control
 
     private Texture2D _checkMark;
     private Texture2D _xMark;
+    private Dictionary<String, bool> _toggledSubcontainers;
 
     public override void _Ready()
     {
         this.AddToGroup("GenerationMenu");
+        var parent = GetParent() as Control;
+        parent.Size = BASE_SIZE;
+        _toggledSubcontainers = new Dictionary<String, bool>();
         _bodyItemScene = GD.Load<PackedScene>("res://UI/BodyItem.tscn");
         _tabContainer = GetNode<TabContainer>("MarginContainer/TabContainer");
         _bodiesList = GetNode<VBoxContainer>(
@@ -46,13 +55,16 @@ public partial class PlanetSystemGenerator : Control
             "MarginContainer/TabContainer/BodiesTab/ControlsRow/RemoveBody"
         );
         _generateBtn = GetNode<Button>(
-            "MarginContainer/TabContainer/BodiesTab/GenerationRow/GenerateButton"
+            "MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow/GenerateButton"
         );
         _validateBtn = GetNode<Button>(
-            "MarginContainer/TabContainer/BodiesTab/GenerationRow/ValidateButton"
+            "MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow/ValidateButton"
+        );
+        _saveBtn = GetNode<Button>(
+            "MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow/SaveFileButton"
         );
         _stabilityIndicator = GetNode<TextureRect>(
-            "MarginContainer/TabContainer/BodiesTab/GenerationRow/StabilityIndicator"
+            "MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow/StabilityIndicator"
         );
         _templatesList = GetNode<VBoxContainer>(
             "MarginContainer/TabContainer/TemplatesTab/TemplatesScroll/TemplatesList"
@@ -62,6 +74,7 @@ public partial class PlanetSystemGenerator : Control
         _removeBtn.Pressed += RemoveLastBodyItem;
         _generateBtn.Pressed += OnGeneratePressed;
         _validateBtn.Pressed += OnValidatePressed;
+        _saveBtn.Pressed += OnSavePressed;
 
         _checkMark = GD.Load<Texture2D>("res://UI/checkmark.svg");
         _xMark = GD.Load<Texture2D>("res://UI/xmark.svg");
@@ -78,6 +91,24 @@ public partial class PlanetSystemGenerator : Control
         UpdateCountLabel();
     }
 
+    public void ExpandMenu(String sender, bool toggle)
+    {
+        var parent = GetParent() as Control;
+        if (_toggledSubcontainers.ContainsKey(sender) && !toggle)
+        {
+            _toggledSubcontainers.Remove(sender);
+            if (_toggledSubcontainers.Count == 0)
+            {
+                parent.Size = BASE_SIZE;
+            }
+        }
+        else
+        {
+            parent.Size = EXPANDED_SIZE;
+            if (!_toggledSubcontainers.ContainsKey(sender)) _toggledSubcontainers.Add(sender, toggle);
+        }
+    }
+
     private void AddBodyItem()
     {
         if (_bodyItemScene == null)
@@ -87,6 +118,7 @@ public partial class PlanetSystemGenerator : Control
         node.OnRemoveRequested += HandleItemRemove;
         // Wire position change
         node.ItemUpdate += OnBodyItemUpdate;
+        node.ExpandMenu += ExpandMenu;
         _bodiesList.AddChild(node);
         UpdateCountLabel();
         RedistributeOrbitalRings();
@@ -168,7 +200,6 @@ public partial class PlanetSystemGenerator : Control
 
     private void OnBodyItemUpdate()
     {
-        //GD.Print("Body item updated");
         RedistributeOrbitalRings();
     }
 
@@ -188,7 +219,6 @@ public partial class PlanetSystemGenerator : Control
     private void OnValidatePressed()
     {
         CheckSystemStability();
-        //EmitSignal(SignalName.ValidatePressed, list);
     }
 
     private void LoadTemplates()
@@ -241,7 +271,6 @@ public partial class PlanetSystemGenerator : Control
                         {
                             bodyItem.OptionButton.Select(i);
                             bodyItem.UpdateHeaderFromBodyType(typeStr);
-                            //bodyItem.ApplyTemplate(type);
                             bodyItem.SetTemplate(bodyDict);
                             break;
                         }
@@ -454,5 +483,119 @@ public partial class PlanetSystemGenerator : Control
                 _stabilityIndicator.Texture = _xMark;
             }
         }
+    }
+
+    private void OnSavePressed()
+    {
+        ShowFileNameDialog();
+    }
+
+    private void ShowFileNameDialog()
+    {
+        var dialog = new AcceptDialog();
+        dialog.Title = "Save System Configuration";
+
+        var vbox = new VBoxContainer();
+        var label = new Label();
+        label.Text = "Enter filename for the system configuration:";
+        vbox.AddChild(label);
+
+        var lineEdit = new LineEdit();
+        lineEdit.PlaceholderText = "MySystem";
+        lineEdit.CustomMinimumSize = new Vector2(300, 0);
+        vbox.AddChild(lineEdit);
+
+        dialog.AddChild(vbox);
+
+        dialog.Connect(AcceptDialog.SignalName.Confirmed, Callable.From(() => OnSaveDialogConfirmed(dialog, lineEdit)));
+        dialog.Connect(AcceptDialog.SignalName.Canceled, Callable.From(() => OnSaveDialogCanceled(dialog)));
+
+        AddChild(dialog);
+        dialog.PopupCentered();
+
+        // Focus the line edit and select all text
+        lineEdit.GrabFocus();
+        lineEdit.CallDeferred(LineEdit.MethodName.SelectAll);
+    }
+
+    private void OnSaveDialogConfirmed(AcceptDialog dialog, LineEdit lineEdit)
+    {
+        string fileName = lineEdit.Text.Trim();
+        if (string.IsNullOrEmpty(fileName))
+        {
+            fileName = "UntitledSystem";
+        }
+
+        // Ensure .toml extension
+        if (!fileName.EndsWith(".toml", StringComparison.OrdinalIgnoreCase))
+        {
+            fileName += ".toml";
+        }
+
+        SaveSystemToFile(fileName);
+        dialog.QueueFree();
+    }
+
+    private void OnSaveDialogCanceled(AcceptDialog dialog)
+    {
+        dialog.QueueFree();
+    }
+
+    private void SaveSystemToFile(string fileName)
+    {
+        try
+        {
+            var bodies = new Array<Dictionary>();
+            foreach (Node child in _bodiesList.GetChildren())
+            {
+                if (child is BodyItem bi)
+                    bodies.Add(bi.ToParams());
+            }
+
+            string tomlContent = UtilityLibrary.SystemGenTemplates.GenerateTOMLContent(bodies);
+
+            string filePath = $"res://Configuration/SystemTemplate/{fileName}";
+
+            using var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Write);
+            if (file == null)
+            {
+                GD.PrintErr($"Failed to create file: {filePath}");
+                ShowErrorDialog($"Failed to save file: {fileName}");
+                return;
+            }
+
+            file.StoreString(tomlContent);
+            file.Close();
+
+            GD.Print($"System configuration saved to: {filePath}");
+            ShowSuccessDialog($"System configuration saved as: {fileName}");
+        }
+        catch (System.Exception ex)
+        {
+            GD.PrintErr($"Error saving system: {ex.Message}\n{ex.StackTrace}");
+            ShowErrorDialog($"Error saving system: {ex.Message}");
+        }
+    }
+
+
+
+    private void ShowSuccessDialog(string message)
+    {
+        var dialog = new AcceptDialog();
+        dialog.Title = "Success";
+        dialog.DialogText = message;
+        AddChild(dialog);
+        dialog.PopupCentered();
+        dialog.Connect(AcceptDialog.SignalName.Confirmed, new Callable(dialog, Node.MethodName.QueueFree));
+    }
+
+    private void ShowErrorDialog(string message)
+    {
+        var dialog = new AcceptDialog();
+        dialog.Title = "Error";
+        dialog.DialogText = message;
+        AddChild(dialog);
+        dialog.PopupCentered();
+        dialog.Connect(AcceptDialog.SignalName.Confirmed, new Callable(dialog, Node.MethodName.QueueFree));
     }
 }

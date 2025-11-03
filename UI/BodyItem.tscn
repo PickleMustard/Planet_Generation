@@ -3,178 +3,193 @@
 [ext_resource type="Script" uid="uid://cwakjbtw2pqm3" path="res://UI/BodyItem.cs" id="1_v7n1y"]
 [ext_resource type="Script" uid="uid://cl0fnsihfju2q" path="res://UI/ToggleSection.cs" id="2_q7k4c"]
 
-[node name="BodyItem" type="VBoxContainer"]
+[node name="BodyItem" type="HBoxContainer"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("1_v7n1y")
 
-[node name="Header" type="HBoxContainer" parent="."]
+[node name="MainContent" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="MainContent"]
 layout_mode = 2
 
-[node name="Toggle" type="Button" parent="Header"]
+[node name="Toggle" type="Button" parent="MainContent/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Star"
 script = ExtResource("2_q7k4c")
 content_path = NodePath("../../Content")
 
-[node name="RemoveItem" type="Button" parent="Header"]
+[node name="RemoveItem" type="Button" parent="MainContent/Header"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
 text = "-"
 
-[node name="Content" type="VBoxContainer" parent="."]
+[node name="DetailsToggle" type="Button" parent="MainContent/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "⚙"
+
+[node name="Content" type="VBoxContainer" parent="MainContent"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PositionContent" type="GridContainer" parent="Content"]
+[node name="PositionContent" type="GridContainer" parent="MainContent/Content"]
 layout_mode = 2
 columns = 2
 
-[node name="LabelX" type="Label" parent="Content/PositionContent"]
+[node name="LabelX" type="Label" parent="MainContent/Content/PositionContent"]
 layout_mode = 2
 text = "X"
 
-[node name="X" type="SpinBox" parent="Content/PositionContent"]
+[node name="X" type="SpinBox" parent="MainContent/Content/PositionContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = -10000.0
 max_value = 10000.0
 step = 0.1
 
-[node name="LabelY" type="Label" parent="Content/PositionContent"]
+[node name="LabelY" type="Label" parent="MainContent/Content/PositionContent"]
 layout_mode = 2
 text = "Y"
 
-[node name="Y" type="SpinBox" parent="Content/PositionContent"]
+[node name="Y" type="SpinBox" parent="MainContent/Content/PositionContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = -10000.0
 max_value = 10000.0
 step = 0.1
 
-[node name="LabelZ" type="Label" parent="Content/PositionContent"]
+[node name="LabelZ" type="Label" parent="MainContent/Content/PositionContent"]
 layout_mode = 2
 text = "Z"
 
-[node name="Z" type="SpinBox" parent="Content/PositionContent"]
+[node name="Z" type="SpinBox" parent="MainContent/Content/PositionContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = -10000.0
 max_value = 10000.0
 step = 0.1
 
-[node name="VelocityContent" type="GridContainer" parent="Content"]
+[node name="VelocityContent" type="GridContainer" parent="MainContent/Content"]
 layout_mode = 2
 columns = 2
 
-[node name="LabelVelX" type="Label" parent="Content/VelocityContent"]
+[node name="LabelVelX" type="Label" parent="MainContent/Content/VelocityContent"]
 layout_mode = 2
 text = "velX"
 
-[node name="velX" type="SpinBox" parent="Content/VelocityContent"]
+[node name="velX" type="SpinBox" parent="MainContent/Content/VelocityContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = -10000.0
 max_value = 10000.0
 step = 0.1
 
-[node name="LabelVelY" type="Label" parent="Content/VelocityContent"]
+[node name="LabelVelY" type="Label" parent="MainContent/Content/VelocityContent"]
 layout_mode = 2
 text = "velY"
 
-[node name="velY" type="SpinBox" parent="Content/VelocityContent"]
+[node name="velY" type="SpinBox" parent="MainContent/Content/VelocityContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = -10000.0
 max_value = 10000.0
 step = 0.1
 
-[node name="LabelVelZ" type="Label" parent="Content/VelocityContent"]
+[node name="LabelVelZ" type="Label" parent="MainContent/Content/VelocityContent"]
 layout_mode = 2
 text = "velZ"
 
-[node name="velZ" type="SpinBox" parent="Content/VelocityContent"]
+[node name="velZ" type="SpinBox" parent="MainContent/Content/VelocityContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = -10000.0
 max_value = 10000.0
 step = 0.1
 
-[node name="BodyTypeContent" type="HBoxContainer" parent="Content"]
+[node name="BodyTypeContent" type="HBoxContainer" parent="MainContent/Content"]
 layout_mode = 2
 
-[node name="BodyTypeLabel" type="Label" parent="Content/BodyTypeContent"]
+[node name="BodyTypeLabel" type="Label" parent="MainContent/Content/BodyTypeContent"]
 layout_mode = 2
 text = "BodyType"
 
-[node name="OptionButton" type="OptionButton" parent="Content/BodyTypeContent"]
+[node name="OptionButton" type="OptionButton" parent="MainContent/Content/BodyTypeContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="MassContent" type="HBoxContainer" parent="Content"]
+[node name="MassContent" type="HBoxContainer" parent="MainContent/Content"]
 layout_mode = 2
 
-[node name="MassLabel" type="Label" parent="Content/MassContent"]
+[node name="MassLabel" type="Label" parent="MainContent/Content/MassContent"]
 layout_mode = 2
 text = "mass"
 
-[node name="mass" type="SpinBox" parent="Content/MassContent"]
+[node name="mass" type="SpinBox" parent="MainContent/Content/MassContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 10000.0
 step = 0.1
 
-[node name="SizeContent" type="HBoxContainer" parent="Content"]
+[node name="SizeContent" type="HBoxContainer" parent="MainContent/Content"]
 layout_mode = 2
 
-[node name="SizeLabel" type="Label" parent="Content/SizeContent"]
+[node name="SizeLabel" type="Label" parent="MainContent/Content/SizeContent"]
 layout_mode = 2
 text = "size"
 
-[node name="size" type="SpinBox" parent="Content/SizeContent"]
+[node name="size" type="SpinBox" parent="MainContent/Content/SizeContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 10000.0
 step = 0.1
 
-[node name="SatellitesContent" type="VBoxContainer" parent="Content"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="SatellitesHeader" type="HBoxContainer" parent="Content/SatellitesContent"]
+[node name="SatellitesContent" type="VBoxContainer" parent="MainContent/Content"]
 layout_mode = 2
 
-[node name="SatellitesLabel" type="Label" parent="Content/SatellitesContent/SatellitesHeader"]
+[node name="SatellitesHeader" type="HBoxContainer" parent="MainContent/Content/SatellitesContent"]
+layout_mode = 2
+
+[node name="SatellitesLabel" type="Label" parent="MainContent/Content/SatellitesContent/SatellitesHeader"]
 layout_mode = 2
 text = "Satellites"
 
-[node name="AddSatellite" type="Button" parent="Content/SatellitesContent/SatellitesHeader"]
+[node name="AddSatellite" type="Button" parent="MainContent/Content/SatellitesContent/SatellitesHeader"]
 layout_mode = 2
 text = "+"
 
-[node name="RemoveSatellite" type="Button" parent="Content/SatellitesContent/SatellitesHeader"]
+[node name="RemoveSatellite" type="Button" parent="MainContent/Content/SatellitesContent/SatellitesHeader"]
 layout_mode = 2
 text = "-"
 
-[node name="SatellitesCountLabel" type="Label" parent="Content/SatellitesContent/SatellitesHeader"]
+[node name="SatellitesCountLabel" type="Label" parent="MainContent/Content/SatellitesContent/SatellitesHeader"]
 layout_mode = 2
 text = "0 satellites"
 
-[node name="SatellitesScroll" type="ScrollContainer" parent="Content/SatellitesContent"]
-custom_minimum_size = Vector2(0, 150)
+[node name="SatellitesScroll" type="ScrollContainer" parent="MainContent/Content/SatellitesContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_mode = 2
-vertical_scroll_mode = 2
+horizontal_scroll_mode = 0
 
-[node name="SatellitesList" type="VBoxContainer" parent="Content/SatellitesContent/SatellitesScroll"]
+[node name="SatellitesList" type="VBoxContainer" parent="MainContent/Content/SatellitesContent/SatellitesScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
+
+[node name="DetailsPanel" type="VBoxContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3

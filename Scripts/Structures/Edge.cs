@@ -1,12 +1,11 @@
 using System;
 using Godot;
-using static MeshGeneration.StructureDatabase;
 namespace Structures;
 public enum EdgeType
 {
     inactive, transform, divergent, convergent
 }
-public class Edge : IEquatable<Edge>
+public partial class Edge : Resource, IEquatable<Edge>
 {
     public HalfEdge[] halfEdges = new HalfEdge[2];
     public EdgeKey key;

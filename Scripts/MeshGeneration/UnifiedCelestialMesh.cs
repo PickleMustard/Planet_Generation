@@ -62,6 +62,9 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         NoiseOnly
     }
 
+    [Signal]
+    public delegate void GeneratedVoronoiCellsEventHandler();
+
     /// <summary>
     /// Static progress tracking object for generation operations.
     /// Used to monitor and report progress during the asynchronous mesh generation process.
@@ -103,7 +106,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Structure database containing all mesh data and relationships.
     /// Central repository for all mesh structures including vertices, edges, faces, and their relationships.
     /// </summary>
-    protected StructureDatabase StrDb;
+    public StructureDatabase StrDb;
 
     /// <summary>
     /// Tectonic generation system for simulating plate tectonics.
@@ -427,8 +430,9 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// It automatically adjusts array lengths to match subdivision levels and provides
     /// fallback values for missing or invalid parameters.
     /// </remarks>
-    public virtual void ConfigureFrom(Godot.Collections.Dictionary meshParams)
+    public virtual void ConfigureFrom(StructureDatabase strDb, Godot.Collections.Dictionary meshParams)
     {
+        this.StrDb = strDb;
         if (meshParams == null) return;
         GD.Print($"ConfigureFrom: {meshParams}");
 
@@ -567,10 +571,9 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// mesh generation process. The method sets up all necessary components and
     /// initiates the generation system based on the detected generation type.
     /// </remarks>
-    public virtual void GenerateMesh()
+    public virtual void GenerateMesh(Octree<Point> oct)
     {
         this.CallDeferred("set_mesh", new ArrayMesh());
-        StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
         percent = new GenericPercent();
         if (Seed != 0)
         {
@@ -594,7 +597,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 GeneralCompressionScale);
         }
 
-        Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync());
+        Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync(oct));
         GD.Print($"Number of Vertices: {StrDb.VoronoiVertices.Values.Count}\n");
     }
 
@@ -612,24 +615,24 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Each pipeline implements the appropriate combination of features while maintaining
     /// compatibility with the existing mesh generation infrastructure.
     /// </remarks>
-    protected virtual async void GeneratePlanetAsync()
+    protected virtual async void GeneratePlanetAsync(Octree<Point> oct)
     {
         switch (GenerationType)
         {
             case BodyGenerationType.TectonicsOnly:
-                await GenerateTectonicsOnlyPipeline();
+                await GenerateTectonicsOnlyPipeline(oct);
                 break;
             case BodyGenerationType.TectonicsWithNoise:
-                await GenerateTectonicsWithNoisePipeline();
+                await GenerateTectonicsWithNoisePipeline(oct);
                 break;
             case BodyGenerationType.ScalingWithNoise:
-                await GenerateScalingWithNoisePipeline();
+                await GenerateScalingWithNoisePipeline(oct);
                 break;
             case BodyGenerationType.NoiseOnly:
-                await GenerateNoiseOnlyPipeline();
+                await GenerateNoiseOnlyPipeline(oct);
                 break;
             default:
-                await GenerateTectonicsOnlyPipeline(); // Fallback
+                await GenerateTectonicsOnlyPipeline(oct); // Fallback
                 break;
         }
     }
@@ -638,7 +641,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Pipeline for generating celestial bodies using only tectonic processes.
     /// This is the standard planet generation pipeline without additional noise or scaling.
     /// </summary>
-    private async Task GenerateTectonicsOnlyPipeline()
+    private async Task GenerateTectonicsOnlyPipeline(Octree<Point> oct)
     {
         if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
         {
@@ -653,7 +656,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             StrDb.IncrementMeshState();
 
             await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPass(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPass: {e.Message}\n{e.StackTrace}"); return 1; } },
+                () => { try { GenerateSecondPass(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPass: {e.Message}\n{e.StackTrace}"); return 1; } },
                 $"{Name}_secondpass",
                 TaskPriority.High,
                 Name
@@ -664,7 +667,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             Task firstPass = Task.Factory.StartNew(() => GenerateFirstPass());
             Task.WaitAll(firstPass);
             StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPass());
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPass(oct));
+            Task.WaitAll(secondPass);
         }
     }
 
@@ -672,7 +676,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Pipeline for generating celestial bodies using tectonic processes with noise-based deformation.
     /// This combines realistic tectonic features with procedural noise for enhanced detail.
     /// </summary>
-    private async Task GenerateTectonicsWithNoisePipeline()
+    private async Task GenerateTectonicsWithNoisePipeline(Octree<Point> oct)
     {
         if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
         {
@@ -687,7 +691,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             StrDb.IncrementMeshState();
 
             await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPassWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
+                () => { try { GenerateSecondPassWithNoise(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
                 $"{Name}_secondpass_noise",
                 TaskPriority.High,
                 Name
@@ -698,7 +702,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassWithNoise());
             Task.WaitAll(firstPass);
             StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassWithNoise());
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassWithNoise(oct));
         }
     }
 
@@ -706,7 +710,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Pipeline for generating celestial bodies using non-uniform scaling with noise-based deformation.
     /// This is suitable for asteroids, moons, and irregular celestial bodies.
     /// </summary>
-    private async Task GenerateScalingWithNoisePipeline()
+    private async Task GenerateScalingWithNoisePipeline(Octree<Point> oct)
     {
         if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
         {
@@ -721,7 +725,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             StrDb.IncrementMeshState();
 
             await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPassScalingWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassScalingWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
+                () => { try { GenerateSecondPassScalingWithNoise(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassScalingWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
                 $"{Name}_secondpass_scaling",
                 TaskPriority.High,
                 Name
@@ -732,7 +736,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassScalingWithNoise());
             Task.WaitAll(firstPass);
             StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassScalingWithNoise());
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassScalingWithNoise(oct));
         }
     }
 
@@ -740,7 +744,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Pipeline for generating celestial bodies using only noise-based deformation.
     /// This creates purely procedural terrain features without tectonic processes or scaling.
     /// </summary>
-    private async Task GenerateNoiseOnlyPipeline()
+    private async Task GenerateNoiseOnlyPipeline(Octree<Point> oct)
     {
         if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
         {
@@ -755,7 +759,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             StrDb.IncrementMeshState();
 
             await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPassNoiseOnly(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassNoiseOnly: {e.Message}\n{e.StackTrace}"); return 1; } },
+                () => { try { GenerateSecondPassNoiseOnly(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassNoiseOnly: {e.Message}\n{e.StackTrace}"); return 1; } },
                 $"{Name}_secondpass_noiseonly",
                 TaskPriority.High,
                 Name
@@ -766,7 +770,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassNoiseOnly());
             Task.WaitAll(firstPass);
             StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassNoiseOnly());
+            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassNoiseOnly(oct));
         }
     }
 
@@ -929,7 +933,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     }
 
     // Second pass methods
-    protected virtual async void GenerateSecondPass()
+    protected virtual async void GenerateSecondPass(Octree<Point> oct)
     {
         VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
         GenericPercent emptyPercent = new GenericPercent();
@@ -939,11 +943,17 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             {
                 try
                 {
-                    voronoiCellGeneration.GenerateVoronoiCells(percent, this);
+                    voronoiCellGeneration.GenerateVoronoiCells(percent, this, oct);
+                    float sizeMultiplier = 2.5f * StrDb.VoronoiCells.Count / 10000f;
+                    if (sizeMultiplier > 1.0f)
+                    {
+                        size *= sizeMultiplier;
+                        oct.Grow(sizeMultiplier);
+                    }
                 }
                 catch (Exception e)
                 {
-                    GD.PrintErr($"\u001b[2J\u001b[H");
+                    GD.PrintErr($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
                     Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
                 }
                 return 0;
@@ -966,7 +976,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             {
                 foreach (VoronoiCell vc in StrDb.VoronoiCells)
                 {
-                    var cellNeighbors = GetCellNeighbors(vc);
+                    var cellNeighbors = GetCellNeighbors(vc, StrDb);
                     float averageHeight = vc.Height;
                     List<Edge> OutsideEdges = new List<Edge>();
                     List<int> BoundingContinentIndex = new List<int>();
@@ -975,10 +985,12 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         if (neighbor.ContinentIndex != vc.ContinentIndex)
                         {
                             vc.IsBorderTile = true;
+                            vc.Interiorness = 1;
                             continents[vc.ContinentIndex].boundaryCells.Add(vc);
                             continents[vc.ContinentIndex].neighborContinents.Add(neighbor.ContinentIndex);
                             continents[neighbor.ContinentIndex].neighborContinents.Add(vc.ContinentIndex);
                             neighbor.IsBorderTile = true;
+                            neighbor.Interiorness = 1;
                             BoundingContinentIndex.Add(neighbor.ContinentIndex);
                             foreach (Point p in vc.Points)
                             {
@@ -998,6 +1010,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                                     {
                                         vc.EdgeBoundaryMap.Add(e, neighbor.ContinentIndex);
                                         OutsideEdges.Add(e);
+                                        continents[vc.ContinentIndex].boundaryEdges.Add(e);
                                     }
                                 }
                             }
@@ -1008,10 +1021,37 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     vc.OutsideEdges = OutsideEdges.ToArray();
                     percent.PercentCurrent++;
                 }
+                HashSet<VoronoiCell> visited = new HashSet<VoronoiCell>();
+                var continent = continents.First().Value;
+                GD.Print($"Calculating Interiorness for {continent.StartingIndex}");
+                GD.Print($"# Edges: {continent.boundaryEdges.Count}");
+                PriorityQueue<VoronoiCell, int> BreadthSearch = new PriorityQueue<VoronoiCell, int>();
+                foreach (var vc in continent.boundaryCells)
+                {
+                    BreadthSearch.Enqueue(vc, vc.Interiorness);
+                }
+                while (BreadthSearch.Count > 0)
+                {
+                    var current = BreadthSearch.Dequeue();
+                    visited.Add(current);
+                    var neighbors = GetCellNeighbors(current, StrDb).Where(nc => nc.ContinentIndex == current.ContinentIndex).ToList();
+                    if (current.Interiorness != 1)
+                    {
+                        int interiorness = neighbors.Min(e => e.Interiorness) + 1;
+                        current.Interiorness = interiorness;
+                    }
+                    foreach (var neighbor in neighbors)
+                    {
+                        if (!visited.Contains(neighbor))
+                        {
+                            BreadthSearch.Enqueue(neighbor, neighbor.Interiorness);
+                        }
+                    }
+                }
             }
             catch (Exception e)
             {
-                GD.PrintErr($"\u001b[2J\u001b[H");
+                GD.PrintErr($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
                 Logger.Error($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
             }
             foreach (Point p in StrDb.VoronoiCellVertices)
@@ -1058,7 +1098,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             try
             {
                 tectonics.ApplyStressToTerrain(continents, StrDb.VoronoiCells);
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 7; i++)
                 {
                     FinalzeVertexHeights(StrDb.VoronoiCellVertices, continents);
                 }
@@ -1086,7 +1126,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         {
             try
             {
-                GenerateFromContinents(continents);
+                //GenerateFromContinents(continents, oct);
+                GenerateSurfaceMesh(StrDb.VoronoiCells, oct);
             }
             catch (Exception genError)
             {
@@ -1094,12 +1135,18 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             }
             return 0;
         }, percent);
+        GD.Print($"# of Voronoi Cell Vertices: {StrDb.VoronoiCellVertices.Count}");
+        GD.Print($"# of vertices in Octree: {oct.GetPoints().Count}");
+        MeshConvexDecompositionSettings settings = new MeshConvexDecompositionSettings();
+        settings.ConvexHullApproximation = false;
+        settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Tetrahedron;
+        this.CallDeferred("create_multiple_convex_collisions", settings);
     }
 
-    protected virtual async void GenerateSecondPassWithNoise()
+    protected virtual async void GenerateSecondPassWithNoise(Octree<Point> oct)
     {
         // Call base implementation first
-        GenerateSecondPass();
+        GenerateSecondPass(oct);
 
         // Apply additional noise to Voronoi cell vertices
         foreach (Point p in StrDb.VoronoiCellVertices)
@@ -1117,14 +1164,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
-    protected virtual void GenerateSecondPassScalingWithNoise()
+    protected virtual void GenerateSecondPassScalingWithNoise(Octree<Point> oct)
     {
         VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
         try
         {
             GenericPercent emptyPercent = new GenericPercent();
             GD.Print("Generating Voronoi Cells...");
-            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this);
+            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this, oct);
 
             // First pass: apply scaling and noise to all points
             foreach (Point p in StrDb.VoronoiCellVertices)
@@ -1151,7 +1198,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 float scaleFactor = size * (currentDistance / maxDistance);
                 p.Position = p.Position.Normalized() * scaleFactor;
             }
-            GenerateSurfaceMesh(StrDb.VoronoiCells);
+            GenerateSurfaceMesh(StrDb.VoronoiCells, oct);
         }
         catch (Exception e)
         {
@@ -1161,14 +1208,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
-    protected virtual void GenerateSecondPassNoiseOnly()
+    protected virtual void GenerateSecondPassNoiseOnly(Octree<Point> oct)
     {
         VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
         try
         {
             GenericPercent emptyPercent = new GenericPercent();
             GD.Print("Generating Voronoi Cells...");
-            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this);
+            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this, oct);
 
             // Apply noise to all points
             foreach (Point p in StrDb.VoronoiCellVertices)
@@ -1185,7 +1232,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 p.Height += displacement.Length();
             }
 
-            GenerateSurfaceMesh(StrDb.VoronoiCells);
+            GenerateSurfaceMesh(StrDb.VoronoiCells, oct);
         }
         catch (Exception e)
         {
@@ -1283,7 +1330,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
-    public VoronoiCell[] GetCellNeighbors(VoronoiCell origin, bool includeSameContinent = true)
+    public static VoronoiCell[] GetCellNeighbors(VoronoiCell origin, StructureDatabase StrDb, bool includeSameContinent = true)
     {
         HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
         foreach (Point p in origin.Points)
@@ -1331,7 +1378,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         foreach (int startingCellIndex in startingCells)
         {
             Continent.CRUST_TYPE crustType = rand.RandiRange(0, 100) > 33 ? Continent.CRUST_TYPE.Oceanic : Continent.CRUST_TYPE.Continental;
-            float averageHeight = crustType == Continent.CRUST_TYPE.Oceanic ? rand.RandfRange(-5.0f, 0.0f) : rand.RandfRange(1.2f, 7.0f);
+            float averageHeight = crustType == Continent.CRUST_TYPE.Oceanic ? rand.RandfRange(-10.0f, -3.0f) : rand.RandfRange(1.2f, 7.0f);
             float rotation = Mathf.DegToRad(rand.RandiRange(-360, 360));
             float velocity = rand.RandfRange(0.3f, 1.7f);
             var continent = new Continent(startingCellIndex,
@@ -1361,7 +1408,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             }
             continents[startingCellIndex] = continent;
 
-            var neighborIndices = GetCellNeighbors(cells[startingCellIndex]);
+            var neighborIndices = GetCellNeighbors(cells[startingCellIndex], StrDb);
             continentNeighbors[startingCellIndex] = new List<int>();
             foreach (var nb in neighborIndices)
             {
@@ -1392,7 +1439,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         randomNeighbor = continentNeighbors[index][rand.RandiRange(0, continentNeighbors[index].Count - 1)];
                     continentObj.cells.Add(cells[randomNeighbor]);
                     continentNeighbors[index].Remove(randomNeighbor);
-                    var neighborIndices = GetCellNeighbors(cells[randomNeighbor]);
+                    var neighborIndices = GetCellNeighbors(cells[randomNeighbor], StrDb);
                     foreach (var nb in neighborIndices)
                     {
                         if (neighborChart[nb.Index] == -1)
@@ -1415,7 +1462,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             int poppedIndex = rand.RandiRange(0, (poppableCells.Count - 1));
             int currentVCellIndex = poppableCells[poppedIndex];
             poppableCells.RemoveAt(poppedIndex);
-            var neighborIndices = GetCellNeighbors(cells[currentVCellIndex]);
+            var neighborIndices = GetCellNeighbors(cells[currentVCellIndex], StrDb);
             foreach (var nb in neighborIndices)
             {
                 if (neighborChart[nb.Index] == -1)
@@ -1516,11 +1563,12 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         return continents;
     }
 
-    public void GenerateFromContinents(Dictionary<int, Continent> continents)
+    public void GenerateFromContinents(Dictionary<int, Continent> continents, Octree<Point> oct)
     {
         foreach (var keyValuePair in continents)
         {
-            GenerateSurfaceMesh(keyValuePair.Value.cells);
+            GD.Print($"Generating continent {keyValuePair.Key} | {keyValuePair.Value.cells.Count}");
+            GenerateSurfaceMesh(keyValuePair.Value.cells, oct);
             percent.PercentCurrent++;
         }
     }
@@ -1566,7 +1614,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
-    public virtual void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList)
+    public virtual void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, Octree<Point> oct)
     {
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
@@ -1612,8 +1660,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     st.SetNormal(tangent);
                     if (ProjectToSphere)
                     {
+                        vor.Points[3 * i + j].Position = vor.Points[3 * i + j].Position.Normalized() * (size + vor.Points[3 * i + j].Height / 10f);
                         st.SetColor(GetBiomeColor(((Point)vor.Points[3 * i + j]).Biome, ((Point)vor.Points[3 * i + j]).Height));
-                        st.AddVertex(vor.Points[3 * i + j].ToVector3() * (size + vor.Points[3 * i + j].Height / 10f));
+                        st.AddVertex(vor.Points[3 * i + j].Position);
+                        StrDb.AddPointForCellPlanet(vor.Points[3 * i + j], vor);
+                        oct.Insert(vor.Points[3 * i + j]);
                     }
                     else
                     {
@@ -1621,6 +1672,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     }
                 }
             }
+            vor.GenerateBoundingBox();
         }
         st.CallDeferred("commit", arrMesh);
     }
