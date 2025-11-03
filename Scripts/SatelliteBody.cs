@@ -2,6 +2,7 @@ using System;
 using Godot;
 using UtilityLibrary;
 using MeshGeneration;
+using Structures;
 
 namespace PlanetGeneration;
 
@@ -15,7 +16,9 @@ public partial class SatelliteBody : Node3D
     SatelliteBodyType SatelliteType;
     SatelliteGroupTypes GroupType;
     UnifiedCelestialMesh Mesh;
+    Octree<Point> Oct;
     Godot.Collections.Dictionary bodyDict;
+    StructureDatabase StrDb;
 
     public SatelliteBody(
             CelestialBodyType parentType,
@@ -29,6 +32,9 @@ public partial class SatelliteBody : Node3D
         var mass = (float)baseTemplates["mass"];
         var velocity = (Vector3)baseTemplates["satellite_velocity"];
         var size = (int)baseTemplates["size"];
+        var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
+        Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(size, size, size)));
 
         this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
         this.Mass = mass;
@@ -53,6 +59,9 @@ public partial class SatelliteBody : Node3D
         this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), satType);
         this.Mass = mass;
         this.Velocity = velocity;
+        var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
+        Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(size, size, size)));
     }
 
     public override void _PhysicsProcess(double delta)
@@ -130,8 +139,8 @@ public partial class SatelliteBody : Node3D
         {
             meshParams["size"] = Size;
         }
-        Mesh.ConfigureFrom(meshParams);
-        Mesh.GenerateMesh();
+        Mesh.ConfigureFrom(StrDb, meshParams);
+        Mesh.GenerateMesh(Oct);
     }
 
     public String PickName(Godot.Collections.Dictionary nameDict)

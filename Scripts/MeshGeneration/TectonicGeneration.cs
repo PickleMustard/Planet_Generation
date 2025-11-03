@@ -141,64 +141,130 @@ public class TectonicGeneration
             uAxis = uAxis.Normalized();
             vAxis = vAxis.Normalized();
             GD.Print($"Boundary Cells: {continent.boundaryCells.Count}");
-            foreach (VoronoiCell borderCell in continent.boundaryCells)
+            foreach (Edge e in continent.boundaryEdges)
             {
-                foreach (Edge e in borderCell.Edges)
+                List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e.key]);
+                VoronoiCell neighborCell = null;
+                VoronoiCell borderCell = null;
+                if (neighbors.Count < 2) continue;
+                if (neighbors[0].ContinentIndex == continent.StartingIndex)
                 {
-                    List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e.key]);
-                    VoronoiCell[] original = new VoronoiCell[] { borderCell };
-                    List<VoronoiCell> neighbors2 = new List<VoronoiCell>(neighbors.Except(original));
-                    VoronoiCell neighborCell = null;
-                    if (neighbors2.Count > 0)
+                    borderCell = neighbors[0];
+                    neighborCell = neighbors[1];
+                }
+                else
+                {
+                    neighborCell = neighbors[0];
+                    borderCell = neighbors[1];
+                }
+                if (neighborCell != null && neighborCell.ContinentIndex != continent.StartingIndex)
+                {
+                    Vector3 projectedBorderCellMovement = uAxis * (borderCell.MovementDirection.X * continent.velocity) + vAxis * (borderCell.MovementDirection.Y * continent.velocity);
+                    Vector3 projectedNeighborCellMovement = uAxis * (neighborCell.MovementDirection.X * continents[neighborCell.ContinentIndex].velocity) + vAxis * (neighborCell.MovementDirection.Y * continents[neighborCell.ContinentIndex].velocity);
+
+                    Vector3 EdgeVector = (((Point)e.P).Position - ((Point)e.Q).Position).Normalized();
+                    Vector3 EdgeNormal = EdgeVector.Cross(((Point)e.Q).Position.Normalized());
+
+                    float bcVelNormal = projectedBorderCellMovement.Dot(EdgeNormal);
+                    float ncVelNormal = projectedNeighborCellMovement.Dot(-EdgeNormal);
+
+                    float bcVelTangent = projectedBorderCellMovement.Dot(-EdgeVector);
+                    float ncVelTangent = projectedNeighborCellMovement.Dot(EdgeVector);
+
+                    float compressionStrength = (bcVelNormal - ncVelNormal) * StressScale;
+                    float shearStrength = (bcVelTangent - ncVelTangent) * ShearScale;
+                    if (float.IsNaN(compressionStrength) || double.IsNaN(compressionStrength))
+                        compressionStrength = 0.0f;
+                    if (float.IsNaN(shearStrength) || double.IsNaN(shearStrength))
+                        shearStrength = 0.0f;
+
+                    EdgeStress calculatedStress = new EdgeStress
                     {
-                        neighborCell = neighbors2.First();
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                    if (neighborCell != null && neighborCell.ContinentIndex != borderCell.ContinentIndex)
-                    {
-                        Vector3 projectedBorderCellMovement = uAxis * (borderCell.MovementDirection.X * continent.velocity) + vAxis * (borderCell.MovementDirection.Y * continent.velocity);
-                        Vector3 projectedNeighborCellMovement = uAxis * (neighborCell.MovementDirection.X * continents[neighborCell.ContinentIndex].velocity) + vAxis * (neighborCell.MovementDirection.Y * continents[neighborCell.ContinentIndex].velocity);
+                        CompressionStress = compressionStrength,
+                        ShearStress = shearStrength,
+                        StressDirection = EdgeNormal
+                    };
+                    if (float.IsNaN(calculatedStress.CompressionStress) || double.IsNaN(calculatedStress.CompressionStress) || float.IsNaN(calculatedStress.ShearStress) || double.IsNaN(calculatedStress.ShearStress))
+                        GD.Print($"Stress: {calculatedStress.CompressionStress} + {calculatedStress.ShearStress}");
+                    e.Stress = calculatedStress;
+                    e.Type = ClassifyBoundaryType(calculatedStress);
+                    //var totalStress = calculatedStress.CompressionStress + calculatedStress.ShearStress;
+                    //borderCell.Stress += totalStress;
+                    float totalStress = MathF.Abs(calculatedStress.CompressionStress) * .8f + MathF.Abs(calculatedStress.ShearStress) * .3f;
+                    borderCell.Stress += totalStress;
+                    //switch (e.Type)
+                    //{
+                    //    case EdgeType.inactive:
+                    //        break;
+                    //    case EdgeType.transform:
+                    //        borderCell.Stress += calculatedStress.ShearStress;
+                    //        //neighborCell.Stress += calculatedStress.ShearStress;
+                    //        break;
+                    //    case EdgeType.divergent:
+                    //        borderCell.Stress -= calculatedStress.CompressionStress;
+                    //        //neighborCell.Stress -= calculatedStress.CompressionStress;
+                    //        break;
+                    //    case EdgeType.convergent:
+                    //        borderCell.Stress += calculatedStress.CompressionStress;
+                    //        //neighborCell.Stress += calculatedStress.CompressionStress;
+                    //        break;
+                    //}
 
-                        Vector3 EdgeVector = (((Point)e.P).Position - ((Point)e.Q).Position).Normalized();
-                        Vector3 EdgeNormal = EdgeVector.Cross(((Point)e.Q).Position.Normalized());
+                    //PriorityQueue<Edge, float> toVisit = new PriorityQueue<Edge, float>();
+                    //HashSet<Edge> visitedEdge = new HashSet<Edge>();
+                    //visitedEdge.Add(e);
+                    //toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(e.Q).ToArray(), 0.0f);
+                    //toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges((Point)e.P).ToArray(), 0.0f);
+                    //while (toVisit.Count > 0)
+                    //{
+                    //    Edge current;
+                    //    float distance;
+                    //    bool success = toVisit.TryDequeue(out current, out distance);
+                    //    if (!success) break;
+                    //    if (visitedEdge.Contains(current) || distance > MaxPropagationDistance) continue;
+                    //    visitedEdge.Add(current);
+                    //    float magnitude = CalculateStressAtDistance(e.Stress, distance, current, e);
+                    //    current.StressMagnitude += magnitude;
+                    //    var edges = StrDb.GetIncidentHalfEdges(current.Q);
+                    //    foreach (var edge in edges)
+                    //    {
+                    //        var length = (current.Midpoint - edge.Midpoint).Length();
+                    //        if (!visitedEdge.Contains(edge) && length < MaxPropagationDistance)
+                    //        {
+                    //            toVisit.Enqueue(edge, length);
+                    //        }
+                    //        //toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(current.Q).ToArray(), (current.Midpoint - e.Midpoint).Length());
+                    //        //toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(current.P).ToArray(), (current.Midpoint - e.Midpoint).Length());
+                    //    }
+                    //    edges = StrDb.GetIncidentHalfEdges(current.P);
+                    //    foreach (var edge in edges)
+                    //    {
+                    //        var length = (current.Midpoint - edge.Midpoint).Length();
+                    //        if (!visitedEdge.Contains(edge) && length < MaxPropagationDistance)
+                    //        {
+                    //            toVisit.Enqueue(edge, length);
+                    //        }
+                    //    }
 
-                        float bcVelNormal = projectedBorderCellMovement.Dot(EdgeNormal);
-                        float ncVelNormal = projectedNeighborCellMovement.Dot(EdgeNormal);
-
-                        float bcVelTangent = projectedBorderCellMovement.Dot(EdgeVector);
-                        float ncVelTangent = projectedNeighborCellMovement.Dot(EdgeVector);
-
-                        EdgeStress calculatedStress = new EdgeStress
-                        {
-                            CompressionStress = (bcVelNormal - ncVelNormal) * StressScale,
-                            ShearStress = (bcVelTangent - ncVelTangent) * ShearScale,
-                            StressDirection = EdgeNormal
-                        };
-                        e.Stress = calculatedStress;
-                        e.Type = ClassifyBoundaryType(calculatedStress);
-                        PriorityQueue<Edge, float> toVisit = new PriorityQueue<Edge, float>();
-                        HashSet<Edge> visited = new HashSet<Edge>();
-                        visited.Add(e);
-                        toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(e.Q).ToArray(), 0.0f);
-                        toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges((Point)e.P).ToArray(), 0.0f);
-                        while (toVisit.Count > 0)
-                        {
-                            Edge current;
-                            float distance;
-                            bool success = toVisit.TryDequeue(out current, out distance);
-                            if (!success) break;
-                            if (visited.Contains(current) || distance > MaxPropagationDistance) continue;
-                            visited.Add(current);
-                            float magnitude = CalculateStressAtDistance(e.Stress, distance, current, e);
-                            current.StressMagnitude += magnitude;
-                            toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(current.Q).ToArray(), (current.Midpoint - e.Midpoint).Length());
-                            toVisit.EnqueueRange(StrDb.GetIncidentHalfEdges(current.P).ToArray(), (current.Midpoint - e.Midpoint).Length());
-                        }
-
-                    }
+                    //}
+                }
+            }
+            Queue<VoronoiCell> queue = new Queue<VoronoiCell>(continent.boundaryCells);
+            HashSet<VoronoiCell> visited = new HashSet<VoronoiCell>();
+            while (queue.Count > 0)
+            {
+                var cell = queue.Dequeue();
+                visited.Add(cell);
+                foreach (var edge in cell.Edges)
+                {
+                    edge.StressMagnitude += cell.Stress;
+                }
+                var neighbors = UnifiedCelestialMesh.GetCellNeighbors(cell, StrDb);
+                foreach (var neighbor in neighbors)
+                {
+                    neighbor.Stress = neighbor.Stress + (cell.Stress * Mathf.Pow(PropagationFalloff, (float)cell.Interiorness)) / (neighbor.Increment);
+                    neighbor.Increment++;
+                    if (!visited.Contains(neighbor) && neighbor.ContinentIndex == continentIndex) queue.Enqueue(neighbor);
                 }
             }
             continents[continentIndex] = continent;
@@ -230,7 +296,6 @@ public class TectonicGeneration
             float alteredHeight = 0.0f;
             foreach (Edge e in edges)
             {
-                //GD.PrintRaw($"Edge: {e} with stress: {e.TotalStress} from {e.CalculatedStress} and {e.PropogatedStress}, Edge Type: {e.Type}\n");
                 switch (e.Type)
                 {
                     case EdgeType.inactive:

@@ -2,10 +2,11 @@ using System;
 using Godot;
 using PlanetGeneration;
 using UtilityLibrary;
+using UI;
 
 namespace UI;
 
-public partial class SatelliteItem : VBoxContainer
+public partial class SatelliteItem : HBoxContainer
 {
     [Signal]
     public delegate void ItemUpdateEventHandler();
@@ -15,6 +16,9 @@ public partial class SatelliteItem : VBoxContainer
 
     [Export]
     public Button RemoveItem;
+
+    [Export]
+    public Button DetailsToggle;
 
     [Export]
     public OptionButton OptionButton;
@@ -44,12 +48,7 @@ public partial class SatelliteItem : VBoxContainer
     public SpinBox size;
 
     [Export]
-    public SpinBox numInBeltLower;
-
-    [Export]
-    public SpinBox numInBeltUpper;
-
-    private HBoxContainer beltNumContainer;
+    public VBoxContainer DetailsPanel;
 
     public Action<SatelliteItem> OnRemoveRequested;
 
@@ -58,6 +57,8 @@ public partial class SatelliteItem : VBoxContainer
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
+
+    private PackedScene _detailPanelScene;
 
     //Hidden Values
     //Base Mesh
@@ -86,18 +87,15 @@ public partial class SatelliteItem : VBoxContainer
     public override void _EnterTree()
     {
         // Cache field nodes if not set via exported references
-        OptionButton ??= GetNodeOrNull<OptionButton>("Content/TypeContent/OptionButton");
-        X ??= GetNodeOrNull<SpinBox>("Content/PositionContent/X");
-        Y ??= GetNodeOrNull<SpinBox>("Content/PositionContent/Y");
-        Z ??= GetNodeOrNull<SpinBox>("Content/PositionContent/Z");
-        velX ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/velX");
-        velY ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/velY");
-        velZ ??= GetNodeOrNull<SpinBox>("Content/VelocityContent/velZ");
-        mass ??= GetNodeOrNull<SpinBox>("Content/MassContent/mass");
-        size ??= GetNodeOrNull<SpinBox>("Content/SizeContent/size");
-        numInBeltLower ??= GetNodeOrNull<SpinBox>("Content/BeltContent/beltNumLower");
-        numInBeltUpper ??= GetNodeOrNull<SpinBox>("Content/BeltContent/beltNumUpper");
-        beltNumContainer ??= GetNodeOrNull<HBoxContainer>("Content/BeltContent");
+        OptionButton ??= GetNodeOrNull<OptionButton>("MainContent/Content/TypeContent/OptionButton");
+        X ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/X");
+        Y ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Y");
+        Z ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Z");
+        velX ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velX");
+        velY ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velY");
+        velZ ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velZ");
+        mass ??= GetNodeOrNull<SpinBox>("MainContent/Content/MassContent/mass");
+        size ??= GetNodeOrNull<SpinBox>("MainContent/Content/SizeContent/size");
 
         // Apply input constraints to fields
         ApplyConstraints();
@@ -106,11 +104,21 @@ public partial class SatelliteItem : VBoxContainer
     public void SubscribeEvents()
     {
         // Hook remove
-        var remove = GetNodeOrNull<Button>("Header/RemoveItem");
+        var remove = GetNodeOrNull<Button>("MainContent/Header/RemoveItem");
         if (remove != null)
         {
             remove.Pressed += () => OnRemoveRequested?.Invoke(this);
         }
+
+        // Hook details toggle
+        DetailsToggle ??= GetNodeOrNull<Button>("MainContent/Header/DetailsToggle");
+        DetailsPanel ??= GetNodeOrNull<VBoxContainer>("DetailsPanel");
+        if (DetailsToggle != null)
+        {
+            DetailsToggle.Pressed += ToggleDetailsPanel;
+        }
+
+        _detailPanelScene = GD.Load<PackedScene>("res://UI/DetailPanel.tscn");
         // Hook up input events for updates
         var spinBoxes = new[]
         {
@@ -122,26 +130,12 @@ public partial class SatelliteItem : VBoxContainer
             velZ,
             mass,
             size,
-            numInBeltLower,
-            numInBeltUpper,
         };
         foreach (var sb in spinBoxes)
         {
             if (sb != null)
             {
                 sb.ValueChanged += value => EmitSignal(SignalName.ItemUpdate);
-            }
-        }
-
-        if (beltNumContainer != null)
-        {
-            if (parentType == CelestialBodyType.Star || parentType == CelestialBodyType.BlackHole)
-            {
-                beltNumContainer.Visible = true;
-            }
-            else
-            {
-                beltNumContainer.Visible = false;
             }
         }
 
@@ -223,6 +217,56 @@ public partial class SatelliteItem : VBoxContainer
         octaveRange = (int[])noiseSettings["octave_range"];
     }
 
+    public void SetTemplate(Godot.Collections.Dictionary t)
+    {
+        var template = (Godot.Collections.Dictionary)t["template"];
+
+        // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
+        var position = (Vector3)template["position"];
+        var velocity = (Vector3)template["velocity"];
+        if (X != null)
+            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
+        if (Y != null)
+            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
+        if (Z != null)
+            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+
+        if (velX != null)
+            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
+        if (velY != null)
+            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
+        if (velZ != null)
+            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+
+        if (mass != null)
+            mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
+        if (size != null)
+            size.Value = Mathf.Clamp((float)template["size"], 0f, SizeLimit);
+
+        var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
+        subdivisions = (int)baseMesh["subdivisions"];
+        verticesPerEdge = new int[subdivisions, 2];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        for (int i = 0; i < subdivisions; i++)
+        {
+            verticesPerEdge[i, 0] = (int)vpeArray[i][0];
+            verticesPerEdge[i, 1] = (int)vpeArray[i][1];
+        }
+        numAbberations = (int)baseMesh["num_abberations"];
+        numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
+
+        var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
+        xScaleRange = (float[])scaling["x_scale_range"];
+        yScaleRange = (float[])scaling["y_scale_range"];
+        zScaleRange = (float[])scaling["z_scale_range"];
+
+        var noiseSettings = (Godot.Collections.Dictionary)t["noise_settings"];
+        amplitudeRange = (float[])noiseSettings["amplitude_range"];
+        scalingRange = (float[])noiseSettings["scaling_range"];
+        octaveRange = (int[])noiseSettings["octave_range"];
+
+    }
+
     public String PickName(Godot.Collections.Dictionary nameDict)
     {
         if (nameDict == null || nameDict.Count == 0)
@@ -274,7 +318,7 @@ public partial class SatelliteItem : VBoxContainer
 
     public void UpdateHeaderFromType(string typeName)
     {
-        var headerBtn = GetNodeOrNull<Button>("Header/Toggle");
+        var headerBtn = GetNodeOrNull<Button>("MainContent/Header/Toggle");
         if (headerBtn != null)
         {
             headerBtn.Text = $"{satName} ({typeName})";
@@ -353,17 +397,6 @@ public partial class SatelliteItem : VBoxContainer
         return new Vector3(Mathf.Clamp((float)X.Value, -Limit, Limit), Mathf.Clamp((float)Y.Value, -Limit, Limit), Mathf.Clamp((float)Z.Value, -Limit, Limit));
     }
 
-    public (int, int) GetNumberInBelt()
-    {
-        if (numInBeltLower != null && numInBeltUpper != null)
-        {
-            int lowerRange = Mathf.RoundToInt(numInBeltLower.Value);
-            int upperRange = Mathf.RoundToInt(numInBeltUpper.Value);
-            return (lowerRange, upperRange);
-        }
-        return (25, 25);
-    }
-
     public Godot.Collections.Dictionary ToParams()
     {
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
@@ -400,5 +433,84 @@ public partial class SatelliteItem : VBoxContainer
         noiseDict.Add("octave_range", octaveRange);
         dict.Add("noise_settings", noiseDict);
         return dict;
+    }
+
+    private void ToggleDetailsPanel()
+    {
+        if (DetailsPanel == null) return;
+
+        if (DetailsPanel.GetChildCount() == 0)
+        {
+            // Create and setup detail panel
+            var detailPanel = _detailPanelScene.Instantiate<DetailPanel>();
+            DetailsPanel.AddChild(detailPanel);
+            detailPanel.SetupForSatelliteItem();
+            detailPanel.ValueChanged += OnDetailValueChanged;
+
+            // Set current values
+            UpdateDetailPanelValues();
+        }
+
+        DetailsPanel.Visible = !DetailsPanel.Visible;
+    }
+
+    private void OnDetailValueChanged()
+    {
+        // Update hidden values from detail panel
+        UpdateHiddenValuesFromDetailPanel();
+        EmitSignal(SignalName.ItemUpdate);
+    }
+
+    private void UpdateDetailPanelValues()
+    {
+        if (DetailsPanel?.GetChildCount() > 0)
+        {
+            var detailPanel = DetailsPanel.GetChild(0) as DetailPanel;
+            if (detailPanel != null)
+            {
+                // Base Mesh values
+                detailPanel.SetSubdivisions(subdivisions);
+                detailPanel.SetVerticesPerEdge(verticesPerEdge);
+                detailPanel.SetAberrations(numAbberations);
+                detailPanel.SetDeformationCycles(numDeformationCycles);
+
+                // Scaling values
+                detailPanel.SetTectonicsValues("X Scale", xScaleRange);
+                detailPanel.SetTectonicsValues("Y Scale", yScaleRange);
+                detailPanel.SetTectonicsValues("Z Scale", zScaleRange);
+
+                // Noise values
+                detailPanel.SetTectonicsValues("Amplitude", amplitudeRange);
+                detailPanel.SetTectonicsValues("Scaling", scalingRange);
+                detailPanel.SetTectonicsValues("Octaves", Array.ConvertAll(octaveRange, x => (float)x));
+            }
+        }
+    }
+
+    private void UpdateHiddenValuesFromDetailPanel()
+    {
+        if (DetailsPanel?.GetChildCount() > 0)
+        {
+            var detailPanel = DetailsPanel.GetChild(0) as DetailPanel;
+            if (detailPanel != null)
+            {
+                // Base Mesh values
+                subdivisions = detailPanel.GetSubdivisions();
+                verticesPerEdge = detailPanel.GetVerticesPerEdge(subdivisions);
+                numAbberations = detailPanel.GetAberrations();
+                numDeformationCycles = detailPanel.GetDeformationCycles();
+
+                // Scaling values
+                xScaleRange = detailPanel.GetTectonicsValues("X Scale");
+                yScaleRange = detailPanel.GetTectonicsValues("Y Scale");
+                zScaleRange = detailPanel.GetTectonicsValues("Z Scale");
+
+                // Noise values
+                amplitudeRange = detailPanel.GetTectonicsValues("Amplitude");
+                scalingRange = detailPanel.GetTectonicsValues("Scaling");
+                var octavesFloat = detailPanel.GetTectonicsValues("Octaves");
+                octaveRange = Array.ConvertAll(octavesFloat, x => (int)x);
+            }
+        }
     }
 }

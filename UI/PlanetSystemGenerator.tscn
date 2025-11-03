@@ -5,7 +5,6 @@
 
 [node name="PlanetSystemGeneratorUI" type="Control"]
 layout_mode = 3
-anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
@@ -33,10 +32,11 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="TabContainer" type="TabContainer" parent="Panel/MarginContainer"]
+custom_minimum_size = Vector2(460, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 size_flags_vertical = 3
 current_tab = 0
+drag_to_rearrange_enabled = true
 
 [node name="BodiesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer"]
 layout_mode = 2
@@ -69,6 +69,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 draw_focus_border = true
+horizontal_scroll_mode = 0
 
 [node name="BodiesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/Scroll"]
 layout_mode = 2
@@ -79,23 +80,40 @@ theme_override_constants/separation = 8
 [node name="Separator" type="HSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
 layout_mode = 2
 
-[node name="GenerationRow" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
+[node name="GenerationMargin" type="MarginContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
 layout_mode = 2
 
-[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationRow"]
+[node name="GenerationRow" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin"]
+layout_mode = 2
+
+[node name="SaveFileButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+size_flags_stretch_ratio = 3.0
+text = "Save System"
+
+[node name="VSeparator" type="VSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+layout_mode = 2
+
+[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 size_flags_stretch_ratio = 3.0
 text = "Generate System"
 
-[node name="ValidateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationRow"]
+[node name="VSeparator2" type="VSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+layout_mode = 2
+
+[node name="ValidateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+size_flags_stretch_ratio = 3.0
 text = "Validate System"
 
-[node name="StabilityIndicator" type="TextureRect" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationRow"]
+[node name="StabilityIndicator" type="TextureRect" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
 layout_mode = 2
 texture = ExtResource("2_pj1xb")
 expand_mode = 3

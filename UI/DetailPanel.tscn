@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3 uid="uid://dyc62w6o73sgm"]
+
+[ext_resource type="Script" uid="uid://c37ajr2uryr8d" path="res://UI/DetailPanel.cs" id="1"]
+
+[node name="DetailPanel" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="BaseMeshSection" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="BaseMeshHeader" type="Label" parent="BaseMeshSection"]
+layout_mode = 2
+text = "Base Mesh"
+
+[node name="SubdivisionsControl" type="HBoxContainer" parent="BaseMeshSection"]
+layout_mode = 2
+
+[node name="SubdivisionsLabel" type="Label" parent="BaseMeshSection/SubdivisionsControl"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Subdivisions"
+
+[node name="SubdivisionsSpinBox" type="SpinBox" parent="BaseMeshSection/SubdivisionsControl"]
+layout_mode = 2
+min_value = 1.0
+max_value = 10.0
+value = 3.0
