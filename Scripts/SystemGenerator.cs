@@ -98,7 +98,7 @@ public partial class SystemGenerator : Node
         }
 
         // Handle satellites if present
-        if (body.ContainsKey("Satellites") && body["Satellites"].Obj is Godot.Collections.Array satellites)
+        if (body.ContainsKey("satellites") && body["satellites"].Obj is Godot.Collections.Array satellites)
         {
             await GenerateSatellitesAsync(celBody, satellites);
         }

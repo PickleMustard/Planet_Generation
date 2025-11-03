@@ -1,3 +1,4 @@
+using Godot;
 
 namespace Structures
 {
@@ -5,7 +6,7 @@ namespace Structures
     /// Directed half-edge representation for canonical mesh topology traversal.
     /// Twin points in the opposite direction; Left is the triangle on the left side.
     /// </summary>
-    public class HalfEdge
+    public partial class HalfEdge : Resource
     {
         /// <summary>
         /// Gets the starting point (vertex) of this half-edge.

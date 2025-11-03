@@ -5,7 +5,7 @@ using Godot;
 using static Structures.Biome;
 
 namespace Structures;
-public class Point : IPoint, IEquatable<Point>
+public partial class Point : Resource, IEquatable<Point>
 {
     private int _index;
     private float[] _position = new float[3];
@@ -124,7 +124,7 @@ public class Point : IPoint, IEquatable<Point>
         }
     }
 
-    public static Vector3[] ToVectors3(IEnumerable<IPoint> points) => points.Select(point => ((Point)point).ToVector3()).ToArray();
+    public static Vector3[] ToVectors3(IEnumerable<Point> points) => points.Select(point => ((Point)point).ToVector3()).ToArray();
     public static Point[] ToPoints(IEnumerable<Vector3> vertices) => vertices.Select(vertex => ToPoint(vertex)).ToArray();
     public static Point ToPoint(Vector3 vertex) => new Point(vertex);
     public Vector3 ToVector3() => new Vector3(Components[0], Components[1], Components[2]);

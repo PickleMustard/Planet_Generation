@@ -3,7 +3,7 @@ using Godot;
 
 
 namespace Structures;
-public class Continent
+public partial class Continent : Resource
 {
     public enum CRUST_TYPE
     {
@@ -21,6 +21,7 @@ public class Continent
     public int StartingIndex;
     public List<VoronoiCell> cells;
     public HashSet<VoronoiCell> boundaryCells;
+    public HashSet<Edge> boundaryEdges = new HashSet<Edge>();
     public HashSet<Point> points;
     public List<Point> ConvexHull;
     public Vector3 averagedCenter;

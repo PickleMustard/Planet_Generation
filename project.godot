@@ -27,6 +27,10 @@ project/assembly_name="Delaunay Triangulation Map Generation"
 
 import/blender/enabled=false
 
+[gui]
+
+theme/custom="uid://cdh68r2entt7h"
+
 [rendering]
 
 environment/glow/upscale_mode=0

@@ -1,6 +1,8 @@
 using System;
 using Godot;
 using UtilityLibrary;
+using Structures;
+using MeshGeneration;
 
 namespace PlanetGeneration;
 
@@ -15,7 +17,9 @@ public partial class CelestialBody : Node3D
     public Vector3 TotalForce;
     public CelestialBodyType Type;
     public UnifiedCelestialMesh Mesh;
+    public Octree<Point> Oct;
     private Godot.Collections.Dictionary bodyDict;
+    private StructureDatabase StrDb;
 
     public CelestialBody(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
     {
@@ -26,6 +30,11 @@ public partial class CelestialBody : Node3D
         var mass = (float)baseTemplates["mass"];
         var velocity = (Vector3)baseTemplates["velocity"];
         var size = (int)baseTemplates["size"];
+        Vector3 aabbSize = new Vector3(size, size, size) * 1.2f;
+        Vector3 aabbBegin = Vector3.Zero - aabbSize;
+        var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
+        Oct = new Octree<Point>(new Aabb(aabbBegin, aabbSize * 2f));
 
         this.Type = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
         this.Mass = mass;
@@ -118,8 +127,9 @@ public partial class CelestialBody : Node3D
         }
         this.CallDeferred("set_name", (String)meshParams["name"]);
         GD.Print($"Mesh Params: {meshParams}");
-        Mesh.ConfigureFrom(meshParams);
-        Mesh.GenerateMesh();
+        Mesh.ConfigureFrom(StrDb, meshParams);
+        Mesh.GenerateMesh(Oct);
+        StrDb.FinalizeDB();
     }
 
     public String PickName(Godot.Collections.Dictionary nameDict)
@@ -140,6 +150,99 @@ public partial class CelestialBody : Node3D
 
         return (string)names[random.RandiRange(0, names.Count - 1)];
     }
+
+    public Point FindNearest(Vector3 position)
+    {
+        GD.Print($"Global Position: {this.GlobalPosition}");
+        Vector3 localSpace = (position - this.GlobalPosition);
+        GD.Print($"Local Space: {localSpace}");
+        Point desired = new Point(localSpace, 0);
+        Point result = Oct.FindNearest(desired);
+        PolygonRendererSDL.DrawPoint(this, 1, result.ToVector3(), 0.05f, Colors.Red);
+
+        var cells = StrDb.PlanetMap[result];
+        Godot.Collections.Array<VoronoiCell> contains = new Godot.Collections.Array<VoronoiCell>();
+        foreach (var cell in cells)
+        {
+            desired.Position = desired.Position.Normalized() * (Mesh.size + cell.Height);
+            if (cell.BoundingBox.HasPoint(desired.Position)) contains.Add(cell);
+        }
+        if (contains.Count == 0)
+        {
+            return null;
+        }
+        else if (contains.Count == 1)
+        {
+            GD.Print($"Point is in a single cell: {contains[0]}");
+        }
+        else if (contains.Count > 1)
+        {
+            float minDist = float.MaxValue;
+            VoronoiCell minCell = null;
+            foreach (var cell in contains)
+            {
+                float dist = (cell.Center - desired.Position).LengthSquared();
+                if (dist < minDist)
+                {
+                    minDist = dist;
+                    minCell = cell;
+                }
+            }
+            GD.Print($"Point is in multiple cells: {minCell}");
+        }
+        return result;
+    }
+
+    public MeshInstance3D CreateDebugWireframe(Aabb aabb)
+    {
+        Vector3[] corners = new Vector3[] { aabb.GetEndpoint(0), aabb.GetEndpoint(1), aabb.GetEndpoint(2), aabb.GetEndpoint(3), aabb.GetEndpoint(4), aabb.GetEndpoint(5), aabb.GetEndpoint(6), aabb.GetEndpoint(7) };
+        var lineVertices = new Vector3[]
+        {
+            // Bottom face
+            corners[0], corners[1],
+            corners[1], corners[5],
+            corners[5], corners[4],
+            corners[4], corners[0],
+            // Top face
+            corners[2], corners[3],
+            corners[3], corners[7],
+            corners[7], corners[6],
+            corners[6], corners[2],
+            // Vertical edges
+            corners[0], corners[2],
+            corners[1], corners[3],
+            corners[4], corners[6],
+            corners[5], corners[7]
+        };
+
+        // 3. Create the ArrayMesh
+        var mesh = new ArrayMesh();
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)ArrayMesh.ArrayType.Max);
+        arrays[(int)ArrayMesh.ArrayType.Vertex] = lineVertices;
+
+        // 4. Add the vertices as a surface with a line primitive type
+        mesh.AddSurfaceFromArrays(ArrayMesh.PrimitiveType.Lines, arrays);
+
+        // 5. Create the MeshInstance3D node
+        var meshInstance = new MeshInstance3D
+        {
+            Mesh = mesh,
+            Name = "AABB_Wireframe"
+        };
+
+        var material = new StandardMaterial3D
+        {
+            AlbedoColor = Colors.White,
+            // Use unshaded mode to make the color constant regardless of lighting
+            ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded
+        };
+        meshInstance.MaterialOverride = material;
+
+        return meshInstance;
+
+    }
+
     private void CalculateTectonicMeshFromParams(Godot.Collections.Dictionary definedMesh, Godot.Collections.Dictionary meshParams)
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();

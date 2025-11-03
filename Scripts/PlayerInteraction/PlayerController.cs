@@ -1,4 +1,7 @@
+using System.Text.RegularExpressions;
 using Godot;
+using PlanetGeneration;
+using UtilityLibrary;
 
 public partial class PlayerController : Node3D
 {
@@ -44,6 +47,7 @@ public partial class PlayerController : Node3D
             _inputHandler.VerticalMove += OnVerticalMove;
             _inputHandler.CameraLook += OnCameraLook;
             _inputHandler.IndependentRotatation += OnMakeCameraIndependent;
+            _inputHandler.CastRay += OnCastRay;
         }
     }
 
@@ -73,6 +77,25 @@ public partial class PlayerController : Node3D
         _camera.GlobalPosition = _camera.GlobalPosition + currentVelocity * deltaTime;
 
         UpdateCamera();
+    }
+
+    private void OnCastRay(Vector3 origin, Vector3 direction)
+    {
+        var query = PhysicsRayQueryParameters3D.Create(origin, direction);
+        query.CollideWithAreas = true;
+        var result = GetWorld3D().DirectSpaceState.IntersectRay(query);
+        GD.Print(result);
+        var collider = (Node3D)result["collider"];
+        var position = (Vector3)result["position"];
+        string parentName = ((string)collider.GetName()).Split("_")[0];
+        parentName = Regex.Replace(parentName, "[0-9]", "");
+        var celestialBody = collider.FindParent(parentName) as CelestialBody;
+        var root = GetTree().GetRoot();
+        PolygonRendererSDL.DrawLine(root, 1, origin, direction, Colors.Red);
+        GD.Print(celestialBody.GetName());
+        var nearest = celestialBody.FindNearest(position);
+        GD.Print(nearest);
+
     }
 
     private void UpdateCamera()

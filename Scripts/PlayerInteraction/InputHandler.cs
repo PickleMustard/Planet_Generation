@@ -29,6 +29,9 @@ public partial class InputHandler : Node
     [Signal]
     public delegate void IndependentRotatationEventHandler(bool IsMouseButtonPressed);
 
+    [Signal]
+    public delegate void CastRayEventHandler(Vector3 origin, Vector3 direction);
+
     public override void _Ready()
     {
         Input.SetMouseMode(Input.MouseModeEnum.Captured);
@@ -88,6 +91,14 @@ public partial class InputHandler : Node
             if (keyEvent.Keycode == Key.Shift)
             {
                 EmitSignal(SignalName.Accelerate, true);
+            }
+            if (keyEvent.Keycode == Key.R)
+            {
+                var mousePos = GetViewport().GetMousePosition();
+                var camera = GetNode<Camera3D>("../Camera3D");
+                Vector3 origin = camera.ProjectRayOrigin(mousePos);
+                var direction = origin + camera.ProjectRayNormal(mousePos) * 1000f;
+                EmitSignal(SignalName.CastRay, origin, direction);
             }
         }
         //Button release

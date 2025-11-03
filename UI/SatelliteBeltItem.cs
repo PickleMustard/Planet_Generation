@@ -54,7 +54,7 @@ public partial class SatelliteBeltItem : VBoxContainer
     [Export]
     public OptionButton BeltGrouping;
 
-    private HBoxContainer beltNumContainer;
+    private HBoxContainer BeltNumContainer;
     private Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
 
     public Action<SatelliteBeltItem> OnRemoveRequested;
@@ -84,7 +84,8 @@ public partial class SatelliteBeltItem : VBoxContainer
         MaxSize ??= GetNodeOrNull<SpinBox>("Content/SizeMaxContent/MaxSize");
         NumInBeltLower ??= GetNodeOrNull<SpinBox>("Content/BeltContent/NumInBeltLower");
         NumInBeltUpper ??= GetNodeOrNull<SpinBox>("Content/BeltContent/NumInBeltUpper");
-        beltNumContainer ??= GetNodeOrNull<HBoxContainer>("Content/BeltContent");
+        BeltNumContainer ??= GetNodeOrNull<HBoxContainer>("Content/BeltContent");
+        BeltGrouping ??= GetNodeOrNull<OptionButton>("Content/BeltGrouping");
 
         // Apply input constraints to fields
         ApplyConstraints();
@@ -207,10 +208,65 @@ public partial class SatelliteBeltItem : VBoxContainer
         }
         if (BeltGrouping != null)
         {
+            BeltGrouping.Clear();
+            foreach (var name in System.Enum.GetNames(typeof(GroupingCategories)))
+                BeltGrouping.AddItem(name);
+        }
+        templateDict = t;
+    }
+
+    public void SetTemplate(Godot.Collections.Dictionary t)
+    {
+        var template = (Godot.Collections.Dictionary)t["template"];
+        var apogee = (float)template["ring_apogee"];
+        var perigee = (float)template["ring_perigee"];
+        var velocity = (Vector3)template["ring_velocity"];
+        var lowerRange = (int)template["lower_range"];
+        var upperRange = (int)template["upper_range"];
+        var grouping = (String)template["grouping"];
+
+        if (Apogee != null)
+        {
+            Apogee.Value = Mathf.Clamp((float)apogee, 0f, Limit);
+        }
+        if (Perigee != null)
+        {
+            Perigee.Value = Mathf.Clamp((float)perigee, 0f, Limit);
+        }
+        if (RingVelocityX != null)
+        {
+            RingVelocityX.Value = Mathf.Clamp((float)velocity.X, 0f, Limit);
+        }
+        if (RingVelocityY != null)
+        {
+            RingVelocityY.Value = Mathf.Clamp((float)velocity.Y, 0f, Limit);
+        }
+        if (RingVelocityZ != null)
+        {
+            RingVelocityZ.Value = Mathf.Clamp((float)velocity.Z, 0f, Limit);
+        }
+        if (MinMass != null)
+            MinMass.Value = Mathf.Clamp((float)template["mass_min"], 0f, MassLimit);
+        if (MaxMass != null)
+            MaxMass.Value = Mathf.Clamp((float)template["mass_max"], 0f, MassLimit);
+        if (MinSize != null)
+            MinSize.Value = Mathf.Clamp((float)template["size_min"], 0f, SizeLimit);
+        if (MaxSize != null)
+            MaxSize.Value = Mathf.Clamp((float)template["size_max"], 0f, SizeLimit);
+        if (NumInBeltLower != null)
+        {
+            NumInBeltLower.Value = lowerRange;
+        }
+        if (NumInBeltUpper != null)
+        {
+            NumInBeltUpper.Value = upperRange;
+        }
+        if (BeltGrouping != null)
+        {
             if (System.Enum.TryParse<GroupingCategories>(grouping, false, out var group))
                 BeltGrouping.Select((int)group);
         }
-        templateDict = t;
+
     }
 
     private void ApplyConstraints()
@@ -275,14 +331,6 @@ public partial class SatelliteBeltItem : VBoxContainer
         return Mathf.Clamp((float)Perigee.Value, -Limit, Limit);
     }
 
-    //public Vector3 GetRingPosition()
-    //{
-    //    float x = Mathf.Clamp((float)RingDistanceX.Value, -Limit, Limit);
-    //    float y = Mathf.Clamp((float)RingDistanceY.Value, -Limit, Limit);
-    //    float z = Mathf.Clamp((float)RingDistanceZ.Value, -Limit, Limit);
-    //    return new Vector3(x, y, z);
-    //}
-
     public Vector3 GetRingVelocity()
     {
         float vx = Mathf.Clamp((float)RingVelocityX.Value, -Limit, Limit);
@@ -331,6 +379,15 @@ public partial class SatelliteBeltItem : VBoxContainer
         return (25, 75);
     }
 
+    public String GetBeltGrouping()
+    {
+        if (BeltGrouping != null && BeltGrouping.Selected >= 0)
+        {
+            return BeltGrouping.GetItemText(BeltGrouping.Selected);
+        }
+        return "Balanced";
+    }
+
     public Godot.Collections.Dictionary ToParams()
     {
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
@@ -345,6 +402,7 @@ public partial class SatelliteBeltItem : VBoxContainer
         var numRange = GetNumberInBelt();
         dict.Add("lower_range", numRange.Item1);
         dict.Add("upper_range", numRange.Item2);
+        dict.Add("grouping", GetBeltGrouping());
         return dict;
     }
 }

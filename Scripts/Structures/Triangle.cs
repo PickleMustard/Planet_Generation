@@ -1,6 +1,7 @@
 using System.Collections.Generic;
+using Godot;
 namespace Structures;
-public class Triangle : ITriangle
+public partial class Triangle : Resource
 {
     public int Index { get; set; }
     public IList<Point> Points { get; set; }

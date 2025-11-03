@@ -1,0 +1,84 @@
+[[bodies]]
+type = "BlackHole"
+
+[[bodies.celestial.template]]
+position = [0.0, 0.0, 0.0]
+velocity = [0.0, 0.0, 0.0]
+mass = 1000000.0
+size = 10
+
+[[bodies.celestial.mesh]]
+base_mesh = { subdivisions = 1, vertices_per_edge = [[5, 12]], num_abberations = 1, num_deformation_cycles = 1 }
+tectonic = { num_continents = [0, 1], stress_scale = [1.000, 5.000], shear_scale = [
+  0.500,
+  2.000,
+], max_propagation_distance = [0.020, 0.200], propagation_falloff = [
+  0.500,
+  1.000,
+], inactive_stress_threshold = [0.020, 0.200], general_height_scale = [
+  0.500,
+  1.500,
+], general_shear_scale = [0.500, 1.500], general_compression_scale = [
+  1.500,
+  2.500,
+], general_transform_scale = [1.200, 1.800] }
+
+[[bodies.celestial.satellites]]
+type = "AsteroidBelt"
+
+[[bodies.celestial.satellites.template]]
+ring_apogee = 8000.0
+ring_perigee = 250.0
+ring_velocity = [0.0, 2.0, 0.0]
+lower_range = 6
+upper_range = 15
+grouping = "Balanced"
+mass_min = 1.0
+mass_max = 10.0
+size_min = 1.0
+size_max = 5.0
+
+[[bodies]]
+type = "RockyPlanet"
+
+[[bodies.celestial.template]]
+position = [150.0, 0.0, 0.0]
+velocity = [0.0, 0.0, 0.0]
+mass = 100.0
+size = 50
+
+[[bodies.celestial.mesh]]
+base_mesh = { subdivisions = 2, vertices_per_edge = [[4, 6], [2, 3]], num_abberations = 3, num_deformation_cycles = 3 }
+tectonic = { num_continents = [13, 25], stress_scale = [1.100, 1.100], shear_scale = [
+  1.100,
+  1.100,
+], max_propagation_distance = [0.010, 0.010], propagation_falloff = [
+  0.200,
+  0.200,
+], inactive_stress_threshold = [0.010, 0.010], general_height_scale = [
+  0.600,
+  0.600,
+], general_shear_scale = [1.100, 1.100], general_compression_scale = [
+  1.200,
+  1.200,
+], general_transform_scale = [1.000, 1.200] }
+
+[[bodies.celestial.satellites]]
+type = "Asteroid"
+
+[[bodies.celestial.satellites.template]]
+position = [450.0, 0.0, 0.0]
+velocity = [0.0, 2.0, 0.0]
+mass = 4.0
+size = 10
+
+[[bodies.celestial.satellites.mesh]]
+base_mesh = { subdivisions = 1, vertices_per_edge = [[2, 3]], num_abberations = 0, num_deformation_cycles = 0 }
+scaling = { scaling_range_x = [1.000, 1.200], scaling_range_y = [1.000, 1.200], scaling_range_z = [
+  1.000,
+  1.200,
+] }
+noise_settings = { amplitude_range = [5.000, 5.000], scaling_range = [
+  5.000,
+  5.000,
+], octave_range = [4, 8] }

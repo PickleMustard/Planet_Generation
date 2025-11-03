@@ -1,9 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using Godot;
 
 namespace Structures;
-public class Face
+public partial class Face : Resource
 {
     public Point[] v;
     public Edge[] e;

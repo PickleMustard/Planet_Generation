@@ -41,7 +41,7 @@ public class VoronoiCellGeneration
     /// and creates Voronoi cells by triangulating the projected circumcenters.
     /// </summary>
     /// <param name="percent">Progress tracking object for monitoring generation progress.</param>
-    public void GenerateVoronoiCells(GenericPercent percent, UnifiedCelestialMesh mesh)
+    public void GenerateVoronoiCells(GenericPercent percent, UnifiedCelestialMesh mesh, Octree<Point> oct)
     {
         this.mesh = mesh;
         Logger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");

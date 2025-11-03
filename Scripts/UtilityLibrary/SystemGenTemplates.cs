@@ -168,221 +168,72 @@ namespace UtilityLibrary
                             var satellites =
                                 new Godot.Collections.Array<Godot.Collections.Dictionary>();
                             if (
-                                bodyTable.HasKey("satellites")
-                                && bodyTable["satellites"] is TomlArray satellitesArray
+                                tabl.HasKey("satellites")
+                                && tabl["satellites"] is TomlArray satellitesArray
                             )
                             {
-                                GD.Print($"Sattlies List: {satellitesArray}");
                                 foreach (var satelliteNode in satellitesArray.Children)
                                 {
                                     if (satelliteNode is TomlTable satelliteTable)
                                     {
                                         var satelliteDict = new Godot.Collections.Dictionary();
-                                        satelliteDict["Type"] = ReadString(
+                                        var satTypeStr = ReadString(
                                             satelliteTable,
                                             "type",
                                             "Moon"
                                         );
-                                        satelliteDict["Position"] = ReadVector3(
-                                            satelliteTable,
-                                            "position",
-                                            Vector3.Zero
-                                        );
-                                        satelliteDict["Velocity"] = ReadVector3(
-                                            satelliteTable,
-                                            "velocity",
-                                            Vector3.Zero
-                                        );
-                                        satelliteDict["Size"] = ReadFloat(
-                                            satelliteTable,
-                                            "size",
-                                            1f
-                                        );
-
-                                        var satelliteMeshDict = new Godot.Collections.Dictionary();
-                                        if (
-                                            satelliteTable.HasKey("mesh")
-                                            && satelliteTable["mesh"]
-                                                is TomlTable satelliteMeshTable
-                                        )
+                                        GD.Print($"Satellite Node: {satelliteTable}");
+                                        string satTemplateType = GetTemplateType(satTypeStr, true);
+                                        GD.Print($"Satellite Type: {satTypeStr}");
+                                        GD.Print($"Satellite Template Type: {satTemplateType}");
+                                        satelliteDict["type"] = satTypeStr;
+                                        if (satTemplateType == "satellite_group")
                                         {
-                                            if (
-                                                satelliteMeshTable.HasKey("base_mesh")
-                                                && satelliteMeshTable["base_mesh"]
-                                                    is TomlTable baseMeshTable
-                                            )
+                                            GD.Print($"Satellite Type: {satTypeStr}");
+                                            GD.Print($"Satellite Template Type: {satTemplateType}");
+                                            if (satelliteTable.HasKey("template") && satelliteTable["template"] is TomlArray satTemplateArr)
                                             {
-                                                var baseMesh = new Godot.Collections.Dictionary();
-                                                baseMesh["subdivisions"] = ReadInt(
-                                                    baseMeshTable,
-                                                    "subdivisions",
-                                                    1
-                                                );
-                                                baseMesh["num_abberations"] = ReadInt(
-                                                    baseMeshTable,
-                                                    "num_abberations",
-                                                    3
-                                                );
-                                                baseMesh["num_deformation_cycles"] = ReadInt(
-                                                    baseMeshTable,
-                                                    "num_deformation_cycles",
-                                                    3
-                                                );
-                                                baseMesh["vertices_per_edge"] = ReadIntArray(
-                                                    baseMeshTable,
-                                                    "vertices_per_edge",
-                                                    new int[] { 2 }
-                                                );
-                                                satelliteMeshDict["base_mesh"] = baseMesh;
-                                            }
-                                            if (
-                                                satelliteMeshTable.HasKey("scaling")
-                                                && satelliteMeshTable["scaling"]
-                                                    is TomlTable scalingTable
-                                            )
-                                            {
-                                                var scaling = new Godot.Collections.Dictionary();
-                                                var xScaleRange = ReadFloatRange(
-                                                    scalingTable,
-                                                    "scaling_range_x",
-                                                    (1.0f, 1.2f)
-                                                );
-                                                Godot.Collections.Array<float> xScaleArray =
-                                                    new Godot.Collections.Array<float>
-                                                    {
-                                                        xScaleRange.Item1,
-                                                        xScaleRange.Item2,
-                                                    };
-                                                scaling["scaling_range_x"] = xScaleArray;
-                                                var yScaleRange = ReadFloatRange(
-                                                    scalingTable,
-                                                    "scaling_range_y",
-                                                    (1.0f, 1.2f)
-                                                );
-                                                Godot.Collections.Array<float> yScaleArray =
-                                                    new Godot.Collections.Array<float>
-                                                    {
-                                                        yScaleRange.Item1,
-                                                        yScaleRange.Item2,
-                                                    };
-                                                scaling["scaling_range_y"] = yScaleArray;
-                                                var zScaleRange = ReadFloatRange(
-                                                    scalingTable,
-                                                    "scaling_range_z",
-                                                    (1.0f, 1.2f)
-                                                );
-                                                Godot.Collections.Array<float> zScaleArray =
-                                                    new Godot.Collections.Array<float>
-                                                    {
-                                                        zScaleRange.Item1,
-                                                        zScaleRange.Item2,
-                                                    };
-                                                scaling["scaling_range_z"] = zScaleArray;
-                                                satelliteMeshDict["scaling"] = scaling;
-                                            }
-                                            if (
-                                                satelliteMeshTable.HasKey("noise_settings")
-                                                && satelliteMeshTable["noise_settings"]
-                                                    is TomlTable noiseTable
-                                            )
-                                            {
-                                                var noise = new Godot.Collections.Dictionary();
-                                                var amplitudeRange = ReadFloatRange(
-                                                    noiseTable,
-                                                    "amplitude_range",
-                                                    (1.0f, 1.2f)
-                                                );
-                                                Godot.Collections.Array<float> amplitudeArray =
-                                                    new Godot.Collections.Array<float>
-                                                    {
-                                                        amplitudeRange.Item1,
-                                                        amplitudeRange.Item2,
-                                                    };
-                                                noise["amplitude_range"] = amplitudeArray;
-                                                var scalingRange = ReadFloatRange(
-                                                    noiseTable,
-                                                    "scaling_range",
-                                                    (1.0f, 1.2f)
-                                                );
-                                                Godot.Collections.Array<float> scalingArray =
-                                                    new Godot.Collections.Array<float>
-                                                    {
-                                                        scalingRange.Item1,
-                                                        scalingRange.Item2,
-                                                    };
-                                                noise["scaling_range"] = scalingArray;
-                                                var octaveRange = ReadIntRange(
-                                                    noiseTable,
-                                                    "octave_range",
-                                                    (1, 2)
-                                                );
-                                                Godot.Collections.Array<int> octaveArray =
-                                                    new Godot.Collections.Array<int>
-                                                    {
-                                                        octaveRange.Item1,
-                                                        octaveRange.Item2,
-                                                    };
-                                                noise["octave_range"] = octaveArray;
-                                                satelliteMeshDict["noise_settings"] = noise;
+                                                TomlTable templateTable = (TomlTable)satTemplateArr[0];
+                                                GD.Print($"Parsing Satellite Template: {templateTable}");
+                                                satelliteDict.Add("template", ParseTemplateSection(templateTable, satTemplateType));
                                             }
                                         }
-                                        satelliteDict["Mesh"] = satelliteMeshDict;
-
-                                        // Handle satellite group template if present (e.g., for AsteroidBelt)
-                                        if (
-                                            satelliteTable.HasKey("template")
-                                            && satelliteTable["template"] is TomlTable satTemplate
-                                        )
+                                        else
                                         {
-                                            var templateDict = new Godot.Collections.Dictionary();
-                                            var numberAsteroidsRange = ReadIntRange(
-                                                satTemplate,
-                                                "number_asteroids",
-                                                (10, 20)
-                                            );
-                                            Godot.Collections.Array<int> numberAsteroidsArray =
-                                                new Godot.Collections.Array<int>
-                                                {
-                                                    numberAsteroidsRange.Item1,
-                                                    numberAsteroidsRange.Item2,
-                                                };
-                                            templateDict["number_asteroids"] = numberAsteroidsArray;
-                                            templateDict["grouping"] = ReadStringArray(
-                                                satTemplate,
-                                                "grouping",
-                                                new string[] { "balanced" }
-                                            );
-                                            templateDict["ring_velocity"] = ReadVector3(
-                                                satTemplate,
-                                                "ring_velocity",
-                                                Vector3.Zero
-                                            );
-                                            var sizeRange = ReadFloatRange(
-                                                satTemplate,
-                                                "size_range",
-                                                (0.5f, 2.0f)
-                                            );
-                                            Godot.Collections.Array<float> sizeArray =
-                                                new Godot.Collections.Array<float>
-                                                {
-                                                    sizeRange.Item1,
-                                                    sizeRange.Item2,
-                                                };
-                                            templateDict["size_range"] = sizeArray;
-                                            templateDict["possible_subtypes"] = ReadStringArray(
-                                                satTemplate,
-                                                "possible_subtypes",
-                                                new string[] { "default" }
-                                            );
-                                            satelliteDict["Template"] = templateDict;
-                                        }
+                                            if (satelliteTable.HasKey("template") && satelliteTable["template"] is TomlArray satTemplateArr)
+                                            {
+                                                TomlTable templateTable = (TomlTable)satTemplateArr[0];
+                                                GD.Print($"Parsing Satellite Template: {templateTable}");
+                                                satelliteDict.Add("template", ParseTemplateSection(templateTable, satTemplateType));
+                                            }
 
+                                            var satelliteMeshDict = new Godot.Collections.Dictionary();
+                                            if (satelliteTable.HasKey("mesh"))
+                                            {
+                                                if (satelliteTable["mesh"] is not TomlArray satelliteMeshArr)
+                                                    throw new Exception("Mesh is not a TOML table");
+                                                TomlTable msh = (TomlTable)satelliteMeshArr[0];
+                                                GD.Print($"Parsing Satellite Mesh: {msh}");
+                                                satelliteDict.Add("base_mesh", ParseBaseMeshSection(msh));
+                                                if (msh.HasKey("tectonic"))
+                                                    satelliteDict.Add(
+                                                        "tectonics",
+                                                        ParseTectonicSection(msh["tectonic"] as TomlTable)
+                                                    );
+                                                if (msh.HasKey("scaling"))
+                                                    satelliteDict.Add("scaling_settings", ParseScalingSection(msh["scaling"] as TomlTable));
+                                                if (msh.HasKey("noise_settings"))
+                                                    satelliteDict.Add(
+                                                        "noise_settings",
+                                                        ParseNoiseSettingsSection(msh["noise_settings"] as TomlTable)
+                                                    );
+                                            }
+                                        }
                                         satellites.Add(satelliteDict);
                                     }
                                 }
                             }
-                            bodyDict["Satellites"] = satellites;
-
+                            bodyDict["satellites"] = satellites;
                             bodies.Add(bodyDict);
                         }
                     }
@@ -399,10 +250,10 @@ namespace UtilityLibrary
         {
             string name = type switch
             {
-                CelestialBodyType.RockyPlanet => "Rocky Planet",
-                CelestialBodyType.GasGiant => "Gas Giant",
-                CelestialBodyType.IceGiant => "Ice Giant",
-                CelestialBodyType.DwarfPlanet => "Dwarf Planet",
+                CelestialBodyType.RockyPlanet => "RockyPlanet",
+                CelestialBodyType.GasGiant => "GasGiant",
+                CelestialBodyType.IceGiant => "IceGiant",
+                CelestialBodyType.DwarfPlanet => "DwarfPlanet",
                 CelestialBodyType.Star => "Star",
                 CelestialBodyType.BlackHole => "BlackHole",
                 _ => type.ToString(),
@@ -416,7 +267,7 @@ namespace UtilityLibrary
             {
                 SatelliteBodyType.Asteroid => "Asteroid",
                 SatelliteBodyType.Moon => "Moon",
-                SatelliteBodyType.DwarfPlanet => "Dwarf Planet",
+                SatelliteBodyType.DwarfPlanet => "DwarfPlanet",
                 SatelliteBodyType.Rings => "Rings",
                 SatelliteBodyType.Satellite => "Satellite",
                 _ => type.ToString(),
@@ -428,9 +279,9 @@ namespace UtilityLibrary
         {
             string name = type switch
             {
-                SatelliteGroupTypes.AsteroidBelt => "Asteroid Belt",
+                SatelliteGroupTypes.AsteroidBelt => "AsteroidBelt",
                 SatelliteGroupTypes.Comet => "Comet",
-                SatelliteGroupTypes.IceBelt => "Ice Belt",
+                SatelliteGroupTypes.IceBelt => "IceBelt",
                 _ => type.ToString(),
             };
             return $"res://Configuration/SystemGen/{name}.toml";
@@ -503,7 +354,7 @@ namespace UtilityLibrary
 
         private static string GetTemplateType(string resPath, bool isSatellite)
         {
-            if (resPath.Contains("Asteroid Belt"))
+            if (resPath.Contains("AsteroidBelt"))
                 return "satellite_group";
             if (
                 isSatellite
@@ -511,16 +362,16 @@ namespace UtilityLibrary
                     resPath.Contains("Asteroid")
                     || resPath.Contains("Moon")
                     || resPath.Contains("Comet")
-                    || resPath.Contains("Dwarf Planet")
+                    || resPath.Contains("DwarfPlanet")
                 )
             )
                 return "satellite";
             if (
                 resPath.Contains("Star")
-                || resPath.Contains("Rocky Planet")
-                || resPath.Contains("Gas Giant")
-                || resPath.Contains("Ice Giant")
-                || resPath.Contains("Dwarf Planet")
+                || resPath.Contains("RockyPlanet")
+                || resPath.Contains("GasGiant")
+                || resPath.Contains("IceGiant")
+                || resPath.Contains("DwarfPlanet")
                 || resPath.Contains("BlackHole")
             )
                 return "celestial";
@@ -969,6 +820,220 @@ namespace UtilityLibrary
                 return result;
             }
             return fallback;
+        }
+
+        public static string GenerateTOMLContent(Array<Dictionary> bodies)
+        {
+            var toml = new System.Text.StringBuilder();
+            var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+            for (int bodyIndex = 0; bodyIndex < bodies.Count; bodyIndex++)
+            {
+                var body = bodies[bodyIndex];
+                string templateType = GetTemplateType((string)body["type"], false);
+
+                // Add body section
+                toml.AppendLine("[[bodies]]");
+                toml.AppendLine($"type = \"{body["type"]}\"");
+                toml.AppendLine();
+
+                // Add template section
+                var template = (Godot.Collections.Dictionary)body["template"];
+                toml.AppendLine("[[bodies.celestial.template]]");
+
+                var position = (Vector3)template["position"];
+                toml.AppendLine($"position = [{position.X.ToString("F1", culture)}, {position.Y.ToString("F1", culture)}, {position.Z.ToString("F1", culture)}]");
+
+                var velocity = (Vector3)template["velocity"];
+                toml.AppendLine($"velocity = [{velocity.X.ToString("F1", culture)}, {velocity.Y.ToString("F1", culture)}, {velocity.Z.ToString("F1", culture)}]");
+
+                toml.AppendLine($"mass = {((float)template["mass"]).ToString("F1", culture)}");
+                toml.AppendLine($"size = {(int)template["size"]}");
+                toml.AppendLine();
+
+                // Add mesh section
+                toml.AppendLine("[[bodies.celestial.mesh]]");
+
+                var baseMesh = (Godot.Collections.Dictionary)body["base_mesh"];
+                toml.Append("base_mesh = { ");
+                toml.Append($"subdivisions = {(int)baseMesh["subdivisions"]}, ");
+
+                var verticesPerEdge = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+                toml.Append("vertices_per_edge = [");
+                for (int i = 0; i < verticesPerEdge.Count; i++)
+                {
+                    var vpe = verticesPerEdge[i];
+                    toml.Append($"[{vpe[0]}, {vpe[1]}]");
+                    if (i < verticesPerEdge.Count - 1) toml.Append(", ");
+                }
+                toml.Append("], ");
+
+                toml.Append($"num_abberations = {(int)baseMesh["num_abberations"]}, ");
+                toml.AppendLine("num_deformation_cycles = " + ((int)baseMesh["num_deformation_cycles"]) + " }");
+
+                // Add tectonics section
+                var tectonics = (Godot.Collections.Dictionary)body["tectonics"];
+                toml.Append("tectonic = { ");
+
+                toml.Append($"num_continents = {ArrayToTOML((int[])tectonics["num_continents"])}, ");
+                toml.Append($"stress_scale = {ArrayToTOML((float[])tectonics["stress_scale"], culture)}, ");
+                toml.Append($"shear_scale = {ArrayToTOML((float[])tectonics["shear_scale"], culture)}, ");
+                toml.Append($"max_propagation_distance = {ArrayToTOML((float[])tectonics["max_propagation_distance"], culture)}, ");
+                toml.Append($"propagation_falloff = {ArrayToTOML((float[])tectonics["propagation_falloff"], culture)}, ");
+                toml.Append($"inactive_stress_threshold = {ArrayToTOML((float[])tectonics["inactive_stress_threshold"], culture)}, ");
+                toml.Append($"general_height_scale = {ArrayToTOML((float[])tectonics["general_height_scale"], culture)}, ");
+                toml.Append($"general_shear_scale = {ArrayToTOML((float[])tectonics["general_shear_scale"], culture)}, ");
+                toml.Append($"general_compression_scale = {ArrayToTOML((float[])tectonics["general_compression_scale"], culture)}, ");
+                toml.AppendLine("general_transform_scale = " + ArrayToTOML((float[])tectonics["general_transform_scale"], culture) + " }");
+
+                // Add satellites if any
+                if (body.ContainsKey("satellites"))
+                {
+                    var satellites = (Godot.Collections.Array)body["satellites"];
+                    foreach (Godot.Collections.Dictionary satellite in satellites)
+                    {
+                        GD.Print($"Satellite: {satellite}");
+                        toml.AppendLine();
+                        toml.AppendLine("[[bodies.celestial.satellites]]");
+                        toml.AppendLine($"type = \"{satellite["type"]}\"");
+                        string satTypeStr = (string)satellite["type"];
+                        string satTemplateType = GetTemplateType(satTypeStr, true);
+
+                        if (satTemplateType == "satellite")
+                        {
+                            var satTemplate = (Godot.Collections.Dictionary)satellite["template"];
+                            toml.AppendLine("[[bodies.celestial.satellites.template]]");
+
+                            var satPosition = (Vector3)satTemplate["base_position"];
+                            toml.AppendLine($"position = [{satPosition.X.ToString("F1", culture)}, {satPosition.Y.ToString("F1", culture)}, {satPosition.Z.ToString("F1", culture)}]");
+
+                            var satVelocity = (Vector3)satTemplate["satellite_velocity"];
+                            toml.AppendLine($"velocity = [{satVelocity.X.ToString("F1", culture)}, {satVelocity.Y.ToString("F1", culture)}, {satVelocity.Z.ToString("F1", culture)}]");
+
+                            toml.AppendLine($"mass = {((float)satTemplate["mass"]).ToString("F1", culture)}");
+
+                            toml.AppendLine($"size = {(int)satTemplate["size"]}");
+
+                            // Add satellite mesh section
+                            if (satellite.ContainsKey("base_mesh"))
+                            {
+                                var satMesh = (Godot.Collections.Dictionary)satellite["base_mesh"];
+                                toml.AppendLine("[[bodies.celestial.satellites.mesh]]");
+
+                                toml.Append("base_mesh = { ");
+                                toml.Append($"subdivisions = {(int)satMesh["subdivisions"]}, ");
+
+                                var satVerticesPerEdge = (Godot.Collections.Array<Godot.Collections.Array<int>>)satMesh["vertices_per_edge"];
+                                toml.Append("vertices_per_edge = [");
+                                for (int i = 0; i < satVerticesPerEdge.Count; i++)
+                                {
+                                    var vpe = satVerticesPerEdge[i];
+                                    toml.Append($"[{vpe[0]}, {vpe[1]}]");
+                                    if (i < satVerticesPerEdge.Count - 1) toml.Append(", ");
+                                }
+                                toml.Append("], ");
+
+                                toml.Append($"num_abberations = {(int)satMesh["num_abberations"]}, ");
+                                toml.AppendLine("num_deformation_cycles = " + ((int)satMesh["num_deformation_cycles"]) + " }");
+                            }
+                            // Add satellite tectonics
+                            if (satellite.ContainsKey("tectonic"))
+                            {
+                                var satTectonics = (Godot.Collections.Dictionary)satellite["tectonic"];
+                                toml.Append("tectonic = { ");
+
+                                toml.Append($"num_continents = {ArrayToTOML((int[])satTectonics["num_continents"])}, ");
+                                toml.Append($"stress_scale = {ArrayToTOML((float[])satTectonics["stress_scale"], culture)}, ");
+                                toml.Append($"shear_scale = {ArrayToTOML((float[])satTectonics["shear_scale"], culture)}, ");
+                                toml.Append($"max_propagation_distance = {ArrayToTOML((float[])satTectonics["max_propagation_distance"], culture)}, ");
+                                toml.Append($"propagation_falloff = {ArrayToTOML((float[])satTectonics["propagation_falloff"], culture)}, ");
+                                toml.Append($"inactive_stress_threshold = {ArrayToTOML((float[])satTectonics["inactive_stress_threshold"], culture)}, ");
+                                toml.Append($"general_height_scale = {ArrayToTOML((float[])satTectonics["general_height_scale"], culture)}, ");
+                                toml.Append($"general_shear_scale = {ArrayToTOML((float[])satTectonics["general_shear_scale"], culture)}, ");
+                                toml.Append($"general_compression_scale = {ArrayToTOML((float[])satTectonics["general_compression_scale"], culture)}, ");
+                                toml.AppendLine("general_transform_scale = " + ArrayToTOML((float[])satTectonics["general_transform_scale"], culture) + " }");
+                            }
+
+                            // Add scaling section if present
+                            if (satellite.ContainsKey("scaling_settings"))
+                            {
+                                var scaling = (Godot.Collections.Dictionary)satellite["scaling_settings"];
+                                toml.Append("scaling = { ");
+
+                                var scalingRangeX = (float[])scaling["x_scale_range"];
+                                var scalingRangeY = (float[])scaling["y_scale_range"];
+                                var scalingRangeZ = (float[])scaling["z_scale_range"];
+
+                                toml.Append($"scaling_range_x = {ArrayToTOML(scalingRangeX, culture)}, ");
+                                toml.Append($"scaling_range_y = {ArrayToTOML(scalingRangeY, culture)}, ");
+                                toml.AppendLine("scaling_range_z = " + ArrayToTOML(scalingRangeZ, culture) + " }");
+                            }
+
+                            // Add noise settings if present
+                            if (satellite.ContainsKey("noise_settings"))
+                            {
+                                var noise = (Godot.Collections.Dictionary)satellite["noise_settings"];
+                                toml.Append("noise_settings = { ");
+
+                                var amplitudeRange = (float[])noise["amplitude_range"];
+                                var scalingRange = (float[])noise["scaling_range"];
+                                var octaveRange = (int[])noise["octave_range"];
+
+                                toml.Append($"amplitude_range = {ArrayToTOML(amplitudeRange, culture)}, ");
+                                toml.Append($"scaling_range = {ArrayToTOML(scalingRange, culture)}, ");
+                                toml.AppendLine("octave_range = " + ArrayToTOML(octaveRange) + " }");
+                            }
+                        }
+                        else if (satTemplateType == "satellite_group")
+                        {
+                            toml.AppendLine("[[bodies.celestial.satellites.template]]");
+                            toml.AppendLine($"ring_apogee = {((float)satellite["ring_apogee"]).ToString("F1", culture)}");
+                            toml.AppendLine($"ring_perigee = {((float)satellite["ring_perigee"]).ToString("F1", culture)}");
+                            Vector3 ringVelocity = (Vector3)satellite["ring_velocity"];
+                            toml.AppendLine($"ring_velocity = [{ringVelocity.X.ToString("F1", culture)}, {ringVelocity.Y.ToString("F1", culture)}, {ringVelocity.Z.ToString("F1", culture)}]");
+                            toml.AppendLine($"lower_range = {((int)satellite["lower_range"])}");
+                            toml.AppendLine($"upper_range = {((int)satellite["upper_range"])}");
+                            toml.AppendLine($"grouping = \"{(String)satellite["grouping"]}\"");
+                            toml.AppendLine($"mass_min = {((float)satellite["mass_min"]).ToString("F1", culture)}");
+                            toml.AppendLine($"mass_max = {((float)satellite["mass_max"]).ToString("F1", culture)}");
+                            toml.AppendLine($"size_min = {((float)satellite["size_min"]).ToString("F1", culture)}");
+                            toml.AppendLine($"size_max = {((float)satellite["size_max"]).ToString("F1", culture)}");
+                        }
+                    }
+                }
+
+                if (bodyIndex < bodies.Count - 1)
+                {
+                    toml.AppendLine();
+                }
+            }
+
+            return toml.ToString();
+        }
+
+        private static string ArrayToTOML<T>(T[] array, System.Globalization.CultureInfo culture = null)
+        {
+            if (culture == null)
+                culture = System.Globalization.CultureInfo.InvariantCulture;
+
+            if (array == null || array.Length == 0)
+                return "[]";
+
+            var result = "[";
+            for (int i = 0; i < array.Length; i++)
+            {
+                if (typeof(T) == typeof(float))
+                    result += ((float)(object)array[i]).ToString("F3", culture);
+                else if (typeof(T) == typeof(int))
+                    result += array[i];
+                else
+                    result += $"\"{array[i]}\"";
+
+                if (i < array.Length - 1)
+                    result += ", ";
+            }
+            result += "]";
+            return result;
         }
     }
 }

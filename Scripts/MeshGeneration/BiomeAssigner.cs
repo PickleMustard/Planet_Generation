@@ -42,11 +42,11 @@ public static class BiomeAssigner
         BiomeType result;
         // Whittaker Diagram mapping
         if (normalizedHeight > 0.9f) result = BiomeType.Icecap;
-        else if (normalizedHeight > 0.78f) result = BiomeType.Mountain;
+        else if (normalizedHeight > 0.68f) result = BiomeType.Mountain;
         else if (normalizedHeight > 0.4f && (latitude > 0.8f || latitude < -0.8f)) result = BiomeType.Tundra;
         else if (normalizedHeight > 0.4f && (latitude > 0.7f || latitude < -0.7f)) result = BiomeType.Taiga;
         else if (normalizedHeight < 0.05f) result = BiomeType.Ocean;
-        else if (normalizedHeight < 0.12f) result = BiomeType.Coastal;
+        else if (normalizedHeight < 0.07f) result = BiomeType.Coastal;
         else if (normalizedHeight < 0.3f && moisture < 0.2f) result = BiomeType.Desert;
         else if (normalizedHeight < 0.3f && moisture < 0.5f) result = BiomeType.Grassland;
         else if (normalizedHeight > 0.3f && moisture < 0.7f) result = BiomeType.Forest;
