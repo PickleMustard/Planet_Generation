@@ -1,9 +1,10 @@
 using System;
-using System.IO;
 using System.Reflection;
 using Godot;
 using Godot.Collections;
-using PlanetGeneration;
+using ProceduralGeneration.PlanetGeneration;
+using Structures.Enums;
+using UtilityLibrary;
 using Tommy;
 using FileAccess = Godot.FileAccess;
 
@@ -35,8 +36,9 @@ public partial class PlanetSystemGenerator : Control
     private Texture2D _checkMark;
     private Texture2D _xMark;
     private Dictionary<String, bool> _toggledSubcontainers;
+    private Array<BodyItem> _autoCalculateSubscribers;
 
-    public override void _Ready()
+    public override void _EnterTree()
     {
         this.AddToGroup("GenerationMenu");
         var parent = GetParent() as Control;
@@ -80,6 +82,8 @@ public partial class PlanetSystemGenerator : Control
         _xMark = GD.Load<Texture2D>("res://UI/xmark.svg");
         _stabilityIndicator.Texture = _checkMark;
 
+        _autoCalculateSubscribers = new Array<BodyItem>();
+
         // Start with one body by default
         AddBodyItem();
         UpdateCountLabel();
@@ -114,16 +118,30 @@ public partial class PlanetSystemGenerator : Control
         if (_bodyItemScene == null)
             return;
         var node = _bodyItemScene.Instantiate<BodyItem>();
+        _bodiesList.AddChild(node);
         // Wire per-item remove
         node.OnRemoveRequested += HandleItemRemove;
         // Wire position change
         node.ItemUpdate += OnBodyItemUpdate;
+        node.RecalculateVelocity += RecalculateVelocity;
+        node.ShouldAutoCalculate += UpdateAutoCalculateSubscribers;
         node.ExpandMenu += ExpandMenu;
-        _bodiesList.AddChild(node);
+        _autoCalculateSubscribers.Add(node);
         UpdateCountLabel();
         RedistributeOrbitalRings();
     }
 
+    private void UpdateAutoCalculateSubscribers(bool shouldAutoCalculate, BodyItem item)
+    {
+        if (shouldAutoCalculate)
+        {
+            _autoCalculateSubscribers.Add(item);
+        }
+        else
+        {
+            _autoCalculateSubscribers.Remove(item);
+        }
+    }
     private void RemoveLastBodyItem()
     {
         if (_bodiesList.GetChildCount() == 0)
@@ -151,6 +169,7 @@ public partial class PlanetSystemGenerator : Control
 
     private void RedistributeOrbitalRings()
     {
+        if (_bodiesList.GetChildCount() <= 1) return;
         var bodiesByRing = new System.Collections.Generic.Dictionary<
             float,
             System.Collections.Generic.List<BodyItem>
@@ -177,6 +196,96 @@ public partial class PlanetSystemGenerator : Control
                 RedistributeBodiesInRing(bodies, kvp.Key);
             }
         }
+    }
+
+    private void RecalculateVelocity(BodyItem body)
+    {
+        GD.Print(body);
+        GD.Print($"Is subscribed: {_autoCalculateSubscribers.Contains(body)}");
+        if (_autoCalculateSubscribers.Contains(body) && _bodiesList.GetChildCount() > 1)
+        {
+            Godot.Collections.Array<Godot.Collections.Dictionary> bodies = new Godot.Collections.Array<Godot.Collections.Dictionary>();
+            foreach (Node child in _bodiesList.GetChildren())
+            {
+                if (child is BodyItem bi && bi != body)
+                {
+                    var pos = bi.GetBodyPosition();
+                    var mass = bi.GetBodyMass();
+                    var size = bi.GetBodySize();
+                    Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
+                    dict.Add("position", pos);
+                    dict.Add("mass", mass);
+                    dict.Add("size", size);
+                    bodies.Add(dict);
+                }
+            }
+
+            int dominantIndex = FindDominantBody(body.GetBodyPosition(), bodies);
+            var newVelocity = CalculateStableVelocity(body, bodies, dominantIndex);
+            GD.Print($"New Velocity: {newVelocity}");
+            body.SetVelocity(newVelocity);
+        }
+    }
+
+    private int FindDominantBody(Vector3 position, Godot.Collections.Array<Godot.Collections.Dictionary> bodies)
+    {
+        float maxInfluence = 0f;
+        int dominantIndex = 0;
+
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            var distance = position.DistanceSquaredTo(bodies[i]["position"].AsVector3());
+            if (distance > 0f)
+            {
+                var influence = OrbitalMath.GRAVITATIONAL_CONSTANT * bodies[i]["mass"].AsSingle() / distance;
+                if (influence > maxInfluence)
+                {
+                    maxInfluence = influence;
+                    dominantIndex = i;
+                }
+            }
+        }
+        return dominantIndex;
+    }
+
+    private Vector3 CalculateStableVelocity(BodyItem body, Godot.Collections.Array<Godot.Collections.Dictionary> bodies, int dominantIndex)
+    {
+        var primaryBody = bodies[dominantIndex];
+        var distance = body.GetBodyPosition() - primaryBody["position"].AsVector3();
+        var distanceMag = distance.LengthSquared();
+
+        var vCircularMag = Mathf.Sqrt(OrbitalMath.GRAVITATIONAL_CONSTANT * primaryBody["mass"].AsSingle() / distanceMag);
+        var tangent = distance.Cross(new Vector3(0, 1, 0));
+        if (tangent.LengthSquared() < 1e-5)
+        {
+            tangent = distance.Cross(new Vector3(1, 0, 0));
+        }
+
+        tangent = tangent.Normalized();
+        var baseVelocity = tangent * vCircularMag;
+        var correction = CalculateVelocityCorrections(body.GetBodyPosition(), baseVelocity, bodies, dominantIndex);
+        return baseVelocity + correction;
+    }
+
+    private Vector3 CalculateVelocityCorrections(Vector3 position, Vector3 baseVelocity, Godot.Collections.Array<Godot.Collections.Dictionary> bodies, int dominantIndex)
+    {
+        Vector3 correction = Vector3.Zero;
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            if (i == dominantIndex) continue;
+            var distance = position - bodies[i]["position"].AsVector3();
+            var distanceMag = distance.LengthSquared();
+            if (distanceMag > 0f)
+            {
+                var influenceFactor = ((float)bodies[i]["mass"] / (float)bodies[dominantIndex]["mass"] * Mathf.Pow((distanceMag / (position.DistanceSquaredTo(bodies[dominantIndex]["position"].AsVector3()))), -3f));
+                if (influenceFactor > 0.01f)
+                {
+                    var avoidanceVector = -distance / distanceMag;
+                    correction += avoidanceVector * influenceFactor * baseVelocity.LengthSquared() * .1f;
+                }
+            }
+        }
+        return correction;
     }
 
     private void RedistributeBodiesInRing(
@@ -259,6 +368,14 @@ public partial class PlanetSystemGenerator : Control
 
             var bodyItem = _bodyItemScene.Instantiate<BodyItem>();
             _bodiesList.AddChild(bodyItem);
+            _autoCalculateSubscribers.Add(bodyItem);
+            // Wire per-item remove
+            bodyItem.OnRemoveRequested += HandleItemRemove;
+            // Wire position change
+            bodyItem.ItemUpdate += OnBodyItemUpdate;
+            bodyItem.RecalculateVelocity += RecalculateVelocity;
+            bodyItem.ShouldAutoCalculate += UpdateAutoCalculateSubscribers;
+            bodyItem.ExpandMenu += ExpandMenu;
             GD.Print($"Type: {typeStr}");
             if (Enum.TryParse<CelestialBodyType>(typeStr, out var type))
             {

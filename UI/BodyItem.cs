@@ -1,8 +1,7 @@
 using System;
 using Godot;
-using PlanetGeneration;
 using UtilityLibrary;
-using UI;
+using Structures.Enums;
 
 namespace UI;
 
@@ -14,6 +13,15 @@ public partial class BodyItem : HBoxContainer
     [Signal]
     public delegate void ExpandMenuEventHandler(String sender, bool toggle);
 
+    [Signal]
+    public delegate void ShouldAutoCalculateEventHandler(bool shouldAutoCalculate, BodyItem item);
+
+    [Signal]
+    public delegate void RecalculateVelocityEventHandler(BodyItem item);
+
+    [Signal]
+    public delegate void RecalculatePositionEventHandler(BodyItem item);
+
     [Export]
     public Button Toggle;
 
@@ -22,6 +30,9 @@ public partial class BodyItem : HBoxContainer
 
     [Export]
     public Button DetailsToggle;
+
+    [Export]
+    public CheckButton AutoCalculateToggle;
 
     [Export]
     public OptionButton OptionButton;
@@ -133,6 +144,7 @@ public partial class BodyItem : HBoxContainer
         size ??= GetNodeOrNull<SpinBox>("MainContent/Content/SizeContent/size");
         DetailsPanel ??= GetNodeOrNull<VBoxContainer>("DetailsPanel");
         SatellitesScroll ??= GetNodeOrNull<ScrollContainer>("MainContent/Content/SatellitesContent/SatellitesScroll");
+        AutoCalculateToggle ??= GetNodeOrNull<CheckButton>("MainContent/Header/AutoCalculateToggle");
 
         // Satellites UI
         AddSatellite ??= GetNodeOrNull<Button>(
@@ -154,31 +166,6 @@ public partial class BodyItem : HBoxContainer
 
         // Apply input constraints to fields
         ApplyConstraints();
-
-        if (X != null)
-        {
-            X.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
-        }
-        if (Y != null)
-        {
-            Y.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
-        }
-        if (Z != null)
-        {
-            Z.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
-        }
-        if (velX != null)
-        {
-            velX.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
-        }
-        if (velY != null)
-        {
-            velY.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
-        }
-        if (velZ != null)
-        {
-            velZ.GuiInput += idx => EmitSignal(SignalName.ItemUpdate);
-        }
 
         // Populate body types and hook selection
         if (OptionButton != null)
@@ -216,7 +203,41 @@ public partial class BodyItem : HBoxContainer
             RemoveSatellite.Pressed += RemoveLastSatelliteItem;
         }
 
+        if (X != null)
+        {
+            X.GetLineEdit().TextSubmitted += idx => EmitSignal(SignalName.RecalculateVelocity, this);
+        }
+        if (Y != null)
+        {
+            Y.GetLineEdit().TextSubmitted += idx => EmitSignal(SignalName.RecalculateVelocity, this);
+        }
+        if (Z != null)
+        {
+            Z.GetLineEdit().TextSubmitted += idx => EmitSignal(SignalName.RecalculateVelocity, this);
+        }
+        if (velX != null)
+        {
+            velX.GetLineEdit().TextSubmitted += idx => EmitSignal(SignalName.RecalculatePosition, this);
+        }
+        if (velY != null)
+        {
+            velY.GetLineEdit().TextSubmitted += idx => EmitSignal(SignalName.RecalculatePosition, this);
+        }
+        if (velZ != null)
+        {
+            velZ.GetLineEdit().TextSubmitted += idx => EmitSignal(SignalName.RecalculatePosition, this);
+        }
+        if (AutoCalculateToggle != null)
+        {
+            AutoCalculateToggle.Pressed += UpdateAutoCalculate;
+        }
         UpdateSatellitesCountLabel();
+    }
+
+    public void UpdateAutoCalculate()
+    {
+        GD.Print($"Emitting AutoCalculate, AutoCalculateToggle.ButtonPressed: {AutoCalculateToggle.ButtonPressed}");
+        EmitSignal(SignalName.ShouldAutoCalculate, AutoCalculateToggle.ButtonPressed, this);
     }
 
     private void ApplyConstraints()
@@ -514,6 +535,16 @@ public partial class BodyItem : HBoxContainer
             velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
         if (velZ != null)
             velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+    }
+
+    public float GetBodySize()
+    {
+        return (float)size.Value;
+    }
+
+    public float GetBodyMass()
+    {
+        return (float)mass.Value;
     }
 
     public void SetSize(float size)

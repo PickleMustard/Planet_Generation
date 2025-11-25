@@ -1,5 +1,5 @@
 using Godot;
-using Structures;
+using Structures.MeshGeneration;
 using System;
 
 namespace UtilityLibrary

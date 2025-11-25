@@ -16,6 +16,7 @@ Target = NodePath("Camera3D/Pointer")
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
 top_level = true
+keep_aspect = 0
 fov = 90.0
 frustum_offset = Vector2(-0.14, 0.035)
 
@@ -38,3 +39,7 @@ script = ExtResource("4_bce5k")
 transform = Transform3D(-1, 8.74228e-08, -3.82137e-15, 0, -4.37114e-08, -1, -8.74228e-08, -1, 4.37114e-08, 0, 0, 0)
 mesh = ExtResource("5_rool1")
 skeleton = NodePath("../..")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.133972, -21.758)
+directional_shadow_mode = 0
