@@ -1,8 +1,8 @@
 [gd_scene load_steps=7 format=3 uid="uid://dt8sw4jlumdml"]
 
-[ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/SystemGenerator.cs" id="1_6ftxy"]
 [ext_resource type="Environment" uid="uid://s4wyheed0x8r" path="res://Shaders/stary_background.tres" id="1_8cch0"]
 [ext_resource type="PackedScene" uid="uid://brice0jo72tpo" path="res://Prefabs/player_ship.tscn" id="3_8cch0"]
+[ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/ProceduralGeneration/SystemGenerator.cs" id="3_dl6d0"]
 [ext_resource type="PackedScene" uid="uid://ca805w5kf1f7q" path="res://UI/PlanetSystemGenerator.tscn" id="3_qqilr"]
 
 [sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_dl6d0"]
@@ -58,7 +58,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="system_generator" type="Node" parent="." node_paths=PackedStringArray("SystemContainer")]
-script = ExtResource("1_6ftxy")
+script = ExtResource("3_dl6d0")
 SystemContainer = NodePath("../system_container")
 
 [node name="PlayerShip" parent="." instance=ExtResource("3_8cch0")]

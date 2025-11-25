@@ -10,13 +10,13 @@ public partial class DetailPanel : VBoxContainer
     // Base Mesh Controls
     [Export] public VBoxContainer BaseMeshSection;
     [Export] public SpinBox SubdivisionsSpinBox;
-    
+
     // Tectonics Controls (BodyItem only)
     [Export] public VBoxContainer TectonicsSection;
-    
+
     // Scaling Controls (SatelliteItem only)
     [Export] public VBoxContainer ScalingSection;
-    
+
     // Noise Controls (SatelliteItem only)
     [Export] public VBoxContainer NoiseSection;
 
@@ -26,11 +26,11 @@ public partial class DetailPanel : VBoxContainer
     public override void _EnterTree()
     {
         _rangeControlScene = GD.Load<PackedScene>("res://UI/RangeControl.tscn");
-        
+
         // Cache nodes
         BaseMeshSection ??= GetNodeOrNull<VBoxContainer>("BaseMeshSection");
         SubdivisionsSpinBox ??= GetNodeOrNull<SpinBox>("BaseMeshSection/SubdivisionsControl/SubdivisionsSpinBox");
-        
+
         // Connect subdivisions change
         if (SubdivisionsSpinBox != null)
         {
@@ -43,7 +43,7 @@ public partial class DetailPanel : VBoxContainer
         _isForBodyItem = true;
         SetupBaseMeshControls();
         SetupTectonicsControls();
-        
+
         // Hide satellite-specific sections
         if (ScalingSection != null) ScalingSection.Visible = false;
         if (NoiseSection != null) NoiseSection.Visible = false;
@@ -55,7 +55,7 @@ public partial class DetailPanel : VBoxContainer
         SetupBaseMeshControls();
         SetupScalingControls();
         SetupNoiseControls();
-        
+
         // Hide body-specific sections
         if (TectonicsSection != null) TectonicsSection.Visible = false;
     }
@@ -68,10 +68,10 @@ public partial class DetailPanel : VBoxContainer
         {
             // Add vertices per edge controls
             AddRangeControl(BaseMeshSection, "Vertices Per Edge", 3, 20, 1, 3, 8);
-            
+
             // Add aberrations control
             AddSingleControl(BaseMeshSection, "Aberrations", 0, 10, 1, 2);
-            
+
             // Add deformation cycles control
             AddSingleControl(BaseMeshSection, "Deformation Cycles", 0, 10, 1, 3);
         }
@@ -80,12 +80,12 @@ public partial class DetailPanel : VBoxContainer
     private void AddSingleControl(VBoxContainer parent, string label, float minVal, float maxVal, float step, float defaultValue)
     {
         var container = new HBoxContainer();
-        
+
         var labelNode = new Label();
         labelNode.Text = label;
         labelNode.CustomMinimumSize = new Vector2(120, 0);
         container.AddChild(labelNode);
-        
+
         var spinBox = new SpinBox();
         spinBox.MinValue = minVal;
         spinBox.MaxValue = maxVal;
@@ -93,7 +93,7 @@ public partial class DetailPanel : VBoxContainer
         spinBox.Value = defaultValue;
         spinBox.ValueChanged += (value) => EmitSignal(SignalName.ValueChanged);
         container.AddChild(spinBox);
-        
+
         parent.AddChild(container);
     }
 
@@ -107,11 +107,11 @@ public partial class DetailPanel : VBoxContainer
                 TectonicsSection = new VBoxContainer();
                 TectonicsSection.Name = "TectonicsSection";
                 AddChild(TectonicsSection);
-                
+
                 var header = new Label();
                 header.Text = "Tectonics";
                 TectonicsSection.AddChild(header);
-                
+
                 // Add tectonics controls here
                 AddTectonicsControl(TectonicsSection, "Continents", 1, 20, 1, 1, 7);
                 AddTectonicsControl(TectonicsSection, "Stress Scale", 0.1f, 10.0f, 0.1f, 0.5f, 2.0f);
@@ -132,11 +132,11 @@ public partial class DetailPanel : VBoxContainer
                 ScalingSection = new VBoxContainer();
                 ScalingSection.Name = "ScalingSection";
                 AddChild(ScalingSection);
-                
+
                 var header = new Label();
                 header.Text = "Scaling";
                 ScalingSection.AddChild(header);
-                
+
                 // Add scaling controls
                 AddRangeControl(ScalingSection, "X Scale", 0.1f, 5.0f, 0.1f, 0.8f, 1.2f);
                 AddRangeControl(ScalingSection, "Y Scale", 0.1f, 5.0f, 0.1f, 0.8f, 1.2f);
@@ -156,11 +156,11 @@ public partial class DetailPanel : VBoxContainer
                 NoiseSection = new VBoxContainer();
                 NoiseSection.Name = "NoiseSection";
                 AddChild(NoiseSection);
-                
+
                 var header = new Label();
                 header.Text = "Noise Settings";
                 NoiseSection.AddChild(header);
-                
+
                 // Add noise controls
                 AddRangeControl(NoiseSection, "Amplitude", 0.01f, 2.0f, 0.01f, 0.1f, 0.5f);
                 AddRangeControl(NoiseSection, "Scaling", 0.1f, 10.0f, 0.1f, 1.0f, 3.0f);
@@ -287,7 +287,7 @@ public partial class DetailPanel : VBoxContainer
     private Godot.Collections.Array<RangeControl> FindRangeControlsByLabel(string label)
     {
         var result = new Godot.Collections.Array<RangeControl>();
-        
+
         if (BaseMeshSection != null)
             FindRangeControlsInContainer(BaseMeshSection, label, result);
         if (TectonicsSection != null)
@@ -296,7 +296,7 @@ public partial class DetailPanel : VBoxContainer
             FindRangeControlsInContainer(ScalingSection, label, result);
         if (NoiseSection != null)
             FindRangeControlsInContainer(NoiseSection, label, result);
-            
+
         return result;
     }
 
@@ -327,7 +327,7 @@ public partial class DetailPanel : VBoxContainer
     private SpinBox FindSpinBoxByLabel(string label)
     {
         SpinBox result = null;
-        
+
         if (BaseMeshSection != null)
             result = FindSpinBoxInContainer(BaseMeshSection, label);
         if (result == null && TectonicsSection != null)
@@ -336,7 +336,7 @@ public partial class DetailPanel : VBoxContainer
             result = FindSpinBoxInContainer(ScalingSection, label);
         if (result == null && NoiseSection != null)
             result = FindSpinBoxInContainer(NoiseSection, label);
-            
+
         return result;
     }
 

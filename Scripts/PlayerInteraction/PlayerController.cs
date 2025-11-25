@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using Godot;
-using PlanetGeneration;
+using ProceduralGeneration.PlanetGeneration;
 using UtilityLibrary;
 
 public partial class PlayerController : Node3D

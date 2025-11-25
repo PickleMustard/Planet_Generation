@@ -3,7 +3,7 @@ using System.Globalization;
 using System.IO;
 using Godot;
 using Godot.Collections;
-using PlanetGeneration;
+using Structures.Enums;
 using Tommy;
 
 namespace UtilityLibrary
@@ -409,8 +409,8 @@ namespace UtilityLibrary
             else if (type == "satellite_group")
             {
                 var numAsteroidRange = ReadIntRange(tmpl, "number_asteroids", (1, 4));
-                var ringApogee = ReadFloat(tmpl, "apogee", 0f);
-                var ringPerigee = ReadFloat(tmpl, "perigee", 0f);
+                var ringApogee = ReadFloat(tmpl, "ring_apogee", 0f);
+                var ringPerigee = ReadFloat(tmpl, "ring_perigee", 0f);
                 var ringVelocity = ReadVector3(tmpl, "ring_velocity", Vector3.Zero);
                 var sizeRange = ReadFloatRange(tmpl, "size_range", (1f, 5f));
                 var massRange = ReadFloatRange(tmpl, "mass_range", (1f, 10f));

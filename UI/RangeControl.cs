@@ -53,7 +53,7 @@ public partial class RangeControl : HBoxContainer
             LowerBound.MinValue = minRange;
             LowerBound.MaxValue = maxRange;
             LowerBound.Step = step;
-            
+
             UpperBound.MinValue = minRange;
             UpperBound.MaxValue = maxRange;
             UpperBound.Step = step;
@@ -100,7 +100,7 @@ public partial class RangeControl : HBoxContainer
         if (_isUpdating) return;
 
         float lowerValue = (float)value;
-        
+
         // Ensure lower bound doesn't exceed upper bound
         if (UpperBound != null && lowerValue > UpperBound.Value)
         {
@@ -117,7 +117,7 @@ public partial class RangeControl : HBoxContainer
         if (_isUpdating) return;
 
         float upperValue = (float)value;
-        
+
         // Ensure upper bound doesn't go below lower bound
         if (LowerBound != null && upperValue < LowerBound.Value)
         {
