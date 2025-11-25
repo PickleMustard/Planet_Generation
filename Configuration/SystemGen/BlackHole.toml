@@ -229,7 +229,7 @@ num_abberations = 1
 num_deformation_cycles = 1
 
 [celestial.mesh.tectonic]
-num_continents = [0, 1]
+num_continents = [1, 1]
 stress_scale = [1.0, 5.0]
 shear_scale = [0.5, 2.0]
 max_propagation_distance = [0.02, 0.2]

@@ -1,6 +1,6 @@
 using System;
 using Godot;
-using PlanetGeneration;
+using Structures.Enums;
 using UtilityLibrary;
 
 namespace UI;

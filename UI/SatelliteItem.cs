@@ -1,8 +1,7 @@
 using System;
 using Godot;
-using PlanetGeneration;
 using UtilityLibrary;
-using UI;
+using Structures.Enums;
 
 namespace UI;
 
@@ -67,12 +66,27 @@ public partial class SatelliteItem : HBoxContainer
     private int numAbberations;
     private int numDeformationCycles;
 
+    //Tectonics
+    bool hasTectonics = false;
+    private int[] numContinents;
+    private float[] stressScale;
+    private float[] shearScale;
+    private float[] maxPropagationDistance;
+    private float[] propagationFalloff;
+    private float[] inactiveStressThreshold;
+    private float[] generalHeightScale;
+    private float[] generalShearScale;
+    private float[] generalCompressionScale;
+    private float[] generalTransformScale;
+
     //Scaling
+    bool hasScaling = false;
     private float[] xScaleRange;
     private float[] yScaleRange;
     private float[] zScaleRange;
 
     //Noise Settings
+    bool hasNoise = false;
     private float[] amplitudeRange;
     private float[] scalingRange;
     private int[] octaveRange;
@@ -206,15 +220,38 @@ public partial class SatelliteItem : HBoxContainer
         numAbberations = (int)baseMesh["num_abberations"];
         numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
 
-        var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
-        xScaleRange = (float[])scaling["x_scale_range"];
-        yScaleRange = (float[])scaling["y_scale_range"];
-        zScaleRange = (float[])scaling["z_scale_range"];
+        if (t.ContainsKey("tectonic"))
+        {
+            hasTectonics = true;
+            var tectonics = (Godot.Collections.Dictionary)t["tectonics"];
+            numContinents = (int[])tectonics["num_continents"];
+            stressScale = (float[])tectonics["stress_scale"];
+            shearScale = (float[])tectonics["shear_scale"];
+            maxPropagationDistance = (float[])tectonics["max_propagation_distance"];
+            propagationFalloff = (float[])tectonics["propagation_falloff"];
+            inactiveStressThreshold = (float[])tectonics["inactive_stress_threshold"];
+            generalHeightScale = (float[])tectonics["general_height_scale"];
+            generalShearScale = (float[])tectonics["general_shear_scale"];
+            generalCompressionScale = (float[])tectonics["general_compression_scale"];
+            generalTransformScale = (float[])tectonics["general_transform_scale"];
+        }
+        if (t.ContainsKey("scaling_settings"))
+        {
+            hasScaling = true;
+            var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
+            xScaleRange = (float[])scaling["x_scale_range"];
+            yScaleRange = (float[])scaling["y_scale_range"];
+            zScaleRange = (float[])scaling["z_scale_range"];
+        }
 
-        var noiseSettings = (Godot.Collections.Dictionary)t["noise_settings"];
-        amplitudeRange = (float[])noiseSettings["amplitude_range"];
-        scalingRange = (float[])noiseSettings["scaling_range"];
-        octaveRange = (int[])noiseSettings["octave_range"];
+        if (t.ContainsKey("noise_settings"))
+        {
+            hasNoise = true;
+            var noiseSettings = (Godot.Collections.Dictionary)t["noise_settings"];
+            amplitudeRange = (float[])noiseSettings["amplitude_range"];
+            scalingRange = (float[])noiseSettings["scaling_range"];
+            octaveRange = (int[])noiseSettings["octave_range"];
+        }
     }
 
     public void SetTemplate(Godot.Collections.Dictionary t)
@@ -255,15 +292,39 @@ public partial class SatelliteItem : HBoxContainer
         numAbberations = (int)baseMesh["num_abberations"];
         numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
 
-        var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
-        xScaleRange = (float[])scaling["x_scale_range"];
-        yScaleRange = (float[])scaling["y_scale_range"];
-        zScaleRange = (float[])scaling["z_scale_range"];
+        if (t.ContainsKey("tectonic"))
+        {
+            hasTectonics = true;
+            var tectonics = (Godot.Collections.Dictionary)t["tectonics"];
+            numContinents = (int[])tectonics["num_continents"];
+            stressScale = (float[])tectonics["stress_scale"];
+            shearScale = (float[])tectonics["shear_scale"];
+            maxPropagationDistance = (float[])tectonics["max_propagation_distance"];
+            propagationFalloff = (float[])tectonics["propagation_falloff"];
+            inactiveStressThreshold = (float[])tectonics["inactive_stress_threshold"];
+            generalHeightScale = (float[])tectonics["general_height_scale"];
+            generalShearScale = (float[])tectonics["general_shear_scale"];
+            generalCompressionScale = (float[])tectonics["general_compression_scale"];
+            generalTransformScale = (float[])tectonics["general_transform_scale"];
+        }
 
-        var noiseSettings = (Godot.Collections.Dictionary)t["noise_settings"];
-        amplitudeRange = (float[])noiseSettings["amplitude_range"];
-        scalingRange = (float[])noiseSettings["scaling_range"];
-        octaveRange = (int[])noiseSettings["octave_range"];
+        if (t.ContainsKey("scaling_settings"))
+        {
+            hasScaling = true;
+            var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
+            xScaleRange = (float[])scaling["x_scale_range"];
+            yScaleRange = (float[])scaling["y_scale_range"];
+            zScaleRange = (float[])scaling["z_scale_range"];
+        }
+
+        if (t.ContainsKey("noise_settings"))
+        {
+            hasNoise = true;
+            var noiseSettings = (Godot.Collections.Dictionary)t["noise_settings"];
+            amplitudeRange = (float[])noiseSettings["amplitude_range"];
+            scalingRange = (float[])noiseSettings["scaling_range"];
+            octaveRange = (int[])noiseSettings["octave_range"];
+        }
 
     }
 
@@ -422,16 +483,37 @@ public partial class SatelliteItem : HBoxContainer
         meshDict.Add("num_abberations", numAbberations);
         meshDict.Add("num_deformation_cycles", numDeformationCycles);
         dict.Add("base_mesh", meshDict);
-        Godot.Collections.Dictionary scalingDict = new Godot.Collections.Dictionary();
-        scalingDict.Add("x_scale_range", xScaleRange);
-        scalingDict.Add("y_scale_range", yScaleRange);
-        scalingDict.Add("z_scale_range", zScaleRange);
-        dict.Add("scaling_settings", scalingDict);
-        Godot.Collections.Dictionary noiseDict = new Godot.Collections.Dictionary();
-        noiseDict.Add("amplitude_range", amplitudeRange);
-        noiseDict.Add("scaling_range", scalingRange);
-        noiseDict.Add("octave_range", octaveRange);
-        dict.Add("noise_settings", noiseDict);
+        if (hasTectonics)
+        {
+            var tectonics = new Godot.Collections.Dictionary();
+            tectonics.Add("num_continents", numContinents);
+            tectonics.Add("stress_scale", stressScale);
+            tectonics.Add("shear_scale", shearScale);
+            tectonics.Add("max_propagation_distance", maxPropagationDistance);
+            tectonics.Add("propagation_falloff", propagationFalloff);
+            tectonics.Add("inactive_stress_threshold", inactiveStressThreshold);
+            tectonics.Add("general_height_scale", generalHeightScale);
+            tectonics.Add("general_shear_scale", generalShearScale);
+            tectonics.Add("general_compression_scale", generalCompressionScale);
+            tectonics.Add("general_transform_scale", generalTransformScale);
+            dict.Add("tectonics", tectonics);
+        }
+        if (hasScaling)
+        {
+            Godot.Collections.Dictionary scalingDict = new Godot.Collections.Dictionary();
+            scalingDict.Add("x_scale_range", xScaleRange);
+            scalingDict.Add("y_scale_range", yScaleRange);
+            scalingDict.Add("z_scale_range", zScaleRange);
+            dict.Add("scaling_settings", scalingDict);
+        }
+        if (hasNoise)
+        {
+            Godot.Collections.Dictionary noiseDict = new Godot.Collections.Dictionary();
+            noiseDict.Add("amplitude_range", amplitudeRange);
+            noiseDict.Add("scaling_range", scalingRange);
+            noiseDict.Add("octave_range", octaveRange);
+            dict.Add("noise_settings", noiseDict);
+        }
         return dict;
     }
 
