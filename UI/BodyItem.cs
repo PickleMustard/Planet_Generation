@@ -296,7 +296,7 @@ public partial class BodyItem : HBoxContainer
     public void ApplyTemplate(CelestialBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetCelestialBodyDefaults(type);
+        var t = TemplateHelpers.GetCelestialBodyDefaults(type);
         var template = (Godot.Collections.Dictionary)t["template"];
         bodyName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
 

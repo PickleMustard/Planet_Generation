@@ -1,8 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://14km67grwjbh"]
+[gd_scene load_steps=3 format=3 uid="uid://14km67grwjbh"]
 
 [ext_resource type="Script" uid="uid://cwakjbtw2pqm3" path="res://UI/BodyItem.cs" id="1_v7n1y"]
 [ext_resource type="Script" uid="uid://cl0fnsihfju2q" path="res://UI/ToggleSection.cs" id="2_q7k4c"]
-[ext_resource type="Theme" uid="uid://cdh68r2entt7h" path="res://UI/Theme/theme.res" id="3_xxf6g"]
 
 [node name="BodyItem" type="HBoxContainer"]
 anchors_preset = 15
@@ -41,7 +40,6 @@ text = "⚙"
 
 [node name="AutoCalculateToggle" type="CheckButton" parent="MainContent/Header"]
 layout_mode = 2
-theme = ExtResource("3_xxf6g")
 button_pressed = true
 
 [node name="Content" type="VBoxContainer" parent="MainContent"]

@@ -22,6 +22,13 @@ public partial class VoronoiCell : Resource
     public Vector3 Center { get; set; }
     public float Stress { get; set; } = 0.0f;
     public int Increment { get; set; } = 1;
+
+    /// <summary>
+    /// Resources available in this cell.
+    /// Key is the resource ID, value is the abundance (0-1).
+    /// </summary>
+    public Dictionary<string, float> Resources { get; set; } = new();
+
     public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles, Edge[] edges)
     {
         Triangles = triangles;

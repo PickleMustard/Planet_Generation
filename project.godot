@@ -18,6 +18,12 @@ config/icon="res://icon.svg"
 [autoload]
 
 MeshGenerationThreadPool="*res://Scripts/UtilityLibrary/MeshGenerationThreadPool.cs"
+ResourceDatabase="*res://Scripts/Structures/Resources/ResourceDatabase.cs"
+DebugMenu="*res://UI/Debug/DebugMenu.tscn"
+
+[display]
+
+window/size/mode=2
 
 [dotnet]
 

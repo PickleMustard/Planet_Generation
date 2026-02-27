@@ -158,7 +158,7 @@ public partial class SatelliteBeltItem : VBoxContainer
     public void ApplyTemplate(SatelliteGroupTypes type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetSatelliteGroupDefaults(type);
+        var t = TemplateHelpers.GetSatelliteGroupDefaults(type);
         t = (Godot.Collections.Dictionary)t["template"];
         GD.Print($"Template: {t}");
 

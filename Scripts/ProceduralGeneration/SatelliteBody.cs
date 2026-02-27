@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using UtilityLibrary;
 using Structures.GameState;
 using Structures.MeshGeneration;
 using Structures.Enums;
+using Structures.Resources;
 using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.MeshGeneration.ResourceGeneration;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
@@ -20,6 +23,12 @@ public partial class SatelliteBody : Node3D
     Octree<Point> Oct;
     Godot.Collections.Dictionary bodyDict;
     StructureDatabase StrDb;
+
+    /// <summary>
+    /// Resource deposits available on this satellite body.
+    /// Key is the resource ID, value is the deposit information.
+    /// </summary>
+    public Dictionary<string, ResourceDeposit> Resources { get; set; } = new();
 
     public class Builder
     {
@@ -231,7 +240,7 @@ public partial class SatelliteBody : Node3D
         }
         else
         {
-            var t = SystemGenTemplates.GetSatelliteBodyDefaults(SatelliteType);
+            var t = TemplateHelpers.GetSatelliteBodyDefaults(SatelliteType);
             var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
             meshParams.Add("name", name);
             meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType));
@@ -268,6 +277,35 @@ public partial class SatelliteBody : Node3D
         }
         Mesh.ConfigureFrom(StrDb, meshParams);
         Mesh.GenerateMesh(Oct);
+        GenerateResources();
+    }
+
+    /// <summary>
+    /// Generates resources for this satellite based on its configuration.
+    /// </summary>
+    public void GenerateResources()
+    {
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        Godot.Collections.Dictionary resourceConfig = null;
+
+        if (bodyDict != null && bodyDict.ContainsKey("resources"))
+        {
+            resourceConfig = bodyDict["resources"].AsGodotDictionary();
+        }
+        else
+        {
+            var template = TemplateHelpers.GetSatelliteBodyDefaults(SatelliteType);
+            if (template.ContainsKey("resources"))
+            {
+                resourceConfig = template["resources"].AsGodotDictionary();
+            }
+        }
+
+        if (resourceConfig != null)
+        {
+            Resources = SatelliteResourceGenerator.GenerateResources(resourceConfig, rng);
+            GD.Print($"SatelliteBody '{Name}' generated {Resources.Count} resource deposits");
+        }
     }
 
     public String PickName(Godot.Collections.Dictionary nameDict)

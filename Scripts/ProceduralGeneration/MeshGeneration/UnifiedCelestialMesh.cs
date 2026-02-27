@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using UtilityLibrary;
 using PlanetGeneration;
+using ProceduralGeneration.MeshGeneration.ResourceGeneration;
 
 /// <summary>
 /// Unified celestial body mesh generation system that consolidates functionality from CelestialBodyMesh and SatelliteBodyMesh.
@@ -554,6 +555,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
             }
             catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Noise Settings: {e.Message}\n{e.StackTrace}"); }
+        }
+
+        if (meshParams.ContainsKey("resources"))
+        {
+            _resourceConfig = meshParams["resources"].AsGodotDictionary();
         }
     }
 
@@ -1121,6 +1127,15 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             GD.PrintErr($"\nBiome Error:  {biomeError.Message}\n{biomeError.StackTrace}\n");
         }
         percent.Reset();
+        try
+        {
+            await AssignResources(continents);
+        }
+        catch (Exception resourceError)
+        {
+            GD.PrintErr($"\nResource Assignment Error:  {resourceError.Message}\n{resourceError.StackTrace}\n");
+        }
+        percent.Reset();
         percent.PercentTotal = continents.Values.Count;
         percent.PercentCurrent = 0;
         function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Generate From Continents", () =>
@@ -1300,6 +1315,20 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             Task.WaitAll(BiomeThreader.ToArray());
         }
     }
+
+    private async Task AssignResources(Dictionary<int, Continent> continents)
+    {
+        if (_resourceConfig == null || continents == null || continents.Count == 0)
+            return;
+
+        await Task.Run(() =>
+        {
+            ContinentResourceGenerator.GenerateResources(continents, _resourceConfig, rand, this);
+            GD.Print($"Assigned resources to {continents.Count} continents");
+        });
+    }
+
+    protected Godot.Collections.Dictionary _resourceConfig;
 
     public void UpdateVertexHeights(HashSet<Point> Vertices, Dictionary<int, Continent> Continents)
     {
