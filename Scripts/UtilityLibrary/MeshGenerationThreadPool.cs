@@ -4,10 +4,20 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Godot;
+#if DEBUG
+using UI.Debug;
+using UI.Debug.DatabaseViewer;
+#endif
 
 namespace PlanetGeneration
 {
+#if DEBUG
+    [DebugData("Thread Pool", Category = "System")]
+#endif
     public partial class MeshGenerationThreadPool : Node
+#if DEBUG
+        , IDebugDataProvider
+#endif
     {
         private static MeshGenerationThreadPool _instance;
         public static MeshGenerationThreadPool Instance
@@ -282,5 +292,71 @@ namespace PlanetGeneration
             Shutdown();
             base._ExitTree();
         }
+
+#if DEBUG
+        string IDataProvider.Name => "Thread Pool";
+        string IDataProvider.Category => "System";
+        bool IDataProvider.NeedsRefresh => true;
+        object IDebugDataProvider.SourceObject => this;
+        string IDebugDataProvider.InstanceNamespace => "MeshGenerationThreadPool";
+        bool IDebugDataProvider.IsSourceValid => isInitialized && IsInstanceValid(this);
+
+        DebugDataNode IDataProvider.GetData()
+        {
+            lock (lockObject)
+            {
+                var node = new DebugDataNode("Thread Pool")
+                    .AddProperty("Max Threads", maxConcurrentThreads)
+                    .AddProperty("Active Tasks", GetActiveTaskCount())
+                    .AddProperty("Queued Tasks", GetQueuedTaskCount());
+
+                var activeTasksNode = node.AddChild("Active Tasks");
+                foreach (var kvp in taskRegistry)
+                {
+                    var task = kvp.Value;
+                    activeTasksNode.AddChild(task.Id)
+                        .AddProperty("Body Name", task.BodyName)
+                        .AddProperty("Priority", task.Priority.ToString())
+                        .AddProperty("Progress", task.Progress)
+                        .AddProperty("Is Completed", task.IsCompleted)
+                        .AddProperty("Start Time", task.StartTime.ToString("HH:mm:ss"))
+                        .AddProperty("Has Exception", task.Exception != null);
+                }
+
+                var queuedTasksNode = node.AddChild("Queued Tasks by Priority");
+                foreach (TaskPriority priority in Enum.GetValues(typeof(TaskPriority)))
+                {
+                    var queue = taskQueues[priority];
+                    if (queue.Count > 0)
+                    {
+                        queuedTasksNode.AddChild($"{priority} ({queue.Count} tasks)");
+                    }
+                }
+
+                return node;
+            }
+        }
+
+        void IDataProvider.Refresh()
+        {
+        }
+
+        IEnumerable<string> IDataProvider.Search(string pattern)
+        {
+            var results = new List<string>();
+            lock (lockObject)
+            {
+                foreach (var kvp in taskRegistry)
+                {
+                    if (kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                        kvp.Value.BodyName.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                    {
+                        results.Add($"Active/{kvp.Key}");
+                    }
+                }
+            }
+            return results;
+        }
+#endif
     }
 }

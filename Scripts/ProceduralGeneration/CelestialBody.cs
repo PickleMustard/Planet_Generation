@@ -160,7 +160,7 @@ public partial class CelestialBody : Node3D
         }
         else
         {
-            var t = SystemGenTemplates.GetCelestialBodyDefaults(Type);
+            var t = TemplateHelpers.GetCelestialBodyDefaults(Type);
             var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
             meshParams.Add("name", name);
             meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), Type));

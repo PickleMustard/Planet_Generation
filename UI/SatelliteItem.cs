@@ -182,7 +182,7 @@ public partial class SatelliteItem : HBoxContainer
     public void ApplyTemplate(SatelliteBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetSatelliteBodyDefaults(type);
+        var t = TemplateHelpers.GetSatelliteBodyDefaults(type);
         var template = (Godot.Collections.Dictionary)t["template"];
         satName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
 

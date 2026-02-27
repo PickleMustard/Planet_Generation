@@ -15,11 +15,11 @@ public partial class Continent : Resource
 
     public enum BOUNDARY_TYPE
     {
-        Divergent,    // Pulling apart - rift valleys, mid-ocean ridges
-        Convergent,   // Pushing together - mountains, trenches
-        Transform     // Sliding past - earthquakes
+        Divergent,
+        Convergent,
+        Transform
     }
-    // VoronoiCell fields
+
     public int StartingIndex;
     public List<VoronoiCell> cells;
     public HashSet<VoronoiCell> boundaryCells;
@@ -30,7 +30,6 @@ public partial class Continent : Resource
     public Vector3 uAxis;
     public Vector3 vAxis;
 
-    // Tectonic Plate fields
     public Vector2 movementDirection;
     public float velocity;
     public float rotation;
@@ -39,11 +38,22 @@ public partial class Continent : Resource
     public float averageHeight;
     public float averageMoisture;
 
-    // Stress accumulation fields
     public HashSet<int> neighborContinents;
-    public float stressAccumulation;          // Total stress buildup
-    public Dictionary<int, float> neighborStress; // Stress per neighboring continent
-    public Dictionary<int, BOUNDARY_TYPE> boundaryTypes; // Type of boundary with neighbors
+    public float stressAccumulation;
+    public Dictionary<int, float> neighborStress;
+    public Dictionary<int, BOUNDARY_TYPE> boundaryTypes;
+
+    /// <summary>
+    /// Available resource types on this continent with their weights.
+    /// Key is the resource ID, value is the selection weight.
+    /// </summary>
+    public Dictionary<string, float> ContinentalResources { get; set; } = new();
+
+    /// <summary>
+    /// Total resource abundance values for each resource type.
+    /// Key is the resource ID, value is the total abundance.
+    /// </summary>
+    public Dictionary<string, float> ResourceAbundance { get; set; } = new();
 
     public Continent(int StartingIndex, List<VoronoiCell> cells, HashSet<VoronoiCell> boundaryCells,
             HashSet<Point> points, List<Point> ConvexHull, Vector3 averagedCenter,

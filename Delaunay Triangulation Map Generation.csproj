@@ -5,6 +5,6 @@
     <RootNamespace>DelaunayTriangulationMapGeneration</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Tommy" Version="3.1.2"/>
+    <PackageReference Include="YamlDotNet" Version="16.3.0"/>
   </ItemGroup>
 </Project>

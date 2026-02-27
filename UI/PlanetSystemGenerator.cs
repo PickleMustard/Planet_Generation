@@ -5,7 +5,6 @@ using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using UtilityLibrary;
-using Tommy;
 using FileAccess = Godot.FileAccess;
 
 namespace UI;
@@ -335,10 +334,10 @@ public partial class PlanetSystemGenerator : Control
         var templateFiles = DirAccess.GetFilesAt("res://Configuration/SystemTemplate/");
         foreach (var file in templateFiles)
         {
-            if (file.EndsWith(".toml"))
+            if (file.EndsWith(".yaml"))
             {
                 var button = new Button();
-                button.Text = file.Replace(".toml", "");
+                button.Text = file.Replace(".yaml", "");
                 button.Pressed += () => LoadTemplate(file);
                 _templatesList.AddChild(button);
             }
@@ -355,7 +354,7 @@ public partial class PlanetSystemGenerator : Control
         }
 
         // Load bodies from utility library
-        var bodies = UtilityLibrary.SystemGenTemplates.LoadSolarSystemTemplate(fileName);
+        var bodies = TemplateHelpers.LoadSystemTemplate(fileName);
         GD.Print($"Table: {bodies}");
         foreach (var bodyDict in bodies)
         {
@@ -406,88 +405,6 @@ public partial class PlanetSystemGenerator : Control
 
         UpdateCountLabel();
         RedistributeOrbitalRings();
-    }
-
-    private string ReadString(TomlTable table, string key, string fallback)
-    {
-        if (table.HasKey(key) && table[key] is TomlNode node)
-        {
-            return node.ToString().Trim('"');
-        }
-        return fallback;
-    }
-
-    private Vector3 ReadVector3(TomlTable table, string key, Vector3 fallback)
-    {
-        if (table.HasKey(key) && table[key] is TomlArray arr && arr.ChildrenCount >= 3)
-        {
-            float x = NodeToFloat(arr[0], 0f);
-            float y = NodeToFloat(arr[1], 0f);
-            float z = NodeToFloat(arr[2], 0f);
-            return new Vector3(x, y, z);
-        }
-        return fallback;
-    }
-
-    private float ReadFloat(TomlTable table, string key, float fallback)
-    {
-        if (table.HasKey(key) && table[key] is TomlNode node)
-        {
-            return NodeToFloat(node, fallback);
-        }
-        return fallback;
-    }
-
-    private float NodeToFloat(TomlNode node, float fallback)
-    {
-        try
-        {
-            if (node is Tommy.TomlInteger ti)
-                return (float)ti.Value;
-            if (node is Tommy.TomlFloat tf)
-                return (float)tf.Value;
-
-            var s = node.ToString();
-            if (s.Length >= 2 && s[0] == '"' && s[^1] == '"')
-                s = s.Substring(1, s.Length - 2);
-            if (float.TryParse(s, out var v))
-                return v;
-        }
-        catch { }
-        return fallback;
-    }
-
-    private int ReadInt(TomlTable table, string key, int fallback)
-    {
-        if (!table.HasKey(key))
-            return fallback;
-        var node = table[key];
-        if (node is Tommy.TomlInteger ti)
-            return (int)ti.Value;
-        if (node is Tommy.TomlFloat tf)
-            return (int)tf.Value;
-        var s = node.ToString();
-        if (int.TryParse(s, out var v))
-            return v;
-        if (float.TryParse(s, out var vf))
-            return (int)vf;
-        return fallback;
-    }
-
-    private int[] ReadIntArray(TomlTable table, string key, int[] fallback)
-    {
-        if (!table.HasKey(key))
-            return fallback;
-        if (table[key] is TomlArray arr && arr.ChildrenCount > 0)
-        {
-            int[] result = new int[arr.ChildrenCount];
-            for (int i = 0; i < arr.ChildrenCount; i++)
-            {
-                result[i] = (int)NodeToFloat(arr[i], fallback[i % fallback.Length]);
-            }
-            return result;
-        }
-        return fallback;
     }
 
     private Dictionary ConvertParamsToDict<T>(T parameters)
@@ -643,10 +560,10 @@ public partial class PlanetSystemGenerator : Control
             fileName = "UntitledSystem";
         }
 
-        // Ensure .toml extension
-        if (!fileName.EndsWith(".toml", StringComparison.OrdinalIgnoreCase))
+        // Ensure .yaml extension
+        if (!fileName.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase))
         {
-            fileName += ".toml";
+            fileName += ".yaml";
         }
 
         SaveSystemToFile(fileName);
@@ -669,7 +586,7 @@ public partial class PlanetSystemGenerator : Control
                     bodies.Add(bi.ToParams());
             }
 
-            string tomlContent = UtilityLibrary.SystemGenTemplates.GenerateTOMLContent(bodies);
+            string yamlContent = TemplateHelpers.GenerateYamlContent(bodies);
 
             string filePath = $"res://Configuration/SystemTemplate/{fileName}";
 
@@ -681,7 +598,7 @@ public partial class PlanetSystemGenerator : Control
                 return;
             }
 
-            file.StoreString(tomlContent);
+            file.StoreString(yamlContent);
             file.Close();
 
             GD.Print($"System configuration saved to: {filePath}");
