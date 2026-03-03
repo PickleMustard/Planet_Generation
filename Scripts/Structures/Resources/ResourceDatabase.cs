@@ -11,11 +11,11 @@ using UI.Debug.DatabaseViewer;
 namespace Structures.Resources
 {
 #if DEBUG
-    [DebugData("Resources", Category = "Game")]
+    [DebugData("IngameResources", Category = "Game")]
 #endif
     public partial class ResourceDatabase : Node
 #if DEBUG
-        , IDebugDataProvider
+            , IDebugDataProvider
 #endif
     {
         private static ResourceDatabase _instance;
@@ -25,7 +25,9 @@ namespace Structures.Resources
             {
                 if (_instance == null)
                 {
-                    GD.PrintErr("ResourceDatabase not initialized. Ensure it is registered as an autoload.");
+                    GD.PrintErr(
+                        "ResourceDatabase not initialized. Ensure it is registered as an autoload."
+                    );
                 }
                 return _instance;
             }
@@ -95,7 +97,10 @@ namespace Structures.Resources
             return !string.IsNullOrEmpty(resourceId) && _resources.ContainsKey(resourceId);
         }
 
-        public void ValidateAllBodyConfigResources(string bodyConfigName, IEnumerable<string> resourceIds)
+        public void ValidateAllBodyConfigResources(
+            string bodyConfigName,
+            IEnumerable<string> resourceIds
+        )
         {
             if (resourceIds == null)
             {
@@ -122,23 +127,26 @@ namespace Structures.Resources
         }
 
 #if DEBUG
-        string IDataProvider.Name => "Resources";
+        string IDataProvider.Name => "IngameResources";
         string IDataProvider.Category => "Game";
-        bool IDataProvider.NeedsRefresh => false;
+        bool IDataProvider.NeedsRefresh => true;
         object IDebugDataProvider.SourceObject => this;
         string IDebugDataProvider.InstanceNamespace => "ResourceDatabase";
         bool IDebugDataProvider.IsSourceValid => _isInitialized && IsInstanceValid(this);
 
         DebugDataNode IDataProvider.GetData()
         {
-            var node = new DebugDataNode("Resources")
-                .AddProperty("Total Definitions", _resources.Count);
+            var node = new DebugDataNode("Resources").AddProperty(
+                "Total Definitions",
+                _resources.Count
+            );
 
             var definitionsNode = node.AddChild("Definitions");
             foreach (var kvp in _resources)
             {
                 var def = kvp.Value;
-                definitionsNode.AddChild(def.IdName)
+                definitionsNode
+                    .AddChild(def.IdName)
                     .AddProperty("Resource Type", def.ResourceType)
                     .AddProperty("Resource Tier", def.ResourceTier)
                     .AddProperty("Color", def.DisplayColor.ToString())
@@ -150,17 +158,17 @@ namespace Structures.Resources
             return node;
         }
 
-        void IDataProvider.Refresh()
-        {
-        }
+        void IDataProvider.Refresh() { }
 
         IEnumerable<string> IDataProvider.Search(string pattern)
         {
             var results = new List<string>();
             foreach (var kvp in _resources)
             {
-                if (kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
-                    kvp.Value.ResourceType.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                if (
+                    kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase)
+                    || kvp.Value.ResourceType.Contains(pattern, StringComparison.OrdinalIgnoreCase)
+                )
                 {
                     results.Add($"Definitions/{kvp.Key}");
                 }

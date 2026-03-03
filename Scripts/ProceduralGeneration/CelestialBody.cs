@@ -1,11 +1,10 @@
 using System;
 using Godot;
-using UtilityLibrary;
+using ProceduralGeneration.MeshGeneration;
+using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
-using Structures.Enums;
-using ProceduralGeneration.MeshGeneration;
-
+using UtilityLibrary;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
@@ -15,11 +14,17 @@ namespace ProceduralGeneration.PlanetGeneration;
 ///Its position can be modified by the forces acting upon it</summary>
 public partial class CelestialBody : Node3D
 {
-    public Builder builder() { return new Builder(); }
+    public Builder builder()
+    {
+        return new Builder();
+    }
+
     [Export]
     public Vector3 Velocity;
+
     [Export]
     public float Mass;
+
     [Export]
     public Vector3 TotalForce;
     public CelestialBodyType Type;
@@ -87,7 +92,7 @@ public partial class CelestialBody : Node3D
             var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
             StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
             Oct = new Octree<Point>(new Aabb(aabbBegin, aabbSize * 2f));
-            
+
             if (this.Mesh != null)
             {
                 this.Mesh.size = size;
@@ -143,19 +148,48 @@ public partial class CelestialBody : Node3D
     {
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
-        if (
-            bodyDict != null
-        )
+        if (bodyDict != null)
         {
             meshParams.Add("type", bodyDict["type"]);
             meshParams.Add("name", bodyDict["name"]);
-            if (bodyDict.ContainsKey("base_mesh") && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            if (
+                bodyDict.ContainsKey("base_mesh")
+                && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
+            )
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
-            if (bodyDict.ContainsKey("tectonics") && bodyDict["tectonics"].Obj is Godot.Collections.Dictionary tectonics)
+            if (
+                bodyDict.ContainsKey("tectonics")
+                && bodyDict["tectonics"].Obj is Godot.Collections.Dictionary tectonics
+            )
             {
                 CalculateTectonicMeshFromParams(tectonics, meshParams);
+            }
+            if (
+                bodyDict.ContainsKey("resources")
+                && bodyDict["resources"].Obj is Godot.Collections.Dictionary resources
+            )
+            {
+                meshParams.Add("resources", resources);
+                GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in bodyDict, keys: {string.Join(", ", resources.Keys)}");
+            }
+            else
+            {
+                // Fallback to template resources if not provided in bodyDict
+                var t = TemplateHelpers.GetCelestialBodyDefaults(Type);
+                if (
+                    t.ContainsKey("resources")
+                    && t["resources"].Obj is Godot.Collections.Dictionary templateResources
+                )
+                {
+                    meshParams.Add("resources", templateResources);
+                    GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict, loaded from template, keys: {string.Join(", ", templateResources.Keys)}");
+                }
+                else
+                {
+                    GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict or template");
+                }
             }
         }
         else
@@ -173,13 +207,31 @@ public partial class CelestialBody : Node3D
             var mass = (float)template["mass"];
             meshParams.Add("size", size);
             meshParams.Add("mass", mass);
-            if (t.ContainsKey("base_mesh") && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            if (
+                t.ContainsKey("base_mesh")
+                && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
+            )
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
-            if (t.ContainsKey("tectonics") && t["tectonics"].Obj is Godot.Collections.Dictionary tectonics)
+            if (
+                t.ContainsKey("tectonics")
+                && t["tectonics"].Obj is Godot.Collections.Dictionary tectonics
+            )
             {
                 CalculateTectonicMeshFromParams(tectonics, meshParams);
+            }
+            if (
+                t.ContainsKey("resources")
+                && t["resources"].Obj is Godot.Collections.Dictionary resources
+            )
+            {
+                meshParams.Add("resources", resources);
+                GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in template, keys: {string.Join(", ", resources.Keys)}");
+            }
+            else
+            {
+                GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: No resources in template (containsKey: {t.ContainsKey("resources")})");
             }
         }
         this.CallDeferred("set_name", (String)meshParams["name"]);
@@ -210,9 +262,13 @@ public partial class CelestialBody : Node3D
 
     public Point FindNearest(Vector3 position)
     {
-        GD.Print($"Global Position: {this.GlobalPosition}");
+        var result = FindNearestCell(position);
+        return result?.Point;
+    }
+
+    public CellSelectionResult FindNearestCell(Vector3 position)
+    {
         Vector3 localSpace = (position - this.GlobalPosition);
-        GD.Print($"Local Space: {localSpace}");
         Point desired = new Point(localSpace, 0);
         Point result = Oct.FindNearest(desired);
         PolygonRendererSDL.DrawPoint(this, 1, result.ToVector3(), 0.05f, Colors.Red);
@@ -222,7 +278,8 @@ public partial class CelestialBody : Node3D
         foreach (var cell in cells)
         {
             desired.Position = desired.Position.Normalized() * (Mesh.size + cell.Height);
-            if (cell.BoundingBox.HasPoint(desired.Position)) contains.Add(cell);
+            if (cell.BoundingBox.HasPoint(desired.Position))
+                contains.Add(cell);
         }
         if (contains.Count == 0)
         {
@@ -230,9 +287,16 @@ public partial class CelestialBody : Node3D
         }
         else if (contains.Count == 1)
         {
-            GD.Print($"Point is in a single cell: {contains[0]}");
+            var cell = contains[0];
+            var continent = Mesh.GetContinent(cell.ContinentIndex);
+            return new CellSelectionResult
+            {
+                Point = result,
+                Cell = contains[0],
+                CellContinent = continent,
+            };
         }
-        else if (contains.Count > 1)
+        else
         {
             float minDist = float.MaxValue;
             VoronoiCell minCell = null;
@@ -245,31 +309,65 @@ public partial class CelestialBody : Node3D
                     minCell = cell;
                 }
             }
-            GD.Print($"Point is in multiple cells: {minCell}");
+            var continent = Mesh.GetContinent(minCell.ContinentIndex);
+            return new CellSelectionResult
+            {
+                Point = result,
+                Cell = minCell,
+                CellContinent = continent,
+            };
         }
-        return result;
+    }
+
+    public class CellSelectionResult
+    {
+        public Point Point { get; set; }
+        public VoronoiCell Cell { get; set; }
+        public Continent CellContinent { get; set; }
     }
 
     public MeshInstance3D CreateDebugWireframe(Aabb aabb)
     {
-        Vector3[] corners = new Vector3[] { aabb.GetEndpoint(0), aabb.GetEndpoint(1), aabb.GetEndpoint(2), aabb.GetEndpoint(3), aabb.GetEndpoint(4), aabb.GetEndpoint(5), aabb.GetEndpoint(6), aabb.GetEndpoint(7) };
+        Vector3[] corners = new Vector3[]
+        {
+            aabb.GetEndpoint(0),
+            aabb.GetEndpoint(1),
+            aabb.GetEndpoint(2),
+            aabb.GetEndpoint(3),
+            aabb.GetEndpoint(4),
+            aabb.GetEndpoint(5),
+            aabb.GetEndpoint(6),
+            aabb.GetEndpoint(7),
+        };
         var lineVertices = new Vector3[]
         {
             // Bottom face
-            corners[0], corners[1],
-            corners[1], corners[5],
-            corners[5], corners[4],
-            corners[4], corners[0],
+            corners[0],
+            corners[1],
+            corners[1],
+            corners[5],
+            corners[5],
+            corners[4],
+            corners[4],
+            corners[0],
             // Top face
-            corners[2], corners[3],
-            corners[3], corners[7],
-            corners[7], corners[6],
-            corners[6], corners[2],
+            corners[2],
+            corners[3],
+            corners[3],
+            corners[7],
+            corners[7],
+            corners[6],
+            corners[6],
+            corners[2],
             // Vertical edges
-            corners[0], corners[2],
-            corners[1], corners[3],
-            corners[4], corners[6],
-            corners[5], corners[7]
+            corners[0],
+            corners[2],
+            corners[1],
+            corners[3],
+            corners[4],
+            corners[6],
+            corners[5],
+            corners[7],
         };
 
         // 3. Create the ArrayMesh
@@ -282,25 +380,23 @@ public partial class CelestialBody : Node3D
         mesh.AddSurfaceFromArrays(ArrayMesh.PrimitiveType.Lines, arrays);
 
         // 5. Create the MeshInstance3D node
-        var meshInstance = new MeshInstance3D
-        {
-            Mesh = mesh,
-            Name = "AABB_Wireframe"
-        };
+        var meshInstance = new MeshInstance3D { Mesh = mesh, Name = "AABB_Wireframe" };
 
         var material = new StandardMaterial3D
         {
             AlbedoColor = Colors.White,
             // Use unshaded mode to make the color constant regardless of lighting
-            ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded
+            ShadingMode = StandardMaterial3D.ShadingModeEnum.Unshaded,
         };
         meshInstance.MaterialOverride = material;
 
         return meshInstance;
-
     }
 
-    private void CalculateTectonicMeshFromParams(Godot.Collections.Dictionary definedMesh, Godot.Collections.Dictionary meshParams)
+    private void CalculateTectonicMeshFromParams(
+        Godot.Collections.Dictionary definedMesh,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var tectDict = new Godot.Collections.Dictionary();
@@ -311,38 +407,66 @@ public partial class CelestialBody : Node3D
         float[] shearScale = (float[])definedMesh["shear_scale"];
         tectDict.Add("shear_scale", rng.RandfRange(shearScale[0], shearScale[1]));
         float[] maxPropagationDistance = (float[])definedMesh["max_propagation_distance"];
-        tectDict.Add("max_propagation_distance", rng.RandfRange(maxPropagationDistance[0], maxPropagationDistance[1]));
+        tectDict.Add(
+            "max_propagation_distance",
+            rng.RandfRange(maxPropagationDistance[0], maxPropagationDistance[1])
+        );
         float[] propagationFalloff = (float[])definedMesh["propagation_falloff"];
-        tectDict.Add("propagation_falloff", rng.RandfRange(propagationFalloff[0], propagationFalloff[1]));
+        tectDict.Add(
+            "propagation_falloff",
+            rng.RandfRange(propagationFalloff[0], propagationFalloff[1])
+        );
         float[] inactiveStressThreshold = (float[])definedMesh["inactive_stress_threshold"];
-        tectDict.Add("inactive_stress_threshold", rng.RandfRange(inactiveStressThreshold[0], inactiveStressThreshold[1]));
+        tectDict.Add(
+            "inactive_stress_threshold",
+            rng.RandfRange(inactiveStressThreshold[0], inactiveStressThreshold[1])
+        );
         float[] generalHeightScale = (float[])definedMesh["general_height_scale"];
-        tectDict.Add("general_height_scale", rng.RandfRange(generalHeightScale[0], generalHeightScale[1]));
+        tectDict.Add(
+            "general_height_scale",
+            rng.RandfRange(generalHeightScale[0], generalHeightScale[1])
+        );
         float[] generalShearScale = (float[])definedMesh["general_shear_scale"];
-        tectDict.Add("general_shear_scale", rng.RandfRange(generalShearScale[0], generalShearScale[1]));
+        tectDict.Add(
+            "general_shear_scale",
+            rng.RandfRange(generalShearScale[0], generalShearScale[1])
+        );
         float[] generalCompressionScale = (float[])definedMesh["general_compression_scale"];
-        tectDict.Add("general_compression_scale", rng.RandfRange(generalCompressionScale[0], generalCompressionScale[1]));
+        tectDict.Add(
+            "general_compression_scale",
+            rng.RandfRange(generalCompressionScale[0], generalCompressionScale[1])
+        );
         float[] generalTransformScale = (float[])definedMesh["general_transform_scale"];
-        tectDict.Add("general_transform_scale", rng.RandfRange(generalTransformScale[0], generalTransformScale[1]));
+        tectDict.Add(
+            "general_transform_scale",
+            rng.RandfRange(generalTransformScale[0], generalTransformScale[1])
+        );
         meshParams.Add("tectonic", tectDict);
     }
 
-    private void CalculateBaseMeshFromParams(Godot.Collections.Dictionary definedMesh, Godot.Collections.Dictionary meshParams)
+    private void CalculateBaseMeshFromParams(
+        Godot.Collections.Dictionary definedMesh,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         meshParams.Add("subdivisions", (int)definedMesh["subdivisions"]);
-        var vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)definedMesh["vertices_per_edge"];
+        var vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)
+            definedMesh["vertices_per_edge"];
         int[] vertices_per_edge = new int[(int)definedMesh["subdivisions"]];
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         GD.Print($"VPE Array: {vpeArray}");
         for (int i = 0; i < vertices_per_edge.Length; i++)
         {
-            if (vpeArray.Count - 1 > i)//Defined subdivisions
+            if (vpeArray.Count - 1 > i) //Defined subdivisions
             {
                 vertices_per_edge[i] = rng.RandiRange(vpeArray[i][0], vpeArray[i][1]);
             }
             else
             {
-                vertices_per_edge[i] = rng.RandiRange(vpeArray[vpeArray.Count - 1][0], vpeArray[vpeArray.Count - 1][1]);
+                vertices_per_edge[i] = rng.RandiRange(
+                    vpeArray[vpeArray.Count - 1][0],
+                    vpeArray[vpeArray.Count - 1][1]
+                );
             }
         }
         meshParams.Add("vertices_per_edge", vertices_per_edge);
@@ -431,29 +555,32 @@ public partial class CelestialBody : Node3D
             return this;
         }
 
-        public Builder FromBodyDict(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
+        public Builder FromBodyDict(
+            Godot.Collections.Dictionary bodyDict,
+            UnifiedCelestialMesh mesh
+        )
         {
             _bodyDict = bodyDict;
             _mesh = mesh;
-            
+
             if (bodyDict != null)
             {
                 var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
                 var type = (String)bodyDict["type"];
                 var mass = (float)baseTemplates["mass"];
                 var velocity = (Vector3)baseTemplates["velocity"];
-                
+
                 _type = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
                 _mass = mass;
                 _velocity = velocity;
-                
+
                 if (mesh != null)
                 {
                     var size = (int)baseTemplates["size"];
                     mesh.size = size;
                 }
             }
-            
+
             return this;
         }
 
@@ -475,7 +602,10 @@ public partial class CelestialBody : Node3D
             return new CelestialBody(this);
         }
 
-        public static CelestialBody BuildFromBodyDict(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
+        public static CelestialBody BuildFromBodyDict(
+            Godot.Collections.Dictionary bodyDict,
+            UnifiedCelestialMesh mesh
+        )
         {
             return new Builder().FromBodyDict(bodyDict, mesh).Build();
         }

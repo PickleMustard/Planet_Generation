@@ -5,7 +5,7 @@ using System.Text;
 
 namespace UtilityLibrary
 {
-    public static class Logger
+    public static class GameLogger
     {
         public enum Mode
         {
@@ -18,7 +18,7 @@ namespace UtilityLibrary
         public static Mode logMode { get; set; } = Mode.PROD;
 
 
-        static Logger()
+        static GameLogger()
         {
             // Ensure log directory exists
             if (!Directory.Exists(LogDirectory))
@@ -180,11 +180,11 @@ namespace UtilityLibrary
                     // Write to file
                     File.AppendAllText(LogFilePath, formattedMessage + System.Environment.NewLine);
 
-                    if (level == Logger.Mode.DEBUG && Logger.logMode <= Logger.Mode.DEBUG)
+                    if (level == Mode.DEBUG && logMode <= Mode.DEBUG)
                         GD.Print(formattedMessage);
-                    else if ((level == Logger.Mode.CRITICAL || level == Logger.Mode.ERROR || level == Logger.Mode.WARNING) && Logger.logMode <= Logger.Mode.ERROR)
+                    else if ((level == Mode.CRITICAL || level == Mode.ERROR || level == Mode.WARNING) && logMode <= Mode.ERROR)
                         GD.PrintErr(formattedMessage);
-                    else if (level == Logger.Mode.INFO && Logger.logMode <= Logger.Mode.INFO)
+                    else if (level == Mode.INFO && logMode <= Mode.INFO)
                         GD.Print(formattedMessage);
                 }
                 catch (Exception ex)

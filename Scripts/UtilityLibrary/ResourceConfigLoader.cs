@@ -44,12 +44,14 @@ namespace UtilityLibrary
 
                 var yamlData = deserializer.Deserialize<SysDict>(text);
 
-                if (yamlData.ContainsKey("resources") && yamlData["resources"] is List<object> resourcesList)
+                if (yamlData.ContainsKey("resources"))
                 {
+                    var resourcesList = yamlData["resources"] as List<object>;
                     foreach (var resourceObj in resourcesList)
                     {
-                        if (resourceObj is SysDict resourceDict)
+                        if (resourceObj is Dictionary<object, object> resourceDict)
                         {
+                            GD.Print($"Resource definition: {resourceDict}");
                             var definition = ParseResourceDefinition(resourceDict);
                             definitions.Add(definition);
                         }
@@ -58,14 +60,18 @@ namespace UtilityLibrary
             }
             catch (Exception e)
             {
-                GD.PrintErr($"Error loading resource definitions from {filePath}: {e.Message}\n{e.StackTrace}");
+                GD.PrintErr(
+                    $"Error loading resource definitions from {filePath}: {e.Message}\n{e.StackTrace}"
+                );
             }
 
             return definitions;
         }
 
-        private static ResourceDefinition ParseResourceDefinition(SysDict dict)
+        private static ResourceDefinition ParseResourceDefinition(Dictionary<object, object> dict)
         {
+            var (minElev, maxElev) = ReadElevationRange(dict, "elevation_range", (0.0f, 1.0f));
+
             var definition = new ResourceDefinition
             {
                 IdName = ReadString(dict, "id_name", ""),
@@ -73,14 +79,32 @@ namespace UtilityLibrary
                 ResourceType = ReadString(dict, "resource_type", ""),
                 DisplayColor = ReadColor(dict, "display_color", Colors.White),
                 BiomeAffinity = ReadBiomeAffinity(dict, "biome_affinity"),
-                MinElevation = ReadFloat(dict, "min_elevation", 0.0f),
-                MaxElevation = ReadFloat(dict, "max_elevation", 1.0f)
+                MinElevation = minElev,
+                MaxElevation = maxElev,
             };
 
             return definition;
         }
 
-        private static Color ReadColor(SysDict dict, string key, Color fallback)
+        private static (float min, float max) ReadElevationRange(
+            Dictionary<object, object> dict,
+            string key,
+            (float, float) fallback
+        )
+        {
+            if (!dict.ContainsKey(key))
+                return fallback;
+
+            if (dict[key] is not List<object> arr || arr.Count < 2)
+                return fallback;
+
+            float min = NodeToFloat(arr[0], fallback.Item1);
+            float max = NodeToFloat(arr[1], fallback.Item2);
+
+            return (Mathf.Min(min, max), Mathf.Max(min, max));
+        }
+
+        private static Color ReadColor(Dictionary<object, object> dict, string key, Color fallback)
         {
             if (!dict.ContainsKey(key))
                 return fallback;
@@ -104,16 +128,19 @@ namespace UtilityLibrary
             return new Color(r, g, b, a);
         }
 
-        private static Dictionary<Biome.BiomeType, float> ReadBiomeAffinity(SysDict dict, string key)
+        private static Dictionary<Biome.BiomeType, float> ReadBiomeAffinity(
+            Dictionary<object, object> dict,
+            string key
+        )
         {
             var affinity = new Dictionary<Biome.BiomeType, float>();
 
-            if (!dict.ContainsKey(key) || dict[key] is not SysDict affinityDict)
+            if (!dict.ContainsKey(key) || dict[key] is not Dictionary<object, object> affinityDict)
                 return affinity;
 
             foreach (var kvp in affinityDict)
             {
-                string biomeName = kvp.Key;
+                string biomeName = (string)kvp.Key;
                 float value = NodeToFloat(kvp.Value, 1.0f);
 
                 if (TryParseBiomeType(biomeName, out Biome.BiomeType biomeType))
@@ -151,7 +178,11 @@ namespace UtilityLibrary
             return false;
         }
 
-        private static string ReadString(SysDict dict, string key, string fallback)
+        private static string ReadString(
+            Dictionary<object, object> dict,
+            string key,
+            string fallback
+        )
         {
             if (!dict.ContainsKey(key))
                 return fallback;
@@ -163,7 +194,7 @@ namespace UtilityLibrary
             return value?.ToString() ?? fallback;
         }
 
-        private static int ReadInt(SysDict dict, string key, int fallback)
+        private static int ReadInt(Dictionary<object, object> dict, string key, int fallback)
         {
             if (!dict.ContainsKey(key))
                 return fallback;
@@ -171,7 +202,7 @@ namespace UtilityLibrary
             return NodeToInt(dict[key], fallback);
         }
 
-        private static float ReadFloat(SysDict dict, string key, float fallback)
+        private static float ReadFloat(Dictionary<object, object> dict, string key, float fallback)
         {
             if (!dict.ContainsKey(key))
                 return fallback;

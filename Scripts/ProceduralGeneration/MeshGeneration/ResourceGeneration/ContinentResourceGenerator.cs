@@ -38,8 +38,13 @@ public static class ContinentResourceGenerator
         RandomNumberGenerator rng,
         UnifiedCelestialMesh mesh = null)
     {
+        GD.Print($"[ResourceDebug] ContinentResourceGenerator.GenerateResources: continents null: {continents == null}, count: {continents?.Count ?? 0}, resourceConfig null: {resourceConfig == null}");
+        
         if (continents == null || continents.Count == 0 || resourceConfig == null)
+        {
+            GD.PrintErr("[ResourceDebug] GenerateResources early return due to null/empty inputs");
             return;
+        }
 
         int primaryMin = GetIntRange(resourceConfig, "primary_count", (1, 3)).Item1;
         int primaryMax = GetIntRange(resourceConfig, "primary_count", (1, 3)).Item2;
@@ -47,6 +52,9 @@ public static class ContinentResourceGenerator
         int secondaryMax = GetIntRange(resourceConfig, "secondary_count", (0, 5)).Item2;
         float penaltyFactor = GetFloat(resourceConfig, "balance_penalty_factor", 0.8f);
         float balanceThreshold = GetFloat(resourceConfig, "balance_threshold", 0.15f);
+
+        GD.Print($"[ResourceDebug] Resource config: primary [{primaryMin},{primaryMax}], secondary [{secondaryMin},{secondaryMax}]");
+        GD.Print($"[ResourceDebug] Resource config keys: {string.Join(", ", resourceConfig.Keys)}");
 
         var globalTotals = new Dictionary<string, float>();
         int totalResources = continents.Count * (primaryMax + secondaryMax);
@@ -70,10 +78,14 @@ public static class ContinentResourceGenerator
             );
         }
 
+        GD.Print($"[ResourceDebug] Finished generating continental resources, now distributing to cells");
+        
         foreach (var kvp in continents)
         {
             DistributeResourcesToCells(kvp.Value, rng, mesh);
         }
+        
+        GD.Print($"[ResourceDebug] Finished distributing resources to all cells");
     }
 
     private static void GenerateContinentResources(
@@ -90,11 +102,14 @@ public static class ContinentResourceGenerator
         float penaltyFactor,
         float balanceThreshold)
     {
+        GD.Print($"[ResourceDebug] GenerateContinentResources: continent index {continent.StartingIndex}, cells: {continent.cells?.Count ?? 0}");
+        
         continent.ContinentalResources.Clear();
         continent.ResourceAbundance.Clear();
 
         float avgElevation = continent.averageHeight;
         float normalizedElevation = Mathf.Clamp((avgElevation + 1f) / 2f, 0f, 1f);
+        GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: avgHeight={avgElevation}, normalizedElev={normalizedElevation}");
 
         var biomeAffinities = CalculateAverageBiomeAffinities(continent, mesh);
 
@@ -102,6 +117,7 @@ public static class ContinentResourceGenerator
             primaryVariant.As<Godot.Collections.Array>() is Godot.Collections.Array primaryResources)
         {
             int primaryCount = rng.RandiRange(primaryMin, primaryMax);
+            GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: selecting {primaryCount} primary resources from {primaryResources.Count} pool");
             SelectResources(
                 primaryResources,
                 continent,
@@ -116,11 +132,16 @@ public static class ContinentResourceGenerator
                 isPrimary: true
             );
         }
+        else
+        {
+            GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: no primary resources found in config");
+        }
 
         if (resourceConfig.TryGetValue("secondary", out var secondaryVariant) &&
             secondaryVariant.As<Godot.Collections.Array>() is Godot.Collections.Array secondaryResources)
         {
             int secondaryCount = rng.RandiRange(secondaryMin, secondaryMax);
+            GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: selecting {secondaryCount} secondary resources from {secondaryResources.Count} pool");
             SelectResources(
                 secondaryResources,
                 continent,
@@ -135,6 +156,12 @@ public static class ContinentResourceGenerator
                 isPrimary: false
             );
         }
+        else
+        {
+            GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: no secondary resources found in config");
+        }
+        
+        GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: assigned {continent.ContinentalResources.Count} resources: {string.Join(", ", continent.ContinentalResources.Keys)}");
     }
 
     private static void SelectResources(
@@ -152,16 +179,24 @@ public static class ContinentResourceGenerator
     {
         var weightedResources = new List<(Godot.Collections.Dictionary config, float weight)>();
 
+        GD.Print($"[ResourceDebug] SelectResources: pool size {resourcePool.Count}, selecting {count}, isPrimary={isPrimary}");
+        
         foreach (var resourceVariant in resourcePool)
         {
             if (resourceVariant.AsGodotDictionary() is Godot.Collections.Dictionary resourceConfig)
             {
                 string resourceId = resourceConfig.GetValueOrDefault("resource_id", "").AsString();
                 if (string.IsNullOrEmpty(resourceId))
+                {
+                    GD.Print($"[ResourceDebug] SelectResources: skipping empty resource_id");
                     continue;
+                }
 
                 if (!ResourceDatabase.Instance.ValidateResourceExists(resourceId))
+                {
+                    GD.Print($"[ResourceDebug] SelectResources: resource '{resourceId}' not in database, skipping");
                     continue;
+                }
 
                 float baseWeight = GetFloat(resourceConfig, "base_weight", 1.0f);
                 float elevationWeight = GetElevationWeight(resourceConfig, normalizedElevation);
@@ -170,12 +205,16 @@ public static class ContinentResourceGenerator
 
                 float finalWeight = baseWeight * elevationWeight * biomeWeight * globalPenalty;
 
+                GD.Print($"[ResourceDebug] SelectResources: {resourceId} - base={baseWeight}, elev={elevationWeight}, biome={biomeWeight}, penalty={globalPenalty}, final={finalWeight}");
+
                 if (finalWeight > 0)
                 {
                     weightedResources.Add((resourceConfig, finalWeight));
                 }
             }
         }
+
+        GD.Print($"[ResourceDebug] SelectResources: {weightedResources.Count} valid weighted resources");
 
         for (int i = 0; i < count && weightedResources.Count > 0; i++)
         {
@@ -193,6 +232,7 @@ public static class ContinentResourceGenerator
 
             continent.ContinentalResources[resourceId] = abundance;
             continent.ResourceAbundance[resourceId] = abundance;
+            GD.Print($"[ResourceDebug] SelectResources: assigned {resourceId} with abundance {abundance}");
 
             if (!globalTotals.ContainsKey(resourceId))
                 globalTotals[resourceId] = 0f;
@@ -204,9 +244,15 @@ public static class ContinentResourceGenerator
 
     private static void DistributeResourcesToCells(Continent continent, RandomNumberGenerator rng, UnifiedCelestialMesh mesh)
     {
+        GD.Print($"[ResourceDebug] DistributeResourcesToCells: continent {continent.StartingIndex}, cells null: {continent.cells == null}, cell count: {continent.cells?.Count ?? 0}, continental resources: {continent.ContinentalResources?.Count ?? 0}");
+        
         if (continent.cells == null || continent.ContinentalResources.Count == 0)
+        {
+            GD.Print($"[ResourceDebug] DistributeResourcesToCells: early return - cells null: {continent.cells == null}, resource count: {continent.ContinentalResources?.Count ?? 0}");
             return;
+        }
 
+        int cellsWithResources = 0;
         foreach (var cell in continent.cells)
         {
             cell.Resources.Clear();
@@ -220,7 +266,10 @@ public static class ContinentResourceGenerator
                 float continentAbundance = resourceKvp.Value;
 
                 if (!ResourceDatabase.Instance.TryGetResource(resourceId, out var resourceDef))
+                {
+                    GD.PrintErr($"[ResourceDebug] DistributeResourcesToCells: resource '{resourceId}' not found in database");
                     continue;
+                }
 
                 float elevationFactor = 1.0f;
                 if (normalizedCellHeight < resourceDef.MinElevation || normalizedCellHeight > resourceDef.MaxElevation)
@@ -236,7 +285,12 @@ public static class ContinentResourceGenerator
                     cell.Resources[resourceId] = cellAbundance;
                 }
             }
+            
+            if (cell.Resources.Count > 0)
+                cellsWithResources++;
         }
+        
+        GD.Print($"[ResourceDebug] DistributeResourcesToCells: continent {continent.StartingIndex} - {cellsWithResources}/{continent.cells.Count} cells now have resources");
     }
 
     private static Dictionary<string, float> CalculateAverageBiomeAffinities(Continent continent, UnifiedCelestialMesh mesh)

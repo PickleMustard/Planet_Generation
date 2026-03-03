@@ -47,7 +47,7 @@ public static class DataTreeBuilder
         if (node.HasValue)
         {
             var formattedValue = FormatValue(node.Value);
-            item.SetText(1, formattedValue);
+            item.SetText(1, StripBBCode(formattedValue));
             item.SetText(2, node.ValueType);
             item.SetTooltipText(1, GetTooltip(node.Value));
             ApplyTypeColor(item, node.ValueType);
@@ -98,7 +98,7 @@ public static class DataTreeBuilder
         if (node.HasValue)
         {
             var formattedValue = FormatValue(node.Value);
-            item.SetText(1, formattedValue);
+            item.SetText(1, StripBBCode(formattedValue));
             item.SetText(2, node.ValueType);
             item.SetTooltipText(1, GetTooltip(node.Value));
             ApplyTypeColor(item, node.ValueType);
@@ -280,6 +280,15 @@ public static class DataTreeBuilder
                    .Replace("]", "\\]")
                    .Replace("\n", "\\n")
                    .Replace("\t", "\\t");
+    }
+
+    private static string StripBBCode(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+        return System.Text.RegularExpressions.Regex.Replace(text, @"\[/?[^\]]*\]", "");
     }
 
     private static Texture2D GetIcon(string iconName)

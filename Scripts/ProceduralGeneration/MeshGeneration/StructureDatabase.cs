@@ -300,13 +300,13 @@ public class StructureDatabase
     /// </remarks>
     public Edge GetOrCreateEdge(Point a, Point b, int index)
     {
-        Logger.EnterFunction("GetOrCreateEdge", $"Point a={a},Point b={b},index={index}");
+        GameLogger.EnterFunction("GetOrCreateEdge", $"Point a={a},Point b={b},index={index}");
         lock (lockObject)
         {
             if (TryGetEdge(a, b, out var found)) return found;
             var e = Edge.MakeEdge(index, a, b);
             RegisterEdgeCanonicalAndLegacy(e);
-            Logger.ExitFunction("GetOrCreateEdge");
+            GameLogger.ExitFunction("GetOrCreateEdge");
             return e;
         }
     }
@@ -326,7 +326,7 @@ public class StructureDatabase
     public Edge[] GetIncidentHalfEdges(Point p)
     {
         // Temporary facade that returns legacy directed Edge objects
-        Logger.EnterFunction("GetIncidentHalfEdges", $"pIndex={p.Index}");
+        GameLogger.EnterFunction("GetIncidentHalfEdges", $"pIndex={p.Index}");
         try
         {
             lock (lockObject)
@@ -350,13 +350,13 @@ public class StructureDatabase
                         break;
                 }
                 var arr = result.ToArray();
-                Logger.ExitFunction("GetIncidentHalfEdges", $"returned {arr.Length} edges");
+                GameLogger.ExitFunction("GetIncidentHalfEdges", $"returned {arr.Length} edges");
                 return arr;
             }
         }
         catch
         {
-            Logger.ExitFunction("GetIncidentHalfEdges", "returned 0 edges (exception)");
+            GameLogger.ExitFunction("GetIncidentHalfEdges", "returned 0 edges (exception)");
             return Array.Empty<Edge>();
         }
     }
@@ -527,10 +527,10 @@ public class StructureDatabase
     /// </remarks>
     public Edge[] GetEdgesFromPoint(Point p)
     {
-        Logger.EnterFunction("GetEdgesFromPoint", $"pIndex={p.Index}");
+        GameLogger.EnterFunction("GetEdgesFromPoint", $"pIndex={p.Index}");
 
         var edges = GetIncidentHalfEdges(p);
-        Logger.ExitFunction("GetEdgesFromPoint", $"returned {edges.Length} edges");
+        GameLogger.ExitFunction("GetEdgesFromPoint", $"returned {edges.Length} edges");
         return edges;
     }
 
@@ -545,7 +545,7 @@ public class StructureDatabase
     /// </remarks>
     public void AddPoint(Point point)
     {
-        Logger.EnterFunction("AddPoint", $"MeshState: {state}, pointIndex={point.Index}");
+        GameLogger.EnterFunction("AddPoint", $"MeshState: {state}, pointIndex={point.Index}");
         lock (lockObject)
         {
             // Registry first
@@ -577,9 +577,9 @@ public class StructureDatabase
     /// </remarks>
     public Edge AddEdge(Point p1, Point p2)
     {
-        Logger.EnterFunction("AddEdge", $"MeshState: {state}, From {p1} to {p2}");
+        GameLogger.EnterFunction("AddEdge", $"MeshState: {state}, From {p1} to {p2}");
         Edge returnEdge = GetOrCreateEdge(p1, p2);
-        Logger.ExitFunction("AddEdge", $"edgeIndex={returnEdge.Index}");
+        GameLogger.ExitFunction("AddEdge", $"edgeIndex={returnEdge.Index}");
         return returnEdge;
     }
 
@@ -596,9 +596,9 @@ public class StructureDatabase
     /// </remarks>
     public Edge AddEdge(Point p1, Point p2, int index)
     {
-        Logger.EnterFunction("AddEdge", $"MeshState: {state}, From {p1} to {p2} with index {index}");
+        GameLogger.EnterFunction("AddEdge", $"MeshState: {state}, From {p1} to {p2} with index {index}");
         Edge returnEdge = GetOrCreateEdge(p1, p2, index);
-        Logger.ExitFunction("AddEdge", $"edgeIndex={returnEdge.Index}");
+        GameLogger.ExitFunction("AddEdge", $"edgeIndex={returnEdge.Index}");
         return returnEdge;
     }
 
@@ -613,12 +613,12 @@ public class StructureDatabase
     /// </remarks>
     public void AddEdge(Edge edge)
     {
-        Logger.EnterFunction("AddEdge", $"MeshState: {state}, edgeIndex={edge.Index}");
+        GameLogger.EnterFunction("AddEdge", $"MeshState: {state}, edgeIndex={edge.Index}");
         lock (lockObject)
         {
             RegisterEdgeCanonicalAndLegacy(edge);
         }
-        Logger.ExitFunction("AddEdge");
+        GameLogger.ExitFunction("AddEdge");
     }
     /// <summary>
     /// Adds a pre-existing triangle to the mesh structure.
@@ -633,7 +633,7 @@ public class StructureDatabase
     /// </remarks>
     public void AddTriangle(Triangle triangle)
     {
-        Logger.EnterFunction("AddTriangle", $"MeshState: {state}, triIndex={triangle.Index}");
+        GameLogger.EnterFunction("AddTriangle", $"MeshState: {state}, triIndex={triangle.Index}");
         lock (lockObject)
         {
             // Registry first
@@ -650,7 +650,7 @@ public class StructureDatabase
                     EdgeTriangles[(Edge)triangle.Edges[0]].Add(triangle);
                     EdgeTriangles[(Edge)triangle.Edges[1]].Add(triangle);
                     EdgeTriangles[(Edge)triangle.Edges[2]].Add(triangle);
-                    Logger.Info($"Added triangle {triangle.Index} to BaseTris and EdgeTriangles");
+                    GameLogger.Info($"Added triangle {triangle.Index} to BaseTris and EdgeTriangles");
                     break;
                 case MeshState.BaseMesh:
                     foreach (Point p in triangle.Points)
@@ -671,7 +671,7 @@ public class StructureDatabase
                     break;
             }
         }
-        Logger.ExitFunction("AddTriangle");
+        GameLogger.ExitFunction("AddTriangle");
     }
 
     /// <summary>
@@ -686,12 +686,12 @@ public class StructureDatabase
     /// </remarks>
     public void UpdatePointBaseMesh(Point point, Point newPoint)
     {
-        Logger.EnterFunction("UpdatePointBaseMesh", $"pointIndex={point.Index} -> newIndex={newPoint.Index}");
+        GameLogger.EnterFunction("UpdatePointBaseMesh", $"pointIndex={point.Index} -> newIndex={newPoint.Index}");
         lock (lockObject)
         {
             BaseVertices[newPoint.Index] = newPoint;
         }
-        Logger.ExitFunction("UpdatePointBaseMesh");
+        GameLogger.ExitFunction("UpdatePointBaseMesh");
     }
 
     /// <summary>
@@ -707,7 +707,7 @@ public class StructureDatabase
     /// </remarks>
     public void UpdateWorldEdgeMap(Point p1, Point p2)
     {
-        Logger.EnterFunction("UpdateWorldEdgeMap", $"p1={p1.Index}, p2={p2.Index}");
+        GameLogger.EnterFunction("UpdateWorldEdgeMap", $"p1={p1.Index}, p2={p2.Index}");
         Edge e = Edge.MakeEdge(p1, p2);
         // Canonical half-edges (both directions, twin-linked)
         //EnsureHalfEdgePair(e.P, e.Q);
@@ -734,7 +734,7 @@ public class StructureDatabase
         {
             worldHalfEdgeMap[p2].Add(e.halfEdges[1]);
         }
-        Logger.ExitFunction("UpdateWorldEdgeMap");
+        GameLogger.ExitFunction("UpdateWorldEdgeMap");
 
     }
 
@@ -753,7 +753,7 @@ public class StructureDatabase
     /// </remarks>
     public void UpdateEdge(Edge edge, Edge newEdge)
     {
-        Logger.EnterFunction("UpdateEdge", $"edgeIndex={edge.Index}  -> newIndex={newEdge.Index}");
+        GameLogger.EnterFunction("UpdateEdge", $"edgeIndex={edge.Index}  -> newIndex={newEdge.Index}");
         lock (lockObject)
         {
             // Remove canonical half-edges for old edge
@@ -762,7 +762,7 @@ public class StructureDatabase
             // Recreate canonical half-edges for new edge
             RegisterEdgeCanonicalAndLegacy(newEdge);
         }
-        Logger.ExitFunction("UpdateEdge");
+        GameLogger.ExitFunction("UpdateEdge");
     }
 
     /// <summary>
@@ -779,7 +779,7 @@ public class StructureDatabase
     /// </remarks>
     public void UpdateTriangle(Triangle triangle, Triangle newTriangle)
     {
-        Logger.EnterFunction("UpdateTriangle", $"triIndex={triangle.Index} -> newIndex={newTriangle.Index}");
+        GameLogger.EnterFunction("UpdateTriangle", $"triIndex={triangle.Index} -> newIndex={newTriangle.Index}");
         lock (lockObject)
         {
             // Canonical: replace in registry and edge-key map
@@ -815,7 +815,7 @@ public class StructureDatabase
             EdgeTriangles[(Edge)triangle.Edges[1]].Add(newTriangle);
             EdgeTriangles[(Edge)triangle.Edges[2]].Add(newTriangle);
         }
-        Logger.ExitFunction("UpdateTriangle");
+        GameLogger.ExitFunction("UpdateTriangle");
     }
 
     /// <summary>
@@ -830,12 +830,12 @@ public class StructureDatabase
     /// </remarks>
     public Point SelectRandomPoint(RandomNumberGenerator rand)
     {
-        Logger.EnterFunction("SelectRandomPoint");
+        GameLogger.EnterFunction("SelectRandomPoint");
         lock (lockObject)
         {
             List<Point> points = new List<Point>(BaseVertices.Values.Where(p => !UsedPoints.Contains(p)));
             Point selected = points[rand.RandiRange(0, points.Count - 1)];
-            Logger.ExitFunction("SelectRandomPoint", $"returned pointIndex={selected.Index}");
+            GameLogger.ExitFunction("SelectRandomPoint", $"returned pointIndex={selected.Index}");
             return selected;
         }
     }
@@ -862,13 +862,13 @@ public class StructureDatabase
     /// </remarks>
     public void RemoveEdge(Edge edge)
     {
-        Logger.EnterFunction("RemoveEdge", $"edgeIndex={edge.Index}");
+        GameLogger.EnterFunction("RemoveEdge", $"edgeIndex={edge.Index}");
         lock (lockObject)
         {
             // Canonical removal
             RemoveCanonicalHalfEdges(edge.P, edge.Q);
         }
-        Logger.ExitFunction("RemoveEdge");
+        GameLogger.ExitFunction("RemoveEdge");
     }
 
     // ===== Phase 1: Minimal helpers for later phases =====
@@ -992,7 +992,7 @@ public class StructureDatabase
     /// </remarks>
     public void ResetPhase(MeshState target)
     {
-        Logger.EnterFunction("ResetPhase", $"target={target}");
+        GameLogger.EnterFunction("ResetPhase", $"target={target}");
         lock (lockObject)
         {
             switch (target)
@@ -1015,7 +1015,7 @@ public class StructureDatabase
                     break;
             }
         }
-        Logger.ExitFunction("ResetPhase");
+        GameLogger.ExitFunction("ResetPhase");
     }
 
     public void FinalizeDB()

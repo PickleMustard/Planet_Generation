@@ -337,30 +337,43 @@ public static class TemplateHelpers
             var numRange = ReadIntRange(groupTemplate, "number_asteroids", (1, 4));
             result["lower_range"] = numRange.Item1;
             result["upper_range"] = numRange.Item2;
-            result["ring_apogee"] = ReadFloat(groupTemplate, "ring_apogee", 0f);
-            result["ring_perigee"] = ReadFloat(groupTemplate, "ring_perigee", 0f);
+            result["ring_apogee"] = ReadFloat(groupTemplate, "apogee", 0f);
+            result["ring_perigee"] = ReadFloat(groupTemplate, "perigee", 0f);
             result["ring_velocity"] = ReadVector3(groupTemplate, "ring_velocity", Vector3.Zero);
             result["grouping"] = ReadString(groupTemplate, "grouping", "Balanced");
+            
+            var sizeRange = ReadFloatRange(groupTemplate, "size_range", (1f, 5f));
+            result["size_min"] = sizeRange.Item1;
+            result["size_max"] = sizeRange.Item2;
+            
+            var massRange = ReadFloatRange(groupTemplate, "mass_range", (1f, 10f));
+            result["mass_min"] = massRange.Item1;
+            result["mass_max"] = massRange.Item2;
         }
 
-        if (raw.TryGetValue("base_mesh", out var baseMeshVariant))
+        if (raw.TryGetValue("mesh", out var meshVariant))
         {
-            result["base_mesh"] = baseMeshVariant.AsGodotDictionary();
-        }
+            var mesh = meshVariant.AsGodotDictionary();
 
-        if (raw.TryGetValue("tectonic", out var tectonicVariant))
-        {
-            result["tectonics"] = tectonicVariant.AsGodotDictionary();
-        }
+            if (mesh.TryGetValue("base_mesh", out var baseMeshVariant))
+            {
+                result["base_mesh"] = baseMeshVariant.AsGodotDictionary();
+            }
 
-        if (raw.TryGetValue("scaling", out var scalingVariant))
-        {
-            result["scaling_settings"] = scalingVariant.AsGodotDictionary();
-        }
+            if (mesh.TryGetValue("tectonic", out var tectonicVariant))
+            {
+                result["tectonics"] = tectonicVariant.AsGodotDictionary();
+            }
 
-        if (raw.TryGetValue("noise_settings", out var noiseVariant))
-        {
-            result["noise_settings"] = noiseVariant.AsGodotDictionary();
+            if (mesh.TryGetValue("scaling", out var scalingVariant))
+            {
+                result["scaling_settings"] = scalingVariant.AsGodotDictionary();
+            }
+
+            if (mesh.TryGetValue("noise_settings", out var noiseVariant))
+            {
+                result["noise_settings"] = noiseVariant.AsGodotDictionary();
+            }
         }
 
         return result;
@@ -749,73 +762,84 @@ public static class TemplateHelpers
                     string satTypeStr = (string)satellite["type"];
                     satDict["type"] = satTypeStr;
 
+                    bool isSatelliteGroup = satTypeStr.Contains("Belt") || satTypeStr.Contains("Comet");
+
                     if (satellite.ContainsKey("template"))
                     {
                         var satTemplate = (Dictionary)satellite["template"];
-                        var satTemplateSection = new System.Collections.Generic.Dictionary<string, object>();
-
-                        bool isSatelliteGroup = satTypeStr.Contains("Belt") || satTypeStr.Contains("Comet");
 
                         if (isSatelliteGroup)
                         {
-                            if (satTemplate.ContainsKey("ring_apogee"))
-                                satTemplateSection["ring_apogee"] = (float)satTemplate["ring_apogee"];
-                            if (satTemplate.ContainsKey("ring_perigee"))
-                                satTemplateSection["ring_perigee"] = (float)satTemplate["ring_perigee"];
-                            if (satTemplate.ContainsKey("ring_velocity"))
-                            {
-                                var rv = (Vector3)satTemplate["ring_velocity"];
-                                satTemplateSection["ring_velocity"] = new System.Collections.Generic.List<float> { rv.X, rv.Y, rv.Z };
-                            }
+                            var groupTemplateSection = new System.Collections.Generic.Dictionary<string, object>();
+                            
                             if (satTemplate.ContainsKey("lower_range"))
-                                satTemplateSection["number_asteroids"] = new System.Collections.Generic.List<int>
+                                groupTemplateSection["number_asteroids"] = new System.Collections.Generic.List<int>
                                 {
                                     (int)satTemplate["lower_range"],
                                     satTemplate.ContainsKey("upper_range") ? (int)satTemplate["upper_range"] : (int)satTemplate["lower_range"]
                                 };
                             if (satTemplate.ContainsKey("grouping"))
-                                satTemplateSection["grouping"] = (string)satTemplate["grouping"];
-                            if (satTemplate.ContainsKey("mass_min"))
+                                groupTemplateSection["grouping"] = (string)satTemplate["grouping"];
+                            if (satTemplate.ContainsKey("ring_apogee"))
+                                groupTemplateSection["apogee"] = (float)satTemplate["ring_apogee"];
+                            if (satTemplate.ContainsKey("ring_perigee"))
+                                groupTemplateSection["perigee"] = (float)satTemplate["ring_perigee"];
+                            if (satTemplate.ContainsKey("ring_velocity"))
                             {
-                                satTemplateSection["size_range"] = new System.Collections.Generic.List<float>
+                                var rv = (Vector3)satTemplate["ring_velocity"];
+                                groupTemplateSection["ring_velocity"] = new System.Collections.Generic.List<float> { rv.X, rv.Y, rv.Z };
+                            }
+                            if (satTemplate.ContainsKey("size_min"))
+                            {
+                                groupTemplateSection["size_range"] = new System.Collections.Generic.List<float>
                                 {
-                                    satTemplate.ContainsKey("size_min") ? (float)satTemplate["size_min"] : 1f,
-                                    satTemplate.ContainsKey("size_max") ? (float)satTemplate["size_max"] : 5f
+                                    (float)satTemplate["size_min"],
+                                    satTemplate.ContainsKey("size_max") ? (float)satTemplate["size_max"] : (float)satTemplate["size_min"]
                                 };
                             }
+                            if (satTemplate.ContainsKey("mass_min"))
+                            {
+                                groupTemplateSection["mass_range"] = new System.Collections.Generic.List<float>
+                                {
+                                    (float)satTemplate["mass_min"],
+                                    satTemplate.ContainsKey("mass_max") ? (float)satTemplate["mass_max"] : (float)satTemplate["mass_min"]
+                                };
+                            }
+                            
+                            satDict["template"] = groupTemplateSection;
                         }
                         else
                         {
                             if (satTemplate.ContainsKey("position"))
                             {
                                 var pos = (Vector3)satTemplate["position"];
-                                satTemplateSection["position"] = new System.Collections.Generic.List<float> { pos.X, pos.Y, pos.Z };
+                                satDict["position"] = new System.Collections.Generic.List<float> { pos.X, pos.Y, pos.Z };
                             }
                             if (satTemplate.ContainsKey("velocity"))
                             {
                                 var vel = (Vector3)satTemplate["velocity"];
-                                satTemplateSection["velocity"] = new System.Collections.Generic.List<float> { vel.X, vel.Y, vel.Z };
+                                satDict["velocity"] = new System.Collections.Generic.List<float> { vel.X, vel.Y, vel.Z };
                             }
                             if (satTemplate.ContainsKey("mass"))
-                                satTemplateSection["mass"] = (float)satTemplate["mass"];
+                                satDict["mass"] = (float)satTemplate["mass"];
                             if (satTemplate.ContainsKey("size"))
-                                satTemplateSection["size"] = (int)satTemplate["size"];
+                                satDict["size"] = (int)satTemplate["size"];
                         }
-
-                        satDict["template"] = satTemplateSection;
                     }
+
+                    var satMeshSection = new System.Collections.Generic.Dictionary<string, object>();
+                    bool hasMeshContent = false;
 
                     if (satellite.ContainsKey("base_mesh"))
                     {
-                        var satMesh = (Dictionary)satellite["base_mesh"];
-                        var meshSection = new System.Collections.Generic.Dictionary<string, object>();
-
+                        var satBaseMesh = (Dictionary)satellite["base_mesh"];
                         var baseMeshSection = new System.Collections.Generic.Dictionary<string, object>();
-                        if (satMesh.ContainsKey("subdivisions"))
-                            baseMeshSection["subdivisions"] = (int)satMesh["subdivisions"];
-                        if (satMesh.ContainsKey("vertices_per_edge"))
+                        
+                        if (satBaseMesh.ContainsKey("subdivisions"))
+                            baseMeshSection["subdivisions"] = (int)satBaseMesh["subdivisions"];
+                        if (satBaseMesh.ContainsKey("vertices_per_edge"))
                         {
-                            var vpe = (Array<Array<int>>)satMesh["vertices_per_edge"];
+                            var vpe = (Array<Array<int>>)satBaseMesh["vertices_per_edge"];
                             var vpeList = new System.Collections.Generic.List<System.Collections.Generic.List<int>>();
                             foreach (var row in vpe)
                             {
@@ -823,13 +847,128 @@ public static class TemplateHelpers
                             }
                             baseMeshSection["vertices_per_edge"] = vpeList;
                         }
-                        if (satMesh.ContainsKey("num_abberations"))
-                            baseMeshSection["num_abberations"] = (int)satMesh["num_abberations"];
-                        if (satMesh.ContainsKey("num_deformation_cycles"))
-                            baseMeshSection["num_deformation_cycles"] = (int)satMesh["num_deformation_cycles"];
+                        if (satBaseMesh.ContainsKey("num_abberations"))
+                            baseMeshSection["num_abberations"] = (int)satBaseMesh["num_abberations"];
+                        if (satBaseMesh.ContainsKey("num_deformation_cycles"))
+                            baseMeshSection["num_deformation_cycles"] = (int)satBaseMesh["num_deformation_cycles"];
 
-                        meshSection["base_mesh"] = baseMeshSection;
-                        satDict["mesh"] = meshSection;
+                        satMeshSection["base_mesh"] = baseMeshSection;
+                        hasMeshContent = true;
+                    }
+
+                    if (satellite.ContainsKey("tectonics"))
+                    {
+                        var satTectonics = (Dictionary)satellite["tectonics"];
+                        var tectonicSection = new System.Collections.Generic.Dictionary<string, object>();
+
+                        if (satTectonics.ContainsKey("num_continents"))
+                        {
+                            var nc = (Array<int>)satTectonics["num_continents"];
+                            tectonicSection["num_continents"] = new System.Collections.Generic.List<int> { nc[0], nc[1] };
+                        }
+                        if (satTectonics.ContainsKey("stress_scale"))
+                        {
+                            var ss = (Array<float>)satTectonics["stress_scale"];
+                            tectonicSection["stress_scale"] = new System.Collections.Generic.List<float> { ss[0], ss[1] };
+                        }
+                        if (satTectonics.ContainsKey("shear_scale"))
+                        {
+                            var shs = (Array<float>)satTectonics["shear_scale"];
+                            tectonicSection["shear_scale"] = new System.Collections.Generic.List<float> { shs[0], shs[1] };
+                        }
+                        if (satTectonics.ContainsKey("max_propagation_distance"))
+                        {
+                            var mpd = (Array<float>)satTectonics["max_propagation_distance"];
+                            tectonicSection["max_propagation_distance"] = new System.Collections.Generic.List<float> { mpd[0], mpd[1] };
+                        }
+                        if (satTectonics.ContainsKey("propagation_falloff"))
+                        {
+                            var pf = (Array<float>)satTectonics["propagation_falloff"];
+                            tectonicSection["propagation_falloff"] = new System.Collections.Generic.List<float> { pf[0], pf[1] };
+                        }
+                        if (satTectonics.ContainsKey("inactive_stress_threshold"))
+                        {
+                            var ist = (Array<float>)satTectonics["inactive_stress_threshold"];
+                            tectonicSection["inactive_stress_threshold"] = new System.Collections.Generic.List<float> { ist[0], ist[1] };
+                        }
+                        if (satTectonics.ContainsKey("general_height_scale"))
+                        {
+                            var ghs = (Array<float>)satTectonics["general_height_scale"];
+                            tectonicSection["general_height_scale"] = new System.Collections.Generic.List<float> { ghs[0], ghs[1] };
+                        }
+                        if (satTectonics.ContainsKey("general_shear_scale"))
+                        {
+                            var gss = (Array<float>)satTectonics["general_shear_scale"];
+                            tectonicSection["general_shear_scale"] = new System.Collections.Generic.List<float> { gss[0], gss[1] };
+                        }
+                        if (satTectonics.ContainsKey("general_compression_scale"))
+                        {
+                            var gcs = (Array<float>)satTectonics["general_compression_scale"];
+                            tectonicSection["general_compression_scale"] = new System.Collections.Generic.List<float> { gcs[0], gcs[1] };
+                        }
+                        if (satTectonics.ContainsKey("general_transform_scale"))
+                        {
+                            var gts = (Array<float>)satTectonics["general_transform_scale"];
+                            tectonicSection["general_transform_scale"] = new System.Collections.Generic.List<float> { gts[0], gts[1] };
+                        }
+
+                        satMeshSection["tectonic"] = tectonicSection;
+                        hasMeshContent = true;
+                    }
+
+                    if (satellite.ContainsKey("scaling_settings"))
+                    {
+                        var satScaling = (Dictionary)satellite["scaling_settings"];
+                        var scalingSection = new System.Collections.Generic.Dictionary<string, object>();
+
+                        if (satScaling.ContainsKey("scaling_range_x"))
+                        {
+                            var srx = (Array<float>)satScaling["scaling_range_x"];
+                            scalingSection["scaling_range_x"] = new System.Collections.Generic.List<float> { srx[0], srx[1] };
+                        }
+                        if (satScaling.ContainsKey("scaling_range_y"))
+                        {
+                            var sry = (Array<float>)satScaling["scaling_range_y"];
+                            scalingSection["scaling_range_y"] = new System.Collections.Generic.List<float> { sry[0], sry[1] };
+                        }
+                        if (satScaling.ContainsKey("scaling_range_z"))
+                        {
+                            var srz = (Array<float>)satScaling["scaling_range_z"];
+                            scalingSection["scaling_range_z"] = new System.Collections.Generic.List<float> { srz[0], srz[1] };
+                        }
+
+                        satMeshSection["scaling"] = scalingSection;
+                        hasMeshContent = true;
+                    }
+
+                    if (satellite.ContainsKey("noise_settings"))
+                    {
+                        var satNoise = (Dictionary)satellite["noise_settings"];
+                        var noiseSection = new System.Collections.Generic.Dictionary<string, object>();
+
+                        if (satNoise.ContainsKey("amplitude_range"))
+                        {
+                            var ar = (Array<float>)satNoise["amplitude_range"];
+                            noiseSection["amplitude_range"] = new System.Collections.Generic.List<float> { ar[0], ar[1] };
+                        }
+                        if (satNoise.ContainsKey("scaling_range"))
+                        {
+                            var sr = (Array<float>)satNoise["scaling_range"];
+                            noiseSection["scaling_range"] = new System.Collections.Generic.List<float> { sr[0], sr[1] };
+                        }
+                        if (satNoise.ContainsKey("octave_range"))
+                        {
+                            var or = (Array<int>)satNoise["octave_range"];
+                            noiseSection["octave_range"] = new System.Collections.Generic.List<int> { or[0], or[1] };
+                        }
+
+                        satMeshSection["noise_settings"] = noiseSection;
+                        hasMeshContent = true;
+                    }
+
+                    if (hasMeshContent)
+                    {
+                        satDict["mesh"] = satMeshSection;
                     }
 
                     satellitesList.Add(satDict);

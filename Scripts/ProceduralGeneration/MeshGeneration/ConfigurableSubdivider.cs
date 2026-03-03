@@ -33,13 +33,13 @@ public class ConfigurableSubdivider
     {
         this.mesh = mesh;
         this.StrDb = db;
-        Logger.EnterFunction("ConfigurableSubdivider::.ctor");
+        GameLogger.EnterFunction("ConfigurableSubdivider::.ctor");
         _generators = new Dictionary<VertexDistribution, IVertexGenerator>(){
             { VertexDistribution.Linear, new LinearVertexGenerator() },
             { VertexDistribution.Geometric, new GeometricVertexGenerator() },
             { VertexDistribution.Custom, new LinearVertexGenerator() }
         };
-        Logger.ExitFunction("ConfigurableSubdivider::.ctor");
+        GameLogger.ExitFunction("ConfigurableSubdivider::.ctor");
     }
 
     /// <summary>
@@ -56,8 +56,8 @@ public class ConfigurableSubdivider
     /// </remarks>
     public Face[] SubdivideFace(Face face, int verticesToGenerate, VertexDistribution distribution = VertexDistribution.Linear)
     {
-        Logger.EnterFunction("SubdivideFace", $"face=({face.v[0].Index},{face.v[1].Index},{face.v[2].Index}), vToGen={verticesToGenerate}, dist={distribution}");
-        if (verticesToGenerate <= 0) { Logger.ExitFunction("SubdivideFace", "returned original face[] length 1"); return new[] { face }; }
+        GameLogger.EnterFunction("SubdivideFace", $"face=({face.v[0].Index},{face.v[1].Index},{face.v[2].Index}), vToGen={verticesToGenerate}, dist={distribution}");
+        if (verticesToGenerate <= 0) { GameLogger.ExitFunction("SubdivideFace", "returned original face[] length 1"); return new[] { face }; }
         IVertexGenerator generator = _generators[distribution];
         List<Point>[] generatedPoints = new List<Point>[3];
 
@@ -66,13 +66,13 @@ public class ConfigurableSubdivider
             Point start = face.v[i];
             Point end = face.v[(i + 1) % 3];
             generatedPoints[i] = generator.GenerateVertices(verticesToGenerate, start, end, StrDb).ToList();
-            Logger.Info($"Generated edge points[{i}]={generatedPoints[i].Count}");
+            GameLogger.Info($"Generated edge points[{i}]={generatedPoints[i].Count}");
         }
 
         List<Point> interiorPoints = GenerateInteriorPoints(face, verticesToGenerate);
-        Logger.Info($"Generated interiorPoints={interiorPoints.Count}");
+        GameLogger.Info($"Generated interiorPoints={interiorPoints.Count}");
         Face[] created = CreateBarycentricFaces(face, generatedPoints, interiorPoints, verticesToGenerate);
-        Logger.ExitFunction("SubdivideFace", $"returned faces={created.Length}");
+        GameLogger.ExitFunction("SubdivideFace", $"returned faces={created.Length}");
         return created;
     }
 
@@ -89,11 +89,11 @@ public class ConfigurableSubdivider
     /// </remarks>
     private List<Point> GenerateInteriorPoints(Face face, int verticesToGenerate)
     {
-        Logger.EnterFunction("GenerateInteriorPoints", $"vToGen={verticesToGenerate}");
+        GameLogger.EnterFunction("GenerateInteriorPoints", $"vToGen={verticesToGenerate}");
         List<Point> interiorPoints = new List<Point>();
         if (verticesToGenerate <= 2)
         {
-            Logger.ExitFunction("GenerateInteriorPoints", "returned 0 points (<=2)");
+            GameLogger.ExitFunction("GenerateInteriorPoints", "returned 0 points (<=2)");
             return interiorPoints;
         }
 
@@ -113,7 +113,7 @@ public class ConfigurableSubdivider
                 }
             }
         }
-        Logger.ExitFunction("GenerateInteriorPoints", $"returned {interiorPoints.Count} points");
+        GameLogger.ExitFunction("GenerateInteriorPoints", $"returned {interiorPoints.Count} points");
         return interiorPoints;
     }
 
@@ -133,13 +133,13 @@ public class ConfigurableSubdivider
     /// </remarks>
     private Point CalculateBarycentricPoint(Point a, Point b, Point c, float u, float v, float w)
     {
-        Logger.EnterFunction("CalculateBarycentricPoint", $"u={u:F3}, v={v:F3}, w={w:F3}");
+        GameLogger.EnterFunction("CalculateBarycentricPoint", $"u={u:F3}, v={v:F3}, w={w:F3}");
         Vector3 aVec = a.ToVector3();
         Vector3 bVec = b.ToVector3();
         Vector3 cVec = c.ToVector3();
         Vector3 result = aVec * u + bVec * v + cVec * w;
         Point resultPoint = StrDb.GetOrCreatePoint(result.Round());
-        Logger.ExitFunction("CalculateBarycentricPoint", $"returned pointIndex={resultPoint.Index}");
+        GameLogger.ExitFunction("CalculateBarycentricPoint", $"returned pointIndex={resultPoint.Index}");
         return resultPoint;
     }
 
@@ -159,7 +159,7 @@ public class ConfigurableSubdivider
     /// </remarks>
     private Face[] CreateBarycentricFaces(Face face, List<Point>[] edgePoints, List<Point> interiorPoints, int verticesToGenerate)
     {
-        Logger.EnterFunction("CreateBarycentricFaces", $"vToGen={verticesToGenerate}, interior={interiorPoints.Count}");
+        GameLogger.EnterFunction("CreateBarycentricFaces", $"vToGen={verticesToGenerate}, interior={interiorPoints.Count}");
         List<Face> faces = new List<Face>();
         if (verticesToGenerate == 1)
         {
@@ -196,7 +196,7 @@ public class ConfigurableSubdivider
         {
             faces.AddRange(CreateTriangularGrid(face, edgePoints, interiorPoints, verticesToGenerate));
         }
-        Logger.ExitFunction("CreateBarycentricFaces", $"returned faces={faces.Count}");
+        GameLogger.ExitFunction("CreateBarycentricFaces", $"returned faces={faces.Count}");
         return faces.ToArray();
     }
 
@@ -215,7 +215,7 @@ public class ConfigurableSubdivider
     /// </remarks>
     private List<Face> CreateTriangularGrid(Face face, List<Point>[] edgePoints, List<Point> interiorPoints, int verticesToGenerate)
     {
-        Logger.EnterFunction("CreateTriangularGrid", $"vToGen={verticesToGenerate}");
+        GameLogger.EnterFunction("CreateTriangularGrid", $"vToGen={verticesToGenerate}");
         List<Face> faces = new List<Face>();
         int resolution = verticesToGenerate + 1;
         Dictionary<(int, int, int), Point> barycentricMap = new Dictionary<(int, int, int), Point>();
@@ -262,7 +262,7 @@ public class ConfigurableSubdivider
                     }
                     else
                     {
-                        Logger.Error($"Could not create face {p1}, {p2}, {p3}");
+                        GameLogger.Error($"Could not create face {p1}, {p2}, {p3}");
                     }
                 }
                 if (i + 1 <= resolution && j - 1 >= 0 && k - 1 >= 0)
@@ -279,12 +279,12 @@ public class ConfigurableSubdivider
                     }
                     else
                     {
-                        Logger.Error($"Could not create face {p1}, {p2}, {p3}");
+                        GameLogger.Error($"Could not create face {p1}, {p2}, {p3}");
                     }
                 }
             }
         }
-        Logger.ExitFunction("CreateTriangularGrid", $"returned faces={faces.Count}");
+        GameLogger.ExitFunction("CreateTriangularGrid", $"returned faces={faces.Count}");
         return faces;
     }
 
@@ -299,12 +299,12 @@ public class ConfigurableSubdivider
     /// </remarks>
     private Point CalculateCentroid(List<Point> vertices)
     {
-        Logger.EnterFunction("CalculateCentroid", $"count={vertices.Count}");
+        GameLogger.EnterFunction("CalculateCentroid", $"count={vertices.Count}");
         var sum = Vector3.Zero;
         foreach (var vertex in vertices)
             sum += vertex.ToVector3();
         Point result = new Point(sum / vertices.Count);
-        Logger.ExitFunction("CalculateCentroid", $"returned pointIndex={result.Index}");
+        GameLogger.ExitFunction("CalculateCentroid", $"returned pointIndex={result.Index}");
         return result;
     }
 }

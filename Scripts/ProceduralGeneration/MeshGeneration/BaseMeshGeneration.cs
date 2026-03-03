@@ -87,7 +87,7 @@ public class BaseMeshGeneration
     /// <param name="VerticesPerEdge">Number of points to generate per edge at each subdivision level</param>
     public BaseMeshGeneration(RandomNumberGenerator rand, StructureDatabase StrDb, int subdivide, int[] VerticesPerEdge, UnifiedCelestialMesh mesh)
     {
-        Logger.EnterFunction("BaseMeshGeneration::.ctor", $"subdivide={subdivide}, VPE=[{string.Join(",", VerticesPerEdge ?? Array.Empty<int>())}]");
+        GameLogger.EnterFunction("BaseMeshGeneration::.ctor", $"subdivide={subdivide}, VPE=[{string.Join(",", VerticesPerEdge ?? Array.Empty<int>())}]");
         this.rand = rand;
         this.StrDb = StrDb;
         this.subdivide = subdivide;
@@ -101,7 +101,7 @@ public class BaseMeshGeneration
         uvs = new List<Vector2>();
         indices = new List<int>();
         faces = new List<Face>();
-        Logger.ExitFunction("BaseMeshGeneration::.ctor");
+        GameLogger.ExitFunction("BaseMeshGeneration::.ctor");
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public class BaseMeshGeneration
     /// </remarks>
     public void PopulateArrays()
     {
-        Logger.EnterFunction("PopulateArrays");
+        GameLogger.EnterFunction("PopulateArrays");
         List<Point> cartesionPoints = new List<Point> {
                         new Point(new Vector3(0, 1, TAU) * 100f),
                         new Point( new Vector3(0, -1, TAU) * 100f),
@@ -140,7 +140,7 @@ public class BaseMeshGeneration
             var rp = StrDb.GetOrCreatePoint(p.Index, pos);
             cartesionPoints[i] = rp;
             normals.Add(new Vector3(rp.Position.X, rp.Position.Y, rp.Position.Z));
-            Logger.Point($"Point: {rp}");
+            GameLogger.Point($"Point: {rp}");
         }
         faces = new List<Face>();
         indices = new List<int> {
@@ -172,8 +172,8 @@ public class BaseMeshGeneration
                         Edge.MakeEdge(cartesionPoints[indices[i + 1]], cartesionPoints[indices[i + 2]]),
                         Edge.MakeEdge(cartesionPoints[indices[i + 2]], cartesionPoints[indices[i]])));
         }
-        Logger.Info($"PopulateArrays: vertices={StrDb.BaseVertices.Count}, faces={faces.Count}, indices={indices.Count}");
-        Logger.ExitFunction("PopulateArrays");
+        GameLogger.Info($"PopulateArrays: vertices={StrDb.BaseVertices.Count}, faces={faces.Count}, indices={indices.Count}");
+        GameLogger.ExitFunction("PopulateArrays");
     }
 
 
@@ -190,12 +190,12 @@ public class BaseMeshGeneration
     /// </remarks>
     public void GenerateNonDeformedFaces(VertexDistribution distribution = VertexDistribution.Linear)
     {
-        Logger.EnterFunction("GenerateNonDeformedFaces", $"subdivide={subdivide}, distribution={distribution}");
+        GameLogger.EnterFunction("GenerateNonDeformedFaces", $"subdivide={subdivide}, distribution={distribution}");
         List<Face> tempFaces = new List<Face>();
         for (int level = 0; level < subdivide; level++)
         {
             var verticesToGenerate = level < VerticesPerEdge.Length ? VerticesPerEdge[level] : VerticesPerEdge[VerticesPerEdge.Length - 1];
-            Logger.Info($"Subdivide level {level + 1}/{subdivide}: verticesToGenerate={verticesToGenerate}");
+            GameLogger.Info($"Subdivide level {level + 1}/{subdivide}: verticesToGenerate={verticesToGenerate}");
             foreach (Face face in faces)
             {
                 var generated = _subdivider.SubdivideFace(face, verticesToGenerate, distribution);
@@ -204,9 +204,9 @@ public class BaseMeshGeneration
             faces.Clear();
             faces = new List<Face>(tempFaces);
             tempFaces.Clear();
-            Logger.Info($"After level {level + 1}: faces={faces.Count}");
+            GameLogger.Info($"After level {level + 1}: faces={faces.Count}");
         }
-        Logger.ExitFunction("GenerateNonDeformedFaces");
+        GameLogger.ExitFunction("GenerateNonDeformedFaces");
     }
 
     /// <summary>
@@ -221,8 +221,8 @@ public class BaseMeshGeneration
     /// </remarks>
     public void GenerateTriangleList()
     {
-        Logger.EnterFunction("GenerateTriangleList");
-        Logger.Info($"Structure Database: {StrDb.Index}");
+        GameLogger.EnterFunction("GenerateTriangleList");
+        GameLogger.Info($"Structure Database: {StrDb.Index}");
         int added = 0;
         foreach (Face f in faces)
         {
@@ -232,8 +232,8 @@ public class BaseMeshGeneration
             // Legacy edge additions are handled internally by AddTriangle
             added++;
         }
-        Logger.Info($"GenerateTriangleList: added={added} triangles, BaseTris={StrDb.BaseTris.Count}");
-        Logger.ExitFunction("GenerateTriangleList");
+        GameLogger.Info($"GenerateTriangleList: added={added} triangles, BaseTris={StrDb.BaseTris.Count}");
+        GameLogger.ExitFunction("GenerateTriangleList");
     }
 
     /// <summary>
@@ -254,7 +254,7 @@ public class BaseMeshGeneration
     /// </remarks>
     public async Task InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
     {
-        Logger.EnterFunction("InitiateDeformation", $"cycles={numDeformationCycles}, abberations={numAbberations}, optimalSideLength={optimalSideLength}");
+        GameLogger.EnterFunction("InitiateDeformation", $"cycles={numDeformationCycles}, abberations={numAbberations}, optimalSideLength={optimalSideLength}");
 
         var tasks = new List<Task>();
 
@@ -271,14 +271,14 @@ public class BaseMeshGeneration
         }
 
         await Task.WhenAll(tasks);
-        Logger.ExitFunction("InitiateDeformation");
+        GameLogger.ExitFunction("InitiateDeformation");
     }
 
     private void DeformMesh(int numAbberations, float optimalSideLength)
     {
         try
         {
-            Logger.EnterFunction("DeformMesh", $"optimalSideLength={optimalSideLength}");
+            GameLogger.EnterFunction("DeformMesh", $"optimalSideLength={optimalSideLength}");
             int alteredIndex = 0;
             for (int abberation = 0; abberation < numAbberations; abberation++)
             {
@@ -379,12 +379,12 @@ public class BaseMeshGeneration
             //    }
             //}
             currentIndex++;
-            Logger.ExitFunction("DeformMesh", $"updatedVertices={StrDb.BaseVertices.Count}");
+            GameLogger.ExitFunction("DeformMesh", $"updatedVertices={StrDb.BaseVertices.Count}");
         }
         catch (Exception e)
         {
             GD.PrintRaw($"\u001b[2J\u001b[H");
-            Logger.Error($"DeformMesh Error: {e.Message}\n{e.StackTrace}", "ERROR");
+            GameLogger.Error($"DeformMesh Error: {e.Message}\n{e.StackTrace}", "ERROR");
             GD.PrintErr($"Error in DeformMesh: {e.Message}\n{e.StackTrace}");
         }
     }

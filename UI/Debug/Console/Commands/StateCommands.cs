@@ -16,20 +16,20 @@ public static class StateCommands
         {
             ctx.WriteError("Usage: set_log_level <level>");
             ctx.WriteLine("Available levels: DEBUG, INFO, WARNING, ERROR, CRITICAL, PROD");
-            ctx.WriteLine($"Current level: {Logger.logMode}");
+            ctx.WriteLine($"Current level: {GameLogger.logMode}");
             return 1;
         }
 
         var levelStr = args[0].ToUpperInvariant();
         
-        if (!Enum.TryParse<Logger.Mode>(levelStr, out var level))
+        if (!Enum.TryParse<GameLogger.Mode>(levelStr, out var level))
         {
             ctx.WriteError($"Invalid log level: {levelStr}");
             ctx.WriteLine("Available levels: DEBUG, INFO, WARNING, ERROR, CRITICAL, PROD");
             return 1;
         }
 
-        Logger.logMode = level;
+        GameLogger.logMode = level;
         ctx.WriteLine($"[color=green]Log level set to: {level}[/color]");
         return 0;
     }
