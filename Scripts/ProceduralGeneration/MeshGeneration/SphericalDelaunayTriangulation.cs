@@ -74,20 +74,20 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     public Triangle[] Triangulate(List<Point> projectedPoints, List<Point> originalPoints)
     {
-        Logger.EnterFunction("SphericalDelaunayTriangulation.Triangulate",
+        GameLogger.EnterFunction("SphericalDelaunayTriangulation.Triangulate",
             $"projectedCount={projectedPoints.Count}, originalCount={originalPoints.Count}");
 
         if (projectedPoints.Count != originalPoints.Count)
         {
-            Logger.Error("Projected and original point counts must match");
-            Logger.ExitFunction("SphericalDelaunayTriangulation.Triangulate", "returned empty array");
+            GameLogger.Error("Projected and original point counts must match");
+            GameLogger.ExitFunction("SphericalDelaunayTriangulation.Triangulate", "returned empty array");
             return new Triangle[0];
         }
 
         if (projectedPoints.Count < 3)
         {
-            Logger.Warning("Insufficient points for triangulation (minimum 3 required)");
-            Logger.ExitFunction("SphericalDelaunayTriangulation.Triangulate", "returned empty array");
+            GameLogger.Warning("Insufficient points for triangulation (minimum 3 required)");
+            GameLogger.ExitFunction("SphericalDelaunayTriangulation.Triangulate", "returned empty array");
             return new Triangle[0];
         }
 
@@ -109,7 +109,7 @@ public class SphericalDelaunayTriangulation
             {
                 triangles.Add(tri);
             }
-            Logger.ExitFunction("SphericalDelaunayTriangulation.Triangulate",
+            GameLogger.ExitFunction("SphericalDelaunayTriangulation.Triangulate",
                 $"returned {triangles.Count} triangles (trivial case)");
             return triangles.ToArray();
         }
@@ -128,8 +128,8 @@ public class SphericalDelaunayTriangulation
             PerformIncrementalDelaunay();
         }
 
-        Logger.Info($"Generated {triangles.Count} triangles");
-        Logger.ExitFunction("SphericalDelaunayTriangulation.Triangulate",
+        GameLogger.Info($"Generated {triangles.Count} triangles");
+        GameLogger.ExitFunction("SphericalDelaunayTriangulation.Triangulate",
             $"returned {triangles.Count} triangles");
         return triangles.ToArray();
     }
@@ -147,7 +147,7 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     private void PerformFanTriangulation()
     {
-        Logger.EnterFunction("PerformFanTriangulation", $"pointCount={projectedPoints.Count}");
+        GameLogger.EnterFunction("PerformFanTriangulation", $"pointCount={projectedPoints.Count}");
 
         // Sort points by angle from centroid
         var sortedIndices = SortPointsByAngle();
@@ -159,11 +159,11 @@ public class SphericalDelaunayTriangulation
             if (tri != null && IsValidTriangle(tri))
             {
                 triangles.Add(tri);
-                Logger.Debug($"Added fan triangle: {sortedIndices[0]}, {sortedIndices[i]}, {sortedIndices[i + 1]}");
+                GameLogger.Debug($"Added fan triangle: {sortedIndices[0]}, {sortedIndices[i]}, {sortedIndices[i + 1]}");
             }
         }
 
-        Logger.ExitFunction("PerformFanTriangulation", $"created {triangles.Count} triangles");
+        GameLogger.ExitFunction("PerformFanTriangulation", $"created {triangles.Count} triangles");
     }
 
     /// <summary>
@@ -181,7 +181,7 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     private void PerformIncrementalDelaunay()
     {
-        Logger.EnterFunction("PerformIncrementalDelaunay", $"pointCount={projectedPoints.Count}");
+        GameLogger.EnterFunction("PerformIncrementalDelaunay", $"pointCount={projectedPoints.Count}");
 
         // Sort points for better numerical stability
         var sortedIndices = SortPointsByAngle();
@@ -193,7 +193,7 @@ public class SphericalDelaunayTriangulation
             if (initialTri != null)
             {
                 triangles.Add(initialTri);
-                Logger.Debug($"Initial triangle: {sortedIndices[0]}, {sortedIndices[1]}, {sortedIndices[2]}");
+                GameLogger.Debug($"Initial triangle: {sortedIndices[0]}, {sortedIndices[1]}, {sortedIndices[2]}");
             }
         }
 
@@ -241,8 +241,8 @@ public class SphericalDelaunayTriangulation
             iterations++;
         } while (changed && iterations <= maxIterations);
 
-        Logger.Info($"Edge flipping completed after {iterations} iterations");
-        Logger.ExitFunction("PerformIncrementalDelaunay", $"created {triangles.Count} triangles");
+        GameLogger.Info($"Edge flipping completed after {iterations} iterations");
+        GameLogger.ExitFunction("PerformIncrementalDelaunay", $"created {triangles.Count} triangles");
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     private void InsertPointIntoTriangulation(int pointIndex)
     {
-        Logger.Debug($"Inserting point {pointIndex} into triangulation");
+        GameLogger.Debug($"Inserting point {pointIndex} into triangulation");
 
         // Find all triangles visible from this point (for convex hull, these form the horizon)
         var visibleTriangles = new List<Triangle>();
@@ -278,7 +278,7 @@ public class SphericalDelaunayTriangulation
         if (visibleTriangles.Count == 0)
         {
             // Point is inside the convex hull - should not happen for convex hull points
-            Logger.Warning($"Point {pointIndex} is not visible from any triangle");
+            GameLogger.Warning($"Point {pointIndex} is not visible from any triangle");
             return;
         }
 
@@ -418,7 +418,7 @@ public class SphericalDelaunayTriangulation
 
         if (p1 == null || p2 == null || p3 == null)
         {
-            Logger.Warning($"Could not find original points for triangle {i1}, {i2}, {i3}");
+            GameLogger.Warning($"Could not find original points for triangle {i1}, {i2}, {i3}");
             return null;
         }
 
@@ -487,7 +487,7 @@ public class SphericalDelaunayTriangulation
                 return i;
         }
 
-        Logger.Warning($"Could not find index for point {point.Index}");
+        GameLogger.Warning($"Could not find index for point {point.Index}");
         return -1;
     }
 
@@ -594,7 +594,7 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     private void FlipEdge(Triangle tri1, Triangle tri2, int sharedV1, int sharedV2)
     {
-        Logger.Debug($"Flipping edge between vertices {sharedV1} and {sharedV2}");
+        GameLogger.Debug($"Flipping edge between vertices {sharedV1} and {sharedV2}");
 
         // Find the opposite vertices
         int oppositeV1 = -1, oppositeV2 = -1;

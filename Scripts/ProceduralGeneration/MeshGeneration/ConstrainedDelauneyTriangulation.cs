@@ -294,7 +294,7 @@ public class ConstrainedDelauneyTriangulation
     /// <returns>True if the segments intersect properly, false otherwise.</returns>
     private static bool SegmentsIntersectProperly(Point a, Point b, Point c, Point d)
     {
-        Logger.EnterFunction("SegmentsIntersectProperly", $"a={a}, b={b}, c={c}, d={d}");
+        GameLogger.EnterFunction("SegmentsIntersectProperly", $"a={a}, b={b}, c={c}, d={d}");
         float o1 = Orient2D(a, b, c);
         float o2 = Orient2D(a, b, d);
         float o3 = Orient2D(c, d, a);
@@ -302,10 +302,10 @@ public class ConstrainedDelauneyTriangulation
 
         if ((o1 * o2 < 0f) && (o3 * o4 < 0f))
         {
-            Logger.ExitFunction("SegmentsIntersectProperly", $"Segments intersect properly");
+            GameLogger.ExitFunction("SegmentsIntersectProperly", $"Segments intersect properly");
             return true;
         }
-        Logger.ExitFunction("SegmentsIntersectProperly", $"Segments do not intersect properly");
+        GameLogger.ExitFunction("SegmentsIntersectProperly", $"Segments do not intersect properly");
         return false;
     }
 
@@ -342,30 +342,30 @@ public class ConstrainedDelauneyTriangulation
     public ConstrainedDelauneyTriangulation(StructureDatabase db, List<Point> points)
     {
         this.StrDb = db;
-        Logger.Info($"ConstrainedDelauneyTriangulation: Initializing with {points.Count} points");
+        GameLogger.Info($"ConstrainedDelauneyTriangulation: Initializing with {points.Count} points");
 
         if (points.Count < 3)
         {
-            Logger.Warning("ConstrainedDelauneyTriangulation: Insufficient points for triangulation (minimum 3 required)");
+            GameLogger.Warning("ConstrainedDelauneyTriangulation: Insufficient points for triangulation (minimum 3 required)");
         }
 
         if (PolygonArea(points) < 0f)
         {
-            Logger.Info("ConstrainedDelauneyTriangulation: Polygon has negative area, reversing point order");
+            GameLogger.Info("ConstrainedDelauneyTriangulation: Polygon has negative area, reversing point order");
             List<Point> tmp = new List<Point>(points);
             tmp.Reverse();
             vertices = new List<Point>(tmp);
         }
         else
         {
-            Logger.Info("ConstrainedDelauneyTriangulation: Using original point order");
+            GameLogger.Info("ConstrainedDelauneyTriangulation: Using original point order");
             vertices = new List<Point>(points);
         }
 
         triangles = new List<ConstrainedTriangle>();
         edgeLookup = new Dictionary<EdgeKey, EdgeRecord>();
 
-        Logger.Info($"ConstrainedDelauneyTriangulation: Initialized with {vertices.Count} vertices");
+        GameLogger.Info($"ConstrainedDelauneyTriangulation: Initialized with {vertices.Count} vertices");
     }
 
     /// <summary>
@@ -385,33 +385,33 @@ public class ConstrainedDelauneyTriangulation
     /// </remarks>
     public ConstrainedTriangle[] Triangulate()
     {
-        Logger.EnterFunction("Triangulate");
-        Logger.Info("Starting triangulation process");
+        GameLogger.EnterFunction("Triangulate");
+        GameLogger.Info("Starting triangulation process");
 
         int N_ORIGINAL = vertices.Count;
 
         BuildSuperTriangle();
-        Logger.Info("Super triangle built successfully");
+        GameLogger.Info("Super triangle built successfully");
 
-        Logger.Info($"Processing {N_ORIGINAL} original vertices");
+        GameLogger.Info($"Processing {N_ORIGINAL} original vertices");
 
         for (int i = 0; i < N_ORIGINAL; i++)
         {
-            Logger.Info($"Inserting vertex {i} of {N_ORIGINAL - 1}");
+            GameLogger.Info($"Inserting vertex {i} of {N_ORIGINAL - 1}");
             InsertVertex(i);
         }
 
-        Logger.Info("Recovering constrained edges");
+        GameLogger.Info("Recovering constrained edges");
         for (int i = 0; i < N_ORIGINAL; i++)
         {
             int a = i;
             int b = (i + 1) % N_ORIGINAL;
-            Logger.Info($"Recovering constrained edge between vertices {a} and {b}");
+            GameLogger.Info($"Recovering constrained edge between vertices {a} and {b}");
             RecoverConstrainedEdge(a, b);
         }
 
         PurgeSuperTriangle();
-        Logger.Info("Super triangle purged");
+        GameLogger.Info("Super triangle purged");
 
         List<bool> insideList = new List<bool>(Enumerable.Repeat(false, triangles.Count));
         if (triangles.Count > 0)
@@ -420,12 +420,12 @@ public class ConstrainedDelauneyTriangulation
             int seedTri = LocateTriangle(seedPoint);
             if (seedTri >= 0)
             {
-                Logger.Info($"Starting flood fill from triangle {seedTri}");
+                GameLogger.Info($"Starting flood fill from triangle {seedTri}");
                 FloodFill(seedTri, insideList);
             }
             else
             {
-                Logger.Warning("No valid seed triangle found for flood fill");
+                GameLogger.Warning("No valid seed triangle found for flood fill");
             }
         }
 
@@ -438,14 +438,14 @@ public class ConstrainedDelauneyTriangulation
             validTriangles++;
         }
 
-        Logger.Info($"Triangulation complete: {validTriangles} valid triangles generated");
-        Logger.ExitFunction("Triangulate", $"returned {result.Count} triangles");
+        GameLogger.Info($"Triangulation complete: {validTriangles} valid triangles generated");
+        GameLogger.ExitFunction("Triangulate", $"returned {result.Count} triangles");
         return result.ToArray();
     }
 
     private ConstrainedTriangle ConvertTriangle(ConstrainedTriangle t, int index)
     {
-        Logger.EnterFunction("ConvertTriangle", $"index={index}, vertices=[{t.vertices[0]},{t.vertices[1]},{t.vertices[2]}]");
+        GameLogger.EnterFunction("ConvertTriangle", $"index={index}, vertices=[{t.vertices[0]},{t.vertices[1]},{t.vertices[2]}]");
 
         Point a = vertices[t.vertices[0]];
         Point b = vertices[t.vertices[1]];
@@ -464,14 +464,14 @@ public class ConstrainedDelauneyTriangulation
         newTri.constrained = new bool[] { false, false, false };
         newTri.alive = true;
 
-        Logger.ExitFunction("ConvertTriangle", $"returned triangle with vertices [{triVerts[0].Index},{triVerts[1].Index},{triVerts[2].Index}]");
+        GameLogger.ExitFunction("ConvertTriangle", $"returned triangle with vertices [{triVerts[0].Index},{triVerts[1].Index},{triVerts[2].Index}]");
         return newTri;
     }
 
     private void InsertVertex(int idx)
     {
-        Logger.EnterFunction("InsertVertex", $"idx={idx}");
-        Logger.Info($"Inserting vertex {idx} at position ({vertices[idx].Position.X}, {vertices[idx].Position.Y})");
+        GameLogger.EnterFunction("InsertVertex", $"idx={idx}");
+        GameLogger.Info($"Inserting vertex {idx} at position ({vertices[idx].Position.X}, {vertices[idx].Position.Y})");
 
         List<int> badTriangles = new List<int>();
         int badTriangleCount = 0;
@@ -483,7 +483,7 @@ public class ConstrainedDelauneyTriangulation
 
             if (InCircle(vertices[t.vertices[0]], vertices[t.vertices[1]], vertices[t.vertices[2]], vertices[idx]))
             {
-                Logger.Debug($"Vertex {idx} is inside circumcircle of triangle {tIdx}, marking as bad");
+                GameLogger.Debug($"Vertex {idx} is inside circumcircle of triangle {tIdx}, marking as bad");
                 t.alive = false;
                 badTriangles.Add(tIdx);
                 RemoveTriangleFromMap(tIdx);
@@ -491,12 +491,12 @@ public class ConstrainedDelauneyTriangulation
             }
         }
 
-        Logger.Info($"Found {badTriangleCount} bad triangles to remove");
+        GameLogger.Info($"Found {badTriangleCount} bad triangles to remove");
 
         if (badTriangles.Count == 0)
         {
-            Logger.Info("No bad triangles found, vertex insertion complete");
-            Logger.ExitFunction("InsertVertex");
+            GameLogger.Info("No bad triangles found, vertex insertion complete");
+            GameLogger.ExitFunction("InsertVertex");
             return;
         }
 
@@ -513,17 +513,17 @@ public class ConstrainedDelauneyTriangulation
                 if (found)
                 {
                     boundary.Remove(sortedEdge);
-                    Logger.Debug($"Removing shared edge ({a},{b}) from boundary");
+                    GameLogger.Debug($"Removing shared edge ({a},{b}) from boundary");
                 }
                 else
                 {
                     boundary.Add(sortedEdge, (a, b));
-                    Logger.Debug($"Adding boundary edge ({a},{b})");
+                    GameLogger.Debug($"Adding boundary edge ({a},{b})");
                 }
             }
         }
 
-        Logger.Info($"Created boundary with {boundary.Count} edges");
+        GameLogger.Info($"Created boundary with {boundary.Count} edges");
 
         // Connect new point to each boundary edge to form new triangles
         foreach (var kvp in boundary)
@@ -532,7 +532,7 @@ public class ConstrainedDelauneyTriangulation
             AddTriangle(idx, pair.Item1, pair.Item2);
         }
 
-        Logger.ExitFunction("InsertVertex");
+        GameLogger.ExitFunction("InsertVertex");
     }
 
     private void AddTriangle(int ia, int ib, int ic)
@@ -776,7 +776,7 @@ public class ConstrainedDelauneyTriangulation
 
     private void RecoverConstrainedEdge(int a, int b)
     {
-        Logger.EnterFunction("RecoverConstrainedEdge", $"a={a}, b={b}");
+        GameLogger.EnterFunction("RecoverConstrainedEdge", $"a={a}, b={b}");
         if (a == b) return;
         if (IsEdgePresent(a, b))
         {
@@ -797,14 +797,14 @@ public class ConstrainedDelauneyTriangulation
                 FindIntersectingEdges(a, b, intersecting);
                 if (intersecting.Count == 0)
                 {
-                    Logger.ExitFunction("RecoverConstrainedEdge", $"No intersecting edges found");
+                    GameLogger.ExitFunction("RecoverConstrainedEdge", $"No intersecting edges found");
                     break;
                 }
             }
             var intersection = intersecting.Pop();
             var triangle = intersection.Item1;
             var edge = intersection.Item2;
-            Logger.Debug($"Recovering constrained edge between vertices {a} and {b} from triangle {triangle} edge {edge}");
+            GameLogger.Debug($"Recovering constrained edge between vertices {a} and {b} from triangle {triangle} edge {edge}");
             if (!triangles[triangle].alive) continue;
             if (triangles[triangle].constrained[edge]) continue;
 
@@ -825,7 +825,7 @@ public class ConstrainedDelauneyTriangulation
 
     private void FindIntersectingEdges(int a, int b, Stack<(int, int)> intersecting)
     {
-        Logger.EnterFunction("FindIntersectingEdges", $"a={a}, b={b} | {intersecting.Count} intersecting edges");
+        GameLogger.EnterFunction("FindIntersectingEdges", $"a={a}, b={b} | {intersecting.Count} intersecting edges");
         intersecting.Clear();
         for (int i = 0; i < triangles.Count; i++)
         {
@@ -843,12 +843,12 @@ public class ConstrainedDelauneyTriangulation
                 }
             }
         }
-        Logger.ExitFunction("FindIntersectingEdges", $"{intersecting.Count} intersecting edges found");
+        GameLogger.ExitFunction("FindIntersectingEdges", $"{intersecting.Count} intersecting edges found");
     }
 
     private bool IsEdgePresent(int a, int b)
     {
-        Logger.EnterFunction("IsEdgePresent", $"a={a}, b={b}");
+        GameLogger.EnterFunction("IsEdgePresent", $"a={a}, b={b}");
         foreach (ConstrainedTriangle t in triangles)
         {
             if (!t.alive) continue;
@@ -858,18 +858,18 @@ public class ConstrainedDelauneyTriangulation
                 int v1 = t.vertices[(e + 1) % 3];
                 if ((v0 == a && v1 == b) || (v0 == b && v1 == a))
                 {
-                    Logger.ExitFunction("IsEdgePresent", $"Edge {a},{b} is in triangle {t}");
+                    GameLogger.ExitFunction("IsEdgePresent", $"Edge {a},{b} is in triangle {t}");
                     return true;
                 }
             }
         }
-        Logger.ExitFunction("IsEdgePresent", $"Edge {a},{b} is not in any triangle");
+        GameLogger.ExitFunction("IsEdgePresent", $"Edge {a},{b} is not in any triangle");
         return false;
     }
 
     private void MarkConstraint(int a, int b)
     {
-        Logger.EnterFunction("MarkConstraint", $"a={a}, b={b}");
+        GameLogger.EnterFunction("MarkConstraint", $"a={a}, b={b}");
         foreach (ConstrainedTriangle t in triangles)
         {
             if (!t.alive) continue;

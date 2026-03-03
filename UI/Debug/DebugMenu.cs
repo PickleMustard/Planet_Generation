@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 using UI.Debug.Console;
+using CellInfoModule = UI.Debug.CellInfo.CellInfo;
 using DatabaseViewerModule = UI.Debug.DatabaseViewer.DatabaseViewer;
 
 namespace UI.Debug;
@@ -83,6 +84,9 @@ public partial class DebugMenu : CanvasLayer
 
         var databaseViewer = new DatabaseViewerModule();
         RegisterModule(databaseViewer);
+
+        var cellInfo = new CellInfoModule();
+        RegisterModule(cellInfo);
     }
 
     /// <summary>

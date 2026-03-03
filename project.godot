@@ -8,17 +8,22 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="Delaunay Triangulation Map Generation"
 run/main_scene="uid://dt8sw4jlumdml"
-config/features=PackedStringArray("4.4", "C#", "Forward Plus")
+config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
 MeshGenerationThreadPool="*res://Scripts/UtilityLibrary/MeshGenerationThreadPool.cs"
 ResourceDatabase="*res://Scripts/Structures/Resources/ResourceDatabase.cs"
+CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
 DebugMenu="*res://UI/Debug/DebugMenu.tscn"
 
 [display]
@@ -29,9 +34,17 @@ window/size/mode=2
 
 project/assembly_name="Delaunay Triangulation Map Generation"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
+
 [filesystem]
 
 import/blender/enabled=false
+
+[gdunit4]
+
+settings/test/test_lookup_folder="Tests"
 
 [gui]
 

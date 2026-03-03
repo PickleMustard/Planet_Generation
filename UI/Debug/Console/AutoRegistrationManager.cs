@@ -1,6 +1,7 @@
 #if DEBUG
 using System;
 using Godot;
+using UI.Debug.DatabaseViewer;
 
 namespace UI.Debug.Console;
 
@@ -122,6 +123,7 @@ public static class AutoRegistrationManager
 
     /// <summary>
     /// Registers a single node with the appropriate namespace format.
+    /// Also registers with DataProviderRegistry if the node implements IDebugDataProvider.
     /// </summary>
     /// <param name="node">The node to register.</param>
     /// <returns>The namespace assigned to the node.</returns>
@@ -132,12 +134,34 @@ public static class AutoRegistrationManager
             return null;
         }
 
+        TryRegisterAsDataProvider(node);
+
         if (IsSingleton(node))
         {
             return InstanceRegistry.RegisterSingleton(node);
         }
 
         return InstanceRegistry.RegisterNode(node);
+    }
+
+    /// <summary>
+    /// Attempts to register a node with DataProviderRegistry if it implements IDebugDataProvider.
+    /// </summary>
+    /// <param name="node">The node to potentially register.</param>
+    private static void TryRegisterAsDataProvider(Node node)
+    {
+        if (node is not IDebugDataProvider provider)
+        {
+            return;
+        }
+
+        var debugDataAttr = GetDebugDataAttribute(node);
+        if (debugDataAttr == null)
+        {
+            return;
+        }
+
+        DataProviderRegistry.RegisterProvider(provider, debugDataAttr.Category);
     }
 
     /// <summary>

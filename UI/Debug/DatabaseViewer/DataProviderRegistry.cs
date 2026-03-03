@@ -26,7 +26,8 @@ public static class DataProviderRegistry
     /// <summary>
     /// Gets all categories with their providers.
     /// </summary>
-    public static IReadOnlyDictionary<string, List<IDataProvider>> ProvidersByCategory => _providersByCategory;
+    public static IReadOnlyDictionary<string, List<IDataProvider>> ProvidersByCategory =>
+        _providersByCategory;
 
     /// <summary>
     /// Gets all category names.
@@ -38,6 +39,7 @@ public static class DataProviderRegistry
     /// </summary>
     public static void Initialize()
     {
+        System.Console.WriteLine("Initializing data provider registry...");
         if (_initialized)
         {
             return;
@@ -69,7 +71,9 @@ public static class DataProviderRegistry
             }
             catch (Exception ex)
             {
-                GD.PrintErr($"Error discovering providers in assembly {assembly.FullName}: {ex.Message}");
+                GD.PrintErr(
+                    $"Error discovering providers in assembly {assembly.FullName}: {ex.Message}"
+                );
             }
         }
     }
@@ -97,6 +101,7 @@ public static class DataProviderRegistry
 
         if (typeof(IDebugDataProvider).IsAssignableFrom(type))
         {
+            GD.Print($"Registering debug data provider: {type.Name}");
             RegisterDebugDataProvider(type, debugDataAttr);
         }
         else if (typeof(IDataProvider).IsAssignableFrom(type))
@@ -109,9 +114,26 @@ public static class DataProviderRegistry
     {
         try
         {
-            var instance = Activator.CreateInstance(type) as IDebugDataProvider;
+            IDebugDataProvider instance = null;
+
+            if (typeof(Node).IsAssignableFrom(type))
+            {
+                instance = FindSingletonInstance(type);
+            }
+
+            if (instance == null)
+            {
+                instance = Activator.CreateInstance(type) as IDebugDataProvider;
+            }
+
             if (instance != null)
             {
+                var key = $"{attribute.Category}.{instance.Name}";
+                if (_providers.ContainsKey(key))
+                {
+                    return;
+                }
+                System.Console.WriteLine($"Registering provider: {instance.Name}");
                 RegisterProvider(instance, attribute.Category);
             }
         }
@@ -119,6 +141,28 @@ public static class DataProviderRegistry
         {
             GD.PrintErr($"Failed to create instance of {type.Name}: {ex.Message}");
         }
+    }
+
+    private static IDebugDataProvider FindSingletonInstance(Type type)
+    {
+        var instanceProperty = type.GetProperty(
+            "Instance",
+            System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.Static
+                | System.Reflection.BindingFlags.FlattenHierarchy
+        );
+        GD.Print($"Instance property: {instanceProperty.Name}");
+
+        if (instanceProperty != null && instanceProperty.PropertyType == type)
+        {
+            var instance = instanceProperty.GetValue(null) as IDebugDataProvider;
+            if (instance != null)
+            {
+                return instance;
+            }
+        }
+
+        return null;
     }
 
     private static void RegisterDataProvider(Type type, DebugDataAttribute attribute)
@@ -215,7 +259,9 @@ public static class DataProviderRegistry
     /// <returns>The provider or null if not found.</returns>
     public static IDataProvider GetProvider(string name)
     {
-        return _providers.Values.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return _providers.Values.FirstOrDefault(p =>
+            p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
+        );
     }
 
     /// <summary>

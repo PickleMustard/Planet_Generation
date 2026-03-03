@@ -36,11 +36,11 @@ namespace ProceduralGeneration.MeshGeneration
         /// </remarks>
         public static float CalculateBoundaryStress(Edge edge, VoronoiCell cell1, VoronoiCell cell2, Dictionary<int, Continent> continents)
         {
-            UtilityLibrary.Logger.EnterFunction("CalculateBoundaryStress", $"edgeIndex={edge.Index}, cell1={cell1.Index}, cell2={cell2.Index}");
+            UtilityLibrary.GameLogger.EnterFunction("CalculateBoundaryStress", $"edgeIndex={edge.Index}, cell1={cell1.Index}, cell2={cell2.Index}");
             // Check if both cells belong to different continents
             if (cell1.ContinentIndex == cell2.ContinentIndex)
             {
-                UtilityLibrary.Logger.ExitFunction("CalculateBoundaryStress", "returned 0 (same continent)");
+                UtilityLibrary.GameLogger.ExitFunction("CalculateBoundaryStress", "returned 0 (same continent)");
                 return 0f;
             }
 
@@ -78,7 +78,7 @@ namespace ProceduralGeneration.MeshGeneration
                     break;
             }
 
-            UtilityLibrary.Logger.ExitFunction("CalculateBoundaryStress", $"returned stress={stress:F4}, boundaryType={boundaryType}");
+            UtilityLibrary.GameLogger.ExitFunction("CalculateBoundaryStress", $"returned stress={stress:F4}, boundaryType={boundaryType}");
             return stress;
         }
 
@@ -106,16 +106,16 @@ namespace ProceduralGeneration.MeshGeneration
         /// </remarks>
         public static Dictionary<Edge, float> PropagateStress(Edge sourceEdge, List<VoronoiCell> voronoiCells, StructureDatabase db, float decayFactor = 0.7f)
         {
-            UtilityLibrary.Logger.EnterFunction("PropagateStress", $"edgeIndex={sourceEdge.Index}, decayFactor={decayFactor}");
+            UtilityLibrary.GameLogger.EnterFunction("PropagateStress", $"edgeIndex={sourceEdge.Index}, decayFactor={decayFactor}");
             Dictionary<Edge, float> propagatedStress = new Dictionary<Edge, float>();
 
             // Get cells that share this edge
             HashSet<VoronoiCell> edgeCells = db.EdgeMap.ContainsKey(sourceEdge) ? db.EdgeMap[sourceEdge] : new HashSet<VoronoiCell>();
-            UtilityLibrary.Logger.Info($"edgeCells.Count={edgeCells.Count}");
+            UtilityLibrary.GameLogger.Info($"edgeCells.Count={edgeCells.Count}");
 
             if (edgeCells.Count == 0)
             {
-                UtilityLibrary.Logger.ExitFunction("PropagateStress", "returned 0 edges (no cells)");
+                UtilityLibrary.GameLogger.ExitFunction("PropagateStress", "returned 0 edges (no cells)");
                 return propagatedStress;
             }
 
@@ -150,7 +150,7 @@ namespace ProceduralGeneration.MeshGeneration
                 }
             }
 
-            UtilityLibrary.Logger.ExitFunction("PropagateStress", $"returned edges={propagatedStress.Count}, updates={updates}");
+            UtilityLibrary.GameLogger.ExitFunction("PropagateStress", $"returned edges={propagatedStress.Count}, updates={updates}");
             return propagatedStress;
         }
 
@@ -177,7 +177,7 @@ namespace ProceduralGeneration.MeshGeneration
         /// </remarks>
         public static float CalculateSpringStress(Edge edge, VoronoiCell cell, float restLength = -1f)
         {
-            UtilityLibrary.Logger.EnterFunction("CalculateSpringStress", $"edgeIndex={edge.Index}, cellIndex={cell.Index}, restLength={restLength}");
+            UtilityLibrary.GameLogger.EnterFunction("CalculateSpringStress", $"edgeIndex={edge.Index}, cellIndex={cell.Index}, restLength={restLength}");
             // Calculate current edge length
             float currentLength = (((Point)edge.P).ToVector3() - ((Point)edge.Q).ToVector3()).Length();
 
@@ -198,7 +198,7 @@ namespace ProceduralGeneration.MeshGeneration
             float springConstant = 0.5f; // Adjustable parameter
 
             float result = springConstant * deformation;
-            UtilityLibrary.Logger.ExitFunction("CalculateSpringStress", $"returned stress={result:F4}");
+            UtilityLibrary.GameLogger.ExitFunction("CalculateSpringStress", $"returned stress={result:F4}");
             return result;
         }
 
