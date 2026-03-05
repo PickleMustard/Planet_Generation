@@ -63,7 +63,7 @@ public abstract partial class BaseDebugModule : Control, IDebugModule
         base._Ready();
         _isVisible = false;
         Hide();
-        
+
         Name = ModuleName;
         RegisterWithDebugMenu();
     }
@@ -91,7 +91,7 @@ public abstract partial class BaseDebugModule : Control, IDebugModule
     public override void _ExitTree()
     {
         base._ExitTree();
-        
+
         if (_registered && DebugMenu.Instance != null)
         {
             _registered = false;

@@ -21,7 +21,9 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-MeshGenerationThreadPool="*res://Scripts/UtilityLibrary/MeshGenerationThreadPool.cs"
+SignalBus="*res://Scripts/UtilityLibrary/SignalBus.cs"
+ThreadPooler="*uid://db2n014kjjmur"
+TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
 ResourceDatabase="*res://Scripts/Structures/Resources/ResourceDatabase.cs"
 CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
 DebugMenu="*res://UI/Debug/DebugMenu.tscn"

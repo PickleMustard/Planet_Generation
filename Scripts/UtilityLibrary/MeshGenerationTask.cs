@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using UtilityLibrary.TaskSystem;
 
 namespace PlanetGeneration
 {
@@ -26,14 +27,6 @@ namespace PlanetGeneration
         VoronoiGeneration,
         BiomeAssignment,
         SurfaceGeneration
-    }
-
-    public enum TaskPriority
-    {
-        High = 0,
-        Medium = 1,
-        Low = 2,
-        Background = 3
     }
 
     public class SystemResourceStatus

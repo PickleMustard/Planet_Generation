@@ -121,8 +121,8 @@ public class TranslationServerProvider : IDataProvider
                         var value = node.Get(propName);
                         if (value.Obj is Translation translation)
                         {
-                            var key = !string.IsNullOrEmpty(translation.ResourcePath) 
-                                ? translation.ResourcePath 
+                            var key = !string.IsNullOrEmpty(translation.ResourcePath)
+                                ? translation.ResourcePath
                                 : $"[inline:{node.Name}]";
                             translations[key] = translation.Locale;
                         }

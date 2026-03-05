@@ -28,7 +28,7 @@ public static class BuiltInCommands
         {
             var categories = ctx.Registry.GetCommandsByCategory();
             ctx.WriteLine("[color=yellow]Available Commands:[/color]");
-            
+
             foreach (var category in categories.OrderBy(c => c.Key))
             {
                 ctx.WriteLine($"\n[color=cyan]{category.Key}:[/color]");
@@ -37,7 +37,7 @@ public static class BuiltInCommands
                     ctx.WriteLine($"  {cmd.Name} - {cmd.Description}");
                 }
             }
-            
+
             ctx.WriteLine("\nType [color=cyan]help <command>[/color] for detailed usage.");
         }
         return 0;
@@ -72,13 +72,13 @@ public static class BuiltInCommands
     public static int ListCommands(CommandContext ctx, string[] args)
     {
         var commands = ctx.Registry.GetAllCommands().ToList();
-        
+
         if (args.Length > 0)
         {
             var category = args[0];
-            commands = commands.Where(c => 
+            commands = commands.Where(c =>
                 c.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
-            
+
             if (commands.Count == 0)
             {
                 ctx.WriteError($"No commands found in category: {category}");
@@ -89,8 +89,8 @@ public static class BuiltInCommands
         ctx.WriteLine($"[color=yellow]Registered Commands ({commands.Count}):[/color]");
         foreach (var cmd in commands.OrderBy(c => c.Name))
         {
-            var aliasStr = cmd.Aliases.Length > 0 
-                ? $" [aliases: {string.Join(", ", cmd.Aliases)}]" 
+            var aliasStr = cmd.Aliases.Length > 0
+                ? $" [aliases: {string.Join(", ", cmd.Aliases)}]"
                 : "";
             ctx.WriteLine($"  {cmd.Name} - {cmd.Description}{aliasStr}");
         }
@@ -101,13 +101,13 @@ public static class BuiltInCommands
     public static int ListNamespaces(CommandContext ctx, string[] args)
     {
         var namespaces = InstanceRegistry.GetAllNamespaces().ToList();
-        
+
         if (args.Length > 0)
         {
             var typeFilter = args[0];
-            namespaces = namespaces.Where(ns => 
+            namespaces = namespaces.Where(ns =>
                 ns.StartsWith(typeFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-            
+
             if (namespaces.Count == 0)
             {
                 ctx.WriteError($"No namespaces found matching: {typeFilter}");
@@ -132,7 +132,7 @@ public static class BuiltInCommands
         {
             return console;
         }
-        
+
         var namespaces = InstanceRegistry.GetNamespaces<DebugConsole>();
         foreach (var ns in namespaces)
         {
@@ -141,7 +141,7 @@ public static class BuiltInCommands
                 return instance as DebugConsole;
             }
         }
-        
+
         return null;
     }
 }

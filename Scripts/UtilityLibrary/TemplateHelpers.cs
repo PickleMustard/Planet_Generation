@@ -341,11 +341,11 @@ public static class TemplateHelpers
             result["ring_perigee"] = ReadFloat(groupTemplate, "perigee", 0f);
             result["ring_velocity"] = ReadVector3(groupTemplate, "ring_velocity", Vector3.Zero);
             result["grouping"] = ReadString(groupTemplate, "grouping", "Balanced");
-            
+
             var sizeRange = ReadFloatRange(groupTemplate, "size_range", (1f, 5f));
             result["size_min"] = sizeRange.Item1;
             result["size_max"] = sizeRange.Item2;
-            
+
             var massRange = ReadFloatRange(groupTemplate, "mass_range", (1f, 10f));
             result["mass_min"] = massRange.Item1;
             result["mass_max"] = massRange.Item2;
@@ -771,7 +771,7 @@ public static class TemplateHelpers
                         if (isSatelliteGroup)
                         {
                             var groupTemplateSection = new System.Collections.Generic.Dictionary<string, object>();
-                            
+
                             if (satTemplate.ContainsKey("lower_range"))
                                 groupTemplateSection["number_asteroids"] = new System.Collections.Generic.List<int>
                                 {
@@ -805,7 +805,7 @@ public static class TemplateHelpers
                                     satTemplate.ContainsKey("mass_max") ? (float)satTemplate["mass_max"] : (float)satTemplate["mass_min"]
                                 };
                             }
-                            
+
                             satDict["template"] = groupTemplateSection;
                         }
                         else
@@ -834,7 +834,7 @@ public static class TemplateHelpers
                     {
                         var satBaseMesh = (Dictionary)satellite["base_mesh"];
                         var baseMeshSection = new System.Collections.Generic.Dictionary<string, object>();
-                        
+
                         if (satBaseMesh.ContainsKey("subdivisions"))
                             baseMeshSection["subdivisions"] = (int)satBaseMesh["subdivisions"];
                         if (satBaseMesh.ContainsKey("vertices_per_edge"))

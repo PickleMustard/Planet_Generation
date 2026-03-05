@@ -100,7 +100,7 @@ public class SceneTreeProvider : IDataProvider
 
         var groups = root.AddChild("Groups").SetCollapsed();
         var allGroups = _sceneTree.GetNodesInGroup("_viewports_").FirstOrDefault()?.GetTree()?.GetNodesInGroup("");
-        
+
         var groupNames = new HashSet<string>();
         CollectGroups(_sceneTree.Root, groupNames);
 

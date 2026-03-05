@@ -21,7 +21,7 @@ public static class StateCommands
         }
 
         var levelStr = args[0].ToUpperInvariant();
-        
+
         if (!Enum.TryParse<GameLogger.Mode>(levelStr, out var level))
         {
             ctx.WriteError($"Invalid log level: {levelStr}");
@@ -46,7 +46,7 @@ public static class StateCommands
         }
 
         var debugDraw = viewport.DebugDraw;
-        
+
         if (debugDraw == Viewport.DebugDrawEnum.Wireframe)
         {
             viewport.DebugDraw = Viewport.DebugDrawEnum.Disabled;
@@ -57,7 +57,7 @@ public static class StateCommands
             viewport.DebugDraw = Viewport.DebugDrawEnum.Wireframe;
             ctx.WriteLine("[color=green]Wireframe mode: ENABLED[/color]");
         }
-        
+
         return 0;
     }
 
@@ -74,7 +74,7 @@ public static class StateCommands
         var path = args[0];
         var valueStr = string.Join(" ", args, 1, args.Length - 1);
         var parts = path.Split('.', 2);
-        
+
         if (parts.Length < 2)
         {
             ctx.WriteError("Invalid path format. Use: <namespace>.<property>");
@@ -112,18 +112,18 @@ public static class StateCommands
 
             property = currentType.GetProperty(part,
                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            
+
             if (property == null)
             {
                 field = currentType.GetField(part,
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                
+
                 if (field == null)
                 {
                     ctx.WriteError($"Property/field not found: {part} on type {currentType.Name}");
                     return 1;
                 }
-                
+
                 current = field.GetValue(current);
             }
             else
@@ -150,7 +150,7 @@ public static class StateCommands
         }
 
         Type targetType = property?.PropertyType ?? field.FieldType;
-        
+
         if (!TryParseValue(valueStr, targetType, out var parsedValue))
         {
             ctx.WriteError($"Cannot convert '{valueStr}' to type {targetType.Name}");
@@ -172,7 +172,7 @@ public static class StateCommands
             {
                 field.SetValue(current, parsedValue);
             }
-            
+
             ctx.WriteLine($"[color=green]Set {finalPart} = {FormatValue(parsedValue)}[/color]");
             return 0;
         }
@@ -186,7 +186,7 @@ public static class StateCommands
     private static bool TryParseValue(string valueStr, Type targetType, out object value)
     {
         value = null;
-        
+
         try
         {
             if (targetType == typeof(string))
@@ -194,7 +194,7 @@ public static class StateCommands
                 value = valueStr;
                 return true;
             }
-            
+
             if (targetType == typeof(bool))
             {
                 if (bool.TryParse(valueStr, out var b))
@@ -205,7 +205,7 @@ public static class StateCommands
                 value = valueStr.ToLowerInvariant() is "1" or "yes" or "true" or "on";
                 return true;
             }
-            
+
             if (targetType == typeof(int))
             {
                 if (int.TryParse(valueStr, out var i))
@@ -215,7 +215,7 @@ public static class StateCommands
                 }
                 return false;
             }
-            
+
             if (targetType == typeof(float))
             {
                 if (float.TryParse(valueStr, out var f))
@@ -225,7 +225,7 @@ public static class StateCommands
                 }
                 return false;
             }
-            
+
             if (targetType == typeof(double))
             {
                 if (double.TryParse(valueStr, out var d))
@@ -280,7 +280,7 @@ public static class StateCommands
     private static string FormatValue(object value)
     {
         if (value == null) return "null";
-        
+
         if (value is Vector2 v2)
             return $"Vector2({v2.X:F2}, {v2.Y:F2})";
         if (value is Vector3 v3)
@@ -289,7 +289,7 @@ public static class StateCommands
             return b ? "true" : "false";
         if (value is string s)
             return $"\"{s}\"";
-        
+
         return value.ToString() ?? "null";
     }
 }

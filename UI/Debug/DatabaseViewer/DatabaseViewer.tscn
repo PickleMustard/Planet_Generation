@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://dvfpf2hv3ficv"]
+[gd_scene format=3 uid="uid://dvfpf2hv3ficv"]
 
 [ext_resource type="Script" uid="uid://dguplalknh35o" path="res://UI/Debug/DatabaseViewer/DatabaseViewer.cs" id="1_database_viewer"]
 
-[node name="DatabaseViewer" type="Control"]
+[node name="DatabaseViewer" type="Control" unique_id=1410930263]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

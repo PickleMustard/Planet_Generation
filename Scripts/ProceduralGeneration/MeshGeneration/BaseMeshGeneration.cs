@@ -6,6 +6,7 @@ using Godot;
 using Structures.Enums;
 using Structures.MeshGeneration;
 using UtilityLibrary;
+using UtilityLibrary.TaskSystem;
 using PlanetGeneration;
 
 namespace ProceduralGeneration.MeshGeneration;
@@ -252,25 +253,15 @@ public class BaseMeshGeneration
     /// This process helps create more evenly distributed triangles and reduces mesh artifacts.
     /// The method uses the thread pool for controlled parallel processing to prevent system overload.
     /// </remarks>
-    public async Task InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
+    public void InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
     {
         GameLogger.EnterFunction("InitiateDeformation", $"cycles={numDeformationCycles}, abberations={numAbberations}, optimalSideLength={optimalSideLength}");
 
-        var tasks = new List<Task>();
-
         for (int i = 0; i < numDeformationCycles; i++)
         {
-            var taskId = $"{mesh.Name}_deform_{i}";
-            var task = MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => DeformMesh(numAbberations, optimalSideLength),
-                taskId,
-                TaskPriority.Medium,
-                mesh.Name
-            );
-            tasks.Add(task);
+            DeformMesh(numAbberations, optimalSideLength);
         }
 
-        await Task.WhenAll(tasks);
         GameLogger.ExitFunction("InitiateDeformation");
     }
 

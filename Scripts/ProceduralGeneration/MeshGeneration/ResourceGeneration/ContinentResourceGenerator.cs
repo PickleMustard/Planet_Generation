@@ -39,7 +39,7 @@ public static class ContinentResourceGenerator
         UnifiedCelestialMesh mesh = null)
     {
         GD.Print($"[ResourceDebug] ContinentResourceGenerator.GenerateResources: continents null: {continents == null}, count: {continents?.Count ?? 0}, resourceConfig null: {resourceConfig == null}");
-        
+
         if (continents == null || continents.Count == 0 || resourceConfig == null)
         {
             GD.PrintErr("[ResourceDebug] GenerateResources early return due to null/empty inputs");
@@ -79,12 +79,12 @@ public static class ContinentResourceGenerator
         }
 
         GD.Print($"[ResourceDebug] Finished generating continental resources, now distributing to cells");
-        
+
         foreach (var kvp in continents)
         {
             DistributeResourcesToCells(kvp.Value, rng, mesh);
         }
-        
+
         GD.Print($"[ResourceDebug] Finished distributing resources to all cells");
     }
 
@@ -103,7 +103,7 @@ public static class ContinentResourceGenerator
         float balanceThreshold)
     {
         GD.Print($"[ResourceDebug] GenerateContinentResources: continent index {continent.StartingIndex}, cells: {continent.cells?.Count ?? 0}");
-        
+
         continent.ContinentalResources.Clear();
         continent.ResourceAbundance.Clear();
 
@@ -160,7 +160,7 @@ public static class ContinentResourceGenerator
         {
             GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: no secondary resources found in config");
         }
-        
+
         GD.Print($"[ResourceDebug] Continent {continent.StartingIndex}: assigned {continent.ContinentalResources.Count} resources: {string.Join(", ", continent.ContinentalResources.Keys)}");
     }
 
@@ -180,7 +180,7 @@ public static class ContinentResourceGenerator
         var weightedResources = new List<(Godot.Collections.Dictionary config, float weight)>();
 
         GD.Print($"[ResourceDebug] SelectResources: pool size {resourcePool.Count}, selecting {count}, isPrimary={isPrimary}");
-        
+
         foreach (var resourceVariant in resourcePool)
         {
             if (resourceVariant.AsGodotDictionary() is Godot.Collections.Dictionary resourceConfig)
@@ -245,7 +245,7 @@ public static class ContinentResourceGenerator
     private static void DistributeResourcesToCells(Continent continent, RandomNumberGenerator rng, UnifiedCelestialMesh mesh)
     {
         GD.Print($"[ResourceDebug] DistributeResourcesToCells: continent {continent.StartingIndex}, cells null: {continent.cells == null}, cell count: {continent.cells?.Count ?? 0}, continental resources: {continent.ContinentalResources?.Count ?? 0}");
-        
+
         if (continent.cells == null || continent.ContinentalResources.Count == 0)
         {
             GD.Print($"[ResourceDebug] DistributeResourcesToCells: early return - cells null: {continent.cells == null}, resource count: {continent.ContinentalResources?.Count ?? 0}");
@@ -285,11 +285,11 @@ public static class ContinentResourceGenerator
                     cell.Resources[resourceId] = cellAbundance;
                 }
             }
-            
+
             if (cell.Resources.Count > 0)
                 cellsWithResources++;
         }
-        
+
         GD.Print($"[ResourceDebug] DistributeResourcesToCells: continent {continent.StartingIndex} - {cellsWithResources}/{continent.cells.Count} cells now have resources");
     }
 
