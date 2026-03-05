@@ -29,7 +29,7 @@ public class ThreadPoolTest
         AssertThat(strDb.BaseVertices.Count).IsGreater(0);
         AssertThat(strDb.BaseTris.Count).IsGreater(0);
 
-        await baseMesh.InitiateDeformation(5, 100, 10.0f);
+        baseMesh.InitiateDeformation(5, 100, 10.0f);
 
         AssertThat(strDb.BaseVertices.Count).IsGreater(0);
     }

@@ -1,10 +1,10 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Godot;
 using UI.Debug;
-using PlanetGeneration;
+using UtilityLibrary;
+using UtilityLibrary.TaskSystem;
 
 namespace UI.Debug.Console;
 
@@ -13,48 +13,46 @@ public static class ThreadCommands
     [DebugCommand("thread_status", "Show thread pool status and active tasks", "thread_status", Category = "Threading")]
     public static int ThreadStatus(CommandContext ctx, string[] args)
     {
-        var threadPool = MeshGenerationThreadPool.Instance;
-        if (threadPool == null)
+        var threadPooler = ThreadPooler.Instance;
+        if (threadPooler == null)
         {
-            ctx.WriteError("MeshGenerationThreadPool not initialized");
-            ctx.WriteLine("Thread pool may not be enabled or the scene hasn't started");
+            ctx.WriteError("ThreadPooler not initialized");
+            ctx.WriteLine("Thread pooler may not be enabled or the scene hasn't started");
             return 1;
         }
 
         try
         {
-            var activeCount = threadPool.GetActiveTaskCount();
-            var queuedCount = threadPool.GetQueuedTaskCount();
-            var resourceStatus = threadPool.GetResourceStatus();
+            var activeCount = threadPooler.ActivePackageCount;
+            var queuedCount = threadPooler.PendingPackageCount;
+            var allocationInfo = threadPooler.AllocationInfo;
 
-            ctx.WriteLine("[color=yellow]Thread Pool Status:[/color]");
-            ctx.WriteLine($"  Active Tasks: {activeCount}");
-            ctx.WriteLine($"  Queued Tasks: {queuedCount}");
-            ctx.WriteLine($"  Available Memory: {resourceStatus.AvailableMemoryMB} MB");
+            ctx.WriteLine("[color=yellow]Thread Pooler Status:[/color]");
+            ctx.WriteLine($"  Worker Threads: {threadPooler.WorkerCount}");
+            ctx.WriteLine($"  Active Packages: {activeCount}");
+            ctx.WriteLine($"  Pending Packages: {queuedCount}");
 
-            if (activeCount > 0 || queuedCount > 0)
+            if (allocationInfo != null)
             {
-                ctx.WriteLine("\n[color=cyan]Task Queue:[/color]");
-                
-                var taskRegistryField = typeof(MeshGenerationThreadPool)
-                    .GetField("taskRegistry", BindingFlags.NonPublic | BindingFlags.Instance);
-                
-                if (taskRegistryField != null)
+                ctx.WriteLine($"  System Cores: {allocationInfo.TotalCores}");
+                ctx.WriteLine($"  Allocation: {allocationInfo.AllocationPercentage * 100:F0}%");
+            }
+
+            if (activeCount > 0)
+            {
+                ctx.WriteLine("\n[color=cyan]Active Packages:[/color]");
+                ctx.WriteLine("  Use debug menu to view package details");
+            }
+
+            if (queuedCount > 0)
+            {
+                ctx.WriteLine($"\n[color=cyan]Queue Summary:[/color]");
+                foreach (TaskPriority priority in Enum.GetValues(typeof(TaskPriority)))
                 {
-                    var taskRegistry = taskRegistryField.GetValue(threadPool);
-                    if (taskRegistry is Dictionary<string, MeshGenerationTask> registry)
+                    int count = threadPooler.GetQueueLength(priority);
+                    if (count > 0)
                     {
-                        foreach (var kvp in registry)
-                        {
-                            var task = kvp.Value;
-                            ctx.WriteLine($"  [{task.Priority}] {task.Id} - {task.BodyName}");
-                            ctx.WriteLine($"      Started: {task.StartTime:HH:mm:ss}");
-                            ctx.WriteLine($"      Progress: {task.Progress * 100:F1}%");
-                            if (task.Exception != null)
-                            {
-                                ctx.WriteLine($"      [color=red]Error: {task.Exception.Message}[/color]");
-                            }
-                        }
+                        ctx.WriteLine($"  {priority}: {count} packages");
                     }
                 }
             }
@@ -68,34 +66,64 @@ public static class ThreadCommands
         }
     }
 
-    [DebugCommand("thread_cancel", "Cancel a specific task by ID", "thread_cancel <task_id>", Category = "Threading")]
+    [DebugCommand("thread_cancel", "Cancel a specific package by name", "thread_cancel <package_name>", Category = "Threading")]
     public static int ThreadCancel(CommandContext ctx, string[] args)
     {
         if (args.Length == 0)
         {
-            ctx.WriteError("Usage: thread_cancel <task_id>");
-            ctx.WriteLine("Use 'thread_status' to see available task IDs");
+            ctx.WriteError("Usage: thread_cancel <package_name>");
+            ctx.WriteLine("Use 'thread_status' to see available package names");
             return 1;
         }
 
-        var taskId = args[0];
-        var threadPool = MeshGenerationThreadPool.Instance;
-        
-        if (threadPool == null)
+        var packageName = args[0];
+        var threadPooler = ThreadPooler.Instance;
+
+        if (threadPooler == null)
         {
-            ctx.WriteError("MeshGenerationThreadPool not initialized");
+            ctx.WriteError("ThreadPooler not initialized");
             return 1;
         }
 
         try
         {
-            threadPool.CancelTask(taskId);
-            ctx.WriteLine($"[color=green]Cancelled task: {taskId}[/color]");
+            if (threadPooler.IsPackageActive(packageName))
+            {
+                ctx.WriteWarning($"Package '{packageName}' is currently active and cannot be cancelled");
+                return 1;
+            }
+
+            threadPooler.CancelPackage(packageName);
+            ctx.WriteLine($"[color=green]Cancelled package: {packageName}[/color]");
             return 0;
         }
         catch (Exception ex)
         {
-            ctx.WriteError($"Failed to cancel task: {ex.Message}");
+            ctx.WriteError($"Failed to cancel package: {ex.Message}");
+            return 1;
+        }
+    }
+
+    [DebugCommand("thread_cancel_all", "Cancel all pending packages", "thread_cancel_all", Category = "Threading")]
+    public static int ThreadCancelAll(CommandContext ctx, string[] args)
+    {
+        var threadPooler = ThreadPooler.Instance;
+
+        if (threadPooler == null)
+        {
+            ctx.WriteError("ThreadPooler not initialized");
+            return 1;
+        }
+
+        try
+        {
+            threadPooler.CancelAllPackages();
+            ctx.WriteLine("[color=green]Cancelled all pending packages[/color]");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            ctx.WriteError($"Failed to cancel packages: {ex.Message}");
             return 1;
         }
     }
@@ -113,7 +141,7 @@ public static class ThreadCommands
 
         var path = args[0];
         var interval = 1000;
-        
+
         if (args.Length > 1 && int.TryParse(args[1], out var customInterval))
         {
             interval = Math.Max(100, customInterval);
@@ -173,7 +201,7 @@ public static class ThreadCommands
         }
 
         var watchId = args[0];
-        
+
         if (watchId.Equals("all", StringComparison.OrdinalIgnoreCase))
         {
             var count = WatchManager.StopAll();
@@ -186,7 +214,7 @@ public static class ThreadCommands
             ctx.WriteLine($"[color=green]Stopped watching: {watchId}[/color]");
             return 0;
         }
-        
+
         ctx.WriteError($"Watch not found: {watchId}");
         return 1;
     }
@@ -195,7 +223,7 @@ public static class ThreadCommands
     public static int WatchList(CommandContext ctx, string[] args)
     {
         var watching = WatchManager.GetAllWatches();
-        
+
         if (watching.Count == 0)
         {
             ctx.WriteLine("No active watches");
@@ -213,7 +241,7 @@ public static class ThreadCommands
                 ctx.WriteLine($"    Changes: {info.ChangeCount}");
             }
         }
-        
+
         return 0;
     }
 }

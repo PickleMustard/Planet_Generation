@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cm6wlrb0j4qj8"]
+
+[ext_resource type="Script" path="res://UI/Generation/GenerationProgressPanel.cs" id="1_ga2c4"]
+
+[node name="GenerationProgressPanel" type="PanelContainer" unique_id=934776837]
+script = ExtResource("1_ga2c4")

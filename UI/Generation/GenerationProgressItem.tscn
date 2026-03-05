@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c3d4uaoxopt73"]
+
+[ext_resource type="Script" path="res://UI/Generation/GenerationProgressItem.cs" id="1_3lptr"]
+
+[node name="GenerationProgressItem" type="HBoxContainer" unique_id=1304215332]
+script = ExtResource("1_3lptr")

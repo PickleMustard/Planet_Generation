@@ -33,7 +33,7 @@ public static class ResourceVisualizer
             return baseColor;
 
         var dominantResource = resources.OrderByDescending(r => r.Value).First();
-        
+
         if (dominantResource.Value < 0.1f)
             return baseColor;
 

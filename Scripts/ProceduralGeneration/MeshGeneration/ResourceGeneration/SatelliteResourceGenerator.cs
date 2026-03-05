@@ -36,7 +36,7 @@ public static class SatelliteResourceGenerator
             return deposits;
         }
 
-        if (resourceConfig.TryGetValue("main", out var mainVariant) && 
+        if (resourceConfig.TryGetValue("main", out var mainVariant) &&
             mainVariant.As<Godot.Collections.Array>() is Godot.Collections.Array mainResources)
         {
             var selectedMain = SelectWeightedResource(mainResources, rng);
@@ -54,7 +54,7 @@ public static class SatelliteResourceGenerator
             secondaryVariant.As<Godot.Collections.Array>() is Godot.Collections.Array secondaryResources)
         {
             int secondaryCount = rng.RandfRange(0f, 1f) < 0.6f ? 1 : (rng.RandfRange(0f, 1f) < 0.3f ? 2 : 0);
-            
+
             for (int i = 0; i < secondaryCount && secondaryResources.Count > 0; i++)
             {
                 var selectedSecondary = SelectWeightedResource(secondaryResources, rng);

@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
@@ -144,7 +145,22 @@ public partial class CelestialBody : Node3D
         GlobalPosition += Velocity * (float)delta;
     }
 
-    public void GenerateMesh()
+    public async Task GenerateMesh()
+    {
+        StartMeshGeneration(
+            onCompleted: (_) => { },
+            onFailed: (_, error) => GD.PrintErr($"Mesh generation failed: {error}")
+        );
+        while (Mesh?.Mesh == null)
+        {
+            await Task.Delay(10);
+        }
+    }
+
+    public void StartMeshGeneration(
+        Action<CelestialBody> onCompleted = null,
+        Action<CelestialBody, string> onFailed = null
+    )
     {
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
@@ -172,7 +188,9 @@ public partial class CelestialBody : Node3D
             )
             {
                 meshParams.Add("resources", resources);
-                GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in bodyDict, keys: {string.Join(", ", resources.Keys)}");
+                GD.Print(
+                    $"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in bodyDict, keys: {string.Join(", ", resources.Keys)}"
+                );
             }
             else
             {
@@ -184,11 +202,15 @@ public partial class CelestialBody : Node3D
                 )
                 {
                     meshParams.Add("resources", templateResources);
-                    GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict, loaded from template, keys: {string.Join(", ", templateResources.Keys)}");
+                    GD.Print(
+                        $"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict, loaded from template, keys: {string.Join(", ", templateResources.Keys)}"
+                    );
                 }
                 else
                 {
-                    GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict or template");
+                    GD.Print(
+                        $"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict or template"
+                    );
                 }
             }
         }
@@ -227,18 +249,35 @@ public partial class CelestialBody : Node3D
             )
             {
                 meshParams.Add("resources", resources);
-                GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in template, keys: {string.Join(", ", resources.Keys)}");
+                GD.Print(
+                    $"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in template, keys: {string.Join(", ", resources.Keys)}"
+                );
             }
             else
             {
-                GD.Print($"[ResourceDebug] CelestialBody.GenerateMesh: No resources in template (containsKey: {t.ContainsKey("resources")})");
+                GD.Print(
+                    $"[ResourceDebug] CelestialBody.GenerateMesh: No resources in template (containsKey: {t.ContainsKey("resources")})"
+                );
             }
         }
         this.CallDeferred("set_name", (String)meshParams["name"]);
         GD.Print($"Mesh Params: {meshParams}");
         Mesh.ConfigureFrom(StrDb, meshParams);
-        Mesh.GenerateMesh(Oct);
-        StrDb.FinalizeDB();
+        
+        Mesh.StartMeshGeneration(
+            Oct,
+            onCompleted: (mesh) =>
+            {
+                StrDb.FinalizeDB();
+                GD.Print($"Generated mesh for {meshParams["name"]}");
+                onCompleted?.Invoke(this);
+            },
+            onFailed: (mesh, error) =>
+            {
+                GD.PrintErr($"Mesh generation failed for {meshParams["name"]}: {error}");
+                onFailed?.Invoke(this, error);
+            }
+        );
     }
 
     public String PickName(Godot.Collections.Dictionary nameDict)

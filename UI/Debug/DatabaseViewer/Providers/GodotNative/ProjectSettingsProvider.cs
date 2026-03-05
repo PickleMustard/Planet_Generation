@@ -174,8 +174,8 @@ public class ProjectSettingsProvider : IDataProvider
             var autoloads = ProjectSettings.GetSetting("autoload");
             if (autoloads.VariantType != Variant.Type.Nil)
             {
-                var autoloadsNode = categories.TryGetValue("Autoload", out var existing) 
-                    ? existing 
+                var autoloadsNode = categories.TryGetValue("Autoload", out var existing)
+                    ? existing
                     : otherSettings;
                 var autoloadDict = autoloads.AsGodotDictionary();
                 foreach (var key in autoloadDict.Keys)

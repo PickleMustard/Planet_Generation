@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Godot;
 using UtilityLibrary;
 using Structures.GameState;
@@ -23,6 +24,19 @@ public partial class SatelliteBody : Node3D
     Octree<Point> Oct;
     Godot.Collections.Dictionary bodyDict;
     StructureDatabase StrDb;
+
+    /// <summary>
+    /// Name used for timer tracking. Set by SystemGenerator to ensure consistent naming.
+    /// </summary>
+    public string TimerName
+    {
+        get => Mesh?.TimerName;
+        set
+        {
+            if (Mesh != null)
+                Mesh.TimerName = value;
+        }
+    }
 
     /// <summary>
     /// Resource deposits available on this satellite body.
@@ -215,7 +229,22 @@ public partial class SatelliteBody : Node3D
         GlobalPosition += Velocity * (float)delta;
     }
 
-    public void GenerateMesh()
+    public async Task GenerateMesh()
+    {
+        StartMeshGeneration(
+            onCompleted: (_) => { },
+            onFailed: (_, error) => GD.PrintErr($"Mesh generation failed: {error}")
+        );
+        while (Mesh?.Mesh == null)
+        {
+            await Task.Delay(10);
+        }
+    }
+
+    public void StartMeshGeneration(
+        Action<SatelliteBody> onCompleted = null,
+        Action<SatelliteBody, string> onFailed = null
+    )
     {
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
@@ -246,7 +275,7 @@ public partial class SatelliteBody : Node3D
             meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType));
             var template = (Godot.Collections.Dictionary)t["template"];
             var position = (Vector3)template["position"];
-            var velocity = (Vector3)template["velocity"];
+            var velocity = (Vector3)template["template"];
             meshParams.Add("position", position);
             meshParams.Add("velocity", velocity);
             var size = (int)template["size"];
@@ -276,8 +305,19 @@ public partial class SatelliteBody : Node3D
             meshParams["size"] = Size;
         }
         Mesh.ConfigureFrom(StrDb, meshParams);
-        Mesh.GenerateMesh(Oct);
-        GenerateResources();
+        Mesh.StartMeshGeneration(
+            Oct,
+            onCompleted: (mesh) =>
+            {
+                GenerateResources();
+                onCompleted?.Invoke(this);
+            },
+            onFailed: (mesh, error) =>
+            {
+                GD.PrintErr($"Mesh generation failed for {meshParams["name"]}: {error}");
+                onFailed?.Invoke(this, error);
+            }
+        );
     }
 
     /// <summary>

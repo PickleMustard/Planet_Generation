@@ -32,7 +32,7 @@ public static class ModificationCommands
         }
 
         var name = args.Length > 1 ? args[1] : $"{bodyType}_{DateTime.Now.Ticks % 10000}";
-        
+
         Vector3 position = Vector3.Zero;
         if (args.Length > 2)
         {
@@ -45,12 +45,12 @@ public static class ModificationCommands
 
         var sceneTree = Engine.GetMainLoop() as SceneTree;
         var systemContainer = sceneTree?.Root?.FindChild("SystemContainer", true, false);
-        
+
         if (systemContainer == null)
         {
             systemContainer = sceneTree?.Root?.FindChild("CelestialBodies", true, false);
         }
-        
+
         if (systemContainer == null)
         {
             ctx.WriteError("Could not find SystemContainer or CelestialBodies node");
@@ -64,18 +64,18 @@ public static class ModificationCommands
             var builder = new CelestialBody.Builder();
             builder.WithType(bodyType);
             builder.WithMesh(mesh);
-            
+
             var celestialBody = builder.Build();
             celestialBody.Name = name;
-            
+
             systemContainer.AddChild(celestialBody);
             celestialBody.Position = position;
-            
+
             InstanceRegistry.RegisterNode(celestialBody);
-            
+
             ctx.WriteLine($"[color=green]Spawned {bodyType} '{name}' at position {position}[/color]");
             ctx.WriteLine($"Namespace: {InstanceRegistry.GetNamespace(celestialBody)}");
-            
+
             return 0;
         }
         catch (Exception ex)
@@ -97,9 +97,9 @@ public static class ModificationCommands
                 return 1;
             }
 
-            var reloadMethod = typeof(ResourceDatabase).GetMethod("Reload", 
+            var reloadMethod = typeof(ResourceDatabase).GetMethod("Reload",
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             if (reloadMethod != null)
             {
                 reloadMethod.Invoke(database, null);
@@ -109,7 +109,7 @@ public static class ModificationCommands
             {
                 var loadMethod = typeof(ResourceDatabase).GetMethod("LoadResources",
                     BindingFlags.NonPublic | BindingFlags.Instance);
-                
+
                 if (loadMethod != null)
                 {
                     loadMethod.Invoke(database, null);
@@ -125,7 +125,7 @@ public static class ModificationCommands
 
             var resources = database.GetAllResources();
             ctx.WriteLine($"Loaded {resources.Count} resource definitions");
-            
+
             return 0;
         }
         catch (Exception ex)
@@ -159,7 +159,7 @@ public static class ModificationCommands
         {
             return SetCelestialBodyParam(ctx, body, paramName, valueStr);
         }
-        
+
         if (instance is UnifiedCelestialMesh mesh)
         {
             return SetMeshParam(ctx, mesh, paramName, valueStr);
@@ -225,7 +225,7 @@ public static class ModificationCommands
             var type = mesh.GetType();
             var property = type.GetProperty(paramName,
                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            
+
             if (property == null)
             {
                 ctx.WriteError($"Unknown mesh parameter: {paramName}");
@@ -283,10 +283,10 @@ public static class ModificationCommands
     private static bool TryParseVector3(string input, out Vector3 result)
     {
         result = Vector3.Zero;
-        
+
         var trimmed = input.Trim('(', ')', ' ');
         var parts = trimmed.Split(',');
-        
+
         if (parts.Length != 3)
             return false;
 

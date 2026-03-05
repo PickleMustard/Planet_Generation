@@ -15,7 +15,7 @@ namespace UtilityLibrary
         private static readonly string LogFilePath = Path.Combine(LogDirectory, "debug.log");
         private static readonly object LockObject = new object();
 
-        public static Mode logMode { get; set; } = Mode.PROD;
+        public static Mode logMode { get; set; } = Mode.DEBUG;
 
 
         static GameLogger()

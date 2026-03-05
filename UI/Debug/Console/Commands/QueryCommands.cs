@@ -23,7 +23,7 @@ public static class QueryCommands
 
         var path = args[0];
         var parts = path.Split('.', 2);
-        
+
         if (parts.Length < 2)
         {
             ctx.WriteError("Invalid path format. Use: <namespace>.<property>");
@@ -56,20 +56,20 @@ public static class QueryCommands
                 return 1;
             }
 
-            var property = currentType.GetProperty(part, 
+            var property = currentType.GetProperty(part,
                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            
+
             if (property == null)
             {
                 var field = currentType.GetField(part,
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                
+
                 if (field == null)
                 {
                     ctx.WriteError($"Property/field not found: {part} on type {currentType.Name}");
                     return 1;
                 }
-                
+
                 current = field.GetValue(current);
             }
             else
@@ -302,12 +302,12 @@ public static class QueryCommands
             {
                 var startsWith = parts[0];
                 var endsWith = parts[1];
-                
+
                 if (string.IsNullOrEmpty(startsWith))
                     return text.EndsWith(endsWith);
                 if (string.IsNullOrEmpty(endsWith))
                     return text.StartsWith(startsWith);
-                
+
                 return text.StartsWith(startsWith) && text.EndsWith(endsWith);
             }
         }
@@ -318,7 +318,7 @@ public static class QueryCommands
     private static bool IsSimpleType(Type type)
     {
         if (type == null) return true;
-        
+
         return type.IsPrimitive ||
                type == typeof(string) ||
                type == typeof(decimal) ||
@@ -350,10 +350,10 @@ public static class QueryCommands
 
         if (type.IsEnum)
             return $"[color=green]{value}[/color]";
-        
+
         if (value is bool b)
             return b ? "[color=green]true[/color]" : "[color=red]false[/color]";
-        
+
         if (value is string s)
             return $"\"{s}\"";
 
