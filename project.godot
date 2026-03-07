@@ -56,4 +56,4 @@ theme/custom="uid://cdh68r2entt7h"
 
 environment/glow/upscale_mode=0
 mesh_lod/lod_change/threshold_pixels=43.2
-vrs/mode=1
+vrs/mode=0
