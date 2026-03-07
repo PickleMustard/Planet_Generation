@@ -42,7 +42,9 @@ public partial class SystemGenerator : Node
         ((UI.PlanetSystemGenerator)GenerateButton).GeneratePressed += GenerateMesh;
 
         // ThreadPooler is now an autoload, no manual initialization needed
-        GD.Print($"SystemGenerator ready, ThreadPooler available: {UtilityLibrary.TaskSystem.ThreadPooler.Instance != null}");
+        GD.Print(
+            $"SystemGenerator ready, ThreadPooler available: {UtilityLibrary.TaskSystem.ThreadPooler.Instance != null}"
+        );
     }
 
     private void GenerateMesh(Godot.Collections.Array<Godot.Collections.Dictionary> bodies)
@@ -73,20 +75,13 @@ public partial class SystemGenerator : Node
             CreateAndQueueCelestialBody(body);
         }
 
-        GD.Print(
-            $"System generation started: {totalBodiesToGenerate} bodies queued"
-        );
+        GD.Print($"System generation started: {totalBodiesToGenerate} bodies queued");
     }
 
     private void CreateAndQueueCelestialBody(Godot.Collections.Dictionary body)
     {
         var mesh = new UnifiedCelestialMesh();
         CelestialBody celBody = CelestialBody.Builder.BuildFromBodyDict(body, mesh);
-
-        string bodyType = body["type"].AsString();
-        string bodyName = $"{bodyType}_{bodiesCompleted + 1}";
-        celBody.Name = bodyName;
-        mesh.TimerName = bodyName;
 
         SystemContainer.AddChild(celBody);
         celBody.Position = (Vector3)((Godot.Collections.Dictionary)body["template"])["position"];
@@ -97,7 +92,11 @@ public partial class SystemGenerator : Node
         );
     }
 
-    private void OnBodyGenerationComplete(CelestialBody completedBody, CelestialBody celBody, Godot.Collections.Dictionary bodyDict)
+    private void OnBodyGenerationComplete(
+        CelestialBody completedBody,
+        CelestialBody celBody,
+        Godot.Collections.Dictionary bodyDict
+    )
     {
         bodiesCompleted++;
         if (ShowProgressUI)
@@ -126,11 +125,15 @@ public partial class SystemGenerator : Node
         }
     }
 
-    private void OnBodyGenerationFailed(CelestialBody failedBody, string error, CelestialBody celBody)
+    private void OnBodyGenerationFailed(
+        CelestialBody failedBody,
+        string error,
+        CelestialBody celBody
+    )
     {
         GD.PrintErr($"Body generation failed: {celBody.Name}, error: {error}");
         celBody.QueueFree();
-        
+
         bodiesCompleted++;
         if (bodiesCompleted >= totalBodiesToGenerate)
         {
@@ -261,20 +264,12 @@ public partial class SystemGenerator : Node
         return true; // No collisions detected
     }
 
-    private void GenerateSingleSatellite(
-        Godot.Collections.Dictionary sat,
-        CelestialBody parentBody
-    )
+    private void GenerateSingleSatellite(Godot.Collections.Dictionary sat, CelestialBody parentBody)
     {
         var templateDict = (Godot.Collections.Dictionary)sat["template"];
         var position = (Vector3)templateDict["base_position"];
         var mesh = new UnifiedCelestialMesh();
         SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(parentBody.Type, sat, mesh);
-
-        string satType = sat["type"].AsString();
-        string satName = $"{parentBody.Name}_{satType}_{satBody.GetIndex()}";
-        satBody.Name = satName;
-        mesh.TimerName = satName;
 
         parentBody.AddChild(satBody);
         satBody.Position = position;
@@ -303,13 +298,8 @@ public partial class SystemGenerator : Node
         );
         var sats = beltBody.GenerateSatelliteBelt(parentBody);
 
-        int satIndex = 0;
         foreach (var sat in sats)
         {
-            string satName = $"{parentBody.Name}_Asteroid_{satIndex++}";
-            sat.Name = satName;
-            sat.TimerName = satName;
-
             GD.Print($"Generating {sat.Name}, Position: {sat.Position}");
             parentBody.AddChild(sat);
             sat.Position = sat.Position;
@@ -321,7 +311,9 @@ public partial class SystemGenerator : Node
                 },
                 onFailed: (failedSat, error) =>
                 {
-                    GD.PrintErr($"Satellite belt body generation failed: {failedSat.Name}, error: {error}");
+                    GD.PrintErr(
+                        $"Satellite belt body generation failed: {failedSat.Name}, error: {error}"
+                    );
                     failedSat.QueueFree();
                 }
             );
