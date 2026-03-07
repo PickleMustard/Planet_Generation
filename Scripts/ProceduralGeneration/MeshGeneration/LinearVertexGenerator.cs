@@ -30,8 +30,8 @@ namespace ProceduralGeneration.MeshGeneration
         /// </remarks>
         public Point[] GenerateVertices(int count, Point start, Point end, StructureDatabase db)
         {
-            Logger.EnterFunction("LinearVertexGenerator.GenerateVertices", $"count={count}, start={start.Index}, end={end.Index}");
-            if (count <= 0) { Logger.ExitFunction("LinearVertexGenerator.GenerateVertices", "returned 0 points"); return new Point[0]; }
+            GameLogger.EnterFunction("LinearVertexGenerator.GenerateVertices", $"count={count}, start={start.Index}, end={end.Index}");
+            if (count <= 0) { GameLogger.ExitFunction("LinearVertexGenerator.GenerateVertices", "returned 0 points"); return new Point[0]; }
             Point[] vertices = new Point[count];
             float step = 1.0f / (count + 1);
 
@@ -42,7 +42,7 @@ namespace ProceduralGeneration.MeshGeneration
                 vertices[i] = db.GetOrCreatePoint(pos);
             }
 
-            Logger.ExitFunction("LinearVertexGenerator.GenerateVertices", $"returned {vertices.Length} points");
+            GameLogger.ExitFunction("LinearVertexGenerator.GenerateVertices", $"returned {vertices.Length} points");
             return vertices;
         }
 

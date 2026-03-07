@@ -455,7 +455,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         // Base mesh settings
         if (meshParams.ContainsKey("subdivisions"))
         {
-            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); Logger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
+            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
         }
 
         if (meshParams.ContainsKey("vertices_per_edge"))
@@ -471,7 +471,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     assigned = true;
                 }
             }
-            catch (Exception e) { Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+            catch (Exception e) { GameLogger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
 
             if (!assigned)
             {
@@ -484,7 +484,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         assigned = true;
                     }
                 }
-                catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); Logger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+                catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
             }
         }
 
@@ -537,7 +537,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 var zScaleRange = (float)scaling["z_scale_range"];
                 ScaleFactors = new Vector3(xScaleRange, yScaleRange, zScaleRange);
             }
-            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Scaling Settings: {e.Message}\n{e.StackTrace}"); }
+            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in Scaling Settings: {e.Message}\n{e.StackTrace}"); }
         }
         if (meshParams.ContainsKey("noise_settings"))
         {
@@ -553,7 +553,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 noise.FractalOctaves = octaves;
 
             }
-            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); Logger.Error($"Error in Noise Settings: {e.Message}\n{e.StackTrace}"); }
+            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in Noise Settings: {e.Message}\n{e.StackTrace}"); }
         }
     }
 
@@ -795,7 +795,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 catch (Exception e)
                 {
                     FunctionTimer.ResetScrollRegionAndClear();
-                    Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
+                    GameLogger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
                     GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
                     GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
                 }
@@ -862,7 +862,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 catch (Exception e)
                 {
                     FunctionTimer.ResetScrollRegionAndClear();
-                    Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
+                    GameLogger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
                     GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
                     GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
                 }
@@ -910,7 +910,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 catch (Exception e)
                 {
                     FunctionTimer.ResetScrollRegionAndClear();
-                    Logger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
+                    GameLogger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
                     GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
                     GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
                 }
@@ -955,7 +955,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 catch (Exception e)
                 {
                     GD.PrintErr($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
-                    Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
+                    GameLogger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
                 }
                 return 0;
             }, percent);
@@ -1053,7 +1053,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             catch (Exception e)
             {
                 GD.PrintErr($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
-                Logger.Error($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
+                GameLogger.Error($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
             }
             foreach (Point p in StrDb.VoronoiCellVertices)
             {
@@ -1205,7 +1205,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         {
             GD.PrintRaw($"\u001b[2J\u001b[H");
             GD.PrintErr("Voronoi Cell Generation Error: " + e.Message + "\n" + e.StackTrace);
-            Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
+            GameLogger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
         }
     }
 
@@ -1239,7 +1239,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         {
             GD.PrintRaw($"\u001b[2J\u001b[H");
             GD.PrintErr("Voronoi Cell Generation Error: " + e.Message + "\n" + e.StackTrace);
-            Logger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
+            GameLogger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
         }
     }
 

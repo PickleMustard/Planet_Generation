@@ -294,7 +294,7 @@ public class TectonicGeneration
         foreach (Point p in StrDb.VoronoiCellVertices)
         {
             Edge[] edges = StrDb.GetIncidentHalfEdges(p);
-            Logger.Info($"# of Edges: {edges.Length}");
+            GameLogger.Info($"# of Edges: {edges.Length}");
             float alteredHeight = 0.0f;
             foreach (Edge e in edges)
             {
