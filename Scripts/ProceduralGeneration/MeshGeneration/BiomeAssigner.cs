@@ -34,7 +34,7 @@ public static class BiomeAssigner
     /// </remarks>
     public static Biome.BiomeType AssignBiome(UnifiedCelestialMesh generator, float height, float moisture, float latitude = 0f)
     {
-        Logger.EnterFunction("AssignBiome", $"height={height:F3}, moisture={moisture:F3}, lat={latitude:F3}");
+        GameLogger.EnterFunction("AssignBiome", $"height={height:F3}, moisture={moisture:F3}, lat={latitude:F3}");
         // Normalize height to 0-1 range
         float normalizedHeight = height / generator.maxHeight;
         normalizedHeight = Mathf.Clamp(normalizedHeight, 0f, 1f);
@@ -52,7 +52,7 @@ public static class BiomeAssigner
         else if (normalizedHeight > 0.3f && moisture < 0.7f) result = Biome.BiomeType.Forest;
         else result = Biome.BiomeType.Rainforest;
 
-        Logger.ExitFunction("AssignBiome", $"returned {result}");
+        GameLogger.ExitFunction("AssignBiome", $"returned {result}");
         return result;
     }
 
@@ -72,13 +72,13 @@ public static class BiomeAssigner
     /// </remarks>
     public static float CalculateMoisture(Continent continent, RandomNumberGenerator rng, float baseMoisture = 0.5f)
     {
-        Logger.EnterFunction("CalculateMoisture", $"continentStartIdx={continent.StartingIndex}, base={baseMoisture:F2}");
+        GameLogger.EnterFunction("CalculateMoisture", $"continentStartIdx={continent.StartingIndex}, base={baseMoisture:F2}");
         float latitudeFactor = Mathf.Clamp(continent.averagedCenter.Y / 9f, 0f, 1f);
         float sizeFactor = continent.cells.Count / 100f;
 
         float randomVariation = rng.RandfRange(-0.4f, 0.2f);
         float value = MAX_MOISTURE - (baseMoisture + latitudeFactor + sizeFactor + randomVariation) / MAX_MOISTURE;
-        Logger.ExitFunction("CalculateMoisture", $"returned {value:F3}");
+        GameLogger.ExitFunction("CalculateMoisture", $"returned {value:F3}");
         return value;
     }
 }

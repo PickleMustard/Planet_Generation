@@ -38,8 +38,8 @@ namespace ProceduralGeneration.MeshGeneration
         /// </remarks>
         public Point[] GenerateVertices(int count, Point start, Point end, StructureDatabase db)
         {
-            Logger.EnterFunction("GeometricVertexGenerator.GenerateVertices", $"count={count}, start={start.Index}, end={end.Index}, exp={Exponent}");
-            if (count <= 0) { Logger.ExitFunction("GeometricVertexGenerator.GenerateVertices", "returned 0 points"); return new Point[0]; }
+            GameLogger.EnterFunction("GeometricVertexGenerator.GenerateVertices", $"count={count}, start={start.Index}, end={end.Index}, exp={Exponent}");
+            if (count <= 0) { GameLogger.ExitFunction("GeometricVertexGenerator.GenerateVertices", "returned 0 points"); return new Point[0]; }
             Point[] vertices = new Point[count];
             Vector3 startVector = start.Position;
             Vector3 endVector = end.Position;
@@ -52,7 +52,7 @@ namespace ProceduralGeneration.MeshGeneration
                 vertices[i] = db.GetOrCreatePoint(pos);
             }
 
-            Logger.ExitFunction("GeometricVertexGenerator.GenerateVertices", $"returned {vertices.Length} points");
+            GameLogger.ExitFunction("GeometricVertexGenerator.GenerateVertices", $"returned {vertices.Length} points");
             return vertices;
         }
 
