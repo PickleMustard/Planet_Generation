@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
-using UtilityLibrary;
-using Structures.GameState;
-using Structures.MeshGeneration;
-using Structures.Enums;
-using Structures.Resources;
 using ProceduralGeneration.MeshGeneration;
 using ProceduralGeneration.MeshGeneration.ResourceGeneration;
+using Structures.Enums;
+using Structures.GameState;
+using Structures.MeshGeneration;
+using Structures.Resources;
+using UtilityLibrary;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
@@ -24,19 +24,6 @@ public partial class SatelliteBody : Node3D
     Octree<Point> Oct;
     Godot.Collections.Dictionary bodyDict;
     StructureDatabase StrDb;
-
-    /// <summary>
-    /// Name used for timer tracking. Set by SystemGenerator to ensure consistent naming.
-    /// </summary>
-    public string TimerName
-    {
-        get => Mesh?.TimerName;
-        set
-        {
-            if (Mesh != null)
-                Mesh.TimerName = value;
-        }
-    }
 
     /// <summary>
     /// Resource deposits available on this satellite body.
@@ -117,7 +104,11 @@ public partial class SatelliteBody : Node3D
             return new SatelliteBody(this);
         }
 
-        public Builder FromBodyDict(CelestialBodyType parentType, Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
+        public Builder FromBodyDict(
+            CelestialBodyType parentType,
+            Godot.Collections.Dictionary bodyDict,
+            UnifiedCelestialMesh mesh
+        )
         {
             _bodyDict = bodyDict;
             _mesh = mesh;
@@ -140,11 +131,13 @@ public partial class SatelliteBody : Node3D
             return this;
         }
 
-        public static SatelliteBody BuildFromBodyDict(CelestialBodyType parentType, Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
+        public static SatelliteBody BuildFromBodyDict(
+            CelestialBodyType parentType,
+            Godot.Collections.Dictionary bodyDict,
+            UnifiedCelestialMesh mesh
+        )
         {
-            return new Builder()
-                .FromBodyDict(parentType, bodyDict, mesh)
-                .Build();
+            return new Builder().FromBodyDict(parentType, bodyDict, mesh).Build();
         }
     }
 
@@ -171,9 +164,9 @@ public partial class SatelliteBody : Node3D
     }
 
     public SatelliteBody(
-            CelestialBodyType parentType,
-            Godot.Collections.Dictionary bodyDict,
-            UnifiedCelestialMesh mesh
+        CelestialBodyType parentType,
+        Godot.Collections.Dictionary bodyDict,
+        UnifiedCelestialMesh mesh
     )
     {
         this.bodyDict = bodyDict;
@@ -200,7 +193,14 @@ public partial class SatelliteBody : Node3D
         }
     }
 
-    public SatelliteBody(CelestialBodyType parentType, String satType, float mass, float size, Vector3 velocity, UnifiedCelestialMesh mesh)
+    public SatelliteBody(
+        CelestialBodyType parentType,
+        String satType,
+        float mass,
+        float size,
+        Vector3 velocity,
+        UnifiedCelestialMesh mesh
+    )
     {
         this.bodyDict = null;
         this.Mesh = mesh;
@@ -248,21 +248,28 @@ public partial class SatelliteBody : Node3D
     {
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
-        if (
-            bodyDict != null
-        )
+        if (bodyDict != null)
         {
             meshParams.Add("Type", bodyDict["type"]);
             meshParams.Add("name", bodyDict["name"]);
-            if (bodyDict.ContainsKey("base_mesh") && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            if (
+                bodyDict.ContainsKey("base_mesh")
+                && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
+            )
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
-            if (bodyDict.ContainsKey("scaling_settings") && bodyDict["scaling_settings"].Obj is Godot.Collections.Dictionary scaling)
+            if (
+                bodyDict.ContainsKey("scaling_settings")
+                && bodyDict["scaling_settings"].Obj is Godot.Collections.Dictionary scaling
+            )
             {
                 CalculateScalingFromParams(scaling, meshParams);
             }
-            if (bodyDict.ContainsKey("noise_settings") && bodyDict["noise_settings"].Obj is Godot.Collections.Dictionary noise)
+            if (
+                bodyDict.ContainsKey("noise_settings")
+                && bodyDict["noise_settings"].Obj is Godot.Collections.Dictionary noise
+            )
             {
                 CalculateNoiseSettingsFromParams(noise, meshParams);
             }
@@ -282,15 +289,24 @@ public partial class SatelliteBody : Node3D
             var mass = (float)template["mass"];
             meshParams.Add("size", size);
             meshParams.Add("mass", mass);
-            if (t.ContainsKey("base_mesh") && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            if (
+                t.ContainsKey("base_mesh")
+                && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
+            )
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
-            if (t.ContainsKey("scaling_settings") && t["scaling_settings"].Obj is Godot.Collections.Dictionary scaling)
+            if (
+                t.ContainsKey("scaling_settings")
+                && t["scaling_settings"].Obj is Godot.Collections.Dictionary scaling
+            )
             {
                 CalculateScalingFromParams(scaling, meshParams);
             }
-            if (t.ContainsKey("noise_settings") && t["noise_settings"].Obj is Godot.Collections.Dictionary noise)
+            if (
+                t.ContainsKey("noise_settings")
+                && t["noise_settings"].Obj is Godot.Collections.Dictionary noise
+            )
             {
                 CalculateNoiseSettingsFromParams(noise, meshParams);
             }
@@ -367,22 +383,29 @@ public partial class SatelliteBody : Node3D
         return (string)names[random.RandiRange(0, names.Count - 1)];
     }
 
-    private void CalculateBaseMeshFromParams(Godot.Collections.Dictionary definedMesh, Godot.Collections.Dictionary meshParams)
+    private void CalculateBaseMeshFromParams(
+        Godot.Collections.Dictionary definedMesh,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         meshParams.Add("subdivisions", (int)definedMesh["subdivisions"]);
-        var vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)definedMesh["vertices_per_edge"];
+        var vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)
+            definedMesh["vertices_per_edge"];
         int[] vertices_per_edge = new int[(int)definedMesh["subdivisions"]];
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         GD.Print($"VPE Array: {vpeArray}");
         for (int i = 0; i < vertices_per_edge.Length; i++)
         {
-            if (vpeArray.Count - 1 > i)//Defined subdivisions
+            if (vpeArray.Count - 1 > i) //Defined subdivisions
             {
                 vertices_per_edge[i] = rng.RandiRange(vpeArray[i][0], vpeArray[i][1]);
             }
             else
             {
-                vertices_per_edge[i] = rng.RandiRange(vpeArray[vpeArray.Count - 1][0], vpeArray[vpeArray.Count - 1][1]);
+                vertices_per_edge[i] = rng.RandiRange(
+                    vpeArray[vpeArray.Count - 1][0],
+                    vpeArray[vpeArray.Count - 1][1]
+                );
             }
         }
         meshParams.Add("vertices_per_edge", vertices_per_edge);
@@ -390,7 +413,10 @@ public partial class SatelliteBody : Node3D
         meshParams.Add("num_deformation_cycles", (int)definedMesh["num_deformation_cycles"]);
     }
 
-    private void CalculateScalingFromParams(Godot.Collections.Dictionary definedScaling, Godot.Collections.Dictionary meshParams)
+    private void CalculateScalingFromParams(
+        Godot.Collections.Dictionary definedScaling,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var scalingDict = new Godot.Collections.Dictionary();
@@ -403,7 +429,10 @@ public partial class SatelliteBody : Node3D
         meshParams.Add("scaling_settings", scalingDict);
     }
 
-    private void CalculateNoiseSettingsFromParams(Godot.Collections.Dictionary definedNoise, Godot.Collections.Dictionary meshParams)
+    private void CalculateNoiseSettingsFromParams(
+        Godot.Collections.Dictionary definedNoise,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var noiseDict = new Godot.Collections.Dictionary();
