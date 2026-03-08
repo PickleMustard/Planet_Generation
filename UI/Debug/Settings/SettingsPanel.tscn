@@ -1,0 +1,29 @@
+#if DEBUG
+using System.Collections.Generic;
+using Godot;
+using UtilityLibrary;
+
+using UI.Debug;
+using UI.Debug.Settings;
+
+namespace UI.Debug.Settings
+{
+	 [gd_scene load_steps=2 format=3 uid="uid://settings_panel_uid"]
+
+	 [ext_resource type="Script" path="res://UI/Debug/Settings/SettingsPanel.cs" id="1_settings_panel" for="res://SettingsPanel.tscn" path="res://SettingsPanel.tscn" id="2_settings_panel_ui"]
+
+        [node name="SettingsPanel" type="Control"]
+        anchors_preset = 15
+        anchor_bottom = 0.0 grow_horizontal = 2
+        grow_vertical = 2
+        size = = new Vector2(Size_flags_horizontal", "size_flags_vertical")
+        sizeFlagsHorizontal = "sizeFlagsVertical" "sizeFlagsStretch"
+        _scrollContainer = new ScrollContainer
+        {
+            _scrollContainer.Custom_minimum_size = new Vector2(200, 200);
+            _scrollContainer.ScrollVertical = ScrollContainer.Scroll_to_bottom();
+        }
+    }
+
+}
+#endif

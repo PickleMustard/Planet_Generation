@@ -19,6 +19,7 @@ namespace UtilityLibrary.TaskSystem
 #if DEBUG
             , IDebugDataProvider
 #endif
+        , IConfigurable
     {
         private static ThreadPooler _instance;
         public static ThreadPooler Instance => _instance;
@@ -38,11 +39,50 @@ namespace UtilityLibrary.TaskSystem
         public int WorkerCount => _workers?.Length ?? 0;
         public ThreadAllocationInfo AllocationInfo => _allocationInfo;
 
+        public string SettingsCategory => "threading";
+
+        public IEnumerable<ConfigEntry> GetConfigEntries() => new[]
+        {
+            new ConfigEntry
+            {
+                Key = "allocation_percentage",
+                ValueType = typeof(float),
+                DefaultValue = 0.75f,
+                MinValue = 0.1f,
+                MaxValue = 1.0f,
+                Description = "Percentage of CPU cores to allocate for thread pool",
+                RequiresRestart = true
+            },
+            new ConfigEntry
+            {
+                Key = "manual_thread_count",
+                ValueType = typeof(int),
+                DefaultValue = 0,
+                MinValue = 0,
+                MaxValue = 64,
+                Description = "Override thread count (0 = auto-calculated)",
+                RequiresRestart = true
+            }
+        };
+
+        public void ApplySetting(string key, object value)
+        {
+            // Settings require restart, just store the value
+        }
+
+        public object GetSettingDefault(string key) => key switch
+        {
+            "allocation_percentage" => 0.75f,
+            "manual_thread_count" => 0,
+            _ => null
+        };
+
         public override void _Ready()
         {
             if (_instance == null)
             {
                 _instance = this;
+                RuntimeSettings.Instance?.RegisterConfigurable(this);
                 Initialize();
                 SignalBus.Instance?.AutoConnect(this);
             }
@@ -62,8 +102,29 @@ namespace UtilityLibrary.TaskSystem
                 if (_isInitialized)
                     return;
 
-                _allocationInfo = ThreadAllocator.GetAllocationInfo();
-                int threadCount = _allocationInfo.AllocatedThreads;
+                int totalCores = System.Environment.ProcessorCount;
+                int threadCount;
+                float allocationPercentage;
+
+                int manualThreadCount = RuntimeSettings.Instance?.GetSetting<int>(SettingsCategory, "manual_thread_count") ?? 0;
+
+                if (manualThreadCount > 0)
+                {
+                    threadCount = Math.Min(manualThreadCount, totalCores);
+                    allocationPercentage = (float)threadCount / totalCores;
+                }
+                else
+                {
+                    allocationPercentage = RuntimeSettings.Instance?.GetSetting<float>(SettingsCategory, "allocation_percentage") ?? 0.75f;
+                    threadCount = Math.Max(1, (int)(totalCores * allocationPercentage));
+                }
+
+                _allocationInfo = new ThreadAllocationInfo
+                {
+                    TotalCores = totalCores,
+                    AllocatedThreads = threadCount,
+                    AllocationPercentage = allocationPercentage
+                };
 
                 GD.Print(
                     $"ThreadPooler initializing with {threadCount} workers ({_allocationInfo.AllocationPercentage * 100:F0}% of {_allocationInfo.TotalCores} cores)"

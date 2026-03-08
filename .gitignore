@@ -5,3 +5,8 @@
 /UI/Theme
 /addons/
 /reports/
+
+# CI/CD generated files
+/test-reports/
+/.godot-ci/
+*.zip

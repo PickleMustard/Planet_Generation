@@ -190,12 +190,39 @@ var raw = TemplateLoader.Load("RockyPlanet", TemplateLoader.CelestialBodyValidat
 var defaults = TemplateHelpers.GetCelestialBodyDefaults(CelestialBodyType.RockyPlanet);
 ```
 
+## Autoload Singletons
+
+The project uses the following autoload singletons registered in `project.godot`:
+
+| Singleton | Path | Purpose |
+|-----------|------|---------|
+| `RuntimeSettings` | `Scripts/UtilityLibrary/Settings/RuntimeSettings.cs` | Centralized settings management with persistence |
+| `SignalBus` | `Scripts/UtilityLibrary/SignalBus.cs` | Global signal/event dispatcher |
+| `ThreadPooler` | `Scripts/UtilityLibrary/TaskSystem/ThreadPooler.cs` | Background task execution |
+| `TaskTimer` | `Scripts/UtilityLibrary/TaskTimer.cs` | Progress tracking and timing |
+| `ResourceDatabase` | `Scripts/Structures/Resources/ResourceDatabase.cs` | Resource definitions storage |
+| `CellSelectionManager` | `Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs` | Cell selection handling |
+| `DebugMenu` | `UI/Debug/DebugMenu.tscn` | Debug console and database viewer |
+
+Access singletons via their static `Instance` property:
+
+```csharp
+// Get a setting value
+int threadCount = RuntimeSettings.Instance?.GetSetting<int>("threading", "manual_thread_count") ?? 0;
+
+// Emit a signal
+SignalBus.Instance?.EmitStartTimer("Generation", 5, 0, stepNames);
+
+// Queue a background task
+ThreadPooler.Instance?.EnqueuePackage(package);
+```
+
 ## Key Architecture Patterns
 
 1. **Builder Pattern**: `CelestialBody.Builder.BuildFromBodyDict()` for constructing bodies
 2. **Strategy Pattern**: `BodyGenerationType` enum selects generation pipeline
 3. **Two-Pass Generation**: First pass creates base mesh, second adds Voronoi/tectonics
-4. **Autoload Singletons**: `MeshGenerationThreadPool` registered in project.godot
+4. **IConfigurable Pattern**: Objects implement `IConfigurable` to expose settings to `RuntimeSettings`
 
 ## OpenProject Integration
 
