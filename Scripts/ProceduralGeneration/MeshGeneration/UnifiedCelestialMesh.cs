@@ -463,6 +463,13 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
     private void AddFirstPassSteps(WorkPackageBuilder builder)
     {
+        BaseMeshGeneration baseMesh = new BaseMeshGeneration(
+            rand,
+            StrDb,
+            subdivide,
+            VerticesPerEdge,
+            this
+        );
         builder.AddStep(
             "PopulateArrays",
             () =>
@@ -470,13 +477,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 GameLogger.EnterFunction("PopulateArrays", "");
                 try
                 {
-                    BaseMeshGeneration baseMesh = new BaseMeshGeneration(
-                        rand,
-                        StrDb,
-                        subdivide,
-                        VerticesPerEdge,
-                        this
-                    );
                     baseMesh.PopulateArrays();
                     GameLogger.ExitFunction(
                         "PopulateArrays",
@@ -500,13 +500,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 GameLogger.EnterFunction("GenerateNonDeformedFaces", "");
                 try
                 {
-                    BaseMeshGeneration baseMesh = new BaseMeshGeneration(
-                        rand,
-                        StrDb,
-                        subdivide,
-                        VerticesPerEdge,
-                        this
-                    );
                     baseMesh.GenerateNonDeformedFaces();
                     GameLogger.ExitFunction(
                         "GenerateNonDeformedFaces",
@@ -532,13 +525,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 GameLogger.EnterFunction("GenerateTriangleList", "");
                 try
                 {
-                    BaseMeshGeneration baseMesh = new BaseMeshGeneration(
-                        rand,
-                        StrDb,
-                        subdivide,
-                        VerticesPerEdge,
-                        this
-                    );
                     baseMesh.GenerateTriangleList();
                     GameLogger.ExitFunction(
                         "GenerateTriangleList",
@@ -568,13 +554,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb.Base.Triangles.Count;
                     float OptimalSideLength =
                         Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
-                    BaseMeshGeneration baseMesh = new BaseMeshGeneration(
-                        rand,
-                        StrDb,
-                        subdivide,
-                        VerticesPerEdge,
-                        this
-                    );
                     baseMesh.InitiateDeformation(
                         NumDeformationCycles,
                         NumAbberations,

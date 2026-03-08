@@ -5,7 +5,7 @@ using Godot;
 
 namespace UtilityLibrary
 {
-    public partial class TaskTimer : Node
+    public partial class TaskTimer : Node, IConfigurable
     {
         public static TaskTimer Instance { get; private set; }
 
@@ -30,9 +30,65 @@ namespace UtilityLibrary
         [Signal]
         public delegate void TimerStepDurationEventHandler(string name, int stepIndex, string stepName, double durationSeconds);
 
+        [Signal]
+        public delegate void VisibilityChangedEventHandler(bool visible);
+
+        [Signal]
+        public delegate void CollapseDelayChangedEventHandler(float delay);
+
         private readonly Dictionary<string, TimerInfo> _activeTimers = new();
         private readonly List<TimerInfo> _completedTimers = new();
         private readonly object _lock = new();
+
+        private bool _progressPanelVisible = true;
+        private float _collapseDelay = 3.0f;
+
+        public string SettingsCategory => "tasktimer";
+
+        public IEnumerable<ConfigEntry> GetConfigEntries() => new[]
+        {
+            new ConfigEntry
+            {
+                Key = "progress_panel_visible",
+                ValueType = typeof(bool),
+                DefaultValue = true,
+                Description = "Show the generation progress panel during mesh generation",
+                RequiresRestart = false
+            },
+            new ConfigEntry
+            {
+                Key = "auto_collapse_delay",
+                ValueType = typeof(float),
+                DefaultValue = 3.0f,
+                MinValue = 0.0f,
+                MaxValue = 30.0f,
+                Description = "Seconds to wait before auto-collapsing progress panel after completion",
+                RequiresRestart = false
+            }
+        };
+
+        public void ApplySetting(string key, object value)
+        {
+            switch (key)
+            {
+                case "progress_panel_visible":
+                    EmitSignal(SignalName.VisibilityChanged, (bool)value);
+                    break;
+                case "auto_collapse_delay":
+                    EmitSignal(SignalName.CollapseDelayChanged, Convert.ToSingle(value));
+                    break;
+            }
+        }
+
+        public object GetSettingDefault(string key)
+        {
+            return key switch
+            {
+                "progress_panel_visible" => true,
+                "auto_collapse_delay" => 3.0f,
+                _ => null
+            };
+        }
 
         public IReadOnlyDictionary<string, TimerInfo> ActiveTimers => _activeTimers;
         public IReadOnlyList<TimerInfo> CompletedTimers => _completedTimers;
@@ -44,6 +100,14 @@ namespace UtilityLibrary
             {
                 SignalBus.Instance.AutoConnect(this);
             }
+
+            RuntimeSettings.Instance?.RegisterConfigurable(this);
+
+            Connect(SignalName.VisibilityChanged, new Callable(this, nameof(OnVisibilityChanged)));
+            Connect(SignalName.CollapseDelayChanged, new Callable(this, nameof(OnCollapseDelayChanged)));
+
+            _progressPanelVisible = RuntimeSettings.Instance?.GetSetting<bool>("tasktimer", "progress_panel_visible") ?? true;
+            _collapseDelay = RuntimeSettings.Instance?.GetSetting<float>("tasktimer", "auto_collapse_delay") ?? 3.0f;
         }
 
         public override void _ExitTree()
@@ -211,6 +275,20 @@ namespace UtilityLibrary
                     kvp => kvp.Value.TotalMilliseconds
                 )}
             };
+        }
+
+        public float CollapseDelay => _collapseDelay;
+
+        public bool ProgressPanelVisible => _progressPanelVisible;
+
+        private void OnVisibilityChanged(bool visible)
+        {
+            _progressPanelVisible = visible;
+        }
+
+        private void OnCollapseDelayChanged(float delay)
+        {
+            _collapseDelay = delay;
         }
     }
 }

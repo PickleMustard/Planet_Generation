@@ -51,7 +51,6 @@ namespace UtilityLibrary
                     {
                         if (resourceObj is Dictionary<object, object> resourceDict)
                         {
-                            GD.Print($"Resource definition: {resourceDict}");
                             var definition = ParseResourceDefinition(resourceDict);
                             definitions.Add(definition);
                         }
