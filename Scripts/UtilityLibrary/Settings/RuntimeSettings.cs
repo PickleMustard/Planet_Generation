@@ -28,9 +28,7 @@ namespace UtilityLibrary
         [Signal]
         public delegate void SettingsLoadedEventHandler();
 
-        private const string SettingsFilePath = "user://settings.cfg";
-        private const string DefaultTemplatePath = "res://settings.cfg";
-        private const string SettingsFileName = "settings.cfg";
+        private const string SettingsFilePath = "res://settings.cfg";
 
         private readonly System.Collections.Generic.Dictionary<string, IConfigurable> _configurables = new();
         private readonly ConfigFile _configFile = new();
@@ -78,133 +76,6 @@ namespace UtilityLibrary
             }
 
             GameLogger.Debug($"Registered configurable for category: {category}");
-            
-            // Register with Godot's ProjectSettings for editor integration
-            RegisterWithProjectSettings(configurable);
-        }
-        
-        /// <summary>
-        /// Registers a configurable's settings with Godot's ProjectSettings.
-        /// This makes them visible in the Editor's Project Settings dialog.
-        /// </summary>
-        /// <param name="configurable">The configurable to register.</param>
-        private void RegisterWithProjectSettings(IConfigurable configurable)
-        {
-            string category = configurable.SettingsCategory;
-            
-            foreach (ConfigEntry entry in configurable.GetConfigEntries())
-            {
-                string projectCategory = entry.ProjectSettingsCategory ?? category;
-                string fullKey = $"{projectCategory}/{entry.Key}";
-                
-                // Set the initial/default value if provided
-                if (entry.DefaultValue != null)
-                {
-                    Variant defaultVariant = ObjectToVariant(entry.DefaultValue);
-                    if (!ProjectSettings.HasSetting(fullKey))
-                    {
-                        ProjectSettings.SetSetting(fullKey, defaultVariant);
-                    }
-                    ProjectSettings.SetInitialValue(fullKey, defaultVariant);
-                }
-                
-                // Add property info for editor UI hints
-                var propertyInfo = new Godot.Collections.Dictionary
-                {
-                    { "name", fullKey },
-                    { "type", (int)GetVariantType(entry.ValueType) },
-                    { "hint", (int)GetPropertyHint(entry) },
-                    { "hint_string", GetHintString(entry) }
-                };
-                ProjectSettings.AddPropertyInfo(propertyInfo);
-                
-                // Configure visibility
-                if (entry.IsInternal)
-                {
-                    ProjectSettings.SetAsInternal(fullKey, true);
-                }
-                else if (entry.ShowInAdvanced)
-                {
-                    ProjectSettings.SetAsBasic(fullKey, false);
-                }
-                
-                GameLogger.Debug($"Registered ProjectSettings: {fullKey}");
-            }
-        }
-        
-        /// <summary>
-        /// Converts a C# Type to Godot Variant.Type for ProjectSettings.
-        /// </summary>
-        private static Variant.Type GetVariantType(Type valueType)
-        {
-            if (valueType == typeof(bool)) return Variant.Type.Bool;
-            if (valueType == typeof(int)) return Variant.Type.Int;
-            if (valueType == typeof(float)) return Variant.Type.Float;
-            if (valueType == typeof(double)) return Variant.Type.Float;
-            if (valueType == typeof(string)) return Variant.Type.String;
-            if (valueType == typeof(Vector2)) return Variant.Type.Vector2;
-            if (valueType == typeof(Vector3)) return Variant.Type.Vector3;
-            if (valueType == typeof(Color)) return Variant.Type.Color;
-            
-            return Variant.Type.String;
-        }
-        
-        /// <summary>
-        /// Determines the appropriate PropertyHint based on ConfigEntry properties.
-        /// </summary>
-        private static PropertyHint GetPropertyHint(ConfigEntry entry)
-        {
-            // Enum options take priority
-            if (entry.ValidOptions != null && entry.ValidOptions.Length > 0)
-            {
-                return PropertyHint.Enum;
-            }
-            
-            // Range for numeric types with min/max
-            if (entry.MinValue != null && entry.MaxValue != null)
-            {
-                if (entry.ValueType == typeof(int))
-                {
-                    return PropertyHint.Range;
-                }
-                if (entry.ValueType == typeof(float))
-                {
-                    return PropertyHint.Range;
-                }
-            }
-            
-            return PropertyHint.None;
-        }
-        
-        /// <summary>
-        /// Generates the hint_string for ProjectSettings based on entry properties.
-        /// </summary>
-        private static string GetHintString(ConfigEntry entry)
-        {
-            // Enum options
-            if (entry.ValidOptions != null && entry.ValidOptions.Length > 0)
-            {
-                return string.Join(",", entry.ValidOptions);
-            }
-            
-            // Range
-            if (entry.MinValue != null && entry.MaxValue != null)
-            {
-                string step = "1";
-                if (entry.ValueType == typeof(float))
-                {
-                    step = "0.01";
-                }
-                return $"{entry.MinValue},{entry.MaxValue},{step}";
-            }
-            
-            // Custom hint string from ConfigEntry
-            if (!string.IsNullOrEmpty(entry.PropertyHintString))
-            {
-                return entry.PropertyHintString;
-            }
-            
-            return "";
         }
 
         /// <summary>
@@ -430,51 +301,15 @@ namespace UtilityLibrary
 
         /// <summary>
         /// Loads settings from the configuration file.
-        /// If no user settings file exists, copies from the default template (res://settings.cfg).
+        /// If settings.cfg doesn't exist, generates it with all default values.
         /// </summary>
         public void LoadFromFile()
         {
-            // Check if user settings file exists
+            // Check if settings file exists
             if (!FileAccess.FileExists(SettingsFilePath))
             {
-                // Try to load from default template
-                if (FileAccess.FileExists(DefaultTemplatePath))
-                {
-                    GD.Print($"No user settings found. Loading defaults from {DefaultTemplatePath}");
-                    
-                    Error loadError = _configFile.Load(DefaultTemplatePath);
-                    if (loadError == Error.Ok)
-                    {
-                        // Save a copy to user directory for future runs
-                        Error saveError = _configFile.Save(SettingsFilePath);
-                        if (saveError == Error.Ok)
-                        {
-                            GD.Print($"Default settings copied to {SettingsFilePath}");
-                        }
-                        else
-                        {
-                            GD.PrintErr($"Failed to copy default settings to {SettingsFilePath}");
-                        }
-                        
-                        _isLoaded = true;
-                        GD.Print("Settings loaded from default template.");
-                        EmitSignal(SignalName.SettingsLoaded);
-                        return;
-                    }
-                    else
-                    {
-                        GD.PrintErr($"Failed to load default template: {loadError}");
-                        // Fall through to use code defaults
-                    }
-                }
-                else
-                {
-                    GD.Print($"No settings file found at {SettingsFilePath} and no default template at {DefaultTemplatePath}, using code defaults.");
-                }
-                
-                _isLoaded = true;
-                EmitSignal(SignalName.SettingsLoaded);
-                return;
+                GD.Print($"Settings file not found at {SettingsFilePath}. Generating with default values.");
+                GenerateDefaultSettingsFile();
             }
 
             Error error = _configFile.Load(SettingsFilePath);
@@ -489,6 +324,38 @@ namespace UtilityLibrary
                 GD.PrintErr($"Failed to load settings: {error}");
                 _isLoaded = true;
                 EmitSignal(SignalName.SettingsLoaded);
+            }
+        }
+
+        /// <summary>
+        /// Generates a settings.cfg file with all default values from registered IConfigurables.
+        /// </summary>
+        private void GenerateDefaultSettingsFile()
+        {
+            foreach (var kvp in _configurables)
+            {
+                string category = kvp.Key;
+                IConfigurable configurable = kvp.Value;
+
+                foreach (ConfigEntry entry in configurable.GetConfigEntries())
+                {
+                    if (entry.DefaultValue != null && entry.Key != null)
+                    {
+                        Variant variant = ObjectToVariant(entry.DefaultValue);
+                        _configFile.SetValue(category, entry.Key, variant);
+                        GameLogger.Debug($"Generated default setting: [{category}] {entry.Key} = {entry.DefaultValue}");
+                    }
+                }
+            }
+
+            Error error = _configFile.Save(SettingsFilePath);
+            if (error == Error.Ok)
+            {
+                GD.Print($"Default settings file created at {SettingsFilePath}");
+            }
+            else
+            {
+                GD.PrintErr($"Failed to create default settings file: {error}");
             }
         }
 

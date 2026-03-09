@@ -260,7 +260,7 @@ public class RuntimeSettingsTest
 
         _settings.SaveToFile();
 
-        AssertThat(FileAccess.FileExists("user://settings.cfg")).IsTrue();
+        AssertThat(FileAccess.FileExists("res://settings.cfg")).IsTrue();
     }
 
     [TestCase]
@@ -281,17 +281,23 @@ public class RuntimeSettingsTest
 
     [TestCase]
     [RequireGodotRuntime]
-    public void LoadFromFileHandlesMissingFile()
+    public void LoadFromFileAutoGeneratesWhenMissing()
     {
-        if (FileAccess.FileExists("user://settings.cfg"))
+        // Remove existing file if present
+        if (FileAccess.FileExists("res://settings.cfg"))
         {
-            DirAccess.RemoveAbsolute("user://settings.cfg");
+            DirAccess.RemoveAbsolute("res://settings.cfg");
         }
 
         var newSettings = new RuntimeSettings();
+        newSettings.RegisterConfigurable(_mockConfigurable);
         newSettings.LoadFromFile();
 
-        AssertThat(newSettings.IsLoaded()).IsTrue();
+        // Verify file was created
+        AssertThat(FileAccess.FileExists("res://settings.cfg")).IsTrue();
+
+        // Verify defaults are accessible
+        AssertThat(newSettings.GetSetting<int>("TestCategory", "IntSetting")).IsEqual(42);
     }
 
     [TestCase]

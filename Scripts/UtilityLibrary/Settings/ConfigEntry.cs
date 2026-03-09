@@ -3,7 +3,7 @@ using System;
 namespace UtilityLibrary
 {
     /// <summary>
-    /// Represents a single configuration entry with metadata for validation and UI display.
+    /// Represents a single configuration entry with metadata for validation.
     /// Supports numeric ranges, enum options, and descriptive information.
     /// </summary>
     public class ConfigEntry
@@ -49,29 +49,7 @@ namespace UtilityLibrary
         /// </summary>
         public bool RequiresRestart { get; init; }
 
-        /// <summary>
-        /// Gets the property hint string for ProjectSettings (e.g., "0,100,1" for range).
-        /// Used to provide editor UI hints like enum dropdowns or slider ranges.
-        /// </summary>
-        public string PropertyHintString { get; init; }
 
-        /// <summary>
-        /// Gets whether this setting should be hidden from the basic Project Settings view.
-        /// When true, user must enable "Advanced" toggle to see this setting.
-        /// </summary>
-        public bool ShowInAdvanced { get; init; }
-
-        /// <summary>
-        /// Gets whether this setting is internal (hidden from Project Settings dialog).
-        /// Internal settings can still be accessed programmatically but don't appear in the UI.
-        /// </summary>
-        public bool IsInternal { get; init; }
-
-        /// <summary>
-        /// Gets the category name in ProjectSettings. Defaults to the SettingsCategory if not specified.
-        /// Allows mapping a configurable's settings to a different category in the editor.
-        /// </summary>
-        public string ProjectSettingsCategory { get; init; }
 
         /// <summary>
         /// Validates that a given value is within acceptable bounds for this entry.
