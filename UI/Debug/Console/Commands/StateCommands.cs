@@ -90,16 +90,16 @@ public static class StateCommands
             return 1;
         }
 
-        return SetPropertyValue(ctx, instance, propertyPath, valueStr);
+        return SetPropertyValue(ctx, instance!, propertyPath, valueStr);
     }
 
     private static int SetPropertyValue(CommandContext ctx, object instance, string propertyPath, string valueStr)
     {
         var parts = propertyPath.Split('.');
-        object current = instance;
+        object? current = instance;
         Type currentType = instance.GetType();
-        PropertyInfo property = null;
-        FieldInfo field = null;
+        PropertyInfo? property = null;
+        FieldInfo? field = null;
 
         for (int i = 0; i < parts.Length - 1; i++)
         {
@@ -149,7 +149,7 @@ public static class StateCommands
             return 1;
         }
 
-        Type targetType = property?.PropertyType ?? field.FieldType;
+        Type targetType = property?.PropertyType ?? field!.FieldType;
 
         if (!TryParseValue(valueStr, targetType, out var parsedValue))
         {
@@ -170,10 +170,10 @@ public static class StateCommands
             }
             else
             {
-                field.SetValue(current, parsedValue);
+                field!.SetValue(current, parsedValue);
             }
 
-            ctx.WriteLine($"[color=green]Set {finalPart} = {FormatValue(parsedValue)}[/color]");
+            ctx.WriteLine($"[color=green]Set {finalPart} = {FormatValue(parsedValue!)}[/color]");
             return 0;
         }
         catch (Exception ex)
@@ -183,7 +183,7 @@ public static class StateCommands
         }
     }
 
-    private static bool TryParseValue(string valueStr, Type targetType, out object value)
+    private static bool TryParseValue(string valueStr, Type targetType, out object? value)
     {
         value = null;
 

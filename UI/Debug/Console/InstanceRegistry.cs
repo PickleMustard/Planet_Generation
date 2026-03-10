@@ -151,7 +151,7 @@ public static class InstanceRegistry
     /// <param name="namespace">The namespace to look up.</param>
     /// <param name="instance">The found instance.</param>
     /// <returns>True if found.</returns>
-    public static bool TryGetInstance(string @namespace, out object instance)
+    public static bool TryGetInstance(string @namespace, out object? instance)
     {
         if (string.IsNullOrEmpty(@namespace))
         {
@@ -170,7 +170,7 @@ public static class InstanceRegistry
     /// </summary>
     /// <param name="instance">The instance.</param>
     /// <returns>The namespace or null if not registered.</returns>
-    public static string GetNamespace(object instance)
+    public static string? GetNamespace(object instance)
     {
         if (instance == null)
         {

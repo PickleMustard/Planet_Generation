@@ -11,38 +11,43 @@ namespace UtilityLibrary
         /// <summary>
         /// Gets the unique key identifier for this configuration entry.
         /// </summary>
-        public string Key { get; init; }
+        public string? Key { get; init; }
 
         /// <summary>
         /// Gets the expected type of the configuration value.
         /// </summary>
-        public Type ValueType { get; init; }
+        public Type? ValueType { get; init; }
+
+        /// <summary>
+        /// Defines the category of this configuration entry.
+        /// </summary>
+        public string? SettingsCategory { get; init; }
 
         /// <summary>
         /// Gets the default value for this configuration entry.
         /// Used for numeric types and general defaults.
         /// </summary>
-        public object DefaultValue { get; init; }
+        public object? DefaultValue { get; init; }
 
         /// <summary>
         /// Gets the minimum allowed value for numeric types.
         /// </summary>
-        public object MinValue { get; init; }
+        public object? MinValue { get; init; }
 
         /// <summary>
         /// Gets the maximum allowed value for numeric types.
         /// </summary>
-        public object MaxValue { get; init; }
+        public object? MaxValue { get; init; }
 
         /// <summary>
         /// Gets the array of valid string options for enum-like configurations.
         /// </summary>
-        public string[] ValidOptions { get; init; }
+        public string[]? ValidOptions { get; init; }
 
         /// <summary>
         /// Gets the human-readable description of this configuration entry.
         /// </summary>
-        public string Description { get; init; }
+        public string? Description { get; init; }
 
         /// <summary>
         /// Gets whether changing this setting requires a restart to take effect.
@@ -53,7 +58,7 @@ namespace UtilityLibrary
         /// Gets the property hint string for ProjectSettings (e.g., "0,100,1" for range).
         /// Used to provide editor UI hints like enum dropdowns or slider ranges.
         /// </summary>
-        public string PropertyHintString { get; init; }
+        public string? PropertyHintString { get; init; }
 
         /// <summary>
         /// Gets whether this setting should be hidden from the basic Project Settings view.
@@ -66,12 +71,6 @@ namespace UtilityLibrary
         /// Internal settings can still be accessed programmatically but don't appear in the UI.
         /// </summary>
         public bool IsInternal { get; init; }
-
-        /// <summary>
-        /// Gets the category name in ProjectSettings. Defaults to the SettingsCategory if not specified.
-        /// Allows mapping a configurable's settings to a different category in the editor.
-        /// </summary>
-        public string ProjectSettingsCategory { get; init; }
 
         /// <summary>
         /// Validates that a given value is within acceptable bounds for this entry.

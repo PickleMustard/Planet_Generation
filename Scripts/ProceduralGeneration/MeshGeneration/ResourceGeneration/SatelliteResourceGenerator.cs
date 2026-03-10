@@ -74,7 +74,7 @@ public static class SatelliteResourceGenerator
         return deposits;
     }
 
-    private static Godot.Collections.Dictionary SelectWeightedResource(
+    private static Godot.Collections.Dictionary? SelectWeightedResource(
         Godot.Collections.Array resources,
         RandomNumberGenerator rng)
     {
@@ -115,7 +115,7 @@ public static class SatelliteResourceGenerator
         return validResources[0].config;
     }
 
-    private static ResourceDeposit CreateDepositFromConfig(
+    private static ResourceDeposit? CreateDepositFromConfig(
         Godot.Collections.Dictionary config,
         RandomNumberGenerator rng,
         bool highAbundance)

@@ -156,7 +156,7 @@ public class ConfigEntryTest
             Description = "Test setting"
         };
 
-        AssertThat(entry.IsValid(null)).IsFalse();
+        AssertThat(entry.IsValid(null!)).IsFalse();
     }
 
     [TestCase]

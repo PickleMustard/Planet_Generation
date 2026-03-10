@@ -13,7 +13,7 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("Input Map", Category = "Input")]
 public class InputMapProvider : IDataProvider
 {
-    private DebugDataNode _cachedData;
+    private DebugDataNode? _cachedData;
     private bool _needsRefresh = true;
 
     public string Name => "Input Map";

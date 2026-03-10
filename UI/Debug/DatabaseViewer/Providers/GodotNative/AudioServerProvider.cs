@@ -13,7 +13,7 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("Audio Server", Category = "Audio")]
 public class AudioServerProvider : IDataProvider
 {
-    private DebugDataNode _cachedData;
+    private DebugDataNode? _cachedData;
     private bool _needsRefresh = true;
 
     public string Name => "Audio Server";

@@ -13,7 +13,7 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("Project Settings", Category = "Settings")]
 public class ProjectSettingsProvider : IDataProvider
 {
-    private DebugDataNode _cachedData;
+    private DebugDataNode? _cachedData;
     private bool _needsRefresh = true;
 
     private static readonly string[] KnownCategories = new[]

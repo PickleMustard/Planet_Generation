@@ -9,7 +9,7 @@ public partial class VoronoiCell : Resource
     public Point[] Points { get; set; }
     public Triangle[] Triangles { get; set; }
     public Edge[] Edges { get; set; }
-    public Edge[] OutsideEdges { get; set; } //Edges that lie on the border of a continent
+    public Edge[]? OutsideEdges { get; set; } //Edges that lie on the border of a continent
     public Aabb BoundingBox { get; set; }
     public int Index { get; set; }
     public int ContinentIndex { get; set; }

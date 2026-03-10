@@ -451,9 +451,9 @@ public class ConstrainedDelauneyTriangulation
         Point b = vertices[t.vertices[1]];
         Point c = vertices[t.vertices[2]];
         Point[] triVerts = new Point[] {
-            StrDb.LegacyCircumcenters[a.Index],
-            StrDb.LegacyCircumcenters[b.Index],
-            StrDb.LegacyCircumcenters[c.Index] };
+            StrDb.VoronoiVertices[a.Index],
+            StrDb.VoronoiVertices[b.Index],
+            StrDb.VoronoiVertices[c.Index] };
         Edge e1 = Edge.MakeEdge(triVerts[0], triVerts[1]);
         Edge e2 = Edge.MakeEdge(triVerts[1], triVerts[2]);
         Edge e3 = Edge.MakeEdge(triVerts[2], triVerts[0]);

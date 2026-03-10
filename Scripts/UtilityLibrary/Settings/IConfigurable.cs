@@ -24,8 +24,8 @@ namespace UtilityLibrary
         /// Gets the default value for a specific setting key.
         /// </summary>
         /// <param name="key">The setting key to look up.</param>
-        /// <returns>The default value for the specified key.</returns>
-        object GetSettingDefault(string key);
+        /// <returns>The default value for the specified key, or null if not found.</returns>
+        object? GetSettingDefault(string key);
 
         /// <summary>
         /// Gets all configuration entries for this configurable object.

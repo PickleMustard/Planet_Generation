@@ -5,15 +5,15 @@ namespace UtilityLibrary.TaskSystem
 {
     public class WorkPackageBuilder
     {
-        private string _name;
+        private string? _name;
         private readonly List<WorkStep> _steps = new();
         private TaskPriority _priority = TaskPriority.Normal;
-        private string _batchId;
+        private string? _batchId;
         private int? _maxRetries;
-        private Action<string> _onCompleted;
-        private Action<string, int, string> _onStepCompleted;
-        private Action<string, int, string, string> _onStepFailed;
-        private Action<string, string> _onPackageFailed;
+        private Action<string>? _onCompleted;
+        private Action<string, int, string>? _onStepCompleted;
+        private Action<string, int, string, string>? _onStepFailed;
+        private Action<string, string>? _onPackageFailed;
 
         public WorkPackageBuilder WithName(string name)
         {

@@ -7,7 +7,7 @@ namespace UtilityLibrary
 {
     public partial class TaskTimer : Node, IConfigurable
     {
-        public static TaskTimer Instance { get; private set; }
+        public static TaskTimer? Instance { get; private set; }
 
         [Signal]
         public delegate void TimerStartedEventHandler(
@@ -72,15 +72,17 @@ namespace UtilityLibrary
             switch (key)
             {
                 case "progress_panel_visible":
-                    EmitSignal(SignalName.VisibilityChanged, (bool)value);
+                    _progressPanelVisible = (bool)value;
+                    EmitSignal(SignalName.VisibilityChanged, _progressPanelVisible);
                     break;
                 case "auto_collapse_delay":
-                    EmitSignal(SignalName.CollapseDelayChanged, Convert.ToSingle(value));
+                    _collapseDelay = Convert.ToSingle(value);
+                    EmitSignal(SignalName.CollapseDelayChanged, _collapseDelay);
                     break;
             }
         }
 
-        public object GetSettingDefault(string key)
+        public object? GetSettingDefault(string key)
         {
             return key switch
             {
@@ -105,9 +107,6 @@ namespace UtilityLibrary
 
             Connect(SignalName.VisibilityChanged, new Callable(this, nameof(OnVisibilityChanged)));
             Connect(SignalName.CollapseDelayChanged, new Callable(this, nameof(OnCollapseDelayChanged)));
-
-            _progressPanelVisible = RuntimeSettings.Instance?.GetSetting<bool>("tasktimer", "progress_panel_visible") ?? true;
-            _collapseDelay = RuntimeSettings.Instance?.GetSetting<float>("tasktimer", "auto_collapse_delay") ?? 3.0f;
         }
 
         public override void _ExitTree()
@@ -217,7 +216,7 @@ namespace UtilityLibrary
             }
         }
 
-        public TimerInfo GetTimer(string name)
+        public TimerInfo? GetTimer(string name)
         {
             lock (_lock)
             {
@@ -256,14 +255,14 @@ namespace UtilityLibrary
             }
         }
 
-        public Dictionary<string, object> GetTimerStats(string name)
+        public Dictionary<string, object>? GetTimerStats(string name)
         {
             var timer = GetTimer(name);
             if (timer == null) return null;
 
             return new Dictionary<string, object>
             {
-                { "name", timer.Name },
+                { "name", timer.Name! },
                 { "totalSteps", timer.TotalSteps },
                 { "currentStep", timer.CurrentStep },
                 { "progress", timer.Progress },

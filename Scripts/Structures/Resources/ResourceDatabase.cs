@@ -18,7 +18,7 @@ namespace Structures.Resources
             , IDebugDataProvider
 #endif
     {
-        private static ResourceDatabase _instance;
+        private static ResourceDatabase? _instance;
         public static ResourceDatabase Instance
         {
             get
@@ -29,7 +29,7 @@ namespace Structures.Resources
                         "ResourceDatabase not initialized. Ensure it is registered as an autoload."
                     );
                 }
-                return _instance;
+                return _instance!;
             }
         }
 
@@ -73,7 +73,7 @@ namespace Structures.Resources
             }
         }
 
-        public bool TryGetResource(string resourceId, out ResourceDefinition resource)
+        public bool TryGetResource(string resourceId, out ResourceDefinition? resource)
         {
             return _resources.TryGetValue(resourceId, out resource);
         }
@@ -85,7 +85,7 @@ namespace Structures.Resources
 
         public Color GetResourceColor(string resourceId)
         {
-            if (TryGetResource(resourceId, out var resource))
+            if (TryGetResource(resourceId, out var resource) && resource != null)
             {
                 return resource.DisplayColor;
             }
@@ -146,8 +146,8 @@ namespace Structures.Resources
             {
                 var def = kvp.Value;
                 definitionsNode
-                    .AddChild(def.IdName)
-                    .AddProperty("Resource Type", def.ResourceType)
+                    .AddChild(def.IdName ?? "Unknown")
+                    .AddProperty("Resource Type", def.ResourceType ?? "Unknown")
                     .AddProperty("Resource Tier", def.ResourceTier)
                     .AddProperty("Color", def.DisplayColor.ToString())
                     .AddProperty("Min Elevation", def.MinElevation)
@@ -167,7 +167,7 @@ namespace Structures.Resources
             {
                 if (
                     kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase)
-                    || kvp.Value.ResourceType.Contains(pattern, StringComparison.OrdinalIgnoreCase)
+                    || (kvp.Value.ResourceType?.Contains(pattern, StringComparison.OrdinalIgnoreCase) ?? false)
                 )
                 {
                     results.Add($"Definitions/{kvp.Key}");

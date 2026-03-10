@@ -20,10 +20,10 @@ public partial class SatelliteBody : Node3D
     Vector3 TotalForce;
     bool isSatelliteGroup = false;
     SatelliteBodyType SatelliteType;
-    UnifiedCelestialMesh Mesh;
-    Octree<Point> Oct;
-    Godot.Collections.Dictionary bodyDict;
-    StructureDatabase StrDb;
+    UnifiedCelestialMesh? Mesh;
+    Octree<Point>? Oct;
+    Godot.Collections.Dictionary? bodyDict;
+    StructureDatabase? StrDb;
 
     /// <summary>
     /// Resource deposits available on this satellite body.
@@ -39,10 +39,10 @@ public partial class SatelliteBody : Node3D
         internal Vector3 _totalForce = Vector3.Zero;
         internal bool _isSatelliteGroup = false;
         internal SatelliteBodyType _satelliteType;
-        internal UnifiedCelestialMesh _mesh;
-        internal Octree<Point> _oct;
-        internal Godot.Collections.Dictionary _bodyDict;
-        internal StructureDatabase _strDb;
+        internal UnifiedCelestialMesh? _mesh;
+        internal Octree<Point>? _oct;
+        internal Godot.Collections.Dictionary? _bodyDict;
+        internal StructureDatabase? _strDb;
 
         public Builder WithVelocity(Vector3 velocity)
         {
@@ -218,6 +218,7 @@ public partial class SatelliteBody : Node3D
     {
         TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
         var parent = GetParent() as CelestialBody;
+        if (parent == null) return;
         float distance = this.GlobalPosition.DistanceTo(parent.GlobalPosition);
         Vector3 direction = (parent.GlobalPosition - this.GlobalPosition);
 
@@ -242,8 +243,8 @@ public partial class SatelliteBody : Node3D
     }
 
     public void StartMeshGeneration(
-        Action<SatelliteBody> onCompleted = null,
-        Action<SatelliteBody, string> onFailed = null
+        Action<SatelliteBody>? onCompleted = null,
+        Action<SatelliteBody, string>? onFailed = null
     )
     {
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
@@ -279,7 +280,7 @@ public partial class SatelliteBody : Node3D
             var t = TemplateHelpers.GetSatelliteBodyDefaults(SatelliteType);
             var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
             meshParams.Add("name", name);
-            meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType));
+            meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType)!);
             var template = (Godot.Collections.Dictionary)t["template"];
             var position = (Vector3)template["position"];
             var velocity = (Vector3)template["template"];
@@ -320,9 +321,9 @@ public partial class SatelliteBody : Node3D
         {
             meshParams["size"] = Size;
         }
-        Mesh.ConfigureFrom(StrDb, meshParams);
+        Mesh!.ConfigureFrom(StrDb!, meshParams);
         Mesh.StartMeshGeneration(
-            Oct,
+            Oct!,
             onCompleted: (mesh) =>
             {
                 GenerateResources();
@@ -342,7 +343,7 @@ public partial class SatelliteBody : Node3D
     public void GenerateResources()
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        Godot.Collections.Dictionary resourceConfig = null;
+        Godot.Collections.Dictionary? resourceConfig = null;
 
         if (bodyDict != null && bodyDict.ContainsKey("resources"))
         {

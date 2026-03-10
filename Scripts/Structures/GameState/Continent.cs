@@ -86,7 +86,7 @@ public partial class Continent : Resource
         return $"StartingIndex: {StartingIndex} | Elevation: {elevation} | Average Height: {averageHeight} | Average Moisture: {averageMoisture} | Stress Accumulation: {stressAccumulation} | Neighbor Stress: {printDictionary(neighborStress)} | Boundary Types: {printDictionary(boundaryTypes)}";
     }
 
-    private string printDictionary<T, U>(Dictionary<T, U> dictionary)
+    private string printDictionary<T, U>(Dictionary<T, U> dictionary) where T : notnull
     {
         string output = "";
         foreach (var pair in dictionary)

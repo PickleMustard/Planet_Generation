@@ -43,9 +43,9 @@ public static class SettingsCommands
 
             foreach (var entry in categoryEntries.OrderBy(e => e.Key))
             {
-                object currentValue = GetCurrentSettingValue(runtimeSettings, category, entry);
-                string formattedValue = FormatSettingValue(currentValue, entry);
-                string defaultIndicator = IsDefaultValue(currentValue, entry) ? "" : " [color=gray]*(modified)[/color]";
+                object? currentValue = GetCurrentSettingValue(runtimeSettings, category, entry);
+                string formattedValue = FormatSettingValue(currentValue!, entry!);
+                string defaultIndicator = IsDefaultValue(currentValue!, entry) ? "" : " [color=gray]*(modified)[/color]";
 
                 ctx.WriteLine($"  {entry.Key}: {formattedValue}{defaultIndicator}");
             }
@@ -100,13 +100,13 @@ public static class SettingsCommands
             return 1;
         }
 
-        ConfigEntry entry = FindConfigEntry(configurable, key);
-        object value = GetCurrentSettingValue(runtimeSettings, category, entry);
-        object defaultValue = entry?.DefaultValue;
+        ConfigEntry? entry = FindConfigEntry(configurable, key);
+        object? value = GetCurrentSettingValue(runtimeSettings, category, entry);
+        object? defaultValue = entry?.DefaultValue;
 
         ctx.WriteLine($"[color=cyan]{category}.{key}[/color]");
-        ctx.WriteLine($"  Current:  {FormatSettingValue(value, entry)}");
-        ctx.WriteLine($"  Default:  {FormatSettingValue(defaultValue, entry)}");
+        ctx.WriteLine($"  Current:  {FormatSettingValue(value!, entry!)}");
+        ctx.WriteLine($"  Default:  {FormatSettingValue(defaultValue!, entry!)}");
 
         if (entry != null)
         {
@@ -177,16 +177,16 @@ public static class SettingsCommands
             return 1;
         }
 
-        ConfigEntry entry = FindConfigEntry(configurable, key);
+        ConfigEntry? entry = FindConfigEntry(configurable, key);
         if (entry == null)
         {
             ctx.WriteError($"Could not find config entry for: {key}");
             return 1;
         }
 
-        if (!TryParseSettingValue(valueStr, entry.ValueType, out object parsedValue))
+        if (!TryParseSettingValue(valueStr, entry!.ValueType!, out object? parsedValue))
         {
-            ctx.WriteError($"Cannot convert '{valueStr}' to type {entry.ValueType.Name}");
+            ctx.WriteError($"Cannot convert '{valueStr}' to type {entry!.ValueType!.Name}");
             if (entry.ValidOptions != null && entry.ValidOptions.Length > 0)
             {
                 ctx.WriteLine($"Valid options: {string.Join(", ", entry.ValidOptions)}");
@@ -194,7 +194,7 @@ public static class SettingsCommands
             return 1;
         }
 
-        if (!entry.IsValid(parsedValue))
+        if (!entry!.IsValid(parsedValue!))
         {
             ctx.WriteError($"Invalid value for {category}.{key}: {parsedValue}");
             if (entry.MinValue != null && entry.MaxValue != null)
@@ -210,8 +210,8 @@ public static class SettingsCommands
 
         try
         {
-            runtimeSettings.SetSetting(category, key, parsedValue);
-            ctx.WriteLine($"[color=green]Set {category}.{key} = {FormatSettingValue(parsedValue, entry)}[/color]");
+            runtimeSettings.SetSetting(category, key, parsedValue!);
+            ctx.WriteLine($"[color=green]Set {category}.{key} = {FormatSettingValue(parsedValue!, entry)}[/color]");
 
             if (entry.RequiresRestart)
             {
@@ -309,8 +309,8 @@ public static class SettingsCommands
 
         try
         {
-            runtimeSettings.SaveToFile();
-            ctx.WriteLine("[color=green]Settings saved to disk.[/color]");
+            // ProjectSettings auto-saves, no explicit save needed
+            ctx.WriteLine("[color=green]Settings are auto-saved to ProjectSettings.[/color]");
             return 0;
         }
         catch (Exception ex)
@@ -333,7 +333,7 @@ public static class SettingsCommands
         try
         {
             runtimeSettings.LoadFromFile();
-            ctx.WriteLine("[color=green]Settings reloaded from disk.[/color]");
+            ctx.WriteLine("[color=green]Settings reloaded from file.[/color]");
             return 0;
         }
         catch (Exception ex)
@@ -378,7 +378,7 @@ public static class SettingsCommands
 
         foreach (var entry in entries)
         {
-            var configurable = runtimeSettings.GetConfigurable(entry.Key);
+            var configurable = runtimeSettings.GetConfigurable(entry.Key!);
             if (configurable != null)
             {
                 categories.Add(configurable.SettingsCategory);
@@ -395,7 +395,7 @@ public static class SettingsCommands
         }
     }
 
-    private static object GetCurrentSettingValue(RuntimeSettings runtimeSettings, string category, ConfigEntry entry)
+    private static object? GetCurrentSettingValue(RuntimeSettings runtimeSettings, string category, ConfigEntry? entry)
     {
         if (entry == null) return null;
 
@@ -403,15 +403,15 @@ public static class SettingsCommands
         {
             var type = entry.ValueType;
             if (type == typeof(bool))
-                return runtimeSettings.GetSetting<bool>(category, entry.Key);
+                return runtimeSettings.GetSetting<bool>(category, entry.Key!);
             if (type == typeof(int))
-                return runtimeSettings.GetSetting<int>(category, entry.Key);
+                return runtimeSettings.GetSetting<int>(category, entry.Key!);
             if (type == typeof(float))
-                return runtimeSettings.GetSetting<float>(category, entry.Key);
+                return runtimeSettings.GetSetting<float>(category, entry.Key!);
             if (type == typeof(double))
-                return runtimeSettings.GetSetting<double>(category, entry.Key);
+                return runtimeSettings.GetSetting<double>(category, entry.Key!);
             if (type == typeof(string))
-                return runtimeSettings.GetSetting<string>(category, entry.Key);
+                return runtimeSettings.GetSetting<string>(category, entry.Key!);
 
             return entry.DefaultValue;
         }
@@ -421,7 +421,7 @@ public static class SettingsCommands
         }
     }
 
-    private static ConfigEntry FindConfigEntry(IConfigurable configurable, string key)
+    private static ConfigEntry? FindConfigEntry(IConfigurable configurable, string key)
     {
         foreach (var entry in configurable.GetConfigEntries())
         {
@@ -433,7 +433,7 @@ public static class SettingsCommands
         return null;
     }
 
-    private static bool TryParseSettingValue(string valueStr, Type targetType, out object value)
+    private static bool TryParseSettingValue(string valueStr, Type targetType, out object? value)
     {
         value = null;
 

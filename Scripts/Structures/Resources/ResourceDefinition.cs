@@ -12,7 +12,7 @@ public class ResourceDefinition
     /// <summary>
     /// Unique identifier name for the resource.
     /// </summary>
-    public string IdName { get; set; }
+    public string? IdName { get; set; }
 
     /// <summary>
     /// The tier level of the resource, indicating rarity or value.
@@ -22,7 +22,7 @@ public class ResourceDefinition
     /// <summary>
     /// The category or type classification of the resource.
     /// </summary>
-    public string ResourceType { get; set; }
+    public string? ResourceType { get; set; }
 
     /// <summary>
     /// The color used to display this resource in the UI and map views.

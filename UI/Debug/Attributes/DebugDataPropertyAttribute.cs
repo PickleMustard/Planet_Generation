@@ -13,7 +13,7 @@ public class DebugDataPropertyAttribute : Attribute
     /// <summary>
     /// Custom display name. If null, the property name is used.
     /// </summary>
-    public string DisplayName { get; set; }
+    public string? DisplayName { get; set; }
 
     /// <summary>
     /// Whether this property is read-only in the viewer.

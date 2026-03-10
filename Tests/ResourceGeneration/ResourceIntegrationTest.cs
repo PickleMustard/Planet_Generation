@@ -156,7 +156,7 @@ public class ResourceIntegrationTest
         var continents = CreateMockContinentsWithCells(3, 4);
         var config = CreateMockContinentConfig();
 
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         int totalCellResources = 0;
         foreach (var kvp in continents)
@@ -179,7 +179,7 @@ public class ResourceIntegrationTest
         var continents = CreateMockContinentsWithCells(1, 3);
         var config = CreateMockContinentConfig();
 
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         var continent = continents.Values.First();
         foreach (var cell in continent.cells)

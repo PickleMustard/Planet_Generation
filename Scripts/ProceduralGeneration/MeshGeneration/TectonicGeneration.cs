@@ -146,8 +146,8 @@ public class TectonicGeneration
             foreach (Edge e in continent.boundaryEdges)
             {
                 List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e.key]);
-                VoronoiCell neighborCell = null;
-                VoronoiCell borderCell = null;
+                VoronoiCell? neighborCell = null;
+                VoronoiCell? borderCell = null;
                 if (neighbors.Count < 2) continue;
                 if (neighbors[0].ContinentIndex == continent.StartingIndex)
                 {
@@ -304,13 +304,13 @@ public class TectonicGeneration
                         alteredHeight += e.StressMagnitude * GeneralHeightScale;
                         break;
                     case EdgeType.transform:
-                        alteredHeight += e.Stress.ShearStress * GeneralShearScale;
+                        alteredHeight += e.Stress!.ShearStress * GeneralShearScale;
                         break;
                     case EdgeType.divergent:
-                        alteredHeight -= e.Stress.CompressionStress * GeneralCompressionScale;
+                        alteredHeight -= e.Stress!.CompressionStress * GeneralCompressionScale;
                         break;
                     case EdgeType.convergent:
-                        alteredHeight += e.Stress.CompressionStress * GeneralCompressionScale;
+                        alteredHeight += e.Stress!.CompressionStress * GeneralCompressionScale;
                         break;
                 }
             }

@@ -20,12 +20,12 @@ public class CommandParser
         /// The namespace prefix (e.g., "CelestialBody.Earth").
         /// Null for global commands.
         /// </summary>
-        public string Namespace { get; set; }
+        public string? Namespace { get; set; }
 
         /// <summary>
         /// The command name (e.g., "regenerate").
         /// </summary>
-        public string CommandName { get; set; }
+        public string? CommandName { get; set; }
 
         /// <summary>
         /// Whether the namespace contains a wildcard.
@@ -40,12 +40,12 @@ public class CommandParser
         /// <summary>
         /// The full raw input string.
         /// </summary>
-        public string RawInput { get; set; }
+        public string? RawInput { get; set; }
 
         /// <summary>
         /// Gets the full command path including namespace.
         /// </summary>
-        public string FullPath => string.IsNullOrEmpty(Namespace)
+        public string? FullPath => string.IsNullOrEmpty(Namespace)
             ? CommandName
             : $"{Namespace}.{CommandName}";
     }
@@ -176,7 +176,7 @@ public class CommandParser
     /// </summary>
     /// <param name="namespace">The namespace to split.</param>
     /// <returns>A tuple of (typeName, identifier).</returns>
-    public (string typeName, string identifier) SplitNamespace(string @namespace)
+    public (string? typeName, string? identifier) SplitNamespace(string @namespace)
     {
         if (string.IsNullOrEmpty(@namespace))
         {

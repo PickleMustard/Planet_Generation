@@ -6,10 +6,10 @@ namespace UI.Generation
 {
     public partial class GenerationProgressItem : HBoxContainer
     {
-        private Label _bodyNameLabel;
-        private Label _stageLabel;
-        private Label _timerLabel;
-        private TextureRect _statusIcon;
+        private Label? _bodyNameLabel;
+        private Label? _stageLabel;
+        private Label? _timerLabel;
+        private TextureRect? _statusIcon;
 
         private string _bodyName = "";
         private bool _isComplete = false;
@@ -19,8 +19,8 @@ namespace UI.Generation
         private int _currentStep = 0;
         private bool _isConnected = false;
 
-        private static Texture2D _spinnerTexture;
-        private static Texture2D _checkmarkTexture;
+        private static Texture2D? _spinnerTexture;
+        private static Texture2D? _checkmarkTexture;
 
         public string BodyName
         {

@@ -13,7 +13,7 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("Rendering Server", Category = "Rendering")]
 public class RenderingServerProvider : IDataProvider
 {
-    private DebugDataNode _cachedData;
+    private DebugDataNode? _cachedData;
     private bool _needsRefresh = true;
 
     public string Name => "Rendering Server";

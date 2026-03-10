@@ -75,7 +75,7 @@ public class SatelliteGeneratorTest
         var rng = new RandomNumberGenerator();
         rng.Randomize();
 
-        var deposits1 = SatelliteResourceGenerator.GenerateResources(null, rng);
+        var deposits1 = SatelliteResourceGenerator.GenerateResources(null!, rng);
         AssertThat(deposits1).IsNotNull();
         AssertThat(deposits1.Count).IsEqual(0);
 

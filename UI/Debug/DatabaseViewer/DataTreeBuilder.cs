@@ -33,7 +33,7 @@ public static class DataTreeBuilder
     /// <param name="node">The DebugDataNode to convert.</param>
     /// <param name="parent">Optional parent TreeItem.</param>
     /// <returns>The created TreeItem.</returns>
-    public static TreeItem BuildTree(Tree tree, DebugDataNode node, TreeItem parent = null)
+    public static TreeItem? BuildTree(Tree tree, DebugDataNode node, TreeItem? parent = null)
     {
         if (tree == null || node == null)
         {
@@ -46,11 +46,11 @@ public static class DataTreeBuilder
 
         if (node.HasValue)
         {
-            var formattedValue = FormatValue(node.Value);
+            var formattedValue = FormatValue(node.Value!);
             item.SetText(1, StripBBCode(formattedValue));
             item.SetText(2, node.ValueType);
-            item.SetTooltipText(1, GetTooltip(node.Value));
-            ApplyTypeColor(item, node.ValueType);
+            item.SetTooltipText(1, GetTooltip(node.Value!));
+            ApplyTypeColor(item, node.ValueType!);
         }
 
         if (!string.IsNullOrEmpty(node.IconName))
@@ -97,13 +97,12 @@ public static class DataTreeBuilder
 
         if (node.HasValue)
         {
-            var formattedValue = FormatValue(node.Value);
+            var formattedValue = FormatValue(node.Value!);
             item.SetText(1, StripBBCode(formattedValue));
             item.SetText(2, node.ValueType);
-            item.SetTooltipText(1, GetTooltip(node.Value));
-            ApplyTypeColor(item, node.ValueType);
+            item.SetTooltipText(1, GetTooltip(node.Value!));
+            ApplyTypeColor(item, node.ValueType!);
         }
-        else
         {
             item.SetText(1, "");
             item.SetText(2, "");
@@ -140,7 +139,7 @@ public static class DataTreeBuilder
     /// <param name="value">The value to format.</param>
     /// <param name="format">Optional format string.</param>
     /// <returns>Formatted string representation.</returns>
-    public static string FormatValue(object value, string format = null)
+    public static string FormatValue(object? value, string? format = null)
     {
         if (value == null)
         {
@@ -185,7 +184,7 @@ public static class DataTreeBuilder
     /// <param name="value">The value to format.</param>
     /// <param name="attribute">The attribute containing formatting options.</param>
     /// <returns>Formatted string representation.</returns>
-    public static string FormatWithAttribute(object value, DebugDataPropertyAttribute attribute)
+    public static string? FormatWithAttribute(object value, DebugDataPropertyAttribute attribute)
     {
         if (value == null)
         {
@@ -222,13 +221,13 @@ public static class DataTreeBuilder
 
         if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal))
         {
-            return obj.ToString();
+            return obj.ToString() ?? string.Empty;
         }
 
         var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
         if (props.Length == 0)
         {
-            return obj.ToString();
+            return obj.ToString() ?? string.Empty;
         }
 
         return $"[color=#9999ff][{type.Name}][/color]";
@@ -291,7 +290,7 @@ public static class DataTreeBuilder
         return System.Text.RegularExpressions.Regex.Replace(text, @"\[/?[^\]]*\]", "");
     }
 
-    private static Texture2D GetIcon(string iconName)
+    private static Texture2D? GetIcon(string iconName)
     {
         return null;
     }
@@ -337,7 +336,7 @@ public static class DataTreeBuilder
             foreach (DictionaryEntry entry in dict)
             {
                 var keyStr = entry.Key?.ToString() ?? "null";
-                var childNode = FromObjectInternal(entry.Value, keyStr, maxDepth, currentDepth + 1, visited);
+                var childNode = FromObjectInternal(entry.Value!, keyStr, maxDepth, currentDepth + 1, visited);
                 node.AddChild(childNode);
             }
             return node;
@@ -348,7 +347,7 @@ public static class DataTreeBuilder
             var index = 0;
             foreach (var item in enumerable)
             {
-                var childNode = FromObjectInternal(item, $"[{index}]", maxDepth, currentDepth + 1, visited);
+                var childNode = FromObjectInternal(item!, $"[{index}]", maxDepth, currentDepth + 1, visited);
                 node.AddChild(childNode);
                 index++;
             }
@@ -382,7 +381,7 @@ public static class DataTreeBuilder
                     continue;
                 }
 
-                var childNode = FromObjectInternal(value, propName, maxDepth, currentDepth + 1, visited);
+                var childNode = FromObjectInternal(value!, propName, maxDepth, currentDepth + 1, visited);
                 node.AddChild(childNode);
             }
             catch (Exception ex)

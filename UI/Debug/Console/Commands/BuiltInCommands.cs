@@ -120,13 +120,13 @@ public static class BuiltInCommands
         {
             if (InstanceRegistry.TryGetInstance(ns, out var instance))
             {
-                ctx.WriteLine($"  {ns} ({instance.GetType().Name})");
+                ctx.WriteLine($"  {ns} ({instance!.GetType().Name})");
             }
         }
         return 0;
     }
 
-    private static DebugConsole GetConsole(CommandContext ctx)
+    private static DebugConsole? GetConsole(CommandContext ctx)
     {
         if (ctx.TargetInstance is DebugConsole console)
         {

@@ -165,7 +165,7 @@ public static class ModificationCommands
             return SetMeshParam(ctx, mesh, paramName, valueStr);
         }
 
-        ctx.WriteError($"Unknown instance type for set_param: {instance.GetType().Name}");
+        ctx.WriteError($"Unknown instance type for set_param: {instance!.GetType().Name}");
         return 1;
     }
 

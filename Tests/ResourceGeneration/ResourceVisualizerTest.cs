@@ -36,7 +36,7 @@ public class ResourceVisualizerTest
     {
         var baseColor = Colors.Blue;
 
-        var result1 = ResourceVisualizer.ApplyResourceTint(baseColor, null);
+        var result1 = ResourceVisualizer.ApplyResourceTint(baseColor, null!);
         AssertThat(result1).IsEqual(baseColor);
 
         var result2 = ResourceVisualizer.ApplyResourceTint(baseColor, new Dictionary<string, float>());

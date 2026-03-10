@@ -39,13 +39,13 @@ public static class QueryCommands
             return 1;
         }
 
-        return GetPropertyValue(ctx, instance, propertyPath);
+        return GetPropertyValue(ctx, instance!, propertyPath);
     }
 
     private static int GetPropertyValue(CommandContext ctx, object instance, string propertyPath)
     {
         var parts = propertyPath.Split('.');
-        object current = instance;
+        object? current = instance;
         Type currentType = instance.GetType();
 
         foreach (var part in parts)
@@ -83,7 +83,7 @@ public static class QueryCommands
             }
         }
 
-        ctx.WriteLine(FormatValue(current));
+        ctx.WriteLine(FormatValue(current!));
         return 0;
     }
 
@@ -105,7 +105,7 @@ public static class QueryCommands
             return 1;
         }
 
-        return DumpObject(ctx, instance, instance.GetType().Name, 0);
+        return DumpObject(ctx, instance!, instance!.GetType().Name, 0);
     }
 
     private static int DumpObject(CommandContext ctx, object obj, string name, int depth)
@@ -126,7 +126,7 @@ public static class QueryCommands
 
         if (IsSimpleType(type))
         {
-            ctx.WriteLine($"{new string(' ', depth * 2)}{name}: {FormatValue(obj)}");
+            ctx.WriteLine($"{new string(' ', depth * 2)}{name}: {FormatValue(obj!)}");
             return 0;
         }
 
@@ -143,7 +143,7 @@ public static class QueryCommands
                 var value = prop.GetValue(obj);
                 if (IsSimpleType(prop.PropertyType))
                 {
-                    ctx.WriteLine($"{new string(' ', (depth + 1) * 2)}{prop.Name}: {FormatValue(value)}");
+                    ctx.WriteLine($"{new string(' ', (depth + 1) * 2)}{prop.Name}: {FormatValue(value!)}");
                 }
                 else if (value != null)
                 {
@@ -170,7 +170,7 @@ public static class QueryCommands
                 var value = field.GetValue(obj);
                 if (IsSimpleType(field.FieldType))
                 {
-                    ctx.WriteLine($"{new string(' ', (depth + 1) * 2)}{field.Name}: {FormatValue(value)}");
+                    ctx.WriteLine($"{new string(' ', (depth + 1) * 2)}{field.Name}: {FormatValue(value!)}");
                 }
                 else if (value != null)
                 {
@@ -214,7 +214,7 @@ public static class QueryCommands
 
             if (InstanceRegistry.TryGetInstance(ns, out var instance))
             {
-                if (SearchObject(instance, pattern))
+                if (SearchObject(instance!, pattern))
                 {
                     matches.Add(ns);
                 }

@@ -111,7 +111,7 @@ public class TaskSystemTest
             ),
         };
 
-        var package = new WorkPackage("TestPackage", steps, TaskPriority.Normal, null, 3);
+        var package = new WorkPackage("TestPackage", steps, TaskPriority.Normal, null!, 3);
         int result = package.ExecuteNextStep();
 
         AssertThat(result).IsEqual(0);
@@ -135,7 +135,7 @@ public class TaskSystemTest
             ),
         };
 
-        var package = new WorkPackage("TestPackage", steps, TaskPriority.Normal, null, 2);
+        var package = new WorkPackage("TestPackage", steps, TaskPriority.Normal, null!, 2);
         package.ExecuteNextStep();
     }
 
@@ -145,7 +145,7 @@ public class TaskSystemTest
     {
         var steps = new List<WorkStep> { new WorkStep("Step1", () => { }) };
 
-        var package = new WorkPackage("Test", steps, TaskPriority.Normal, null, 5);
+        var package = new WorkPackage("Test", steps, TaskPriority.Normal, null!, 5);
         AssertThat(package.MaxRetries).IsEqual(5);
 
         package.MaxRetries = 10;
@@ -168,7 +168,7 @@ public class TaskSystemTest
             new WorkStep("Step2", () => { }),
         };
 
-        var package = new WorkPackage("TestPackage", steps, TaskPriority.Normal, null, 3);
+        var package = new WorkPackage("TestPackage", steps, TaskPriority.Normal, null!, 3);
 
         package.ExecuteNextStep();
         AssertThat(package.CurrentStepIndex).IsEqual(1);

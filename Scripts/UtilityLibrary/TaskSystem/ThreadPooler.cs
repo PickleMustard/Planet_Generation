@@ -21,23 +21,25 @@ namespace UtilityLibrary.TaskSystem
 #endif
         , IConfigurable
     {
-        private static ThreadPooler _instance;
-        public static ThreadPooler Instance => _instance;
+        private static ThreadPooler? _instance;
+        public static ThreadPooler? Instance => _instance;
 
-        private Thread[] _workers;
-        private BlockingCollection<WorkPackage>[] _priorityQueues;
-        private ConcurrentDictionary<string, WorkPackage> _activePackages;
-        private ConcurrentDictionary<string, WorkPackage> _pendingPackages;
-        private ConcurrentDictionary<string, BatchStats> _batchStats;
-        private CancellationTokenSource _cancellationToken;
-        private ThreadAllocationInfo _allocationInfo;
+        private Thread[]? _workers;
+        private BlockingCollection<WorkPackage>[]? _priorityQueues;
+        private ConcurrentDictionary<string, WorkPackage>? _activePackages;
+        private ConcurrentDictionary<string, WorkPackage>? _pendingPackages;
+        private ConcurrentDictionary<string, BatchStats>? _batchStats;
+        private CancellationTokenSource? _cancellationToken;
+        private ThreadAllocationInfo? _allocationInfo;
         private bool _isInitialized;
+        private float _allocationPercentage = 0.75f;
+        private int _manualThreadCount = 0;
         private readonly object _lock = new();
 
-        public int ActivePackageCount => _activePackages.Count;
-        public int PendingPackageCount => _pendingPackages.Count;
+        public int ActivePackageCount => _activePackages?.Count ?? 0;
+        public int PendingPackageCount => _pendingPackages?.Count ?? 0;
         public int WorkerCount => _workers?.Length ?? 0;
-        public ThreadAllocationInfo AllocationInfo => _allocationInfo;
+        public ThreadAllocationInfo? AllocationInfo => _allocationInfo;
 
         public string SettingsCategory => "threading";
 
@@ -67,10 +69,19 @@ namespace UtilityLibrary.TaskSystem
 
         public void ApplySetting(string key, object value)
         {
-            // Settings require restart, just store the value
+            // Settings require restart, cache the values for use during initialization
+            switch (key)
+            {
+                case "allocation_percentage":
+                    _allocationPercentage = Convert.ToSingle(value);
+                    break;
+                case "manual_thread_count":
+                    _manualThreadCount = Convert.ToInt32(value);
+                    break;
+            }
         }
 
-        public object GetSettingDefault(string key) => key switch
+        public object? GetSettingDefault(string key) => key switch
         {
             "allocation_percentage" => 0.75f,
             "manual_thread_count" => 0,
@@ -106,16 +117,14 @@ namespace UtilityLibrary.TaskSystem
                 int threadCount;
                 float allocationPercentage;
 
-                int manualThreadCount = RuntimeSettings.Instance?.GetSetting<int>(SettingsCategory, "manual_thread_count") ?? 0;
-
-                if (manualThreadCount > 0)
+                if (_manualThreadCount > 0)
                 {
-                    threadCount = Math.Min(manualThreadCount, totalCores);
+                    threadCount = Math.Min(_manualThreadCount, totalCores);
                     allocationPercentage = (float)threadCount / totalCores;
                 }
                 else
                 {
-                    allocationPercentage = RuntimeSettings.Instance?.GetSetting<float>(SettingsCategory, "allocation_percentage") ?? 0.75f;
+                    allocationPercentage = _allocationPercentage;
                     threadCount = Math.Max(1, (int)(totalCores * allocationPercentage));
                 }
 
@@ -158,19 +167,19 @@ namespace UtilityLibrary.TaskSystem
             }
         }
 
-        private void WorkerLoop(object threadIndex)
+        private void WorkerLoop(object? threadIndex)
         {
-            int index = (int)threadIndex;
+            int index = (int)threadIndex!;
             GD.Print($"Worker {index} started");
 
-            while (!_cancellationToken.Token.IsCancellationRequested)
+            while (!_cancellationToken!.Token.IsCancellationRequested)
             {
-                WorkPackage package = null;
+                WorkPackage? package = null;
 
                 try
                 {
                     int queueIndex = BlockingCollection<WorkPackage>.TryTakeFromAny(
-                        _priorityQueues,
+                        _priorityQueues!,
                         out package,
                         100,
                         _cancellationToken.Token
@@ -181,8 +190,8 @@ namespace UtilityLibrary.TaskSystem
                         continue;
                     }
 
-                    _pendingPackages.TryRemove(package.Name, out _);
-                    _activePackages[package.Name] = package;
+                    _pendingPackages!.TryRemove(package.Name, out _);
+                    _activePackages![package.Name] = package;
 
                     NotifyTimerStarted(package);
 
@@ -207,7 +216,7 @@ namespace UtilityLibrary.TaskSystem
                     if (package != null)
                     {
                         OnPackageFailed(package);
-                        _activePackages.TryRemove(package.Name, out _);
+                        _activePackages!.TryRemove(package.Name, out _);
                     }
                 }
                 catch (Exception ex)
@@ -218,7 +227,7 @@ namespace UtilityLibrary.TaskSystem
                     if (package != null)
                     {
                         OnPackageFailed(package);
-                        _activePackages.TryRemove(package.Name, out _);
+                        _activePackages!.TryRemove(package.Name, out _);
                     }
                 }
             }
@@ -230,7 +239,7 @@ namespace UtilityLibrary.TaskSystem
         {
             if (!string.IsNullOrEmpty(package.BatchId))
             {
-                var stats = _batchStats.GetOrAdd(package.BatchId, _ => new BatchStats());
+                var stats = _batchStats!.GetOrAdd(package.BatchId, _ => new BatchStats());
                 stats.Total++;
                 stats.Completed++;
                 CheckBatchCompletion(package.BatchId);
@@ -241,7 +250,7 @@ namespace UtilityLibrary.TaskSystem
         {
             if (!string.IsNullOrEmpty(package.BatchId))
             {
-                var stats = _batchStats.GetOrAdd(package.BatchId, _ => new BatchStats());
+                var stats = _batchStats!.GetOrAdd(package.BatchId, _ => new BatchStats());
                 stats.Total++;
                 stats.Failed++;
                 CheckBatchCompletion(package.BatchId);
@@ -250,7 +259,7 @@ namespace UtilityLibrary.TaskSystem
 
         private void CheckBatchCompletion(string batchId)
         {
-            if (_batchStats.TryGetValue(batchId, out var stats))
+            if (_batchStats!.TryGetValue(batchId, out var stats))
             {
                 if (stats.Completed + stats.Failed >= stats.Expected)
                 {
@@ -310,7 +319,7 @@ namespace UtilityLibrary.TaskSystem
 
         public void RegisterBatch(string batchId, int expectedPackages)
         {
-            var stats = _batchStats.GetOrAdd(batchId, _ => new BatchStats());
+            var stats = _batchStats!.GetOrAdd(batchId, _ => new BatchStats());
             stats.Expected = expectedPackages;
         }
 
@@ -327,17 +336,17 @@ namespace UtilityLibrary.TaskSystem
                 throw new ArgumentNullException(nameof(package));
             }
 
-            _pendingPackages[package.Name] = package;
+            _pendingPackages![package.Name] = package;
             int queueIndex = (int)package.Priority;
 
-            if (queueIndex >= 0 && queueIndex < _priorityQueues.Length)
+            if (queueIndex >= 0 && queueIndex < _priorityQueues!.Length)
             {
                 _priorityQueues[queueIndex].Add(package);
                 GD.Print($"Package '{package.Name}' queued with priority {package.Priority}");
             }
             else
             {
-                _priorityQueues[(int)TaskPriority.Normal].Add(package);
+                _priorityQueues![(int)TaskPriority.Normal].Add(package);
                 GD.Print(
                     $"Package '{package.Name}' queued with default priority (invalid priority specified)"
                 );
@@ -351,9 +360,9 @@ namespace UtilityLibrary.TaskSystem
 
         public void CancelPackage(string packageName)
         {
-            _pendingPackages.TryRemove(packageName, out _);
+            _pendingPackages!.TryRemove(packageName, out _);
 
-            foreach (var queue in _priorityQueues)
+            foreach (var queue in _priorityQueues!)
             {
                 var items = queue.ToArray();
                 foreach (var item in items)
@@ -366,7 +375,7 @@ namespace UtilityLibrary.TaskSystem
                 }
             }
 
-            if (_activePackages.TryGetValue(packageName, out _))
+            if (_activePackages!.TryGetValue(packageName, out _))
             {
                 GD.Print($"Package '{packageName}' is currently active and cannot be cancelled");
             }
@@ -374,34 +383,34 @@ namespace UtilityLibrary.TaskSystem
 
         public void CancelAllPackages()
         {
-            foreach (var queue in _priorityQueues)
+            foreach (var queue in _priorityQueues!)
             {
                 while (queue.TryTake(out _)) { }
             }
-            _pendingPackages.Clear();
+            _pendingPackages!.Clear();
             GD.Print("All pending packages cancelled");
         }
 
         public bool IsPackageActive(string packageName)
         {
-            return _activePackages.ContainsKey(packageName);
+            return _activePackages!.ContainsKey(packageName);
         }
 
         public bool IsPackagePending(string packageName)
         {
-            return _pendingPackages.ContainsKey(packageName);
+            return _pendingPackages!.ContainsKey(packageName);
         }
 
-        public WorkPackage GetActivePackage(string packageName)
+        public WorkPackage? GetActivePackage(string packageName)
         {
-            _activePackages.TryGetValue(packageName, out var package);
+            _activePackages!.TryGetValue(packageName, out var package);
             return package;
         }
 
         public int GetQueueLength(TaskPriority priority)
         {
             int index = (int)priority;
-            if (index >= 0 && index < _priorityQueues.Length)
+            if (index >= 0 && index < _priorityQueues!.Length)
             {
                 return _priorityQueues[index].Count;
             }
@@ -410,7 +419,7 @@ namespace UtilityLibrary.TaskSystem
 
         public int GetTotalQueueLength()
         {
-            return _priorityQueues.Sum(q => q.Count);
+            return _priorityQueues!.Sum(q => q.Count);
         }
 
         public void Shutdown()
@@ -424,9 +433,9 @@ namespace UtilityLibrary.TaskSystem
                     return;
 
                 GD.Print("ThreadPooler shutting down...");
-                _cancellationToken.Cancel();
+                _cancellationToken!.Cancel();
 
-                foreach (var queue in _priorityQueues)
+                foreach (var queue in _priorityQueues!)
                 {
                     queue.CompleteAdding();
                 }
@@ -483,7 +492,7 @@ namespace UtilityLibrary.TaskSystem
                 );
 
             var activeNode = node.AddChild("Active Packages");
-            foreach (var kvp in _activePackages)
+            foreach (var kvp in _activePackages!)
             {
                 var pkg = kvp.Value;
                 activeNode
@@ -511,14 +520,14 @@ namespace UtilityLibrary.TaskSystem
         IEnumerable<string> IDataProvider.Search(string pattern)
         {
             var results = new List<string>();
-            foreach (var kvp in _activePackages)
+            foreach (var kvp in _activePackages!)
             {
                 if (kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase))
                 {
                     results.Add($"Active/{kvp.Key}");
                 }
             }
-            foreach (var kvp in _pendingPackages)
+            foreach (var kvp in _pendingPackages!)
             {
                 if (kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase))
                 {

@@ -15,13 +15,15 @@ public partial class Point : Resource, IEquatable<Point>
     // Deterministic, collision-free mapping from quantized coordinates -> unique index
     private static readonly object IndexLock = new object();
     private static readonly Dictionary<(int ix, int iy, int iz), int> KeyToIndex = new Dictionary<(int, int, int), int>();
+#pragma warning disable CS0414
     private static int NextIndex = 0;
+#pragma warning restore CS0414
 
     public float[] Components { get { return _position; } set { value.CopyTo(_position, 0); } }
     public int Index { get { return _index; } set { _index = value; } }
     public int VectorSpace { get { return 3; } }
     public Vector3 Position { get { return new Vector3(_position[0], _position[1], _position[2]); } set { _position[0] = value.X; _position[1] = value.Y; _position[2] = value.Z; } }
-    public HashSet<int> ContinentIndecies { get; set; }
+    public HashSet<int>? ContinentIndecies { get; set; }
     public float Height { get; set; }
     public Vector3 Velocity { get; set; }
     public float Stress { get { return _stress; } set { _stress = value; } }
@@ -46,14 +48,16 @@ public partial class Point : Resource, IEquatable<Point>
         return key;
     }
 
-    public bool Equals(Point other)
+    public bool Equals(Point? other)
     {
-        if ((Object)other == null) return false;
+        if (other is null) return false;
         return other.Index == Index;
     }
 
-    public override bool Equals(Object obj)
+    public override bool Equals(object? obj)
     {
+        if (obj is null) return false;
+        if (obj is Point p) return Equals(p);
         return false;
     }
 
@@ -120,7 +124,7 @@ public partial class Point : Resource, IEquatable<Point>
         Index = copy.Index;
         if (copy.VectorSpace == 3)
         {
-            ContinentIndecies = new HashSet<int>(((Point)copy).ContinentIndecies);
+            ContinentIndecies = new HashSet<int>(((Point)copy).ContinentIndecies ?? []);
             Radius = 0;
         }
     }
@@ -135,9 +139,12 @@ public partial class Point : Resource, IEquatable<Point>
     private string printContinents()
     {
         string continents = "";
-        foreach (int continentIndex in ContinentIndecies)
+        if (ContinentIndecies != null)
         {
-            continents += $"{continentIndex}, ";
+            foreach (int continentIndex in ContinentIndecies)
+            {
+                continents += $"{continentIndex}, ";
+            }
         }
         return continents;
     }

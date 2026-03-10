@@ -7,15 +7,15 @@ namespace PlanetGeneration
 {
     public class MeshGenerationTask
     {
-        public string Id { get; set; }
-        public string BodyName { get; set; }
+        public string? Id { get; set; }
+        public string? BodyName { get; set; }
         public TaskType Type { get; set; }
         public TaskPriority Priority { get; set; }
-        public Task Task { get; set; }
+        public Task? Task { get; set; }
         public DateTime StartTime { get; set; }
-        public Action<float> ProgressCallback { get; set; }
+        public Action<float>? ProgressCallback { get; set; }
         public CancellationToken CancellationToken { get; set; }
-        public Exception Exception { get; set; }
+        public Exception? Exception { get; set; }
         public bool IsCompleted { get; set; }
         public float Progress { get; set; }
     }

@@ -11,13 +11,13 @@ public partial class DebugConsole : BaseDebugModule
     private const int MaxVisibleSuggestions = 10;
     private const int SuggestionItemHeight = 24;
 
-    private CommandRegistry _registry;
-    private AutocompleteEngine _autocompleteEngine;
-    private LineEdit _inputField;
-    private RichTextLabel _outputDisplay;
-    private PanelContainer _autocompletePanel;
-    private ScrollContainer _autocompleteScroll;
-    private VBoxContainer _autocompleteList;
+    private CommandRegistry? _registry;
+    private AutocompleteEngine? _autocompleteEngine;
+    private LineEdit? _inputField;
+    private RichTextLabel? _outputDisplay;
+    private PanelContainer? _autocompletePanel;
+    private ScrollContainer? _autocompleteScroll;
+    private VBoxContainer? _autocompleteList;
     private readonly List<Suggestion> _currentSuggestions = new();
     private int _selectedSuggestionIndex = -1;
     private readonly List<Label> _suggestionLabels = new();
@@ -231,9 +231,9 @@ public partial class DebugConsole : BaseDebugModule
             return;
         }
 
-        _autocompleteEngine.AddToHistory(text);
+        _autocompleteEngine!.AddToHistory(text);
         ExecuteCommand(text);
-        _inputField.Clear();
+        _inputField!.Clear();
         HideAutocomplete();
     }
 
@@ -246,8 +246,8 @@ public partial class DebugConsole : BaseDebugModule
     {
         AppendOutput($"[color=gray]> {input}[/color]");
 
-        using var context = new CommandContext(_registry, targetInstance: this);
-        var exitCode = _registry.Execute(input, context);
+        using var context = new CommandContext(_registry!, targetInstance: this!);
+        var exitCode = _registry!.Execute(input, context);
 
         var output = context.GetOutput();
         if (!string.IsNullOrEmpty(output))
@@ -265,23 +265,23 @@ public partial class DebugConsole : BaseDebugModule
     {
         if (string.IsNullOrEmpty(text))
         {
-            _outputDisplay.AppendText("\n");
+            _outputDisplay!.AppendText("\n");
         }
         else
         {
-            _outputDisplay.AppendText(text + "\n");
+            _outputDisplay!.AppendText(text + "\n");
         }
     }
 
     public void ClearOutput()
     {
-        _outputDisplay.Clear();
+        _outputDisplay!.Clear();
         PrintWelcome();
     }
 
     private void NavigateHistory(int direction)
     {
-        var history = _autocompleteEngine.GetHistory().ToList();
+        var history = _autocompleteEngine!.GetHistory().ToList();
         if (history.Count == 0)
         {
             return;
@@ -296,12 +296,12 @@ public partial class DebugConsole : BaseDebugModule
         else if (_selectedSuggestionIndex >= history.Count)
         {
             _selectedSuggestionIndex = history.Count;
-            _inputField.Clear();
+            _inputField!.Clear();
             return;
         }
 
-        _inputField.Text = history[_selectedSuggestionIndex];
-        _inputField.CaretColumn = _inputField.Text.Length;
+        _inputField!.Text = history[_selectedSuggestionIndex];
+        _inputField!.CaretColumn = _inputField!.Text.Length;
     }
 
     private void UpdateAutocomplete(string input)
@@ -312,7 +312,7 @@ public partial class DebugConsole : BaseDebugModule
             return;
         }
 
-        var suggestions = _autocompleteEngine.GetSuggestions(input);
+        var suggestions = _autocompleteEngine!.GetSuggestions(input);
         _currentSuggestions.Clear();
         _selectedSuggestionIndex = -1;
 
@@ -332,7 +332,7 @@ public partial class DebugConsole : BaseDebugModule
 
     private void ShowAutocomplete()
     {
-        foreach (var child in _autocompleteList.GetChildren())
+        foreach (var child in _autocompleteList!.GetChildren())
         {
             child.QueueFree();
         }
@@ -355,22 +355,22 @@ public partial class DebugConsole : BaseDebugModule
             };
             label.AddThemeStyleboxOverride("normal", styleBox);
 
-            _autocompleteList.AddChild(label);
+            _autocompleteList!.AddChild(label);
             _suggestionLabels.Add(label);
         }
 
         UpdateSuggestionHighlight();
 
-        var inputRect = _inputField.GetGlobalRect();
+        var inputRect = _inputField!.GetGlobalRect();
         var popupHeight = Math.Min(maxDisplay * SuggestionItemHeight, 250);
         var popupSize = new Vector2I((int)inputRect.Size.X, popupHeight);
         var popupPos = new Vector2I((int)inputRect.Position.X, (int)(inputRect.Position.Y - popupHeight));
 
-        _autocompleteScroll.CustomMinimumSize = new Vector2(popupSize.X, popupSize.Y);
-        _autocompleteScroll.Size = new Vector2(popupSize.X, popupSize.Y);
-        _autocompletePanel.GlobalPosition = popupPos;
-        _autocompletePanel.Size = popupSize;
-        _autocompletePanel.Show();
+        _autocompleteScroll!.CustomMinimumSize = new Vector2(popupSize.X, popupSize.Y);
+        _autocompleteScroll!.Size = new Vector2(popupSize.X, popupSize.Y);
+        _autocompletePanel!.GlobalPosition = popupPos;
+        _autocompletePanel!.Size = popupSize;
+        _autocompletePanel!.Show();
         _autocompleteVisible = true;
     }
 
@@ -385,7 +385,7 @@ public partial class DebugConsole : BaseDebugModule
 
     private void HideAutocomplete()
     {
-        _autocompletePanel.Hide();
+        _autocompletePanel!.Hide();
         _currentSuggestions.Clear();
         _selectedSuggestionIndex = -1;
         _autocompleteVisible = false;
@@ -415,7 +415,7 @@ public partial class DebugConsole : BaseDebugModule
         {
             var label = _suggestionLabels[_selectedSuggestionIndex];
             var scrollPos = _selectedSuggestionIndex * SuggestionItemHeight;
-            _autocompleteScroll.ScrollVertical = scrollPos;
+            _autocompleteScroll!.ScrollVertical = scrollPos;
         }
     }
 
@@ -451,8 +451,8 @@ public partial class DebugConsole : BaseDebugModule
         var index = _selectedSuggestionIndex >= 0 ? _selectedSuggestionIndex : 0;
         if (index < _currentSuggestions.Count)
         {
-            _inputField.Text = _currentSuggestions[index].Text;
-            _inputField.CaretColumn = _inputField.Text.Length;
+            _inputField!.Text = _currentSuggestions[index].Text;
+            _inputField!.CaretColumn = _inputField!.Text.Length;
         }
 
         HideAutocomplete();
@@ -461,7 +461,7 @@ public partial class DebugConsole : BaseDebugModule
     public override void OnModuleEnabled()
     {
         base.OnModuleEnabled();
-        _inputField.CallDeferred("grab_focus");
+        _inputField!.CallDeferred("grab_focus");
     }
 
     public override void OnModuleDisabled()
@@ -472,8 +472,8 @@ public partial class DebugConsole : BaseDebugModule
 
     public void PrintHelp()
     {
-        var commands = _registry.GetAllCommands();
-        var categories = _registry.GetCommandsByCategory();
+        var commands = _registry!.GetAllCommands();
+        var categories = _registry!.GetCommandsByCategory();
 
         AppendOutput("[color=yellow]Available Commands:[/color]");
 
@@ -489,7 +489,7 @@ public partial class DebugConsole : BaseDebugModule
 
     public void ShowHistory()
     {
-        var history = _autocompleteEngine.GetHistory().ToList();
+        var history = _autocompleteEngine!.GetHistory().ToList();
         if (history.Count == 0)
         {
             AppendOutput("No command history.");
@@ -503,7 +503,7 @@ public partial class DebugConsole : BaseDebugModule
         }
     }
 
-    public CommandRegistry GetRegistry()
+    public CommandRegistry? GetRegistry()
     {
         return _registry;
     }

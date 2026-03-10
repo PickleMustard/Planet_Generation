@@ -23,91 +23,91 @@ public partial class BodyItem : HBoxContainer
 	public delegate void RecalculatePositionEventHandler(BodyItem item);
 
 	[Export]
-	public Button Toggle;
+	public Button? Toggle;
 
 	[Export]
-	public Button RemoveItem;
+	public Button? RemoveItem;
 
 	[Export]
-	public Button DetailsToggle;
+	public Button? DetailsToggle;
 
 	[Export]
-	public CheckButton AutoCalculateToggle;
+	public CheckButton? AutoCalculateToggle;
 
 	[Export]
-	public OptionButton OptionButton;
+	public OptionButton? OptionButton;
 
 	[Export]
-	public SpinBox X;
+	public SpinBox? X;
 
 	[Export]
-	public SpinBox Y;
+	public SpinBox? Y;
 
 	[Export]
-	public SpinBox Z;
+	public SpinBox? Z;
 
 	[Export]
-	public SpinBox velX;
+	public SpinBox? velX;
 
 	[Export]
-	public SpinBox velY;
+	public SpinBox? velY;
 
 	[Export]
-	public SpinBox velZ;
+	public SpinBox? velZ;
 
 	[Export]
-	public SpinBox mass;
+	public SpinBox? mass;
 
 	[Export]
-	public SpinBox size;
+	public SpinBox? size;
 
 	// Satellites UI
 	[Export]
-	public Button AddSatellite;
+	public Button? AddSatellite;
 
 	[Export]
-	public Button RemoveSatellite;
+	public Button? RemoveSatellite;
 
 	[Export]
-	public Label SatellitesCountLabel;
+	public Label? SatellitesCountLabel;
 
 	[Export]
-	public VBoxContainer SatellitesList;
+	public VBoxContainer? SatellitesList;
 
 	[Export]
-	public VBoxContainer DetailsPanel;
+	public VBoxContainer? DetailsPanel;
 
 	[Export]
-	public ScrollContainer SatellitesScroll;
+	public ScrollContainer? SatellitesScroll;
 
-	public Action<BodyItem> OnRemoveRequested;
+	public Action<BodyItem>? OnRemoveRequested;
 
-	private String bodyName;
+	private String? bodyName;
 
 	//Hidden Values
 	//Base Mesh
 	private int subdivisions;
-	private int[,] verticesPerEdge;
+	private int[,]? verticesPerEdge;
 	private int numAbberations;
 	private int numDeformationCycles;
 	//Tectonics
-	private int[] numContinents;
-	private float[] stressScale;
-	private float[] shearScale;
-	private float[] maxPropagationDistance;
-	private float[] propagationFalloff;
-	private float[] inactiveStressThreshold;
-	private float[] generalHeightScale;
-	private float[] generalShearScale;
-	private float[] generalCompressionScale;
-	private float[] generalTransformScale;
+	private int[]? numContinents;
+	private float[]? stressScale;
+	private float[]? shearScale;
+	private float[]? maxPropagationDistance;
+	private float[]? propagationFalloff;
+	private float[]? inactiveStressThreshold;
+	private float[]? generalHeightScale;
+	private float[]? generalShearScale;
+	private float[]? generalCompressionScale;
+	private float[]? generalTransformScale;
 
-	private PackedScene _satelliteItemScene;
-	private PackedScene _satelliteBeltItemScene;
-	private PackedScene _detailPanelScene;
+	private PackedScene? _satelliteItemScene;
+	private PackedScene? _satelliteBeltItemScene;
+	private PackedScene? _detailPanelScene;
 
-	private Godot.Collections.Array individualSatelliteHolder;
-	private Godot.Collections.Array satelliteBeltHolder;
+	private Godot.Collections.Array? individualSatelliteHolder;
+	private Godot.Collections.Array? satelliteBeltHolder;
 
 	private const float Limit = 10000f; // constrain within ±10,000 units (mass 0..10,000)
 	private const float MassLimit = 100000000f; // constrain within ±100,000,000,000 units (mass 0..100,000,000,000)
@@ -236,8 +236,8 @@ public partial class BodyItem : HBoxContainer
 
 	public void UpdateAutoCalculate()
 	{
-		GD.Print($"Emitting AutoCalculate, AutoCalculateToggle.ButtonPressed: {AutoCalculateToggle.ButtonPressed}");
-		EmitSignal(SignalName.ShouldAutoCalculate, AutoCalculateToggle.ButtonPressed, this);
+		GD.Print($"Emitting AutoCalculate, AutoCalculateToggle.ButtonPressed: {AutoCalculateToggle!.ButtonPressed}");
+		EmitSignal(SignalName.ShouldAutoCalculate, AutoCalculateToggle!.ButtonPressed, this);
 	}
 
 	private void ApplyConstraints()
@@ -264,15 +264,15 @@ public partial class BodyItem : HBoxContainer
 
 	public void PropogateChangeDown(CelestialBodyType type)
 	{
-		foreach (var si in SatellitesList.GetChildren())
+		foreach (var si in SatellitesList!.GetChildren())
 		{
-			SatellitesList.RemoveChild(si);
+			SatellitesList!.RemoveChild(si);
 		}
 		if (type == CelestialBodyType.BlackHole || type == CelestialBodyType.Star)
 		{
-			if (satelliteBeltHolder.Count > 0)
+			if (satelliteBeltHolder!.Count > 0)
 			{
-				SatellitesScroll.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
+				SatellitesScroll!.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
 				foreach (SatelliteBeltItem item in satelliteBeltHolder)
 				{
 					SatellitesList.AddChild((SatelliteBeltItem)item);
@@ -281,9 +281,9 @@ public partial class BodyItem : HBoxContainer
 		}
 		else
 		{
-			if (individualSatelliteHolder.Count > 0)
+			if (individualSatelliteHolder!.Count > 0)
 			{
-				SatellitesScroll.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
+				SatellitesScroll!.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
 				foreach (SatelliteItem item in individualSatelliteHolder)
 				{
 					SatellitesList.AddChild((SatelliteItem)item);
@@ -401,7 +401,7 @@ public partial class BodyItem : HBoxContainer
 
 		if (t.ContainsKey("satellites"))
 		{
-			SatellitesScroll.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
+			SatellitesScroll!.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
 			var satellites = (Godot.Collections.Array)t["satellites"];
 			var ob = GetNode<OptionButton>("MainContent/Content/BodyTypeContent/OptionButton");
 
@@ -410,8 +410,8 @@ public partial class BodyItem : HBoxContainer
 				if ((CelestialBodyType)ob.Selected == CelestialBodyType.BlackHole || (CelestialBodyType)ob.Selected == CelestialBodyType.Star)
 				{
 					var typeStr = (string)sat["type"];
-					var satItem = _satelliteBeltItemScene.Instantiate<SatelliteBeltItem>();
-					SatellitesList.AddChild(satItem);
+					var satItem = _satelliteBeltItemScene!.Instantiate<SatelliteBeltItem>();
+					SatellitesList!.AddChild(satItem);
 					satItem.SubscribeEvents();
 					if (Enum.TryParse<SatelliteGroupTypes>(typeStr, out var type))
 					{
@@ -439,12 +439,12 @@ public partial class BodyItem : HBoxContainer
 					var mass = (float)satTemplate["mass"];
 					var size = (int)satTemplate["size"];
 
-					var satItem = _satelliteItemScene.Instantiate<SatelliteItem>();
-					SatellitesList.AddChild(satItem);
+					var satItem = _satelliteItemScene!.Instantiate<SatelliteItem>();
+					SatellitesList!.AddChild(satItem);
 					satItem.SubscribeEvents();
 					if (Enum.TryParse<SatelliteBodyType>(typeStr, out var type))
 					{
-						// Set the option button to the correct type
+						// Set the Option button to the correct type
 						if (satItem.OptionButton != null)
 						{
 							for (int i = 0; i < satItem.OptionButton.ItemCount; i++)
@@ -507,7 +507,7 @@ public partial class BodyItem : HBoxContainer
 
 	public Vector3 GetBodyPosition()
 	{
-		return new Vector3(Mathf.Clamp((float)X.Value, -Limit, Limit), Mathf.Clamp((float)Y.Value, -Limit, Limit), Mathf.Clamp((float)Z.Value, -Limit, Limit));
+		return new Vector3(Mathf.Clamp((float)X!.Value, -Limit, Limit), Mathf.Clamp((float)Y!.Value, -Limit, Limit), Mathf.Clamp((float)Z!.Value, -Limit, Limit));
 	}
 	public void SetPosition(Vector3 position)
 	{
@@ -521,9 +521,9 @@ public partial class BodyItem : HBoxContainer
 
 	public Vector3 GetVelocity()
 	{
-		float vx = Mathf.Clamp((float)velX.Value, -Limit, Limit);
-		float vy = Mathf.Clamp((float)velY.Value, -Limit, Limit);
-		float vz = Mathf.Clamp((float)velZ.Value, -Limit, Limit);
+		float vx = Mathf.Clamp((float)velX!.Value, -Limit, Limit);
+		float vy = Mathf.Clamp((float)velY!.Value, -Limit, Limit);
+		float vz = Mathf.Clamp((float)velZ!.Value, -Limit, Limit);
 		return new Vector3(vx, vy, vz);
 	}
 
@@ -539,12 +539,12 @@ public partial class BodyItem : HBoxContainer
 
 	public float GetBodySize()
 	{
-		return (float)size.Value;
+		return (float)size!.Value;
 	}
 
 	public float GetBodyMass()
 	{
-		return (float)mass.Value;
+		return (float)mass!.Value;
 	}
 
 	public void SetSize(float size)
@@ -604,8 +604,8 @@ public partial class BodyItem : HBoxContainer
 		dict["type"] = Enum.GetName(
 			typeof(CelestialBodyType),
 			(CelestialBodyType)ob.Selected
-		);
-		dict.Add("name", bodyName);
+		)!;
+		dict.Add("name", bodyName!);
 		var templateDict = new Godot.Collections.Dictionary();
 		templateDict.Add("position", new Vector3(cx, cy, cz));
 		templateDict.Add("velocity", new Vector3(cvx, cvy, cvz));
@@ -618,7 +618,7 @@ public partial class BodyItem : HBoxContainer
 		for (int i = 0; i < subdivisions; i++)
 		{
 			Godot.Collections.Array<int> row = new Godot.Collections.Array<int>();
-			row.Add(verticesPerEdge[i, 0]);
+			row.Add(verticesPerEdge![i, 0]);
 			row.Add(verticesPerEdge[i, 1]);
 			vpeArray.Add(row);
 		}
@@ -627,16 +627,16 @@ public partial class BodyItem : HBoxContainer
 		baseMesh.Add("num_deformation_cycles", numDeformationCycles);
 		dict.Add("base_mesh", baseMesh);
 		var tectonics = new Godot.Collections.Dictionary();
-		tectonics.Add("num_continents", numContinents);
-		tectonics.Add("stress_scale", stressScale);
-		tectonics.Add("shear_scale", shearScale);
-		tectonics.Add("max_propagation_distance", maxPropagationDistance);
-		tectonics.Add("propagation_falloff", propagationFalloff);
-		tectonics.Add("inactive_stress_threshold", inactiveStressThreshold);
-		tectonics.Add("general_height_scale", generalHeightScale);
-		tectonics.Add("general_shear_scale", generalShearScale);
-		tectonics.Add("general_compression_scale", generalCompressionScale);
-		tectonics.Add("general_transform_scale", generalTransformScale);
+		tectonics.Add("num_continents", numContinents!);
+		tectonics.Add("stress_scale", stressScale!);
+		tectonics.Add("shear_scale", shearScale!);
+		tectonics.Add("max_propagation_distance", maxPropagationDistance!);
+		tectonics.Add("propagation_falloff", propagationFalloff!);
+		tectonics.Add("inactive_stress_threshold", inactiveStressThreshold!);
+		tectonics.Add("general_height_scale", generalHeightScale!);
+		tectonics.Add("general_shear_scale", generalShearScale!);
+		tectonics.Add("general_compression_scale", generalCompressionScale!);
+		tectonics.Add("general_transform_scale", generalTransformScale!);
 		dict.Add("tectonics", tectonics);
 
 
@@ -647,7 +647,7 @@ public partial class BodyItem : HBoxContainer
 			|| (CelestialBodyType)ob.Selected == CelestialBodyType.BlackHole
 		)
 		{
-			foreach (Node child in SatellitesList.GetChildren())
+			foreach (Node child in SatellitesList!.GetChildren())
 			{
 				if (child is SatelliteBeltItem sbi)
 				{
@@ -666,7 +666,7 @@ public partial class BodyItem : HBoxContainer
 		}
 		else
 		{
-			foreach (Node child in SatellitesList.GetChildren())
+			foreach (Node child in SatellitesList!.GetChildren())
 			{
 				if (child is SatelliteItem si)
 				{
@@ -688,7 +688,7 @@ public partial class BodyItem : HBoxContainer
 
 	private void AddSatelliteItem()
 	{
-		SatellitesScroll.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
+		SatellitesScroll!.CustomMinimumSize = SATELLITE_SCROLL_MIN_SIZE;
 		var ob = GetNode<OptionButton>("MainContent/Content/BodyTypeContent/OptionButton");
 		if (SatellitesList == null || _satelliteItemScene == null)
 			return;
@@ -697,13 +697,13 @@ public partial class BodyItem : HBoxContainer
 			|| (CelestialBodyType)ob.Selected == CelestialBodyType.Star
 		)
 		{
-			var satelliteBeltItem = _satelliteBeltItemScene.Instantiate<SatelliteBeltItem>();
+			var satelliteBeltItem = _satelliteBeltItemScene!.Instantiate<SatelliteBeltItem>();
 			satelliteBeltItem.SetParentType((CelestialBodyType)ob.Selected);
 			satelliteBeltItem.OnRemoveRequested += RemoveSatelliteItem;
 			satelliteBeltItem.ItemUpdate += OnSatelliteItemUpdate;
-			SatellitesList.AddChild(satelliteBeltItem);
+			SatellitesList!.AddChild(satelliteBeltItem);
 			satelliteBeltItem.SubscribeEvents();
-			satelliteBeltHolder.Add(satelliteBeltItem);
+			satelliteBeltHolder!.Add(satelliteBeltItem);
 		}
 		else
 		{
@@ -711,9 +711,9 @@ public partial class BodyItem : HBoxContainer
 			satelliteItem.SetParentType((CelestialBodyType)ob.Selected);
 			satelliteItem.OnRemoveRequested += RemoveSatelliteItem;
 			satelliteItem.ItemUpdate += OnSatelliteItemUpdate;
-			SatellitesList.AddChild(satelliteItem);
+			SatellitesList!.AddChild(satelliteItem);
 			satelliteItem.SubscribeEvents();
-			individualSatelliteHolder.Add(satelliteItem);
+			individualSatelliteHolder!.Add(satelliteItem);
 			RedistributeSatelliteRings();
 		}
 		UpdateSatellitesCountLabel();
@@ -725,7 +725,7 @@ public partial class BodyItem : HBoxContainer
 			float,
 			System.Collections.Generic.List<SatelliteItem>
 		>();
-		foreach (Node child in SatellitesList.GetChildren())
+		foreach (Node child in SatellitesList!.GetChildren())
 		{
 			if (child is SatelliteItem bi)
 			{
@@ -771,7 +771,7 @@ public partial class BodyItem : HBoxContainer
 	private void RemoveLastSatelliteItem()
 	{
 		var ob = GetNode<OptionButton>("MainContent/Content/BodyTypeContent/OptionButton");
-		if (SatellitesList.GetChildCount() <= 0)
+		if (SatellitesList!.GetChildCount() <= 0)
 			return; // No negatives
 		var index = SatellitesList.GetChildCount() - 1;
 		var last = SatellitesList.GetChild(index);
@@ -780,11 +780,11 @@ public partial class BodyItem : HBoxContainer
 			|| (CelestialBodyType)ob.Selected == CelestialBodyType.Star
 		)
 		{
-			satelliteBeltHolder.RemoveAt(index);
+			satelliteBeltHolder!.RemoveAt(index);
 		}
 		else
 		{
-			individualSatelliteHolder.RemoveAt(index);
+			individualSatelliteHolder!.RemoveAt(index);
 		}
 		SatellitesList.RemoveChild(last);
 		last.QueueFree();
@@ -795,15 +795,15 @@ public partial class BodyItem : HBoxContainer
 	{
 		if (IsInstanceValid(item) && item.GetParent() == SatellitesList)
 		{
-			if (individualSatelliteHolder.Contains(item))
+			if (individualSatelliteHolder!.Contains(item))
 			{
 				individualSatelliteHolder.Remove(item);
 			}
-			if (satelliteBeltHolder.Contains(item))
+			if (satelliteBeltHolder!.Contains(item))
 			{
 				satelliteBeltHolder.Remove(item);
 			}
-			SatellitesList.RemoveChild(item);
+			SatellitesList!.RemoveChild(item);
 			RedistributeSatelliteRings();
 			item.QueueFree();
 		}
@@ -814,9 +814,9 @@ public partial class BodyItem : HBoxContainer
 	{
 		if (SatellitesCountLabel != null)
 		{
-			int count = SatellitesList.GetChildCount();
+			int count = SatellitesList!.GetChildCount();
 			SatellitesCountLabel.Text = count <= 1 ? $"{count} satellite" : $"{count} satellites";
-			if (count == 0) SatellitesScroll.CustomMinimumSize = Vector2.Zero;
+			if (count == 0) SatellitesScroll!.CustomMinimumSize = Vector2.Zero;
 		}
 	}
 
@@ -832,7 +832,7 @@ public partial class BodyItem : HBoxContainer
 		if (DetailsPanel.GetChildCount() == 0)
 		{
 			// Create and setup detail panel
-			var detailPanel = _detailPanelScene.Instantiate<DetailPanel>();
+			var detailPanel = _detailPanelScene!.Instantiate<DetailPanel>();
 			DetailsPanel.AddChild(detailPanel);
 			detailPanel.SetupForBodyItem();
 			detailPanel.ValueChanged += OnDetailValueChanged;
@@ -861,21 +861,21 @@ public partial class BodyItem : HBoxContainer
 			{
 				// Base Mesh values
 				detailPanel.SetSubdivisions(subdivisions);
-				detailPanel.SetVerticesPerEdge(verticesPerEdge);
+				detailPanel.SetVerticesPerEdge(verticesPerEdge!);
 				detailPanel.SetAberrations(numAbberations);
 				detailPanel.SetDeformationCycles(numDeformationCycles);
 
 				// Tectonics values
-				detailPanel.SetTectonicsValues("Continents", Array.ConvertAll(numContinents, x => (float)x));
-				detailPanel.SetTectonicsValues("Stress Scale", stressScale);
-				detailPanel.SetTectonicsValues("Shear Scale", shearScale);
-				detailPanel.SetTectonicsValues("Max Propagation Distance", maxPropagationDistance);
-				detailPanel.SetTectonicsValues("Propagation Falloff", propagationFalloff);
-				detailPanel.SetTectonicsValues("Inactive Stress Threshold", inactiveStressThreshold);
-				detailPanel.SetTectonicsValues("General Height Scale", generalHeightScale);
-				detailPanel.SetTectonicsValues("General Shear Scale", generalShearScale);
-				detailPanel.SetTectonicsValues("General Compression Scale", generalCompressionScale);
-				detailPanel.SetTectonicsValues("General Transform Scale", generalTransformScale);
+				detailPanel.SetTectonicsValues("Continents", Array.ConvertAll(numContinents!, x => (float)x));
+				detailPanel.SetTectonicsValues("Stress Scale", stressScale!);
+				detailPanel.SetTectonicsValues("Shear Scale", shearScale!);
+				detailPanel.SetTectonicsValues("Max Propagation Distance", maxPropagationDistance!);
+				detailPanel.SetTectonicsValues("Propagation Falloff", propagationFalloff!);
+				detailPanel.SetTectonicsValues("Inactive Stress Threshold", inactiveStressThreshold!);
+				detailPanel.SetTectonicsValues("General Height Scale", generalHeightScale!);
+				detailPanel.SetTectonicsValues("General Shear Scale", generalShearScale!);
+				detailPanel.SetTectonicsValues("General Compression Scale", generalCompressionScale!);
+				detailPanel.SetTectonicsValues("General Transform Scale", generalTransformScale!);
 			}
 		}
 	}
@@ -914,14 +914,14 @@ public partial class BodyItem : HBoxContainer
 		if (
 			IsInstanceValid(item)
 			&& item.GetParent() == SatellitesList
-			&& SatellitesList.GetChildCount() > 1
+			&& SatellitesList!.GetChildCount() > 1
 		)
 		{
-			if (individualSatelliteHolder.Contains(item))
+			if (individualSatelliteHolder!.Contains(item))
 			{
 				individualSatelliteHolder.Remove(item);
 			}
-			if (satelliteBeltHolder.Contains(item))
+			if (satelliteBeltHolder!.Contains(item))
 			{
 				satelliteBeltHolder.Remove(item);
 			}

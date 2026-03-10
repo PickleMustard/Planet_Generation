@@ -1,9 +1,8 @@
 categories:
-  potential:
-    - mythology
-    - scientists
-    - explorers
-    - adjectives
+  - mythology
+  - scientists
+  - explorers
+  - adjectives
 
 mythology:
   - Ra

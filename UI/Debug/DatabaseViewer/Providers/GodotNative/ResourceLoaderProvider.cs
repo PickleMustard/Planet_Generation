@@ -13,7 +13,7 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("ResourceLoader", Category = "Resources")]
 public class ResourceLoaderProvider : IDataProvider
 {
-    private DebugDataNode _cachedData;
+    private DebugDataNode? _cachedData;
     private bool _needsRefresh = true;
 
     public string Name => "ResourceLoader";

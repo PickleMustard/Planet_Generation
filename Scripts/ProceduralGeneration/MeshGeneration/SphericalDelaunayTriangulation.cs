@@ -24,12 +24,12 @@ public class SphericalDelaunayTriangulation
     /// <summary>
     /// Original 3D points from the sphere surface
     /// </summary>
-    private List<Point> originalPoints;
+    private List<Point>? originalPoints;
 
     /// <summary>
     /// Points projected onto a 2D plane for triangulation
     /// </summary>
-    private List<Point> projectedPoints;
+    private List<Point>? projectedPoints;
 
     /// <summary>
     /// Generated triangles forming the triangulation
@@ -75,16 +75,16 @@ public class SphericalDelaunayTriangulation
     public Triangle[] Triangulate(List<Point> projectedPoints, List<Point> originalPoints)
     {
         GameLogger.EnterFunction("SphericalDelaunayTriangulation.Triangulate",
-            $"projectedCount={projectedPoints.Count}, originalCount={originalPoints.Count}");
+            $"projectedCount={projectedPoints!.Count}, originalCount={originalPoints!.Count}");
 
-        if (projectedPoints.Count != originalPoints.Count)
+        if (projectedPoints!.Count != originalPoints!.Count)
         {
             GameLogger.Error("Projected and original point counts must match");
             GameLogger.ExitFunction("SphericalDelaunayTriangulation.Triangulate", "returned empty array");
             return new Triangle[0];
         }
 
-        if (projectedPoints.Count < 3)
+        if (projectedPoints!.Count < 3)
         {
             GameLogger.Warning("Insufficient points for triangulation (minimum 3 required)");
             GameLogger.ExitFunction("SphericalDelaunayTriangulation.Triangulate", "returned empty array");
@@ -96,13 +96,13 @@ public class SphericalDelaunayTriangulation
         this.triangles = new List<Triangle>();
 
         // Build point map for index lookup
-        for (int i = 0; i < originalPoints.Count; i++)
+        for (int i = 0; i < originalPoints!.Count; i++)
         {
-            pointMap[i] = originalPoints[i];
+            pointMap[i] = originalPoints![i];
         }
 
         // Special cases for small point counts
-        if (projectedPoints.Count == 3)
+        if (projectedPoints!.Count == 3)
         {
             var tri = CreateTriangle(0, 1, 2);
             if (tri != null)
@@ -117,7 +117,7 @@ public class SphericalDelaunayTriangulation
         // For convex hulls, we can use a simpler approach than full Delaunay
         // Since the points form a convex polygon, we can use fan triangulation
         // or incremental triangulation
-        if (projectedPoints.Count <= 6)
+        if (projectedPoints!.Count <= 6)
         {
             // For small convex hulls, use fan triangulation
             PerformFanTriangulation();
@@ -147,7 +147,7 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     private void PerformFanTriangulation()
     {
-        GameLogger.EnterFunction("PerformFanTriangulation", $"pointCount={projectedPoints.Count}");
+        GameLogger.EnterFunction("PerformFanTriangulation", $"pointCount={projectedPoints!.Count}");
 
         // Sort points by angle from centroid
         var sortedIndices = SortPointsByAngle();
@@ -181,7 +181,7 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     private void PerformIncrementalDelaunay()
     {
-        GameLogger.EnterFunction("PerformIncrementalDelaunay", $"pointCount={projectedPoints.Count}");
+        GameLogger.EnterFunction("PerformIncrementalDelaunay", $"pointCount={projectedPoints!.Count}");
 
         // Sort points for better numerical stability
         var sortedIndices = SortPointsByAngle();
@@ -339,10 +339,10 @@ public class SphericalDelaunayTriangulation
     /// </remarks>
     private bool IsPointVisibleFromTriangle(int pointIndex, Triangle tri)
     {
-        var p = projectedPoints[pointIndex];
-        var a = projectedPoints[GetVertexIndex(tri, 0)];
-        var b = projectedPoints[GetVertexIndex(tri, 1)];
-        var c = projectedPoints[GetVertexIndex(tri, 2)];
+        var p = projectedPoints![pointIndex];
+        var a = projectedPoints![GetVertexIndex(tri, 0)];
+        var b = projectedPoints![GetVertexIndex(tri, 1)];
+        var c = projectedPoints![GetVertexIndex(tri, 2)];
 
         // Check if point is on the correct side of the triangle
         return Orient2D(a, b, c) * Orient2D(a, b, p) > 0;
@@ -362,17 +362,17 @@ public class SphericalDelaunayTriangulation
     {
         // Calculate centroid
         Vector2 centroid = Vector2.Zero;
-        foreach (var p in projectedPoints)
+        foreach (var p in projectedPoints!)
         {
             centroid += new Vector2(p.Position.X, p.Position.Y);
         }
-        centroid /= projectedPoints.Count;
+        centroid /= projectedPoints!.Count;
 
         // Create list of indices with angles
         var indexedAngles = new List<(int index, float angle)>();
-        for (int i = 0; i < projectedPoints.Count; i++)
+        for (int i = 0; i < projectedPoints!.Count; i++)
         {
-            var p = new Vector2(projectedPoints[i].Position.X, projectedPoints[i].Position.Y);
+            var p = new Vector2(projectedPoints![i].Position.X, projectedPoints![i].Position.Y);
             float angle = Mathf.Atan2(p.Y - centroid.Y, p.X - centroid.X);
             indexedAngles.Add((i, angle));
         }
@@ -400,10 +400,10 @@ public class SphericalDelaunayTriangulation
     /// The method attempts to find points in the circumcenters database first,
     /// falling back to the original points if not found.
     /// </remarks>
-    private Triangle CreateTriangle(int i1, int i2, int i3)
+    private Triangle? CreateTriangle(int i1, int i2, int i3)
     {
         // Ensure consistent winding order
-        if (Orient2D(projectedPoints[i1], projectedPoints[i2], projectedPoints[i3]) < 0)
+        if (Orient2D(projectedPoints![i1], projectedPoints![i2], projectedPoints![i3]) < 0)
         {
             (i2, i3) = (i3, i2);
             //var temp = i2;
@@ -416,7 +416,7 @@ public class SphericalDelaunayTriangulation
         var p2 = GetOriginalPoint(i2);
         var p3 = GetOriginalPoint(i3);
 
-        if (p1 == null || p2 == null || p3 == null)
+        if (p1 is null || p2 is null || p3 is null)
         {
             GameLogger.Warning($"Could not find original points for triangle {i1}, {i2}, {i3}");
             return null;
@@ -448,12 +448,12 @@ public class SphericalDelaunayTriangulation
     /// database in the StructureDatabase, which may contain refined point positions.
     /// If not found there, it returns the original point from the input list.
     /// </remarks>
-    private Point GetOriginalPoint(int index)
+    private Point? GetOriginalPoint(int index)
     {
-        if (index < 0 || index >= originalPoints.Count)
+        if (index < 0 || index >= originalPoints!.Count)
             return null;
 
-        var original = originalPoints[index];
+        var original = originalPoints![index];
 
         // Try to find the point in the circumcenters database
         if (StrDb.VoronoiVertices.ContainsKey(original.Index))
@@ -481,9 +481,9 @@ public class SphericalDelaunayTriangulation
         var point = tri.Points[vertexPosition];
 
         // Find the index of this point in our original points list
-        for (int i = 0; i < originalPoints.Count; i++)
+        for (int i = 0; i < originalPoints!.Count; i++)
         {
-            if (originalPoints[i].Index == point.Index)
+            if (originalPoints![i].Index == point.Index)
                 return i;
         }
 
@@ -504,7 +504,7 @@ public class SphericalDelaunayTriangulation
     /// Adjacent triangles are important for edge flipping operations in Delaunay
     /// triangulation, as they form quadrilaterals that may need to be re-triangulated.
     /// </remarks>
-    private Triangle FindAdjacentTriangle(Triangle tri, int v1, int v2)
+    private Triangle? FindAdjacentTriangle(Triangle tri, int v1, int v2)
     {
         foreach (var other in triangles)
         {
@@ -568,10 +568,10 @@ public class SphericalDelaunayTriangulation
 
         // Check if oppositeV2 is inside the circumcircle of tri1
         return InCircle(
-            projectedPoints[sharedV1],
-            projectedPoints[sharedV2],
-            projectedPoints[oppositeV1],
-            projectedPoints[oppositeV2]
+            projectedPoints![sharedV1],
+            projectedPoints![sharedV2],
+            projectedPoints![oppositeV1],
+            projectedPoints![oppositeV2]
         );
     }
 

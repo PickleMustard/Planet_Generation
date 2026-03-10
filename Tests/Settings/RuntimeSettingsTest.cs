@@ -8,6 +8,7 @@ using UtilityLibrary;
 namespace Tests.Settings;
 
 [TestSuite]
+[RequireGodotRuntime]
 public class RuntimeSettingsTest
 {
     private class MockConfigurable : IConfigurable
@@ -69,7 +70,7 @@ public class RuntimeSettingsTest
             AppliedSettings[key] = value;
         }
 
-        public object GetSettingDefault(string key)
+        public object? GetSettingDefault(string key)
         {
             foreach (var entry in _entries)
             {
@@ -87,8 +88,10 @@ public class RuntimeSettingsTest
         }
     }
 
+#pragma warning disable CS8618
     private RuntimeSettings _settings;
     private MockConfigurable _mockConfigurable;
+#pragma warning restore CS8618
 
     [Before]
     public void Setup()
@@ -116,7 +119,7 @@ public class RuntimeSettingsTest
     [TestCase]
     public void RegisterConfigurableNullHandling()
     {
-        _settings.RegisterConfigurable(null);
+        _settings.RegisterConfigurable(null!);
         var retrieved = _settings.GetConfigurable("NonExistent");
         AssertThat(retrieved).IsNull();
     }
@@ -132,7 +135,7 @@ public class RuntimeSettingsTest
         float floatValue = _settings.GetSetting<float>("TestCategory", "FloatSetting");
         AssertThat(floatValue).IsEqual(0.5f);
 
-        string stringValue = _settings.GetSetting<string>("TestCategory", "StringSetting");
+        string? stringValue = _settings.GetSetting<string>("TestCategory", "StringSetting");
         AssertThat(stringValue).IsEqual("default");
 
         bool boolValue = _settings.GetSetting<bool>("TestCategory", "BoolSetting");
@@ -158,10 +161,10 @@ public class RuntimeSettingsTest
     [TestCase]
     public void GetSettingHandlesNullOrEmptyParameters()
     {
-        int result1 = _settings.GetSetting<int>(null, "SomeKey");
+        int result1 = _settings.GetSetting<int>(null!, "SomeKey");
         AssertThat(result1).IsEqual(0);
 
-        int result2 = _settings.GetSetting<int>("TestCategory", null);
+        int result2 = _settings.GetSetting<int>("TestCategory", null!);
         AssertThat(result2).IsEqual(0);
 
         int result3 = _settings.GetSetting<int>("", "");
@@ -199,11 +202,11 @@ public class RuntimeSettingsTest
         _settings.RegisterConfigurable(_mockConfigurable);
 
         _settings.SetSetting("TestCategory", "EnumSetting", "OptionB");
-        string result1 = _settings.GetSetting<string>("TestCategory", "EnumSetting");
+        string? result1 = _settings.GetSetting<string>("TestCategory", "EnumSetting");
         AssertThat(result1).IsEqual("OptionB");
 
         _settings.SetSetting("TestCategory", "EnumSetting", "InvalidOption");
-        string result2 = _settings.GetSetting<string>("TestCategory", "EnumSetting");
+        string? result2 = _settings.GetSetting<string>("TestCategory", "EnumSetting");
         AssertThat(result2).IsEqual("OptionB");
     }
 
@@ -212,10 +215,10 @@ public class RuntimeSettingsTest
     {
         _settings.RegisterConfigurable(_mockConfigurable);
 
-        _settings.SetSetting(null, "IntSetting", 50);
-        _settings.SetSetting("TestCategory", null, 50);
+        _settings.SetSetting(null!, "IntSetting", 50);
+        _settings.SetSetting("TestCategory", null!, 50);
         _settings.SetSetting("", "", 50);
-        _settings.SetSetting("TestCategory", "IntSetting", null);
+        _settings.SetSetting("TestCategory", "IntSetting", null!);
 
         int result = _settings.GetSetting<int>("TestCategory", "IntSetting");
         AssertThat(result).IsEqual(42);
@@ -246,13 +249,12 @@ public class RuntimeSettingsTest
     {
         _settings.RegisterConfigurable(_mockConfigurable);
 
-        _settings.ResetSetting(null, "IntSetting");
-        _settings.ResetSetting("TestCategory", null);
+        _settings.ResetSetting(null!, "IntSetting");
+        _settings.ResetSetting("TestCategory", null!);
         _settings.ResetSetting("", "");
     }
 
     [TestCase]
-    [RequireGodotRuntime]
     public void SaveToFileCreatesSettingsFile()
     {
         _settings.RegisterConfigurable(_mockConfigurable);
@@ -264,7 +266,6 @@ public class RuntimeSettingsTest
     }
 
     [TestCase]
-    [RequireGodotRuntime]
     public void LoadFromFileReadsSettingsFile()
     {
         _settings.RegisterConfigurable(_mockConfigurable);
@@ -280,7 +281,6 @@ public class RuntimeSettingsTest
     }
 
     [TestCase]
-    [RequireGodotRuntime]
     public void LoadFromFileHandlesMissingFile()
     {
         if (FileAccess.FileExists("user://settings.cfg"))
@@ -299,8 +299,8 @@ public class RuntimeSettingsTest
     {
         _settings.RegisterConfigurable(_mockConfigurable);
 
-        string signalCategory = null;
-        string signalKey = null;
+        string? signalCategory = null;
+        string? signalKey = null;
         Variant signalValue = default;
 
         _settings.SettingChanged += (category, key, value) =>
@@ -361,7 +361,6 @@ public class RuntimeSettingsTest
     }
 
     [TestCase]
-    [RequireGodotRuntime]
     public void EndToEndSettingPersistence()
     {
         _settings.RegisterConfigurable(_mockConfigurable);
@@ -387,7 +386,6 @@ public class RuntimeSettingsTest
     }
 
     [TestCase]
-    [RequireGodotRuntime]
     public void EndToEndResetAllSettings()
     {
         _settings.RegisterConfigurable(_mockConfigurable);
@@ -417,7 +415,7 @@ public class RuntimeSettingsTest
         AssertThat(floatResult).IsEqual(0.25f);
 
         _settings.SetSetting("TestCategory", "StringSetting", "test");
-        string stringResult = _settings.GetSetting<string>("TestCategory", "StringSetting");
+        string? stringResult = _settings.GetSetting<string>("TestCategory", "StringSetting");
         AssertThat(stringResult).IsEqual("test");
 
         _settings.SetSetting("TestCategory", "BoolSetting", false);

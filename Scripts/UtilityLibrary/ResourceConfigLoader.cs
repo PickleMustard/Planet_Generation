@@ -47,7 +47,7 @@ namespace UtilityLibrary
                 if (yamlData.ContainsKey("resources"))
                 {
                     var resourcesList = yamlData["resources"] as List<object>;
-                    foreach (var resourceObj in resourcesList)
+                    foreach (var resourceObj in resourcesList!)
                     {
                         if (resourceObj is Dictionary<object, object> resourceDict)
                         {

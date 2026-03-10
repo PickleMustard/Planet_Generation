@@ -28,8 +28,8 @@ public static class TemplateLoader
         "res://Configuration/ResourceDefinition/",
     };
 
-    private static string[] _searchDirectories;
-    private static ValidationCallback _defaultValidator;
+    private static string[]? _searchDirectories;
+    private static ValidationCallback? _defaultValidator;
 
     static TemplateLoader()
     {
@@ -46,7 +46,7 @@ public static class TemplateLoader
 
     public static Godot.Collections.Dictionary Load(string pathOrName)
     {
-        return Load(pathOrName, _defaultValidator);
+        return Load(pathOrName, _defaultValidator!);
     }
 
     public static Godot.Collections.Dictionary Load(string pathOrName, ValidationCallback validator)
@@ -96,13 +96,13 @@ public static class TemplateLoader
 
     public static bool TryLoad(string pathOrName, out Godot.Collections.Dictionary result)
     {
-        return TryLoad(pathOrName, _defaultValidator, out result);
+        return TryLoad(pathOrName, _defaultValidator!, out result!);
     }
 
     public static bool TryLoad(
         string pathOrName,
         ValidationCallback validator,
-        out Godot.Collections.Dictionary result
+        out Godot.Collections.Dictionary? result
     )
     {
         result = null;
@@ -117,6 +117,48 @@ public static class TemplateLoader
         }
     }
 
+    public static Godot.Collections.Dictionary LoadNamesFile(string nameFileName)
+    {
+        if (string.IsNullOrWhiteSpace(nameFileName))
+        {
+            throw new ArgumentException("Name file name cannot be null or empty", nameof(nameFileName));
+        }
+
+        string basePath = "res://Configuration/names/";
+        string? resolvedPath = null;
+
+        // Try .yml extension first
+        string ymlPath = basePath + nameFileName + ".yml";
+        if (Godot.FileAccess.FileExists(ymlPath))
+        {
+            resolvedPath = ymlPath;
+        }
+        else
+        {
+            // Try .yaml extension
+            string yamlPath = basePath + nameFileName + ".yaml";
+            if (Godot.FileAccess.FileExists(yamlPath))
+            {
+                resolvedPath = yamlPath;
+            }
+        }
+
+        if (resolvedPath == null)
+        {
+            throw new FileNotFoundException(
+                $"Could not find name file: {nameFileName} in {basePath}"
+            );
+        }
+
+        string yamlContent = ReadFileContent(resolvedPath);
+        if (string.IsNullOrWhiteSpace(yamlContent))
+        {
+            throw new InvalidOperationException($"Name file is empty or invalid: {resolvedPath}");
+        }
+
+        return ParseYamlToJson(yamlContent);
+    }
+
     public static void SetSearchDirectories(params string[] directories)
     {
         _searchDirectories = directories ?? Array.Empty<string>();
@@ -127,7 +169,7 @@ public static class TemplateLoader
         _defaultValidator = validator;
     }
 
-    public static string ResolvePath(string pathOrName)
+    public static string? ResolvePath(string pathOrName)
     {
         if (string.IsNullOrWhiteSpace(pathOrName))
         {
@@ -146,7 +188,7 @@ public static class TemplateLoader
 
         foreach (var directory in GetSearchDirectories())
         {
-            string candidatePath = pathOrName;
+            string? candidatePath = pathOrName;
             if (!pathOrName.StartsWith("res://"))
             {
                 candidatePath = directory.TrimEnd('/') + "/" + pathOrName;
@@ -189,7 +231,7 @@ public static class TemplateLoader
         return path;
     }
 
-    private static string TryWithExtensions(string path)
+    private static string? TryWithExtensions(string path)
     {
         if (Godot.FileAccess.FileExists(path))
         {

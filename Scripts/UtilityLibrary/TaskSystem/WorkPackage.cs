@@ -7,7 +7,7 @@ namespace UtilityLibrary.TaskSystem
     public partial class WorkPackage : RefCounted
     {
         public string Name { get; }
-        public string BatchId { get; }
+        public string? BatchId { get; }
         public TaskPriority Priority { get; }
         public IReadOnlyList<WorkStep> Steps { get; }
         public string[] StepNames { get; }
@@ -15,7 +15,7 @@ namespace UtilityLibrary.TaskSystem
         private int _currentStepIndex = 0;
         public int CurrentStepIndex => _currentStepIndex;
 
-        public WorkStep CurrentStep => _currentStepIndex < Steps.Count ? Steps[_currentStepIndex] : null;
+        public WorkStep? CurrentStep => _currentStepIndex < Steps.Count ? Steps[_currentStepIndex] : null;
         public bool IsComplete => _currentStepIndex >= Steps.Count;
         public float Progress => Steps.Count > 0 ? (float)_currentStepIndex / Steps.Count : 0f;
         public int TotalSteps => Steps.Count;
@@ -44,7 +44,7 @@ namespace UtilityLibrary.TaskSystem
         [Signal]
         public delegate void PackageFailedEventHandler(string packageName, string errorMessage);
 
-        public WorkPackage(string name, IReadOnlyList<WorkStep> steps, TaskPriority priority = TaskPriority.Normal, string batchId = null, int maxRetries = 3)
+        public WorkPackage(string name, IReadOnlyList<WorkStep> steps, TaskPriority priority = TaskPriority.Normal, string? batchId = null, int maxRetries = 3)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Steps = steps ?? throw new ArgumentNullException(nameof(steps));
@@ -73,7 +73,7 @@ namespace UtilityLibrary.TaskSystem
             {
                 try
                 {
-                    int result = step.Execute();
+                    int result = step!.Execute();
                     _currentStepIndex++;
                     _stepRetryCount.Remove(_currentStepIndex - 1);
 
@@ -95,15 +95,15 @@ namespace UtilityLibrary.TaskSystem
 
                     if (retryCount < _maxRetries)
                     {
-                        GD.Print($"Warning: Step '{step.Name}' failed (attempt {retryCount}/{_maxRetries}). Retrying...");
+                        GD.Print($"Warning: Step '{step!.Name}' failed (attempt {retryCount}/{_maxRetries}). Retrying...");
                         continue;
                     }
 
                     _isFailed = true;
-                    string errorMessage = $"Step '{step.Name}' failed after {_maxRetries} attempts: {ex.Message}";
-                    GD.PrintErr($"Package '{Name}' failed at step '{step.Name}': {errorMessage}");
+                    string errorMessage = $"Step '{step!.Name}' failed after {_maxRetries} attempts: {ex.Message}";
+                    GD.PrintErr($"Package '{Name}' failed at step '{step!.Name}': {errorMessage}");
 
-                    EmitSignal(SignalName.StepFailed, Name, currentStep, step.Name, ex.Message);
+                    EmitSignal(SignalName.StepFailed, Name, currentStep, step!.Name, ex.Message);
                     EmitSignal(SignalName.PackageFailed, Name, errorMessage);
 
                     throw new PackageFailedException(

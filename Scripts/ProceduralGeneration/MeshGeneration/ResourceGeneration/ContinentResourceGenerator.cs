@@ -36,7 +36,7 @@ public static class ContinentResourceGenerator
         Dictionary<int, Continent> continents,
         Godot.Collections.Dictionary resourceConfig,
         RandomNumberGenerator rng,
-        UnifiedCelestialMesh mesh = null)
+        UnifiedCelestialMesh? mesh = null)
     {
         GD.Print($"[ResourceDebug] ContinentResourceGenerator.GenerateResources: continents null: {continents == null}, count: {continents?.Count ?? 0}, resourceConfig null: {resourceConfig == null}");
 
@@ -66,7 +66,7 @@ public static class ContinentResourceGenerator
                 continent,
                 resourceConfig,
                 rng,
-                mesh,
+                mesh!,
                 primaryMin,
                 primaryMax,
                 secondaryMin,
@@ -82,7 +82,7 @@ public static class ContinentResourceGenerator
 
         foreach (var kvp in continents)
         {
-            DistributeResourcesToCells(kvp.Value, rng, mesh);
+            DistributeResourcesToCells(kvp.Value, rng, mesh!);
         }
 
         GD.Print($"[ResourceDebug] Finished distributing resources to all cells");
@@ -246,7 +246,7 @@ public static class ContinentResourceGenerator
     {
         GD.Print($"[ResourceDebug] DistributeResourcesToCells: continent {continent.StartingIndex}, cells null: {continent.cells == null}, cell count: {continent.cells?.Count ?? 0}, continental resources: {continent.ContinentalResources?.Count ?? 0}");
 
-        if (continent.cells == null || continent.ContinentalResources.Count == 0)
+        if (continent.cells == null || continent.ContinentalResources!.Count == 0)
         {
             GD.Print($"[ResourceDebug] DistributeResourcesToCells: early return - cells null: {continent.cells == null}, resource count: {continent.ContinentalResources?.Count ?? 0}");
             return;
@@ -272,7 +272,7 @@ public static class ContinentResourceGenerator
                 }
 
                 float elevationFactor = 1.0f;
-                if (normalizedCellHeight < resourceDef.MinElevation || normalizedCellHeight > resourceDef.MaxElevation)
+                if (normalizedCellHeight < resourceDef!.MinElevation || normalizedCellHeight > resourceDef.MaxElevation)
                 {
                     elevationFactor = 0.3f;
                 }
@@ -350,7 +350,7 @@ public static class ContinentResourceGenerator
         if (!ResourceDatabase.Instance.TryGetResource(resourceId, out var resourceDef))
             return 1.0f;
 
-        if (resourceDef.BiomeAffinity == null || resourceDef.BiomeAffinity.Count == 0)
+        if (resourceDef!.BiomeAffinity == null || resourceDef.BiomeAffinity.Count == 0)
             return 1.0f;
 
         float totalWeight = 0f;
@@ -398,7 +398,7 @@ public static class ContinentResourceGenerator
         return 1.0f;
     }
 
-    private static Godot.Collections.Dictionary SelectWeightedResource(
+    private static Godot.Collections.Dictionary? SelectWeightedResource(
         List<(Godot.Collections.Dictionary config, float weight)> weightedResources,
         RandomNumberGenerator rng)
     {
