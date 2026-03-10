@@ -11,16 +11,16 @@ public partial class SatelliteBeltItem : VBoxContainer
     public delegate void ItemUpdateEventHandler();
 
     [Export]
-    public Button Toggle;
+    public Button? Toggle;
 
     [Export]
-    public Button RemoveItem;
+    public Button? RemoveItem;
 
     [Export]
-    public OptionButton OptionButton;
+    public OptionButton? OptionButton;
 
-    [Export] public SpinBox Apogee;
-    [Export] public SpinBox Perigee;
+    [Export] public SpinBox? Apogee;
+    [Export] public SpinBox? Perigee;
     //[Export]
     //public SpinBox RingDistanceX;
 
@@ -31,33 +31,33 @@ public partial class SatelliteBeltItem : VBoxContainer
     //public SpinBox RingDistanceZ;
 
     [Export]
-    public SpinBox RingVelocityX;
+    public SpinBox? RingVelocityX;
 
     [Export]
-    public SpinBox RingVelocityY;
+    public SpinBox? RingVelocityY;
 
     [Export]
-    public SpinBox RingVelocityZ;
+    public SpinBox? RingVelocityZ;
 
     [Export]
-    public SpinBox MinMass,
+    public SpinBox? MinMass,
         MaxMass;
 
     [Export]
-    public SpinBox MinSize,
+    public SpinBox? MinSize,
         MaxSize;
 
     [Export]
-    public SpinBox NumInBeltLower,
+    public SpinBox? NumInBeltLower,
         NumInBeltUpper;
 
     [Export]
-    public OptionButton BeltGrouping;
+    public OptionButton? BeltGrouping;
 
-    private HBoxContainer BeltNumContainer;
+    private HBoxContainer? BeltNumContainer;
     private Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
 
-    public Action<SatelliteBeltItem> OnRemoveRequested;
+    public Action<SatelliteBeltItem>? OnRemoveRequested;
 
     private CelestialBodyType parentType;
     private const float Limit = 10000f; // constrain within ±10,000 units
@@ -323,40 +323,40 @@ public partial class SatelliteBeltItem : VBoxContainer
 
     public float GetRingApogee()
     {
-        return Mathf.Clamp((float)Apogee.Value, -Limit, Limit);
+        return Mathf.Clamp((float)Apogee!.Value, -Limit, Limit);
     }
 
     public float GetRingPerigee()
     {
-        return Mathf.Clamp((float)Perigee.Value, -Limit, Limit);
+        return Mathf.Clamp((float)Perigee!.Value, -Limit, Limit);
     }
 
     public Vector3 GetRingVelocity()
     {
-        float vx = Mathf.Clamp((float)RingVelocityX.Value, -Limit, Limit);
-        float vy = Mathf.Clamp((float)RingVelocityY.Value, -Limit, Limit);
-        float vz = Mathf.Clamp((float)RingVelocityZ.Value, -Limit, Limit);
+        float vx = Mathf.Clamp((float)RingVelocityX!.Value, -Limit, Limit);
+        float vy = Mathf.Clamp((float)RingVelocityY!.Value, -Limit, Limit);
+        float vz = Mathf.Clamp((float)RingVelocityZ!.Value, -Limit, Limit);
         return new Vector3(vx, vy, vz);
     }
 
     public float GetMassMin()
     {
-        return Mathf.Clamp((float)MinMass.Value, 0f, MassLimit);
+        return Mathf.Clamp((float)MinMass!.Value, 0f, MassLimit);
     }
 
     public float GetMassMax()
     {
-        return Mathf.Clamp((float)MaxMass.Value, 0f, MassLimit);
+        return Mathf.Clamp((float)MaxMass!.Value, 0f, MassLimit);
     }
 
     public float GetSizeMin()
     {
-        return Mathf.Clamp((float)MinSize.Value, 0f, SizeLimit);
+        return Mathf.Clamp((float)MinSize!.Value, 0f, SizeLimit);
     }
 
     public float GetSizeMax()
     {
-        return Mathf.Clamp((float)MaxSize.Value, 0f, SizeLimit);
+        return Mathf.Clamp((float)MaxSize!.Value, 0f, SizeLimit);
     }
 
     public string GetSatelliteType()

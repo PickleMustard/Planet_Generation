@@ -13,31 +13,31 @@ namespace UI.Debug.CellInfo
     {
         public override string ModuleName => "Cell Info";
 
-        private VBoxContainer _rootContainer;
-        private Button _clearButton;
-        private Label _noSelectionLabel;
+        private VBoxContainer? _rootContainer;
+        private Button? _clearButton;
+        private Label? _noSelectionLabel;
 
-        private VBoxContainer _cellSection;
-        private Label _cellIndexLabel;
-        private Label _cellHeightLabel;
-        private Label _cellStressLabel;
-        private Label _cellMovementLabel;
-        private Label _cellBorderLabel;
-        private Label _cellInteriornessLabel;
-        private Label _cellCenterLabel;
+        private VBoxContainer? _cellSection;
+        private Label? _cellIndexLabel;
+        private Label? _cellHeightLabel;
+        private Label? _cellStressLabel;
+        private Label? _cellMovementLabel;
+        private Label? _cellBorderLabel;
+        private Label? _cellInteriornessLabel;
+        private Label? _cellCenterLabel;
 
-        private VBoxContainer _resourcesSection;
-        private VBoxContainer _resourcesList;
+        private VBoxContainer? _resourcesSection;
+        private VBoxContainer? _resourcesList;
 
-        private VBoxContainer _continentSection;
-        private Label _continentIndexLabel;
-        private Label _continentCrustLabel;
-        private Label _continentVelocityLabel;
-        private Label _continentRotationLabel;
-        private Label _continentAvgHeightLabel;
-        private Label _continentAvgMoistureLabel;
-        private Label _continentNeighborsLabel;
-        private VBoxContainer _continentResourcesList;
+        private VBoxContainer? _continentSection;
+        private Label? _continentIndexLabel;
+        private Label? _continentCrustLabel;
+        private Label? _continentVelocityLabel;
+        private Label? _continentRotationLabel;
+        private Label? _continentAvgHeightLabel;
+        private Label? _continentAvgMoistureLabel;
+        private Label? _continentNeighborsLabel;
+        private VBoxContainer? _continentResourcesList;
 
         public override void _Ready()
         {
@@ -116,7 +116,7 @@ namespace UI.Debug.CellInfo
         private void BuildCellSection()
         {
             _cellSection = CreateSection("CELL");
-            _rootContainer.AddChild(_cellSection);
+            _rootContainer!.AddChild(_cellSection);
 
             _cellIndexLabel = AddInfoRow(_cellSection, "Index", "-");
             _cellHeightLabel = AddInfoRow(_cellSection, "Height", "-");
@@ -130,7 +130,7 @@ namespace UI.Debug.CellInfo
         private void BuildResourcesSection()
         {
             _resourcesSection = CreateSection("RESOURCES");
-            _rootContainer.AddChild(_resourcesSection);
+            _rootContainer!.AddChild(_resourcesSection);
 
             _resourcesList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             _resourcesSection.AddChild(_resourcesList);
@@ -139,7 +139,7 @@ namespace UI.Debug.CellInfo
         private void BuildContinentSection()
         {
             _continentSection = CreateSection("CONTINENT");
-            _rootContainer.AddChild(_continentSection);
+            _rootContainer!.AddChild(_continentSection);
 
             _continentIndexLabel = AddInfoRow(_continentSection, "Index", "-");
             _continentCrustLabel = AddInfoRow(_continentSection, "Crust Type", "-");
@@ -210,7 +210,7 @@ namespace UI.Debug.CellInfo
 
         private void ConnectSignals()
         {
-            _clearButton.Pressed += OnClearPressed;
+            _clearButton!.Pressed += OnClearPressed;
 
             if (CellSelectionManager.Instance != null)
             {
@@ -239,13 +239,13 @@ namespace UI.Debug.CellInfo
             SetInitialVisibility();
         }
 
-        private void SetInitialVisibility()
-        {
-            _noSelectionLabel.Visible = true;
-            _cellSection.Visible = false;
-            _resourcesSection.Visible = false;
-            _continentSection.Visible = false;
-        }
+	private void SetInitialVisibility()
+	{
+		_noSelectionLabel!.Visible = true;
+		_cellSection!.Visible = false;
+		_resourcesSection!.Visible = false;
+		_continentSection!.Visible = false;
+	}
 
         private void UpdateCellInfo(
             VoronoiCell cell,
@@ -253,36 +253,36 @@ namespace UI.Debug.CellInfo
             Continent continent
         )
         {
-            GD.Print("UpdateCellInfo");
-            _noSelectionLabel.Visible = true;
-            _cellSection.Visible = true;
-            _resourcesSection.Visible = true;
+		GD.Print("UpdateCellInfo");
+		_noSelectionLabel!.Visible = true;
+		_cellSection!.Visible = true;
+		_resourcesSection!.Visible = true;
 
-            _cellIndexLabel.Text = cell.Index.ToString();
-            _cellHeightLabel.Text = cell.Height.ToString("F4");
-            _cellStressLabel.Text = cell.Stress.ToString("F4");
-            _cellMovementLabel.Text = cell.MovementDirection.ToString();
-            _cellBorderLabel.Text = cell.IsBorderTile ? "Yes" : "No";
-            _cellInteriornessLabel.Text =
-                cell.Interiorness == int.MaxValue ? "Max" : cell.Interiorness.ToString();
-            _cellCenterLabel.Text = cell.Center.ToString("F2");
+		_cellIndexLabel!.Text = cell.Index.ToString();
+		_cellHeightLabel!.Text = cell.Height.ToString("F4");
+		_cellStressLabel!.Text = cell.Stress.ToString("F4");
+		_cellMovementLabel!.Text = cell.MovementDirection.ToString();
+		_cellBorderLabel!.Text = cell.IsBorderTile ? "Yes" : "No";
+		_cellInteriornessLabel!.Text =
+			cell.Interiorness == int.MaxValue ? "Max" : cell.Interiorness.ToString();
+		_cellCenterLabel!.Text = cell.Center.ToString("F2");
 
-            UpdateResourcesList(cell);
+		UpdateResourcesList(cell);
 
-            if (continent != null)
-            {
-                _continentSection.Visible = true;
-                UpdateContinentInfo(cell.ContinentIndex, continent);
-            }
-            else
-            {
-                _continentSection.Visible = false;
-            }
+		if (continent != null)
+		{
+			_continentSection!.Visible = true;
+			UpdateContinentInfo(cell.ContinentIndex, continent);
+		}
+		else
+		{
+			_continentSection!.Visible = false;
+		}
         }
 
         private void UpdateResourcesList(VoronoiCell cell)
         {
-            foreach (var child in _resourcesList.GetChildren())
+            foreach (var child in _resourcesList!.GetChildren())
             {
                 child.QueueFree();
             }
@@ -312,8 +312,8 @@ namespace UI.Debug.CellInfo
                     && ResourceDatabase.Instance.TryGetResource(resourceId, out var definition)
                 )
                 {
-                    resourceColor = definition.DisplayColor;
-                    tierText = $" [Tier {definition.ResourceTier}]";
+                    resourceColor = definition!.DisplayColor;
+                    tierText = $" [Tier {definition!.ResourceTier}]";
                 }
 
                 var colorIndicator = new ColorRect
@@ -338,25 +338,25 @@ namespace UI.Debug.CellInfo
 
         private void UpdateContinentInfo(int continentIndex, Continent continent)
         {
-            _continentIndexLabel.Text = continentIndex.ToString();
-            _continentCrustLabel.Text = continent.elevation.ToString();
-            _continentVelocityLabel.Text = continent.velocity.ToString("F2");
-            _continentRotationLabel.Text = continent.rotation.ToString("F3");
-            _continentAvgHeightLabel.Text = continent.averageHeight.ToString("F3");
-            _continentAvgMoistureLabel.Text = continent.averageMoisture.ToString("F3");
+            _continentIndexLabel!.Text = continentIndex.ToString();
+            _continentCrustLabel!.Text = continent.elevation.ToString();
+            _continentVelocityLabel!.Text = continent.velocity.ToString("F2");
+            _continentRotationLabel!.Text = continent.rotation.ToString("F3");
+            _continentAvgHeightLabel!.Text = continent.averageHeight.ToString("F3");
+            _continentAvgMoistureLabel!.Text = continent.averageMoisture.ToString("F3");
 
             var neighbors =
                 continent.neighborContinents != null
                     ? string.Join(", ", continent.neighborContinents)
                     : "None";
-            _continentNeighborsLabel.Text = neighbors;
+            _continentNeighborsLabel!.Text = neighbors;
 
             UpdateContinentResourcesList(continent);
         }
 
         private void UpdateContinentResourcesList(Continent continent)
         {
-            foreach (var child in _continentResourcesList.GetChildren())
+            foreach (var child in _continentResourcesList!.GetChildren())
             {
                 child.QueueFree();
             }

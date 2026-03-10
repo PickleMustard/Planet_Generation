@@ -77,7 +77,7 @@ namespace UtilityLibrary
                 }
             }
 
-            public object GetSettingDefault(string key) => key switch
+            public object? GetSettingDefault(string key) => key switch
             {
                 "level" => "DEBUG",
                 "log_to_file" => true,
@@ -104,8 +104,8 @@ namespace UtilityLibrary
         }
 
         /// <summary>
-        /// Initializes the GameLogger by registering with RuntimeSettings.
-        /// Called lazily when RuntimeSettings is available.
+        /// Initializes GameLogger by registering with RuntimeSettings.
+        /// Called lazily when settings provider is available.
         /// </summary>
         public static void Initialize()
         {
@@ -253,15 +253,11 @@ namespace UtilityLibrary
             // Only query RuntimeSettings if it's available and has the settings registered
             if (RuntimeSettings.Instance != null)
             {
-                // Use HasSetting to check without triggering "Setting not found" errors
                 if (RuntimeSettings.Instance.HasSetting("logging", "log_to_file"))
-                {
                     logToFile = RuntimeSettings.Instance.GetSetting<bool>("logging", "log_to_file");
-                }
+
                 if (RuntimeSettings.Instance.HasSetting("logging", "log_to_console"))
-                {
                     logToConsole = RuntimeSettings.Instance.GetSetting<bool>("logging", "log_to_console");
-                }
             }
 
             lock (LockObject)

@@ -22,12 +22,12 @@ public class CommandContext : IDisposable
     /// <summary>
     /// The namespace of the caller (if targeting an instance).
     /// </summary>
-    public string CallerNamespace { get; }
+    public string? CallerNamespace { get; }
 
     /// <summary>
     /// The target object instance (if command requires a target).
     /// </summary>
-    public object TargetInstance { get; }
+    public object? TargetInstance { get; }
 
     /// <summary>
     /// Reference to the CommandRegistry for command lookups.
@@ -45,7 +45,7 @@ public class CommandContext : IDisposable
     /// <param name="registry">The command registry.</param>
     /// <param name="callerNamespace">The caller's namespace (optional).</param>
     /// <param name="targetInstance">The target instance (optional).</param>
-    public CommandContext(CommandRegistry registry, string callerNamespace = null, object targetInstance = null)
+    public CommandContext(CommandRegistry registry, string? callerNamespace = null, object? targetInstance = null)
     {
         Registry = registry ?? throw new ArgumentNullException(nameof(registry));
         CallerNamespace = callerNamespace;

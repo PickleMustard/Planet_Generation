@@ -14,7 +14,7 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("Performance", Category = "Performance", AutoRefresh = true)]
 public class PerformanceProvider : IDataProvider
 {
-    private DebugDataNode _cachedData;
+    private DebugDataNode? _cachedData;
     private double _lastRefreshTime;
     private readonly double _refreshInterval = 0.1;
 

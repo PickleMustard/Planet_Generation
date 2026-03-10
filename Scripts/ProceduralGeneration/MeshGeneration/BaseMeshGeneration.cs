@@ -42,7 +42,7 @@ public class BaseMeshGeneration
     /// <summary>
     /// Array specifying the number of vertices to generate per edge at each subdivision level.
     /// </summary>
-    private int[] VerticesPerEdge;
+    private int[]? VerticesPerEdge;
 
     /// <summary>
     /// Reference to the configurable subdivider for mesh subdivision operations.
@@ -52,7 +52,9 @@ public class BaseMeshGeneration
     /// <summary>
     /// Current vertex index counter for mesh generation.
     /// </summary>
+#pragma warning disable CS0414
     private int VertexIndex = 0;
+#pragma warning restore CS0414
 
     /// <summary>
     /// List of vertex normals for the generated mesh.
@@ -195,7 +197,7 @@ public class BaseMeshGeneration
         List<Face> tempFaces = new List<Face>();
         for (int level = 0; level < subdivide; level++)
         {
-            var verticesToGenerate = level < VerticesPerEdge.Length ? VerticesPerEdge[level] : VerticesPerEdge[VerticesPerEdge.Length - 1];
+            var verticesToGenerate = level < VerticesPerEdge!.Length ? VerticesPerEdge[level] : VerticesPerEdge[VerticesPerEdge.Length - 1];
             GameLogger.Info($"Subdivide level {level + 1}/{subdivide}: verticesToGenerate={verticesToGenerate}");
             foreach (Face face in faces)
             {

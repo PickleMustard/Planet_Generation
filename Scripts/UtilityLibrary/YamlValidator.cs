@@ -303,6 +303,11 @@ namespace UtilityLibrary
 
         private static void ValidateCategoriesSection(YamlMappingNode root, ValidationResult result)
         {
+            if (!root.Children.ContainsKey("categories"))
+            {
+                return;
+            }
+
             var categories = root.Children["categories"] as YamlMappingNode;
             if (categories == null)
             {
@@ -310,9 +315,16 @@ namespace UtilityLibrary
                 return;
             }
 
-            if (!categories.Children.ContainsKey("potential"))
+            // Check if potential key exists, but don't require it
+            if (categories.Children.TryGetValue(new YamlScalarNode("potential"), out var potentialNode))
             {
-                result.AddWarning("'categories.potential' is missing - name generation may not work");
+                // Potential is present - this is optional, names will be loaded from separate files
+                result.AddInfo("Categories section contains 'potential' list - names will be loaded from name files");
+            }
+            else
+            {
+                // Potential is missing - this is optional, but log it for clarity
+                result.AddInfo("'categories.potential' is missing - names will be loaded from name files");
             }
         }
 
@@ -354,7 +366,7 @@ namespace UtilityLibrary
 
     public class ValidationResult
     {
-        public string FilePath { get; set; }
+        public string? FilePath { get; set; }
         public List<string> Errors { get; } = new List<string>();
         public List<string> Warnings { get; } = new List<string>();
 
@@ -368,6 +380,11 @@ namespace UtilityLibrary
         public void AddWarning(string message)
         {
             Warnings.Add(message);
+        }
+
+        public void AddInfo(string message)
+        {
+            Warnings.Add($"[INFO] {message}");
         }
 
         public override string ToString()

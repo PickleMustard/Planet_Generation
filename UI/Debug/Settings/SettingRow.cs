@@ -7,16 +7,16 @@ namespace UI.Debug.Settings;
 
 public partial class SettingRow : HBoxContainer
 {
-	private ConfigEntry _entry;
-	private string _category;
-	private Control _valueControl;
-	private Label _valueLabel;
-	private Button _resetButton;
-	private Label _restartWarning;
+	private ConfigEntry? _entry;
+	private string? _category;
+	private Control? _valueControl;
+	private Label? _valueLabel;
+	private Button? _resetButton;
+	private Label? _restartWarning;
 	private bool _isUpdating;
 
-	public ConfigEntry Entry => _entry;
-	public string Category => _category;
+	public ConfigEntry? Entry => _entry;
+	public string? Category => _category;
 
 	public void Setup(string category, ConfigEntry entry)
 	{
@@ -35,7 +35,7 @@ public partial class SettingRow : HBoxContainer
 
 		var nameLabel = new Label
 		{
-			Text = FormatLabel(_entry.Key),
+			Text = FormatLabel(_entry!.Key!),
 			CustomMinimumSize = new Vector2(150, 0),
 			SizeFlagsHorizontal = SizeFlags.Fill,
 			VerticalAlignment = VerticalAlignment.Center
@@ -51,7 +51,7 @@ public partial class SettingRow : HBoxContainer
 			AddChild(_valueControl);
 		}
 
-		if (_entry.ValueType == typeof(float) && _entry.MinValue != null && _entry.MaxValue != null)
+		if (_entry!.ValueType == typeof(float) && _entry.MinValue != null && _entry.MaxValue != null)
 		{
 			_valueLabel = new Label
 			{
@@ -86,7 +86,7 @@ public partial class SettingRow : HBoxContainer
 
 	private Control CreateValueControl()
 	{
-		if (_entry.ValueType == typeof(bool))
+		if (_entry!.ValueType == typeof(bool))
 		{
 			var checkBox = new CheckBox
 			{
@@ -118,14 +118,14 @@ public partial class SettingRow : HBoxContainer
 			}
 		}
 
-		if (_entry.ValueType == typeof(float))
+		if (_entry!.ValueType == typeof(float))
 		{
 			if (_entry.MinValue != null && _entry.MaxValue != null)
 			{
 				var slider = new HSlider
 				{
-					MinValue = Convert.ToSingle(_entry.MinValue),
-					MaxValue = Convert.ToSingle(_entry.MaxValue),
+					MinValue = Convert.ToSingle(_entry!.MinValue),
+					MaxValue = Convert.ToSingle(_entry!.MaxValue),
 					Step = 0.01,
 					SizeFlagsHorizontal = SizeFlags.ExpandFill
 				};
@@ -141,7 +141,7 @@ public partial class SettingRow : HBoxContainer
 			}
 		}
 
-		if (_entry.ValidOptions != null && _entry.ValidOptions.Length > 0)
+		if (_entry!.ValidOptions != null && _entry!.ValidOptions.Length > 0)
 		{
 			var optionButton = new OptionButton
 			{
@@ -156,7 +156,7 @@ public partial class SettingRow : HBoxContainer
 			return optionButton;
 		}
 
-		if (_entry.ValueType == typeof(string))
+		if (_entry!.ValueType == typeof(string))
 		{
 			var lineEdit = new LineEdit
 			{
@@ -176,7 +176,7 @@ public partial class SettingRow : HBoxContainer
 
 	private void ConnectSignals()
 	{
-		_resetButton.Pressed += OnResetPressed;
+		_resetButton!.Pressed += OnResetPressed;
 
 		if (_valueControl is CheckBox checkBox)
 		{
@@ -204,19 +204,19 @@ public partial class SettingRow : HBoxContainer
 	private void OnBoolChanged(bool pressed)
 	{
 		if (_isUpdating) return;
-		RuntimeSettings.Instance?.SetSetting(_category, _entry.Key, pressed);
+		RuntimeSettings.Instance?.SetSetting(_category!, _entry!.Key!, pressed);
 	}
 
 	private void OnIntChanged(double value)
 	{
 		if (_isUpdating) return;
-		RuntimeSettings.Instance?.SetSetting(_category, _entry.Key, (int)value);
+		RuntimeSettings.Instance?.SetSetting(_category!, _entry!.Key!, (int)value);
 	}
 
 	private void OnFloatChanged(double value)
 	{
 		if (_isUpdating) return;
-		RuntimeSettings.Instance?.SetSetting(_category, _entry.Key, (float)value);
+		RuntimeSettings.Instance?.SetSetting(_category!, _entry!.Key!, (float)value);
 		UpdateValueLabel((float)value);
 	}
 
@@ -226,7 +226,7 @@ public partial class SettingRow : HBoxContainer
 		if (_valueControl is OptionButton optionButton && index >= 0 && index < optionButton.ItemCount)
 		{
 			string selectedOption = optionButton.GetItemText((int)index);
-			RuntimeSettings.Instance?.SetSetting(_category, _entry.Key, selectedOption);
+			RuntimeSettings.Instance?.SetSetting(_category!, _entry!.Key!, selectedOption);
 		}
 	}
 
@@ -234,23 +234,23 @@ public partial class SettingRow : HBoxContainer
 	{
 		if (_isUpdating) return;
 
-		if (_entry.ValueType == typeof(int))
+		if (_entry!.ValueType == typeof(int))
 		{
 			if (int.TryParse(text, out int intValue))
 			{
-				RuntimeSettings.Instance?.SetSetting(_category, _entry.Key, intValue);
+				RuntimeSettings.Instance?.SetSetting(_category!, _entry.Key!, intValue);
 			}
 		}
 		else if (_entry.ValueType == typeof(float))
 		{
 			if (float.TryParse(text, out float floatValue))
 			{
-				RuntimeSettings.Instance?.SetSetting(_category, _entry.Key, floatValue);
+				RuntimeSettings.Instance?.SetSetting(_category!, _entry.Key!, floatValue);
 			}
 		}
 		else
 		{
-			RuntimeSettings.Instance?.SetSetting(_category, _entry.Key, text);
+			RuntimeSettings.Instance?.SetSetting(_category!, _entry.Key!, text);
 		}
 	}
 
@@ -264,7 +264,7 @@ public partial class SettingRow : HBoxContainer
 
 	private void OnResetPressed()
 	{
-		RuntimeSettings.Instance?.ResetSetting(_category, _entry.Key);
+		RuntimeSettings.Instance?.ResetSetting(_category!, _entry!.Key!);
 		UpdateValueDisplay();
 	}
 
@@ -278,17 +278,17 @@ public partial class SettingRow : HBoxContainer
 			return;
 		}
 
-		if (_entry.ValueType == typeof(bool))
+		if (_entry!.ValueType == typeof(bool))
 		{
-			bool value = RuntimeSettings.Instance.GetSetting<bool>(_category, _entry.Key);
+			bool value = RuntimeSettings.Instance.GetSetting<bool>(_category!, _entry.Key!);
 			if (_valueControl is CheckBox checkBox)
 			{
 				checkBox.ButtonPressed = value;
 			}
 		}
-		else if (_entry.ValueType == typeof(int))
+		else if (_entry!.ValueType == typeof(int))
 		{
-			int value = RuntimeSettings.Instance.GetSetting<int>(_category, _entry.Key);
+			int value = RuntimeSettings.Instance.GetSetting<int>(_category!, _entry.Key!);
 			if (_valueControl is SpinBox spinBox)
 			{
 				spinBox.Value = value;
@@ -298,9 +298,9 @@ public partial class SettingRow : HBoxContainer
 				lineEdit.Text = value.ToString();
 			}
 		}
-		else if (_entry.ValueType == typeof(float))
+		else if (_entry!.ValueType == typeof(float))
 		{
-			float value = RuntimeSettings.Instance.GetSetting<float>(_category, _entry.Key);
+			float value = RuntimeSettings.Instance.GetSetting<float>(_category!, _entry.Key!);
 			if (_valueControl is HSlider slider)
 			{
 				slider.Value = value;
@@ -313,7 +313,7 @@ public partial class SettingRow : HBoxContainer
 		}
 		else if (_entry.ValidOptions != null && _entry.ValidOptions.Length > 0)
 		{
-			string value = RuntimeSettings.Instance.GetSetting<string>(_category, _entry.Key);
+			string? value = RuntimeSettings.Instance.GetSetting<string>(_category!, _entry.Key!);
 			if (_valueControl is OptionButton optionButton)
 			{
 				for (int i = 0; i < optionButton.ItemCount; i++)
@@ -326,9 +326,9 @@ public partial class SettingRow : HBoxContainer
 				}
 			}
 		}
-		else if (_entry.ValueType == typeof(string))
+		else if (_entry!.ValueType == typeof(string))
 		{
-			string value = RuntimeSettings.Instance.GetSetting<string>(_category, _entry.Key);
+			string? value = RuntimeSettings.Instance.GetSetting<string>(_category!, _entry.Key!);
 			if (_valueControl is LineEdit lineEdit)
 			{
 				lineEdit.Text = value ?? string.Empty;
@@ -342,7 +342,7 @@ public partial class SettingRow : HBoxContainer
     {
         if (_valueLabel == null) return;
 
-        if (_entry.MaxValue != null && _entry.MinValue != null)
+        if (_entry!.MaxValue != null && _entry.MinValue != null)
         {
             float min = Convert.ToSingle(_entry.MinValue);
             float max = Convert.ToSingle(_entry.MaxValue);

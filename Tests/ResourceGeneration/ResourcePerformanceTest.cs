@@ -150,7 +150,7 @@ public class ResourcePerformanceTest
         var config = CreateMockContinentConfig();
 
         var sw = Stopwatch.StartNew();
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
         sw.Stop();
 
         const double maxTimeMs = 100.0;
@@ -170,11 +170,11 @@ public class ResourcePerformanceTest
         var continents2 = CreateMockContinentsWithCells(5, 10);
 
         var sw1 = Stopwatch.StartNew();
-        ContinentResourceGenerator.GenerateResources(continents1, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents1, config, rng, null!);
         sw1.Stop();
 
         var sw2 = Stopwatch.StartNew();
-        ContinentResourceGenerator.GenerateResources(continents2, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents2, config, rng, null!);
         sw2.Stop();
 
         AssertThat(continents1.Values.Sum(c => c.ContinentalResources.Count)).IsGreater(0);

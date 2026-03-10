@@ -8,19 +8,19 @@ namespace UI.Debug.DatabaseViewer;
 
 public partial class DatabaseViewer : BaseDebugModule
 {
-    private HSplitContainer _mainSplit;
-    private ItemList _categoryList;
-    private Tree _dataTree;
-    private LineEdit _searchBox;
-    private RichTextLabel _detailPanel;
-    private HBoxContainer _actionButtons;
-    private Button _refreshButton;
-    private Button _copyPathButton;
-    private Button _watchButton;
+    private HSplitContainer? _mainSplit;
+    private ItemList? _categoryList;
+    private Tree? _dataTree;
+    private LineEdit? _searchBox;
+    private RichTextLabel? _detailPanel;
+    private HBoxContainer? _actionButtons;
+    private Button? _refreshButton;
+    private Button? _copyPathButton;
+    private Button? _watchButton;
 
-    private string _selectedCategory;
-    private IDataProvider _selectedProvider;
-    private TreeItem _selectedItem;
+    private string? _selectedCategory;
+    private IDataProvider? _selectedProvider;
+    private TreeItem? _selectedItem;
     private readonly HashSet<string> _watchedPaths = new();
     private double _refreshTimer;
     private const double RefreshInterval = 0.5;
@@ -55,7 +55,7 @@ public partial class DatabaseViewer : BaseDebugModule
         {
             Name = "MainSplit",
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SplitOffset = 200
+            SplitOffsets = new[] { 200 }
         };
 
         BuildCategoryPanel();
@@ -99,7 +99,7 @@ public partial class DatabaseViewer : BaseDebugModule
         categoryContainer.AddChild(categoryLabel);
         categoryContainer.AddChild(_categoryList);
         categoryPanel.AddChild(categoryContainer);
-        _mainSplit.AddChild(categoryPanel);
+        _mainSplit!.AddChild(categoryPanel);
     }
 
     private void BuildDataPanel()
@@ -134,7 +134,7 @@ public partial class DatabaseViewer : BaseDebugModule
 
         dataContainer.AddChild(_dataTree);
         dataPanel.AddChild(dataContainer);
-        _mainSplit.AddChild(dataPanel);
+        _mainSplit!.AddChild(dataPanel);
     }
 
     private void BuildDetailPanel(VBoxContainer mainContainer)
@@ -217,7 +217,7 @@ public partial class DatabaseViewer : BaseDebugModule
         DataProviderRegistry.Initialize();
         PopulateCategories();
 
-        if (_categoryList.ItemCount > 0)
+        if (_categoryList!.ItemCount > 0)
         {
             _categoryList.Select(0);
             OnCategorySelected(0);
@@ -226,7 +226,7 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void PopulateCategories()
     {
-        _categoryList.Clear();
+        _categoryList!.Clear();
 
         var categories = DataProviderRegistry.Categories.OrderBy(c => c).ToList();
         foreach (var category in categories)
@@ -242,18 +242,17 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void OnCategorySelected(long index)
     {
-        if (index < 0 || index >= _categoryList.ItemCount)
-        {
+        if (index < 0 || index >= _categoryList!.ItemCount)        {
             return;
         }
 
-        _selectedCategory = _categoryList.GetItemText((int)index);
+        _selectedCategory = _categoryList!.GetItemText((int)index);
         _selectedProvider = null;
 
         var providers = DataProviderRegistry.GetProvidersByCategory(_selectedCategory);
         if (providers.Count == 0)
         {
-            _dataTree.Clear();
+            _dataTree!.Clear();
             SetDetailText($"[color=yellow]No providers in category: {_selectedCategory}[/color]");
             return;
         }
@@ -271,8 +270,8 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void PopulateAllProvidersData(List<IDataProvider> providers)
     {
-        _dataTree.Clear();
-        var root = _dataTree.CreateItem();
+        _dataTree!.Clear();
+        var root = _dataTree!.CreateItem();
 
         foreach (var provider in providers.OrderBy(p => p.Name))
         {
@@ -281,7 +280,7 @@ public partial class DatabaseViewer : BaseDebugModule
                 provider.Refresh();
             }
 
-            var providerRoot = _dataTree.CreateItem(root);
+            var providerRoot = _dataTree!.CreateItem(root);
             providerRoot.SetText(0, provider.Name);
             providerRoot.SetMetadata(0, Variant.From($"__provider__:{provider.Name}"));
             providerRoot.SetText(1, $"[{provider.Category}]");
@@ -292,12 +291,12 @@ public partial class DatabaseViewer : BaseDebugModule
             {
                 foreach (var property in data.Properties.Values)
                 {
-                    DataTreeBuilder.BuildTree(_dataTree, property, providerRoot);
+                    DataTreeBuilder.BuildTree(_dataTree!, property, providerRoot);
                 }
 
                 foreach (var child in data.Children)
                 {
-                    DataTreeBuilder.BuildTree(_dataTree, child, providerRoot);
+                    DataTreeBuilder.BuildTree(_dataTree!, child, providerRoot);
                 }
             }
         }
@@ -307,7 +306,7 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void OnTreeItemSelected()
     {
-        _selectedItem = _dataTree.GetSelected();
+        _selectedItem = _dataTree!.GetSelected();
         if (_selectedItem == null)
         {
             return;
@@ -323,7 +322,7 @@ public partial class DatabaseViewer : BaseDebugModule
         UpdateWatchButton();
     }
 
-    private IDataProvider GetProviderForItem(TreeItem item)
+    private IDataProvider? GetProviderForItem(TreeItem item)
     {
         if (item == null)
         {
@@ -407,14 +406,14 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void SetDetailText(string bbcode)
     {
-        _detailPanel.Clear();
-        _detailPanel.ParseBbcode(bbcode);
+        _detailPanel!.Clear();
+        _detailPanel!.ParseBbcode(bbcode);
     }
 
     private void UpdateWatchButton()
     {
-        var path = GetItemPath(_selectedItem);
-        _watchButton.ButtonPressed = _watchedPaths.Contains(path);
+        var path = GetItemPath(_selectedItem!);
+        _watchButton!.ButtonPressed = _watchedPaths.Contains(path);
     }
 
     private string GetItemPath(TreeItem item)
@@ -452,7 +451,7 @@ public partial class DatabaseViewer : BaseDebugModule
             _selectedProvider.Refresh();
         }
 
-        _dataTree.Clear();
+        _dataTree!.Clear();
 
         var data = _selectedProvider.GetData();
         if (data == null)
@@ -461,7 +460,7 @@ public partial class DatabaseViewer : BaseDebugModule
             return;
         }
 
-        DataTreeBuilder.BuildTree(_dataTree, data);
+        DataTreeBuilder.BuildTree(_dataTree!, data);
         ApplySearchFilter();
     }
 
@@ -472,14 +471,14 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void ApplySearchFilter()
     {
-        var searchText = _searchBox.Text;
+        var searchText = _searchBox!.Text;
         if (string.IsNullOrEmpty(searchText))
         {
-            SetAllItemsVisible(_dataTree.GetRoot(), true);
+            SetAllItemsVisible(_dataTree!.GetRoot(), true);
             return;
         }
 
-        FilterTreeItems(_dataTree.GetRoot(), searchText);
+        FilterTreeItems(_dataTree!.GetRoot(), searchText);
     }
 
     private bool FilterTreeItems(TreeItem item, string searchText)
@@ -564,7 +563,7 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void CopyPathToClipboard()
     {
-        var path = GetItemPath(_selectedItem);
+        var path = GetItemPath(_selectedItem!);
         if (!string.IsNullOrEmpty(path))
         {
             DisplayServer.ClipboardSet(path);
@@ -611,13 +610,13 @@ public partial class DatabaseViewer : BaseDebugModule
         if (_watchedPaths.Contains(path))
         {
             _watchedPaths.Remove(path);
-            _watchButton.ButtonPressed = false;
+            _watchButton!.ButtonPressed = false;
             SetDetailText($"[color=yellow]Stopped watching:[/color] {path}");
         }
         else
         {
             _watchedPaths.Add(path);
-            _watchButton.ButtonPressed = true;
+            _watchButton!.ButtonPressed = true;
             SetDetailText($"[color=green]Watching:[/color] {path}");
         }
     }
@@ -656,12 +655,12 @@ public partial class DatabaseViewer : BaseDebugModule
     {
         base.OnModuleEnabled();
 
-        if (_categoryList.ItemCount == 0)
+        if (_categoryList!.ItemCount == 0)
         {
             PopulateCategories();
         }
 
-        if (_categoryList.ItemCount > 0 && _categoryList.GetSelectedItems().Length == 0)
+        if (_categoryList!.ItemCount > 0 && _categoryList.GetSelectedItems().Length == 0)
         {
             _categoryList.Select(0);
             OnCategorySelected(0);
@@ -682,16 +681,16 @@ public partial class DatabaseViewer : BaseDebugModule
         }
 
         var categoryIndex = 0;
-        for (int i = 0; i < _categoryList.ItemCount; i++)
+        for (int i = 0; i < _categoryList!.ItemCount; i++)
         {
-            if (_categoryList.GetItemText(i) == provider.Category)
+            if (_categoryList!.GetItemText(i) == provider.Category)
             {
                 categoryIndex = i;
                 break;
             }
         }
 
-        _categoryList.Select(categoryIndex);
+        _categoryList!.Select(categoryIndex);
         _selectedCategory = provider.Category;
         _selectedProvider = provider;
         RefreshDataTree();
@@ -705,7 +704,7 @@ public partial class DatabaseViewer : BaseDebugModule
     public void ClearWatches()
     {
         _watchedPaths.Clear();
-        _watchButton.ButtonPressed = false;
+        _watchButton!.ButtonPressed = false;
     }
 }
 #endif

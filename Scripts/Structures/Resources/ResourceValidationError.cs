@@ -4,8 +4,8 @@ namespace Structures.Resources;
 
 public class ResourceValidationError : Exception
 {
-    public string ResourceId { get; }
-    public string BodyConfigName { get; }
+    public string? ResourceId { get; }
+    public string? BodyConfigName { get; }
 
     public ResourceValidationError(string message) : base(message)
     {

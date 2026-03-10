@@ -30,9 +30,9 @@ public partial class CelestialBody : Node3D
     public Vector3 TotalForce;
     public CelestialBodyType Type;
     public RockyPlanetType? RockyType;
-    public UnifiedCelestialMesh Mesh;
+    public UnifiedCelestialMesh? Mesh;
     public Octree<Point> Oct;
-    private Godot.Collections.Dictionary bodyDict;
+    private Godot.Collections.Dictionary? bodyDict;
     private StructureDatabase StrDb;
 
     public CelestialBody(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
@@ -158,8 +158,8 @@ public partial class CelestialBody : Node3D
     }
 
     public void StartMeshGeneration(
-        Action<CelestialBody> onCompleted = null,
-        Action<CelestialBody, string> onFailed = null
+        Action<CelestialBody>? onCompleted = null,
+        Action<CelestialBody, string>? onFailed = null
     )
     {
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
@@ -219,7 +219,7 @@ public partial class CelestialBody : Node3D
             var t = TemplateHelpers.GetCelestialBodyDefaults(Type);
             var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
             meshParams.Add("name", name);
-            meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), Type));
+            meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), Type)!);
             var template = (Godot.Collections.Dictionary)t["template"];
             var position = (Vector3)template["position"];
             var velocity = (Vector3)template["velocity"];
@@ -262,7 +262,7 @@ public partial class CelestialBody : Node3D
         }
         this.CallDeferred("set_name", (String)meshParams["name"]);
         GD.Print($"Mesh Params: {meshParams}");
-        Mesh.ConfigureFrom(StrDb, meshParams);
+        Mesh!.ConfigureFrom(StrDb, meshParams);
         
         Mesh.StartMeshGeneration(
             Oct,
@@ -299,24 +299,25 @@ public partial class CelestialBody : Node3D
         return (string)names[random.RandiRange(0, names.Count - 1)];
     }
 
-    public Point FindNearest(Vector3 position)
+    public Point? FindNearest(Vector3 position)
     {
         var result = FindNearestCell(position);
         return result?.Point;
     }
 
-    public CellSelectionResult FindNearestCell(Vector3 position)
+    public CellSelectionResult? FindNearestCell(Vector3 position)
     {
         Vector3 localSpace = (position - this.GlobalPosition);
         Point desired = new Point(localSpace, 0);
-        Point result = Oct.FindNearest(desired);
+        Point? result = Oct.FindNearest(desired);
+        if (result is null) return null;
         PolygonRendererSDL.DrawPoint(this, 1, result.ToVector3(), 0.05f, Colors.Red);
 
         var cells = StrDb.PlanetMap[result];
         Godot.Collections.Array<VoronoiCell> contains = new Godot.Collections.Array<VoronoiCell>();
         foreach (var cell in cells)
         {
-            desired.Position = desired.Position.Normalized() * (Mesh.size + cell.Height);
+            desired.Position = desired.Position.Normalized() * (Mesh!.size + cell.Height);
             if (cell.BoundingBox.HasPoint(desired.Position))
                 contains.Add(cell);
         }
@@ -327,7 +328,7 @@ public partial class CelestialBody : Node3D
         else if (contains.Count == 1)
         {
             var cell = contains[0];
-            var continent = Mesh.GetContinent(cell.ContinentIndex);
+            var continent = Mesh!.GetContinent(cell.ContinentIndex);
             return new CellSelectionResult
             {
                 Point = result,
@@ -338,7 +339,7 @@ public partial class CelestialBody : Node3D
         else
         {
             float minDist = float.MaxValue;
-            VoronoiCell minCell = null;
+            VoronoiCell? minCell = null;
             foreach (var cell in contains)
             {
                 float dist = (cell.Center - desired.Position).LengthSquared();
@@ -348,11 +349,11 @@ public partial class CelestialBody : Node3D
                     minCell = cell;
                 }
             }
-            var continent = Mesh.GetContinent(minCell.ContinentIndex);
+            var continent = Mesh!.GetContinent(minCell!.ContinentIndex);
             return new CellSelectionResult
             {
                 Point = result,
-                Cell = minCell,
+                Cell = contains[0],
                 CellContinent = continent,
             };
         }
@@ -360,9 +361,9 @@ public partial class CelestialBody : Node3D
 
     public class CellSelectionResult
     {
-        public Point Point { get; set; }
-        public VoronoiCell Cell { get; set; }
-        public Continent CellContinent { get; set; }
+        public required Point Point { get; set; }
+        public required VoronoiCell Cell { get; set; }
+        public required Continent CellContinent { get; set; }
     }
 
     public MeshInstance3D CreateDebugWireframe(Aabb aabb)
@@ -555,8 +556,8 @@ public partial class CelestialBody : Node3D
         internal float? _mass;
         internal CelestialBodyType? _type;
         internal RockyPlanetType? _rockyType;
-        internal UnifiedCelestialMesh _mesh;
-        internal Godot.Collections.Dictionary _bodyDict;
+        internal UnifiedCelestialMesh? _mesh;
+        internal Godot.Collections.Dictionary? _bodyDict;
 
         public Builder WithVelocity(Vector3 velocity)
         {

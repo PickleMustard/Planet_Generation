@@ -11,16 +11,16 @@ namespace PlayerInteraction.CellSelection
 {
     public partial class CellSelectionManager : Node
     {
-        public static CellSelectionManager Instance { get; private set; }
+        public static CellSelectionManager? Instance { get; private set; }
 
-        private VoronoiCell _selectedCell;
-        private CelestialBody _selectedBody;
-        private Continent _selectedContinent;
+        private VoronoiCell? _selectedCell;
+        private CelestialBody? _selectedBody;
+        private Continent? _selectedContinent;
         private List<MeshInstance3D> _highlightMeshes = new List<MeshInstance3D>();
 
-        public VoronoiCell SelectedCell => _selectedCell;
-        public CelestialBody SelectedBody => _selectedBody;
-        public Continent SelectedContinent => _selectedContinent;
+        public VoronoiCell? SelectedCell => _selectedCell;
+        public CelestialBody? SelectedBody => _selectedBody;
+        public Continent? SelectedContinent => _selectedContinent;
 
         [Signal]
         public delegate void CellSelectedEventHandler(
@@ -81,22 +81,22 @@ namespace PlayerInteraction.CellSelection
 
         private void DrawCellHighlight(VoronoiCell cell, CelestialBody body)
         {
-            if (cell?.Edges == null || body == null)
+            if (cell is null || cell.Edges is null || body is null)
                 return;
 
             var root = GetTree().Root;
             Color highlightColor = new Color(1.0f, 0.8f, 0.0f, 1.0f);
 
-            foreach (var edge in cell.Edges)
+            foreach (var edge in cell!.Edges!)
             {
-                if (edge?.P == null || edge?.Q == null)
+                if (edge is null || edge.P is null || edge.Q is null)
                     continue;
 
-                Vector3 worldPos1 = body.ToGlobal(
-                    edge.P.Position.Normalized() * (body.Mesh.size + cell.Height)
+                Vector3 worldPos1 = body!.ToGlobal(
+                    edge.P!.Position.Normalized() * (body.Mesh!.size + cell!.Height)
                 );
-                Vector3 worldPos2 = body.ToGlobal(
-                    edge.Q.Position.Normalized() * (body.Mesh.size + cell.Height)
+                Vector3 worldPos2 = body!.ToGlobal(
+                    edge.Q!.Position.Normalized() * (body.Mesh!.size + cell!.Height)
                 );
 
                 var lineMesh = PolygonRendererSDL.DrawLine(

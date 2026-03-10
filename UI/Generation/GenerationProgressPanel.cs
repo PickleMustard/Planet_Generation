@@ -7,15 +7,15 @@ namespace UI.Generation
 {
     public partial class GenerationProgressPanel : PanelContainer
     {
-        private VBoxContainer _mainContainer;
-        private Button _headerButton;
-        private Label _headerLabel;
-        private TextureRect _expandIcon;
-        private ScrollContainer _scrollContainer;
-        private VBoxContainer _itemsContainer;
+        private VBoxContainer? _mainContainer;
+        private Button? _headerButton;
+        private Label? _headerLabel;
+        private TextureRect? _expandIcon;
+        private ScrollContainer? _scrollContainer;
+        private VBoxContainer? _itemsContainer;
 
         private readonly Dictionary<string, GenerationProgressItem> _items = new();
-        private PackedScene _itemScene;
+        private PackedScene? _itemScene;
 
         private bool _isExpanded = true;
         private bool _allComplete = false;
@@ -169,7 +169,7 @@ namespace UI.Generation
 
         private void ConnectSignals()
         {
-            _headerButton.Pressed += OnHeaderPressed;
+            _headerButton!.Pressed += OnHeaderPressed;
 
             if (TaskTimer.Instance != null)
             {
@@ -189,7 +189,7 @@ namespace UI.Generation
 
         private void OnHeaderPressed()
         {
-            _isExpanded = _headerButton.ButtonPressed;
+            _isExpanded = _headerButton!.ButtonPressed;
             UpdateExpandIcon();
             UpdateVisibility();
         }
@@ -199,13 +199,13 @@ namespace UI.Generation
             string iconPath = _isExpanded ? "res://UI/chevron_down.svg" : "res://UI/chevron_right.svg";
             if (ResourceLoader.Exists(iconPath))
             {
-                _expandIcon.Texture = GD.Load<Texture2D>(iconPath);
+                _expandIcon!.Texture = GD.Load<Texture2D>(iconPath);
             }
         }
 
         private void UpdateVisibility()
         {
-            _scrollContainer.Visible = _isExpanded;
+            _scrollContainer!.Visible = _isExpanded;
         }
 
         private void OnTimerStarted(string name, int totalSteps, string[] stepNames)
@@ -219,7 +219,7 @@ namespace UI.Generation
             if (!_isExpanded)
             {
                 _isExpanded = true;
-                _headerButton.ButtonPressed = true;
+                _headerButton!.ButtonPressed = true;
                 UpdateExpandIcon();
                 UpdateVisibility();
             }
@@ -255,7 +255,7 @@ namespace UI.Generation
                 item = new GenerationProgressItem();
             }
 
-            _itemsContainer.AddChild(item);
+            _itemsContainer!.AddChild(item);
             item.ConnectToTimer(bodyName, totalSteps, stepNames);
             _items[bodyName] = item;
         }
@@ -275,18 +275,18 @@ namespace UI.Generation
         {
             if (_allComplete)
             {
-                _headerLabel.Text = $"Generation Complete ({_totalCount})";
-                _headerLabel.AddThemeColorOverride("font_color", new Color(0.6f, 0.8f, 0.6f));
+                _headerLabel!.Text = $"Generation Complete ({_totalCount})";
+                _headerLabel!.AddThemeColorOverride("font_color", new Color(0.6f, 0.8f, 0.6f));
             }
             else if (_totalCount > 0)
             {
-                _headerLabel.Text = $"Generating ({_completedCount}/{_totalCount})";
-                _headerLabel.AddThemeColorOverride("font_color", new Color(0.8f, 0.8f, 0.4f));
+                _headerLabel!.Text = $"Generating ({_completedCount}/{_totalCount})";
+                _headerLabel!.AddThemeColorOverride("font_color", new Color(0.8f, 0.8f, 0.4f));
             }
             else
             {
-                _headerLabel.Text = "Generation Progress";
-                _headerLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
+                _headerLabel!.Text = "Generation Progress";
+                _headerLabel!.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
             }
         }
 
@@ -298,7 +298,7 @@ namespace UI.Generation
                 if (_collapseTimer >= COLLAPSE_DELAY)
                 {
                     _isExpanded = false;
-                    _headerButton.ButtonPressed = false;
+                    _headerButton!.ButtonPressed = false;
                     UpdateExpandIcon();
                     UpdateVisibility();
                     _collapseTimer = 0.0;

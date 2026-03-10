@@ -5,10 +5,10 @@ namespace UtilityLibrary
 {
     public class TimerInfo
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int TotalSteps { get; set; }
         public int CurrentStep { get; set; }
-        public string[] StepNames { get; set; }
+        public string[]? StepNames { get; set; }
         public DateTime StartTime { get; set; }
         public TimeSpan Elapsed { get; set; }
         public bool IsComplete { get; set; }

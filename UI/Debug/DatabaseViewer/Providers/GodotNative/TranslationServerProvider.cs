@@ -13,7 +13,7 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("Translation Server", Category = "Localization")]
 public class TranslationServerProvider : IDataProvider
 {
-    private DebugDataNode _cachedData;
+    private DebugDataNode? _cachedData;
     private bool _needsRefresh = true;
 
     public string Name => "Translation Server";

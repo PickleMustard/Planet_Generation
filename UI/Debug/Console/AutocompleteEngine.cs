@@ -21,18 +21,19 @@ public class Suggestion : IComparable<Suggestion>
     public string Text { get; }
     public SuggestionSource Source { get; }
     public int Priority { get; }
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
-    public Suggestion(string text, SuggestionSource source, int priority = 0, string description = null)
+    public Suggestion(string text, SuggestionSource source, int priority = 0, string? description = null)
     {
         Text = text;
         Source = source;
         Priority = priority;
-        Description = description;
+        Description = description ?? string.Empty;
     }
 
-    public int CompareTo(Suggestion other)
+    public int CompareTo(Suggestion? other)
     {
+        if (other is null) return 1;
         int priorityCompare = other.Priority.CompareTo(Priority);
         if (priorityCompare != 0) return priorityCompare;
 
@@ -98,7 +99,7 @@ public class AutocompleteEngine
 
     private void AddCommandSuggestions(List<Suggestion> suggestions, CommandParser.ParsedCommand parsed, string input)
     {
-        string searchTerm = string.IsNullOrEmpty(parsed.Namespace)
+        string? searchTerm = string.IsNullOrEmpty(parsed.Namespace)
             ? parsed.CommandName
             : parsed.Namespace.Contains(".")
                 ? parsed.Namespace
@@ -106,24 +107,24 @@ public class AutocompleteEngine
 
         foreach (var cmd in _registry.GetAllCommands())
         {
-            if (cmd.Name.StartsWith(parsed.CommandName, StringComparison.OrdinalIgnoreCase))
+            if (cmd.Name!.StartsWith(parsed.CommandName!, StringComparison.OrdinalIgnoreCase))
             {
-                int priority = cmd.Name.Equals(parsed.CommandName, StringComparison.OrdinalIgnoreCase) ? 100 : 50;
-                if (cmd.Name.StartsWith(parsed.CommandName, StringComparison.OrdinalIgnoreCase) &&
-                    cmd.Name.Length == parsed.CommandName.Length)
+                int priority = cmd.Name.Equals(parsed.CommandName!, StringComparison.OrdinalIgnoreCase) ? 100 : 50;
+                if (cmd.Name.StartsWith(parsed.CommandName!, StringComparison.OrdinalIgnoreCase) &&
+                    cmd.Name.Length == parsed.CommandName!.Length)
                 {
                     priority = 100;
                 }
-                else if (cmd.Name.StartsWith(parsed.CommandName, StringComparison.OrdinalIgnoreCase))
+                else if (cmd.Name.StartsWith(parsed.CommandName!, StringComparison.OrdinalIgnoreCase))
                 {
-                    priority = 50 + (10 - Math.Min(10, cmd.Name.Length - parsed.CommandName.Length));
+                    priority = 50 + (10 - Math.Min(10, cmd.Name.Length - parsed.CommandName!.Length));
                 }
 
-                suggestions.Add(new Suggestion(cmd.Name, SuggestionSource.Command, priority, cmd.Description));
+                suggestions.Add(new Suggestion(cmd.Name, SuggestionSource.Command, priority, cmd.Description!));
             }
         }
 
-        AddNamespaceSuggestions(suggestions, searchTerm, parsed);
+        AddNamespaceSuggestions(suggestions, searchTerm!, parsed);
     }
 
     private void AddNamespaceSuggestions(List<Suggestion> suggestions, string searchTerm, CommandParser.ParsedCommand parsed)
@@ -157,18 +158,18 @@ public class AutocompleteEngine
 
     private void AddArgumentSuggestions(List<Suggestion> suggestions, CommandParser.ParsedCommand parsed, string lastToken)
     {
-        if (!_registry.TryGetCommand(parsed.CommandName, out var command))
+        if (!_registry.TryGetCommand(parsed.CommandName!, out var command))
         {
             return;
         }
 
-        var commandSuggestions = GetCommandArgumentSuggestions(command, parsed.Arguments, lastToken);
+        var commandSuggestions = GetCommandArgumentSuggestions(command!, parsed.Arguments, lastToken);
         foreach (var suggestion in commandSuggestions)
         {
             suggestions.Add(new Suggestion(suggestion, SuggestionSource.Argument, 30));
         }
 
-        if (command.Usage != null && command.Usage.Contains("path", StringComparison.OrdinalIgnoreCase))
+        if (command!.Usage != null && command.Usage!.Contains("path", StringComparison.OrdinalIgnoreCase))
         {
             AddFilePathSuggestions(suggestions, lastToken);
         }
@@ -233,7 +234,7 @@ public class AutocompleteEngine
             if (InstanceRegistry.TryGetInstance(namespacePart, out var instance))
             {
                 var propertyPrefix = partialPath.Substring(lastDot + 1);
-                var properties = instance.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                var properties = instance!.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
                 foreach (var prop in properties)
                 {

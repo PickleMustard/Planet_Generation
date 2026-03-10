@@ -7,14 +7,14 @@ namespace UI.Debug.Settings;
 
 public partial class CategorySection : VBoxContainer
 {
-	private string _categoryName;
-	private Button _headerButton;
-	private VBoxContainer _contentContainer;
-	private PanelContainer _contentPanel;
+	private string? _categoryName;
+	private Button? _headerButton;
+	private VBoxContainer? _contentContainer;
+	private PanelContainer? _contentPanel;
 	private readonly Dictionary<string, SettingRow> _rows = new();
 	private bool _isExpanded = true;
 
-	public string CategoryName => _categoryName;
+	public string? CategoryName => _categoryName;
 	public bool IsExpanded => _isExpanded;
 
 	public void Setup(string categoryName)
@@ -45,7 +45,7 @@ public partial class CategorySection : VBoxContainer
 
 		_headerButton = new Button
 		{
-			Text = $"📁 {FormatCategoryName(_categoryName)}",
+			Text = $"📁 {FormatCategoryName(_categoryName!)}",
 			ToggleMode = true,
 			ButtonPressed = _isExpanded,
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -88,13 +88,13 @@ public partial class CategorySection : VBoxContainer
 	{
 		if (row == null) return;
 
-		string key = row.Entry?.Key;
+		string? key = row.Entry?.Key;
 		if (!string.IsNullOrEmpty(key))
 		{
 			_rows[key] = row;
 		}
 
-		_contentContainer.AddChild(row);
+		_contentContainer!.AddChild(row);
 	}
 
 	public void RemoveSettingRow(string key)
@@ -104,12 +104,12 @@ public partial class CategorySection : VBoxContainer
 		_rows.Remove(key);
 		if (row.IsInsideTree())
 		{
-			_contentContainer.RemoveChild(row);
+			_contentContainer!.RemoveChild(row);
 		}
 		row.QueueFree();
 	}
 
-	public SettingRow GetSettingRow(string key)
+	public SettingRow? GetSettingRow(string key)
 	{
 		if (string.IsNullOrEmpty(key)) return null;
 		_rows.TryGetValue(key, out var row);
@@ -135,15 +135,15 @@ public partial class CategorySection : VBoxContainer
 	public void Expand()
 	{
 		_isExpanded = true;
-		_headerButton.ButtonPressed = true;
-		_contentPanel.Show();
+		_headerButton!.ButtonPressed = true;
+		_contentPanel!.Show();
 	}
 
 	public void Collapse()
 	{
 		_isExpanded = false;
-		_headerButton.ButtonPressed = false;
-		_contentPanel.Hide();
+		_headerButton!.ButtonPressed = false;
+		_contentPanel!.Hide();
 	}
 
 	public void Toggle()
@@ -160,8 +160,8 @@ public partial class CategorySection : VBoxContainer
 
 	private void OnHeaderPressed()
 	{
-		_isExpanded = _headerButton.ButtonPressed;
-		_contentPanel.Visible = _isExpanded;
+		_isExpanded = _headerButton!.ButtonPressed;
+		_contentPanel!.Visible = _isExpanded;
 	}
 
 	private string FormatCategoryName(string name)

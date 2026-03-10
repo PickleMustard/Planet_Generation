@@ -12,16 +12,16 @@ namespace UI.Debug.Console;
 /// </summary>
 public class CommandInfo
 {
-    public string Name { get; set; }
-    public string Description { get; set; }
-    public string Usage { get; set; }
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? Usage { get; set; }
     public string[] Aliases { get; set; } = Array.Empty<string>();
     public string Category { get; set; } = "General";
     public bool RequiresTarget { get; set; }
-    public MethodInfo Method { get; set; }
-    public Type DeclaringType { get; set; }
+    public MethodInfo? Method { get; set; }
+    public Type? DeclaringType { get; set; }
     public bool IsStatic { get; set; }
-    public object SingletonInstance { get; set; }
+    public object? SingletonInstance { get; set; }
 }
 
 /// <summary>
@@ -85,7 +85,7 @@ public class CommandRegistry
             {
                 foreach (var type in ex.Types.Where(t => t != null))
                 {
-                    ScanType(type);
+                    ScanType(type!);
                 }
             }
             catch (Exception ex)
@@ -205,7 +205,7 @@ public class CommandRegistry
     /// <param name="name">The command name or alias.</param>
     /// <param name="command">The command info if found.</param>
     /// <returns>True if the command was found.</returns>
-    public bool TryGetCommand(string name, out CommandInfo command)
+    public bool TryGetCommand(string name, out CommandInfo? command)
     {
         return _commands.TryGetValue(name, out command) || _aliases.TryGetValue(name, out command);
     }
@@ -242,7 +242,7 @@ public class CommandRegistry
             return 1;
         }
 
-        return ExecuteCommand(command, parsed, context);
+        return ExecuteCommand(command!, parsed, context);
     }
 
     /// <summary>
@@ -282,7 +282,7 @@ public class CommandRegistry
     )
     {
         var parameters = new object[] { context, parsed.Arguments };
-        var result = command.Method.Invoke(null, parameters);
+        var result = command.Method!.Invoke(null, parameters);
         return result is int exitCode ? exitCode : 0;
     }
 
@@ -300,7 +300,7 @@ public class CommandRegistry
             if (command.SingletonInstance != null)
             {
                 var parameters = new object[] { context, parsed.Arguments };
-                var result = command.Method.Invoke(command.SingletonInstance, parameters);
+                var result = command.Method!.Invoke(command.SingletonInstance, parameters);
                 return result is int exitCode ? exitCode : 0;
             }
 
@@ -321,16 +321,16 @@ public class CommandRegistry
             return 1;
         }
 
-        if (!command.DeclaringType.IsInstanceOfType(target))
+        if (!command.DeclaringType!.IsInstanceOfType(target))
         {
             context.WriteError(
-                $"Instance '{parsed.Namespace}' is not of type {command.DeclaringType.Name}"
+                $"Instance '{parsed.Namespace}' is not of type {command.DeclaringType!.Name}"
             );
             return 1;
         }
 
         var targetParams = new object[] { context, parsed.Arguments };
-        var targetResult = command.Method.Invoke(target, targetParams);
+        var targetResult = command.Method!.Invoke(target, targetParams);
         return targetResult is int targetExitCode ? targetExitCode : 0;
     }
 
@@ -343,7 +343,7 @@ public class CommandRegistry
         CommandContext context
     )
     {
-        var (typeName, _) = _parser.SplitNamespace(parsed.Namespace);
+        var (typeName, _) = _parser.SplitNamespace(parsed.Namespace!);
         if (string.IsNullOrEmpty(typeName))
         {
             context.WriteError("Invalid wildcard namespace");
@@ -363,7 +363,7 @@ public class CommandRegistry
                 continue;
             }
 
-            if (!command.DeclaringType.IsInstanceOfType(target))
+            if (!command.DeclaringType!.IsInstanceOfType(target))
             {
                 failCount++;
                 continue;
@@ -372,7 +372,7 @@ public class CommandRegistry
             try
             {
                 var wildcardParams = new object[] { context, parsed.Arguments };
-                var result = command.Method.Invoke(target, wildcardParams);
+                var result = command.Method!.Invoke(target, wildcardParams);
                 if (result is int exitCode && exitCode == 0)
                 {
                     successCount++;
@@ -412,9 +412,9 @@ public class CommandRegistry
         {
             foreach (var cmd in _commands.Values)
             {
-                if (cmd.Name.StartsWith(parsed.CommandName, StringComparison.OrdinalIgnoreCase))
+                if (cmd.Name!.StartsWith(parsed.CommandName, StringComparison.OrdinalIgnoreCase))
                 {
-                    suggestions.Add(cmd.Name);
+                    suggestions.Add(cmd.Name!);
                 }
             }
 
@@ -441,14 +441,14 @@ public class CommandRegistry
     /// </summary>
     /// <param name="commandName">The command name.</param>
     /// <returns>Help text or null if not found.</returns>
-    public string GetHelp(string commandName)
+    public string? GetHelp(string commandName)
     {
         if (!TryGetCommand(commandName, out var command))
         {
             return null;
         }
 
-        var help = $"**{command.Name}** - {command.Description}";
+        var help = $"**{command!.Name!}** - {command!.Description!}";
         if (!string.IsNullOrEmpty(command.Usage))
         {
             help += $"\n  Usage: {command.Usage}";

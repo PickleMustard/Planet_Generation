@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Godot;
 using Godot.Collections;
 
@@ -14,7 +15,7 @@ namespace UtilityLibrary
         /// <summary>
         /// Gets the singleton instance of RuntimeSettings.
         /// </summary>
-        public static RuntimeSettings Instance { get; private set; }
+        public static RuntimeSettings? Instance { get; private set; }
 
         /// <summary>
         /// Emitted when a setting value changes.
@@ -28,13 +29,10 @@ namespace UtilityLibrary
         [Signal]
         public delegate void SettingsLoadedEventHandler();
 
-        private const string SettingsFilePath = "user://settings.cfg";
-        private const string DefaultTemplatePath = "res://settings.cfg";
-        private const string SettingsFileName = "settings.cfg";
-
         private readonly System.Collections.Generic.Dictionary<string, IConfigurable> _configurables = new();
-        private readonly ConfigFile _configFile = new();
         private readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, Variant>> _settingsCache = new();
+        private readonly ConfigFile _configFile = new();
+        private const string SettingsFilePath = "res://settings.cfg";
         private bool _isLoaded;
 
         public override void _Ready()
@@ -44,6 +42,13 @@ namespace UtilityLibrary
             // Initialize GameLogger early so logging settings are registered
             // before any other code tries to log messages
             GameLogger.Initialize();
+        }
+
+        public override void _ExitTree()
+        {
+            // Ensure all cached settings are saved to file on exit
+            SaveToFile();
+            base._ExitTree();
         }
 
         /// <summary>
@@ -78,133 +83,99 @@ namespace UtilityLibrary
             }
 
             GameLogger.Debug($"Registered configurable for category: {category}");
-            
-            // Register with Godot's ProjectSettings for editor integration
-            RegisterWithProjectSettings(configurable);
+
+            // Apply loaded settings from the config file to this configurable
+            ApplyLoadedSettings(configurable, category);
+
+            // Write default values for this configurable if the file already exists
+            // (handles late-registering configurables like ThreadPooler, TaskTimer)
+            WriteDefaultsForConfigurable(configurable);
         }
-        
+
         /// <summary>
-        /// Registers a configurable's settings with Godot's ProjectSettings.
-        /// This makes them visible in the Editor's Project Settings dialog.
+        /// Applies loaded settings from the config file to a configurable during registration.
+        /// This ensures configurables receive their configured values from the settings file
+        /// at initialization time, not just when settings are changed at runtime.
         /// </summary>
-        /// <param name="configurable">The configurable to register.</param>
-        private void RegisterWithProjectSettings(IConfigurable configurable)
+        /// <param name="configurable">The configurable to apply settings to.</param>
+        /// <param name="category">The settings category.</param>
+        private void ApplyLoadedSettings(IConfigurable configurable, string category)
         {
-            string category = configurable.SettingsCategory;
-            
-            foreach (ConfigEntry entry in configurable.GetConfigEntries())
+            // Check if the config file has a section for this category
+            if (!_configFile.HasSection(category))
             {
-                string projectCategory = entry.ProjectSettingsCategory ?? category;
-                string fullKey = $"{projectCategory}/{entry.Key}";
-                
-                // Set the initial/default value if provided
-                if (entry.DefaultValue != null)
+                GameLogger.Debug($"No settings section found for category: {category}");
+                return;
+            }
+
+            // Get all keys in the category section
+            string[] keys = _configFile.GetSectionKeys(category);
+
+            foreach (string key in keys)
+            {
+                Variant value = _configFile.GetValue(category, key);
+
+                // Update the settings cache
+                if (!_settingsCache.ContainsKey(category))
                 {
-                    Variant defaultVariant = ObjectToVariant(entry.DefaultValue);
-                    if (!ProjectSettings.HasSetting(fullKey))
+                    _settingsCache[category] = new System.Collections.Generic.Dictionary<string, Variant>();
+                }
+                _settingsCache[category][key] = value;
+
+                // Apply the setting to the configurable (this updates their cached fields)
+                try
+                {
+                    // Convert Variant to object for ApplySetting
+                    object? convertedValue = ConvertVariantToObject(value);
+                    if (convertedValue != null)
                     {
-                        ProjectSettings.SetSetting(fullKey, defaultVariant);
+                        configurable.ApplySetting(key, convertedValue);
+                        GameLogger.Debug($"Applied loaded setting to [{category}]: {key} = {convertedValue}");
                     }
-                    ProjectSettings.SetInitialValue(fullKey, defaultVariant);
                 }
-                
-                // Add property info for editor UI hints
-                var propertyInfo = new Godot.Collections.Dictionary
+                catch (Exception ex)
                 {
-                    { "name", fullKey },
-                    { "type", (int)GetVariantType(entry.ValueType) },
-                    { "hint", (int)GetPropertyHint(entry) },
-                    { "hint_string", GetHintString(entry) }
-                };
-                ProjectSettings.AddPropertyInfo(propertyInfo);
-                
-                // Configure visibility
-                if (entry.IsInternal)
-                {
-                    ProjectSettings.SetAsInternal(fullKey, true);
+                    GameLogger.Warning($"Failed to apply loaded setting [{category}].{key}: {ex.Message}");
                 }
-                else if (entry.ShowInAdvanced)
-                {
-                    ProjectSettings.SetAsBasic(fullKey, false);
-                }
-                
-                GameLogger.Debug($"Registered ProjectSettings: {fullKey}");
             }
         }
-        
+
         /// <summary>
-        /// Converts a C# Type to Godot Variant.Type for ProjectSettings.
+        /// Converts a Godot Variant to a C# object for passing to ApplySetting.
         /// </summary>
-        private static Variant.Type GetVariantType(Type valueType)
+        /// <param name="variant">The variant to convert.</param>
+        /// <returns>The converted object, or null if conversion fails.</returns>
+        private object? ConvertVariantToObject(Variant variant)
         {
-            if (valueType == typeof(bool)) return Variant.Type.Bool;
-            if (valueType == typeof(int)) return Variant.Type.Int;
-            if (valueType == typeof(float)) return Variant.Type.Float;
-            if (valueType == typeof(double)) return Variant.Type.Float;
-            if (valueType == typeof(string)) return Variant.Type.String;
-            if (valueType == typeof(Vector2)) return Variant.Type.Vector2;
-            if (valueType == typeof(Vector3)) return Variant.Type.Vector3;
-            if (valueType == typeof(Color)) return Variant.Type.Color;
-            
-            return Variant.Type.String;
-        }
-        
-        /// <summary>
-        /// Determines the appropriate PropertyHint based on ConfigEntry properties.
-        /// </summary>
-        private static PropertyHint GetPropertyHint(ConfigEntry entry)
-        {
-            // Enum options take priority
-            if (entry.ValidOptions != null && entry.ValidOptions.Length > 0)
+            Variant.Type type = variant.VariantType;
+
+            try
             {
-                return PropertyHint.Enum;
-            }
-            
-            // Range for numeric types with min/max
-            if (entry.MinValue != null && entry.MaxValue != null)
-            {
-                if (entry.ValueType == typeof(int))
+                switch (type)
                 {
-                    return PropertyHint.Range;
-                }
-                if (entry.ValueType == typeof(float))
-                {
-                    return PropertyHint.Range;
+                    case Variant.Type.Bool:
+                        return variant.AsBool();
+                    case Variant.Type.Int:
+                        return variant.AsInt32();
+                    case Variant.Type.Float:
+                        return variant.AsSingle();
+                    case Variant.Type.String:
+                        return variant.AsString();
+                    case Variant.Type.Vector2:
+                        return variant.AsVector2();
+                    case Variant.Type.Vector3:
+                        return variant.AsVector3();
+                    case Variant.Type.Color:
+                        return variant.AsColor();
+                    default:
+                        // Try string conversion as fallback
+                        return variant.AsString();
                 }
             }
-            
-            return PropertyHint.None;
-        }
-        
-        /// <summary>
-        /// Generates the hint_string for ProjectSettings based on entry properties.
-        /// </summary>
-        private static string GetHintString(ConfigEntry entry)
-        {
-            // Enum options
-            if (entry.ValidOptions != null && entry.ValidOptions.Length > 0)
+            catch
             {
-                return string.Join(",", entry.ValidOptions);
+                return null;
             }
-            
-            // Range
-            if (entry.MinValue != null && entry.MaxValue != null)
-            {
-                string step = "1";
-                if (entry.ValueType == typeof(float))
-                {
-                    step = "0.01";
-                }
-                return $"{entry.MinValue},{entry.MaxValue},{step}";
-            }
-            
-            // Custom hint string from ConfigEntry
-            if (!string.IsNullOrEmpty(entry.PropertyHintString))
-            {
-                return entry.PropertyHintString;
-            }
-            
-            return "";
         }
 
         /// <summary>
@@ -264,6 +235,7 @@ namespace UtilityLibrary
         /// <param name="category">The settings category.</param>
         /// <param name="key">The setting key.</param>
         /// <returns>The setting value, or default if not found.</returns>
+        [return: MaybeNull]
         public T GetSetting<[MustBeVariant] T>(string category, string key)
         {
             if (string.IsNullOrEmpty(category) || string.IsNullOrEmpty(key))
@@ -290,20 +262,21 @@ namespace UtilityLibrary
 
             if (_configurables.TryGetValue(category, out var configurable))
             {
-                T defaultValue = (T)configurable.GetSettingDefault(key);
+                T defaultValue = (T)configurable.GetSettingDefault(key)!;
                 if (defaultValue != null)
                 {
                     Variant defaultVariant = ObjectToVariant(defaultValue);
                     if (!_settingsCache.ContainsKey(category))
                     {
-                _settingsCache[category] = new System.Collections.Generic.Dictionary<string, Variant>();
+                        _settingsCache[category] = new System.Collections.Generic.Dictionary<string, Variant>();
                     }
                     _settingsCache[category][key] = defaultVariant;
                     return ConvertVariant<T>(defaultVariant);
                 }
             }
 
-            GD.PrintErr($"Setting not found: [{category}] {key}");
+            // Only log error if there's no configurable AND the value wasn't in the file
+            GameLogger.Warning($"Setting not found: [{category}] {key} (no configurable registered and no value in file)");
             return default;
         }
 
@@ -327,17 +300,22 @@ namespace UtilityLibrary
                 return;
             }
 
-            if (!_configurables.TryGetValue(category, out var configurable))
-            {
-                GameLogger.Warning($"No configurable registered for category: {category}");
-                return;
-            }
+            // Try to get a configurable for validation and applying
+            _configurables.TryGetValue(category, out var configurable);
 
-            ConfigEntry entry = FindConfigEntry(configurable, key);
-            if (entry != null && !entry.IsValid(value))
+            // Validate the value if a configurable exists
+            if (configurable != null)
             {
-                GameLogger.Warning($"Invalid value for setting [{category}] {key}: {value}");
-                return;
+                ConfigEntry? entry = FindConfigEntry(configurable, key);
+                if (entry != null && !entry.IsValid(value))
+                {
+                    GameLogger.Warning($"Invalid value for setting [{category}] {key}: {value}");
+                    return;
+                }
+            }
+            else
+            {
+                GameLogger.Debug($"No configurable registered for category: {category}, writing value without validation");
             }
 
             Variant variantValue = ObjectToVariant(value);
@@ -350,11 +328,18 @@ namespace UtilityLibrary
 
             _configFile.SetValue(category, key, variantValue);
 
-            configurable.ApplySetting(key, value);
+            // Apply the setting if a configurable is registered
+            if (configurable != null)
+            {
+                configurable.ApplySetting(key, value);
+            }
 
             EmitSignal(SignalName.SettingChanged, category, key, variantValue);
 
             GameLogger.Debug($"Setting changed: [{category}] {key} = {value}");
+
+            // Persist the change immediately to disk
+            SaveToFile();
         }
 
         /// <summary>
@@ -376,7 +361,7 @@ namespace UtilityLibrary
                 return;
             }
 
-            object defaultValue = configurable.GetSettingDefault(key);
+            object? defaultValue = configurable.GetSettingDefault(key);
             if (defaultValue != null)
             {
                 SetSetting(category, key, defaultValue);
@@ -405,7 +390,7 @@ namespace UtilityLibrary
 
                 foreach (ConfigEntry entry in configurable.GetConfigEntries())
                 {
-                    ResetSetting(category, entry.Key);
+                    ResetSetting(category, entry.Key!);
                 }
             }
 
@@ -429,49 +414,92 @@ namespace UtilityLibrary
         }
 
         /// <summary>
-        /// Loads settings from the configuration file.
-        /// If no user settings file exists, copies from the default template (res://settings.cfg).
+        /// Creates a new settings file with default values from all registered configurables.
+        /// Called when no settings file exists.
+        /// </summary>
+        private void CreateDefaultSettingsFile()
+        {
+            // Iterate all registered configurables and save their defaults
+            foreach (var kvp in _configurables)
+            {
+                string category = kvp.Key;
+                IConfigurable configurable = kvp.Value;
+
+                foreach (ConfigEntry entry in configurable.GetConfigEntries())
+                {
+                    if (entry.Key != null && entry.DefaultValue != null)
+                    {
+                        Variant defaultVariant = ObjectToVariant(entry.DefaultValue);
+                        _configFile.SetValue(category, entry.Key, defaultVariant);
+
+                        if (!_settingsCache.ContainsKey(category))
+                        {
+                            _settingsCache[category] = new System.Collections.Generic.Dictionary<string, Variant>();
+                        }
+                        _settingsCache[category][entry.Key] = defaultVariant;
+
+                        GameLogger.Debug($"Created default setting: [{category}] {entry.Key} = {entry.DefaultValue}");
+                    }
+                }
+            }
+
+            // Save the newly created file
+            SaveToFile();
+            GD.Print($"Created default settings file at {SettingsFilePath}");
+        }
+
+        /// <summary>
+        /// Writes default values for a newly registered configurable to the settings file.
+        /// Called when a configurable registers after initial file creation.
+        /// </summary>
+        /// <param name="configurable">The configurable to write defaults for.</param>
+        private void WriteDefaultsForConfigurable(IConfigurable configurable)
+        {
+            string category = configurable.SettingsCategory;
+            
+            // Only write if the file already exists (not first run case)
+            if (!FileAccess.FileExists(SettingsFilePath))
+            {
+                return;
+            }
+
+            foreach (ConfigEntry entry in configurable.GetConfigEntries())
+            {
+                if (entry.Key != null && entry.DefaultValue != null)
+                {
+                    // Only write if this key doesn't already exist in the file
+                    if (!_configFile.HasSectionKey(category, entry.Key))
+                    {
+                        Variant defaultVariant = ObjectToVariant(entry.DefaultValue);
+                        _configFile.SetValue(category, entry.Key, defaultVariant);
+
+                        if (!_settingsCache.ContainsKey(category))
+                        {
+                            _settingsCache[category] = new System.Collections.Generic.Dictionary<string, Variant>();
+                        }
+                        _settingsCache[category][entry.Key] = defaultVariant;
+
+                        GameLogger.Debug($"Wrote default for unregistered category: [{category}] {entry.Key} = {entry.DefaultValue}");
+                    }
+                }
+            }
+
+            // Save after writing defaults for this configurable
+            SaveToFile();
+        }
+
+        /// <summary>
+        /// Loads settings from the configuration file (user://settings.cfg).
+        /// If the file doesn't exist, creates a new file with default values from configurables.
         /// </summary>
         public void LoadFromFile()
         {
-            // Check if user settings file exists
+            // Check if settings file exists
             if (!FileAccess.FileExists(SettingsFilePath))
             {
-                // Try to load from default template
-                if (FileAccess.FileExists(DefaultTemplatePath))
-                {
-                    GD.Print($"No user settings found. Loading defaults from {DefaultTemplatePath}");
-                    
-                    Error loadError = _configFile.Load(DefaultTemplatePath);
-                    if (loadError == Error.Ok)
-                    {
-                        // Save a copy to user directory for future runs
-                        Error saveError = _configFile.Save(SettingsFilePath);
-                        if (saveError == Error.Ok)
-                        {
-                            GD.Print($"Default settings copied to {SettingsFilePath}");
-                        }
-                        else
-                        {
-                            GD.PrintErr($"Failed to copy default settings to {SettingsFilePath}");
-                        }
-                        
-                        _isLoaded = true;
-                        GD.Print("Settings loaded from default template.");
-                        EmitSignal(SignalName.SettingsLoaded);
-                        return;
-                    }
-                    else
-                    {
-                        GD.PrintErr($"Failed to load default template: {loadError}");
-                        // Fall through to use code defaults
-                    }
-                }
-                else
-                {
-                    GD.Print($"No settings file found at {SettingsFilePath} and no default template at {DefaultTemplatePath}, using code defaults.");
-                }
-                
+                // No file exists - create one with default values from all registered configurables
+                GD.Print($"No settings file found at {SettingsFilePath}, creating with defaults.");
+                CreateDefaultSettingsFile();
                 _isLoaded = true;
                 EmitSignal(SignalName.SettingsLoaded);
                 return;
@@ -487,6 +515,8 @@ namespace UtilityLibrary
             else
             {
                 GD.PrintErr($"Failed to load settings: {error}");
+                // Try to create a new file with defaults as fallback
+                CreateDefaultSettingsFile();
                 _isLoaded = true;
                 EmitSignal(SignalName.SettingsLoaded);
             }
@@ -554,13 +584,13 @@ namespace UtilityLibrary
         /// </summary>
         /// <param name="category">The settings category.</param>
         /// <returns>The configurable, or null if not found.</returns>
-        public IConfigurable GetConfigurable(string category)
+        public IConfigurable? GetConfigurable(string category)
         {
             _configurables.TryGetValue(category, out var configurable);
             return configurable;
         }
 
-        private ConfigEntry FindConfigEntry(IConfigurable configurable, string key)
+        private ConfigEntry? FindConfigEntry(IConfigurable configurable, string key)
         {
             foreach (ConfigEntry entry in configurable.GetConfigEntries())
             {
@@ -572,6 +602,7 @@ namespace UtilityLibrary
             return null;
         }
 
+        [return: MaybeNull]
         private T ConvertVariant<[MustBeVariant] T>(Variant variant)
         {
             try

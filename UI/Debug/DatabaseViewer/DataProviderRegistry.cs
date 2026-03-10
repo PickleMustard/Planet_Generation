@@ -66,7 +66,7 @@ public static class DataProviderRegistry
             {
                 foreach (var type in ex.Types.Where(t => t != null))
                 {
-                    TryRegisterProviderType(type);
+                    TryRegisterProviderType(type!);
                 }
             }
             catch (Exception ex)
@@ -114,7 +114,7 @@ public static class DataProviderRegistry
     {
         try
         {
-            IDebugDataProvider instance = null;
+            IDebugDataProvider? instance = null;
 
             if (typeof(Node).IsAssignableFrom(type))
             {
@@ -143,7 +143,7 @@ public static class DataProviderRegistry
         }
     }
 
-    private static IDebugDataProvider FindSingletonInstance(Type type)
+    private static IDebugDataProvider? FindSingletonInstance(Type type)
     {
         var instanceProperty = type.GetProperty(
             "Instance",
@@ -151,7 +151,7 @@ public static class DataProviderRegistry
                 | System.Reflection.BindingFlags.Static
                 | System.Reflection.BindingFlags.FlattenHierarchy
         );
-        GD.Print($"Instance property: {instanceProperty.Name}");
+        GD.Print($"Instance property: {instanceProperty!.Name}");
 
         if (instanceProperty != null && instanceProperty.PropertyType == type)
         {
@@ -186,7 +186,7 @@ public static class DataProviderRegistry
     /// </summary>
     /// <param name="provider">The provider to register.</param>
     /// <param name="category">Optional category override.</param>
-    public static void RegisterProvider(IDataProvider provider, string category = null)
+    public static void RegisterProvider(IDataProvider provider, string? category = null)
     {
         if (provider == null)
         {
@@ -257,7 +257,7 @@ public static class DataProviderRegistry
     /// </summary>
     /// <param name="name">The provider name.</param>
     /// <returns>The provider or null if not found.</returns>
-    public static IDataProvider GetProvider(string name)
+    public static IDataProvider? GetProvider(string name)
     {
         return _providers.Values.FirstOrDefault(p =>
             p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
@@ -269,7 +269,7 @@ public static class DataProviderRegistry
     /// </summary>
     /// <param name="key">The full provider key.</param>
     /// <returns>The provider or null if not found.</returns>
-    public static IDataProvider GetProviderByKey(string key)
+    public static IDataProvider? GetProviderByKey(string key)
     {
         return _providers.TryGetValue(key, out var provider) ? provider : null;
     }

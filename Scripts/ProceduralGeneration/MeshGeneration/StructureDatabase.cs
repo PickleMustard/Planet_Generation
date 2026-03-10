@@ -240,7 +240,7 @@ public class StructureDatabase
     /// 2. Falls back to legacy HalfEdgesFrom dictionary
     /// 3. Finally checks legacy Edges by index
     /// </remarks>
-    public bool TryGetEdge(Point a, Point b, out Edge edge)
+    public bool TryGetEdge(Point a, Point b, out Edge? edge)
     {
         lock (lockObject)
         {
@@ -249,7 +249,7 @@ public class StructureDatabase
             {
                 foreach (var h in set)
                 {
-                    if (h.Twin.From == b)
+                    if (h.Twin!.From == b)
                     {
                         int idx = Edge.DefineIndex(a, b);
                         break;
@@ -277,7 +277,7 @@ public class StructureDatabase
         {
             if (TryGetEdge(a, b, out var found))
             {
-                return found;
+                return found!;
             }
             // Create new legacy edge and mirror canonicals
             var e = Edge.MakeEdge(a, b);
@@ -303,7 +303,7 @@ public class StructureDatabase
         GameLogger.EnterFunction("GetOrCreateEdge", $"Point a={a},Point b={b},index={index}");
         lock (lockObject)
         {
-            if (TryGetEdge(a, b, out var found)) return found;
+            if (TryGetEdge(a, b, out var found)) return found!;
             var e = Edge.MakeEdge(index, a, b);
             RegisterEdgeCanonicalAndLegacy(e);
             GameLogger.ExitFunction("GetOrCreateEdge");
@@ -480,7 +480,7 @@ public class StructureDatabase
     /// It first checks the canonical registry via EdgeKey, then falls back to the legacy system.
     /// Returns true only if exactly two triangles share the edge, which is required for flipping.
     /// </remarks>
-    public bool FlipEdge(Edge e, out Triangle t1, out Triangle t2)
+    public bool FlipEdge(Edge e, out Triangle? t1, out Triangle? t2)
     {
         lock (lockObject)
         {
@@ -655,13 +655,13 @@ public class StructureDatabase
                 case MeshState.BaseMesh:
                     foreach (Point p in triangle.Points)
                     {
-                        var found = VoronoiTriMap.TryGetValue(p, out HashSet<Triangle> value);
+                        var found = VoronoiTriMap.TryGetValue(p, out HashSet<Triangle>? value);
                         if (!found) { VoronoiTriMap.Add(p, new HashSet<Triangle>()); }
                         VoronoiTriMap[p].Add(triangle);
                     }
                     foreach (Edge e in triangle.Edges)
                     {
-                        var found = VoronoiEdgeTriMap.TryGetValue(e, out HashSet<Triangle> value);
+                        var found = VoronoiEdgeTriMap.TryGetValue(e, out HashSet<Triangle>? value);
                         if (!found) { VoronoiEdgeTriMap.Add(e, new HashSet<Triangle>()); }
                         VoronoiEdgeTriMap[e].Add(triangle);
                         UpdateWorldEdgeMap((Point)e.P, (Point)e.Q);
@@ -944,20 +944,20 @@ public class StructureDatabase
             // Mirror to legacy EdgeMap only if a matching legacy key (same endpoints, any instance) exists
             if (BaseVertices.TryGetValue(key.A, out var pa) && BaseVertices.TryGetValue(key.B, out var pb))
             {
-                Edge matchAB = null;
-                Edge matchBA = null;
+                Edge? matchAB = null;
+                Edge? matchBA = null;
                 foreach (var kv in EdgeMap)
                 {
                     var e = kv.Key;
                     if (e.P == pa && e.Q == pb) matchAB = e;
                     else if (e.P == pb && e.Q == pa) matchBA = e;
-                    if (matchAB != null && matchBA != null) break;
+                    if (matchAB is not null && matchBA is not null) break;
                 }
-                if (matchAB != null)
+                if (matchAB is not null)
                 {
                     if (!EdgeMap[matchAB].Contains(cell)) EdgeMap[matchAB].Add(cell);
                 }
-                if (matchBA != null)
+                if (matchBA is not null)
                 {
                     if (!EdgeMap[matchBA].Contains(cell)) EdgeMap[matchBA].Add(cell);
                 }
@@ -1152,13 +1152,13 @@ public class StructureDatabase
     /// This method searches the OutHalfEdgesByPoint dictionary for a half-edge
     /// that starts at the specified 'from' point and ends at the specified 'to' point.
     /// </remarks>
-    private HalfEdge FindHalfEdge(Point from, Point to)
+    private HalfEdge? FindHalfEdge(Point from, Point to)
     {
         if (OutHalfEdgesByPoint.TryGetValue(from, out var set))
         {
             foreach (var h in set)
             {
-                if (h.Twin.From == to) return h;
+                if (h.Twin!.From == to) return h;
             }
         }
         return null;

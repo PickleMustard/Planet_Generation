@@ -17,7 +17,7 @@ public static class TemplateHelpers
         try
         {
             var raw = TemplateLoader.Load(path, TemplateLoader.CelestialBodyValidator);
-            return TransformCelestialBodyTemplate(raw);
+            return TransformCelestialBodyTemplate(raw, type);
         }
         catch (Exception e)
         {
@@ -33,7 +33,7 @@ public static class TemplateHelpers
         try
         {
             var raw = TemplateLoader.Load(path, TemplateLoader.CelestialBodyValidator);
-            return TransformSatelliteBodyTemplate(raw);
+            return TransformSatelliteBodyTemplate(raw, type);
         }
         catch (Exception e)
         {
@@ -83,7 +83,7 @@ public static class TemplateHelpers
         return bodies;
     }
 
-    private static Dictionary TransformCelestialBodyTemplate(Dictionary raw)
+    private static Dictionary TransformCelestialBodyTemplate(Dictionary raw, CelestialBodyType type)
     {
         var result = new Dictionary();
 
@@ -131,12 +131,13 @@ public static class TemplateHelpers
             result["resources"] = resourcesVariant.AsGodotDictionary();
         }
 
-        result["possible_names"] = ExtractNameCategories(raw);
+        var nameFileName = GetNameFileForCelestialBodyType(type);
+        result["possible_names"] = ExtractNameCategories(raw, nameFileName);
 
         return result;
     }
 
-    private static Dictionary TransformSatelliteBodyTemplate(Dictionary raw)
+    private static Dictionary TransformSatelliteBodyTemplate(Dictionary raw, SatelliteBodyType type)
     {
         var result = new Dictionary();
 
@@ -184,7 +185,8 @@ public static class TemplateHelpers
             result["resources"] = resourcesVariant.AsGodotDictionary();
         }
 
-        result["possible_names"] = ExtractNameCategories(raw);
+        var nameFileName = GetNameFileForSatelliteType(type);
+        result["possible_names"] = ExtractNameCategories(raw, nameFileName);
 
         return result;
     }
@@ -266,7 +268,8 @@ public static class TemplateHelpers
     {
         var result = new Dictionary();
 
-        result["type"] = ReadString(raw, "type", "Star");
+        string typeStr = ReadString(raw, "type", "Star");
+        result["type"] = typeStr;
 
         var template = new Dictionary();
         template["position"] = ReadVector3(raw, "position", Vector3.Zero);
@@ -314,6 +317,10 @@ public static class TemplateHelpers
 
             result["satellites"] = satellites;
         }
+
+        // Load names based on the type string
+        var nameFileName = GetNameFileFromTypeString(typeStr);
+        result["possible_names"] = ExtractNameCategories(raw, nameFileName);
 
         return result;
     }
@@ -379,7 +386,7 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static Dictionary ExtractNameCategories(Dictionary raw)
+    private static Dictionary ExtractNameCategories(Dictionary raw, string nameFileName)
     {
         var result = new Dictionary();
 
@@ -389,17 +396,62 @@ public static class TemplateHelpers
         var categories = categoriesVariant.AsGodotDictionary();
         var potential = ReadStringArray(categories, "potential", System.Array.Empty<string>());
 
-        foreach (var category in potential)
+        // Load names from the external name file
+        try
         {
-            if (raw.TryGetValue(category, out var sectionVariant))
+            var nameFile = TemplateLoader.LoadNamesFile(nameFileName);
+
+            // Get the list of available categories from the name file
+            var nameFileCategoriesList = new string[0];
+            if (nameFile.TryGetValue("categories", out var categoriesListVariant))
             {
-                var section = sectionVariant.AsGodotDictionary();
-                var names = ReadStringArray(section, "names", System.Array.Empty<string>());
-                if (names.Length > 0)
+                nameFileCategoriesList = ReadStringArray(
+                    nameFile,
+                    "categories",
+                    System.Array.Empty<string>()
+                );
+            }
+            else
+            {
+                // If no categories list in name file, use all top-level keys except 'categories' itself
+                var keys = new System.Collections.Generic.List<string>();
+                foreach (var key in nameFile.Keys)
                 {
-                    result[category] = names;
+                    string keyStr = key.AsString();
+                    if (keyStr != "categories" && !string.IsNullOrWhiteSpace(keyStr))
+                    {
+                        keys.Add(keyStr);
+                    }
+                }
+                nameFileCategoriesList = keys.ToArray();
+            }
+
+            // Extract only the categories specified in the potential list
+            foreach (var category in potential)
+            {
+                // Check if this category exists in the name file
+                if (System.Array.IndexOf(nameFileCategoriesList, category) >= 0)
+                {
+                    // In the new name file structure, names are direct arrays (not nested under 'names')
+                    if (nameFile.TryGetValue(category, out var namesVariant))
+                    {
+                        var namesArray = namesVariant.As<Godot.Collections.Array>();
+                        if (namesArray != null && namesArray.Count > 0)
+                        {
+                            var names = new string[namesArray.Count];
+                            for (int i = 0; i < namesArray.Count; i++)
+                            {
+                                names[i] = namesArray[i].AsString() ?? "";
+                            }
+                            result[category] = names;
+                        }
+                    }
                 }
             }
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Failed to load name file '{nameFileName}': {e.Message}\n{e.StackTrace}");
         }
 
         return result;
@@ -444,6 +496,61 @@ public static class TemplateHelpers
             _ => type.ToString(),
         };
         return $"res://Configuration/SystemGen/{name}.yaml";
+    }
+
+    private static string GetNameFileForCelestialBodyType(CelestialBodyType type)
+    {
+        return type switch
+        {
+            CelestialBodyType.RockyPlanet => "rockyplanets",
+            CelestialBodyType.DwarfPlanet => "rockyplanets",
+            CelestialBodyType.GasGiant => "nonrocky",
+            CelestialBodyType.IceGiant => "nonrocky",
+            CelestialBodyType.Star => "centralbodies",
+            CelestialBodyType.BlackHole => "centralbodies",
+            _ => "rockyplanets"
+        };
+    }
+
+    private static string GetNameFileForSatelliteType(SatelliteBodyType type)
+    {
+        return type switch
+        {
+            SatelliteBodyType.Moon => "satellites",
+            SatelliteBodyType.Asteroid => "satellites",
+            SatelliteBodyType.DwarfPlanet => "rockyplanets",
+            _ => "satellites"
+        };
+    }
+
+    private static string GetNameFileForSatelliteGroupType(SatelliteGroupTypes type)
+    {
+        return type switch
+        {
+            SatelliteGroupTypes.AsteroidBelt => "satellites",
+            SatelliteGroupTypes.Comet => "satellites",
+            SatelliteGroupTypes.IceBelt => "satellites",
+            _ => "satellites"
+        };
+    }
+
+    private static string GetNameFileFromTypeString(string typeStr)
+    {
+        // Map type string to name file
+        return typeStr.ToLower() switch
+        {
+            "star" => "centralbodies",
+            "blackhole" => "centralbodies",
+            "rockyplanet" => "rockyplanets",
+            "dwarfplanet" => "rockyplanets",
+            "gasgiant" => "nonrocky",
+            "icegiant" => "nonrocky",
+            "moon" => "satellites",
+            "asteroid" => "satellites",
+            "comet" => "satellites",
+            "asteroidbelt" => "satellites",
+            _ => "rockyplanets" // default fallback
+        };
     }
 
     private static Vector3 ReadVector3(Dictionary dict, string key, Vector3 fallback)

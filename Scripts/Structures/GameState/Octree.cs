@@ -56,9 +56,9 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
         return result;
     }
 
-    public T FindNearest(T query)
+    public T? FindNearest(T query)
     {
-        T nearest = null;
+        T? nearest = null;
         float bestDistSq = float.MaxValue;
         int level = 0;
         FindNearestRecursive(root, query, ref bestDistSq, ref nearest, ref level);
@@ -66,7 +66,7 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
         return nearest;
     }
 
-    private void FindNearestRecursive(OctreeNode<T> node, T query, ref float bestDistSq, ref T nearest, ref int level)
+    private void FindNearestRecursive(OctreeNode<T> node, T query, ref float bestDistSq, ref T? nearest, ref int level)
     {
         if (node.DistanceToPointSq(query) >= bestDistSq) return;
         foreach (var point in node.points)

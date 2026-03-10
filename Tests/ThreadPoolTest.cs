@@ -11,7 +11,7 @@ public class ThreadPoolTest
 {
     [TestCase]
     [RequireGodotRuntime]
-    public async void DeformationWithThreadPool()
+    public void DeformationWithThreadPool()
     {
         var rand = new RandomNumberGenerator();
         rand.Randomize();

@@ -102,7 +102,7 @@ namespace Structures.MeshGeneration
         /// is not an EdgeKey, the method returns false. Otherwise, it delegates to the
         /// strongly-typed Equals method for the actual comparison.
         /// </remarks>
-        public override bool Equals(object obj) => obj is EdgeKey other && Equals(other);
+        public override bool Equals(object? obj) => obj is EdgeKey other && Equals(other);
 
         /// <summary>
         /// Returns the hash code for this EdgeKey.

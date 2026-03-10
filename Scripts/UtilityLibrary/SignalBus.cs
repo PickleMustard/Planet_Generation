@@ -7,7 +7,7 @@ namespace UtilityLibrary
 {
     public partial class SignalBus : Node
     {
-        public static SignalBus Instance { get; private set; }
+        public static SignalBus? Instance { get; private set; }
 
         [Signal]
         public delegate void StartTimerEventHandler(string name, int totalSteps, int startingStep, string[] stepNames);

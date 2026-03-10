@@ -33,16 +33,16 @@ public class ResourceDatabaseTest
         var db = ResourceDatabase.Instance;
 
         AssertThat(db.TryGetResource("iron_ore", out var ironOre)).IsTrue();
-        AssertThat(ironOre.IdName).IsEqual("iron_ore");
+        AssertThat(ironOre!.IdName).IsEqual("iron_ore");
         AssertThat(ironOre.ResourceType).IsEqual("ore");
         AssertThat(ironOre.DisplayColor).IsNotEqual(Colors.White);
         AssertThat(ironOre.BiomeAffinity).IsNotNull();
-        AssertThat(ironOre.BiomeAffinity.Count).IsGreater(0);
+        AssertThat(ironOre.BiomeAffinity!.Count).IsGreater(0);
         AssertThat(ironOre.MinElevation).IsGreaterEqual(0f);
         AssertThat(ironOre.MaxElevation).IsLessEqual(1f);
 
         AssertThat(db.TryGetResource("water", out var water)).IsTrue();
-        AssertThat(water.ResourceType).IsEqual("fuel");
+        AssertThat(water!.ResourceType).IsEqual("fuel");
     }
 
     [TestCase]

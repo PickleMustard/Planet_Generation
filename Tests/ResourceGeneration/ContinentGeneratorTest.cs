@@ -157,7 +157,7 @@ public class ContinentGeneratorTest
         var continents = CreateMockContinents(3);
         var config = CreateMockContinentConfig();
 
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         foreach (var kvp in continents)
         {
@@ -176,7 +176,7 @@ public class ContinentGeneratorTest
         var continents = CreateMockContinentsWithCells(2, 5);
         var config = CreateMockContinentConfig();
 
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         int cellsWithResources = 0;
         foreach (var kvp in continents)
@@ -208,7 +208,7 @@ public class ContinentGeneratorTest
             [2] = lowElevationContinent
         };
 
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         AssertThat(highElevationContinent.ContinentalResources.Count).IsGreater(0);
         AssertThat(lowElevationContinent.ContinentalResources.Count).IsGreater(0);
@@ -224,7 +224,7 @@ public class ContinentGeneratorTest
         var config = CreateMockContinentConfig();
         var continents = CreateMockContinents(3);
 
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         bool hasWaterIce = continents.Values.Any(c => c.ContinentalResources.ContainsKey("water_ice"));
         bool hasIronOre = continents.Values.Any(c => c.ContinentalResources.ContainsKey("iron_ore"));
@@ -245,7 +245,7 @@ public class ContinentGeneratorTest
 
         var continents = CreateMockContinents(10);
 
-        ContinentResourceGenerator.GenerateResources(continents, config, rng, null);
+        ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         var resourceCounts = new Dictionary<string, int>();
         foreach (var kvp in continents)

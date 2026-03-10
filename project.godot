@@ -35,7 +35,7 @@ project/assembly_name="Delaunay Triangulation Map Generation"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/RuntimeSettingsPlugin/plugin.cfg", "res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/runtime_settings_editor/plugin.cfg")
 
 [filesystem]
 

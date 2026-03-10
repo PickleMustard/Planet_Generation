@@ -13,8 +13,8 @@ namespace UI.Debug.DatabaseViewer;
 [DebugData("Scene Tree", Category = "Scene Tree")]
 public class SceneTreeProvider : IDataProvider
 {
-    private SceneTree _sceneTree;
-    private DebugDataNode _cachedData;
+    private SceneTree? _sceneTree;
+    private DebugDataNode? _cachedData;
     private bool _needsRefresh = true;
 
     public string Name => "Scene Tree";

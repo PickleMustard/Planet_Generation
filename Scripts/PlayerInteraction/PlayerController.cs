@@ -27,11 +27,11 @@ public partial class PlayerController : Node3D
     public float CameraSnapSpeed { get; set; } = 5.0f;
 
     //Scene Objects
-    private Node3D _parent;
-    private Node3D _pointerNode;
-    private Camera3D _camera;
-    private InputHandler _inputHandler;
-    private ShipMovement _shipMovement;
+    private Node3D? _parent;
+    private Node3D? _pointerNode;
+    private Camera3D? _camera;
+    private InputHandler? _inputHandler;
+    private ShipMovement? _shipMovement;
 
     //Local Variables
     private Quaternion _defaultCameraRotation;
@@ -67,6 +67,9 @@ public partial class PlayerController : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
+        if (_parent == null || _camera == null)
+            return;
+
         float deltaTime = (float)delta;
         Vector3 worldDirection = _parent.Basis * _movementDirection;
         Vector3 worldVertical = _parent.Basis * _verticalMovement;
@@ -127,6 +130,9 @@ public partial class PlayerController : Node3D
 
     private void UpdateCamera()
     {
+        if (_camera == null || _shipMovement == null)
+            return;
+
         if (_mousePosition.LengthSquared() < 0.1f)
             return;
         _mousePosition *= CameraSensitivity;
@@ -175,6 +181,9 @@ public partial class PlayerController : Node3D
 
     private void OnMakeCameraIndependent(bool isMouseButtonPressed)
     {
+        if (_camera == null || _pointerNode == null)
+            return;
+
         if (isMouseButtonPressed)
         {
             _defaultCameraRotation = _camera.Quaternion;

@@ -8,19 +8,19 @@ public partial class DetailPanel : VBoxContainer
     public delegate void ValueChangedEventHandler();
 
     // Base Mesh Controls
-    [Export] public VBoxContainer BaseMeshSection;
-    [Export] public SpinBox SubdivisionsSpinBox;
+    [Export] public VBoxContainer? BaseMeshSection;
+    [Export] public SpinBox? SubdivisionsSpinBox;
 
     // Tectonics Controls (BodyItem only)
-    [Export] public VBoxContainer TectonicsSection;
+    [Export] public VBoxContainer? TectonicsSection;
 
     // Scaling Controls (SatelliteItem only)
-    [Export] public VBoxContainer ScalingSection;
+    [Export] public VBoxContainer? ScalingSection;
 
     // Noise Controls (SatelliteItem only)
-    [Export] public VBoxContainer NoiseSection;
+    [Export] public VBoxContainer? NoiseSection;
 
-    private PackedScene _rangeControlScene;
+    private PackedScene? _rangeControlScene;
     private bool _isForBodyItem = true;
 
     public override void _EnterTree()
@@ -172,7 +172,7 @@ public partial class DetailPanel : VBoxContainer
 
     private void AddTectonicsControl(VBoxContainer parent, string label, float minVal, float maxVal, float step, float defaultLower, float defaultUpper)
     {
-        var rangeControl = _rangeControlScene.Instantiate<RangeControl>();
+        var rangeControl = _rangeControlScene!.Instantiate<RangeControl>();
         rangeControl.Setup(label, minVal, maxVal, step, defaultLower, defaultUpper);
         rangeControl.ValueChanged += OnRangeValueChanged;
         parent.AddChild(rangeControl);
@@ -180,7 +180,7 @@ public partial class DetailPanel : VBoxContainer
 
     private void AddRangeControl(VBoxContainer parent, string label, float minVal, float maxVal, float step, float defaultLower, float defaultUpper)
     {
-        var rangeControl = _rangeControlScene.Instantiate<RangeControl>();
+        var rangeControl = _rangeControlScene!.Instantiate<RangeControl>();
         rangeControl.Setup(label, minVal, maxVal, step, defaultLower, defaultUpper);
         rangeControl.ValueChanged += OnRangeValueChanged;
         parent.AddChild(rangeControl);
@@ -324,9 +324,9 @@ public partial class DetailPanel : VBoxContainer
         return false;
     }
 
-    private SpinBox FindSpinBoxByLabel(string label)
+    private SpinBox? FindSpinBoxByLabel(string label)
     {
-        SpinBox result = null;
+        SpinBox? result = null;
 
         if (BaseMeshSection != null)
             result = FindSpinBoxInContainer(BaseMeshSection, label);
@@ -340,7 +340,7 @@ public partial class DetailPanel : VBoxContainer
         return result;
     }
 
-    private SpinBox FindSpinBoxInContainer(Container container, string label)
+    private SpinBox? FindSpinBoxInContainer(Container container, string label)
     {
         foreach (Node child in container.GetChildren())
         {
@@ -363,7 +363,7 @@ public partial class DetailPanel : VBoxContainer
         return null;
     }
 
-    private T GetFirstChild<T>(Container container) where T : Node
+    private T? GetFirstChild<T>(Container container) where T : Node
     {
         foreach (Node child in container.GetChildren())
         {

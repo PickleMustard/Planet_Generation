@@ -5,8 +5,8 @@ namespace UtilityLibrary.TaskSystem
     public class WorkStep
     {
         public string Name { get; }
-        public Action Action { get; }
-        public Func<int> ActionWithResult { get; }
+        public Action? Action { get; }
+        public Func<int>? ActionWithResult { get; }
 
         public bool HasResult => ActionWithResult != null;
 
@@ -28,7 +28,7 @@ namespace UtilityLibrary.TaskSystem
         {
             if (HasResult)
             {
-                return ActionWithResult();
+                return ActionWithResult!();
             }
             Action?.Invoke();
             return 0;

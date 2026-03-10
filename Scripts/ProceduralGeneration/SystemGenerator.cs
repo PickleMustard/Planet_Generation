@@ -16,7 +16,7 @@ public partial class SystemGenerator : Node
     public delegate void SystemGenerationCompleteEventHandler();
 
     [Export]
-    public Node SystemContainer;
+    public Node? SystemContainer;
 
     [ExportCategory("Thread Pool Settings")]
     [Export]
@@ -50,7 +50,7 @@ public partial class SystemGenerator : Node
     private void GenerateMesh(Godot.Collections.Array<Godot.Collections.Dictionary> bodies)
     {
         // Clear existing bodies
-        if (SystemContainer.GetChildCount() > 0)
+        if (SystemContainer!.GetChildCount() > 0)
         {
             var children = SystemContainer.GetChildren();
             foreach (Node child in children)
@@ -83,7 +83,7 @@ public partial class SystemGenerator : Node
         var mesh = new UnifiedCelestialMesh();
         CelestialBody celBody = CelestialBody.Builder.BuildFromBodyDict(body, mesh);
 
-        SystemContainer.AddChild(celBody);
+        SystemContainer!.AddChild(celBody);
         celBody.Position = (Vector3)((Godot.Collections.Dictionary)body["template"])["position"];
 
         celBody.StartMeshGeneration(

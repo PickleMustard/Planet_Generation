@@ -9,9 +9,9 @@ public partial class SettingsPanel : BaseDebugModule
 {
 	public override string ModuleName => "Settings";
 
-	private ScrollContainer _scrollContainer;
-	private VBoxContainer _settingsContainer;
-	private HBoxContainer _buttonContainer;
+	private ScrollContainer? _scrollContainer;
+	private VBoxContainer? _settingsContainer;
+	private HBoxContainer? _buttonContainer;
 	private readonly Dictionary<string, CategorySection> _categories = new();
 
 	public override void _Ready()
@@ -152,17 +152,22 @@ public partial class SettingsPanel : BaseDebugModule
 
 	private void ConnectRuntimeSettingsSignal()
 	{
-		if (RuntimeSettings.Instance != null)
+		// SettingsAccess handles provider routing automatically
+		// Note: Signal subscription is not supported in editor context
+#if !TOOLS
+		var runtimeSettings = RuntimeSettings.Instance;
+		if (runtimeSettings != null)
 		{
-			RuntimeSettings.Instance.SettingChanged += OnSettingChanged;
+			runtimeSettings.SettingChanged += OnSettingChanged;
 		}
+#endif
 	}
 
 	private void BuildSettingsFromRegistry()
 	{
 		if (RuntimeSettings.Instance == null)
 		{
-			GameLogger.Warning("RuntimeSettings instance not found");
+			GameLogger.Warning("Settings provider not available");
 			return;
 		}
 
@@ -170,7 +175,7 @@ public partial class SettingsPanel : BaseDebugModule
 
 		foreach (var entry in RuntimeSettings.Instance.GetAllEntries())
 		{
-			var configurable = RuntimeSettings.Instance.GetConfigurable(entry.Key);
+			var configurable = RuntimeSettings.Instance.GetConfigurable(entry.Key!);
 			string category = FindCategoryForEntry(entry);
 
 			if (!entriesByCategory.TryGetValue(category, out var list))
@@ -188,7 +193,7 @@ public partial class SettingsPanel : BaseDebugModule
 
 			var section = new CategorySection();
 			section.Setup(category);
-			_settingsContainer.AddChild(section);
+			_settingsContainer!.AddChild(section);
 			_categories[category] = section;
 
 			foreach (var entry in entries)
@@ -208,7 +213,7 @@ public partial class SettingsPanel : BaseDebugModule
 		{
 			if (configurableEntry.Key == entry.Key)
 			{
-				var configurable = RuntimeSettings.Instance.GetConfigurable(entry.Key);
+				var configurable = RuntimeSettings.Instance.GetConfigurable(entry.Key!);
 				if (configurable != null)
 				{
 					return configurable.SettingsCategory;
@@ -249,7 +254,8 @@ public partial class SettingsPanel : BaseDebugModule
 
 	private void OnSavePressed()
 	{
-		RuntimeSettings.Instance?.SaveToFile();
+		// ProjectSettings auto-saves, no explicit save needed
+		GameLogger.Info("Settings auto-saved to ProjectSettings");
 	}
 
 	public override void OnModuleEnabled()

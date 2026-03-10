@@ -170,7 +170,7 @@ public static class ThreadCommands
             return 0;
         }
 
-        WatchManager.StartWatch(watchId, instance, propertyPath, interval);
+        WatchManager.StartWatch(watchId, instance!, propertyPath, interval);
         ctx.WriteLine($"[color=green]Started watching: {watchId}[/color]");
         ctx.WriteLine($"  Interval: {interval}ms");
         ctx.WriteLine("  Use 'watch_stop' to stop");
@@ -253,11 +253,11 @@ internal static class WatchManager
 
     public class WatchInfo
     {
-        public string WatchId { get; set; }
-        public object Instance { get; set; }
-        public string PropertyPath { get; set; }
+        public string? WatchId { get; set; }
+        public object? Instance { get; set; }
+        public string? PropertyPath { get; set; }
         public int IntervalMs { get; set; }
-        public string LastValue { get; set; }
+        public string? LastValue { get; set; }
         public int ChangeCount { get; set; }
         public DateTime StartTime { get; set; }
     }
@@ -316,7 +316,7 @@ internal static class WatchManager
         }
     }
 
-    public static WatchInfo GetWatchInfo(string watchId)
+    public static WatchInfo? GetWatchInfo(string watchId)
     {
         lock (_lock)
         {

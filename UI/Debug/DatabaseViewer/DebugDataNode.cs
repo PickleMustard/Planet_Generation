@@ -20,7 +20,7 @@ public partial class DebugDataNode : RefCounted
     /// <summary>
     /// The value of this node (for leaf nodes).
     /// </summary>
-    public object Value { get; private set; }
+    public object? Value { get; private set; }
 
     /// <summary>
     /// Whether this node has a value (is a leaf node).
@@ -30,7 +30,7 @@ public partial class DebugDataNode : RefCounted
     /// <summary>
     /// The type of the value for display purposes.
     /// </summary>
-    public string ValueType { get; private set; }
+    public string? ValueType { get; private set; }
 
     /// <summary>
     /// Child nodes of this node.
@@ -55,7 +55,7 @@ public partial class DebugDataNode : RefCounted
     /// <summary>
     /// Custom icon name for this node (if applicable).
     /// </summary>
-    public string IconName { get; set; }
+    public string? IconName { get; set; }
 
     /// <summary>
     /// Creates a new DebugDataNode with the given name.
@@ -151,11 +151,11 @@ public partial class DebugDataNode : RefCounted
     /// </summary>
     /// <param name="value">The value to set.</param>
     /// <returns>This node for fluent chaining.</returns>
-    public DebugDataNode SetValue(object value)
+    public DebugDataNode SetValue(object? value)
     {
         Value = value;
         HasValue = true;
-        ValueType = GetTypeName(value);
+        ValueType = GetTypeName(value!);
         return this;
     }
 
@@ -198,7 +198,7 @@ public partial class DebugDataNode : RefCounted
     /// </summary>
     /// <param name="format">Optional format string.</param>
     /// <returns>Formatted string representation.</returns>
-    public string GetFormattedValue(string format = null)
+    public string GetFormattedValue(string? format = null)
     {
         if (!HasValue || Value == null)
         {
@@ -219,7 +219,7 @@ public partial class DebugDataNode : RefCounted
             Quaternion q => $"({q.X:F3}, {q.Y:F3}, {q.Z:F3}, {q.W:F3})",
             Transform2D t => $"({t.Origin.X:F2}, {t.Origin.Y:F2})",
             Transform3D t => $"Origin: ({t.Origin.X:F2}, {t.Origin.Y:F2}, {t.Origin.Z:F2})",
-            _ => Value.ToString()
+            _ => Value.ToString() ?? "null"
         };
     }
 

@@ -12,7 +12,7 @@ namespace UI.Debug.Console;
 public static class AutoRegistrationManager
 {
     private static bool _initialized;
-    private static SceneTree _sceneTree;
+    private static SceneTree? _sceneTree;
 
     /// <summary>
     /// Initializes the auto-registration system. Should be called once during debug menu setup.
@@ -127,7 +127,7 @@ public static class AutoRegistrationManager
     /// </summary>
     /// <param name="node">The node to register.</param>
     /// <returns>The namespace assigned to the node.</returns>
-    public static string RegisterNode(Node node)
+    public static string? RegisterNode(Node node)
     {
         if (node == null)
         {
@@ -180,7 +180,7 @@ public static class AutoRegistrationManager
     /// </summary>
     /// <param name="obj">The object to register.</param>
     /// <returns>The namespace assigned to the object.</returns>
-    public static string RegisterObject(object obj)
+    public static string? RegisterObject(object obj)
     {
         if (obj == null)
         {
@@ -263,7 +263,7 @@ public static class AutoRegistrationManager
     /// </summary>
     /// <param name="obj">The object to check.</param>
     /// <returns>The DebugDataAttribute or null.</returns>
-    public static DebugDataAttribute GetDebugDataAttribute(object obj)
+    public static DebugDataAttribute? GetDebugDataAttribute(object obj)
     {
         if (obj == null)
         {
