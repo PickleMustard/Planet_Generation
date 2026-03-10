@@ -21,22 +21,39 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-MeshGenerationThreadPool="*res://Scripts/UtilityLibrary/MeshGenerationThreadPool.cs"
+RuntimeSettings="*res://Scripts/UtilityLibrary/Settings/RuntimeSettings.cs"
+SignalBus="*res://Scripts/UtilityLibrary/SignalBus.cs"
+ThreadPooler="*uid://db2n014kjjmur"
+TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
+ResourceDatabase="*res://Scripts/Structures/Resources/ResourceDatabase.cs"
+CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
+DebugMenu="*res://UI/Debug/DebugMenu.tscn"
 
 [dotnet]
 
 project/assembly_name="Delaunay Triangulation Map Generation"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/runtime_settings_editor/plugin.cfg")
+
 [filesystem]
 
 import/blender/enabled=false
+
+[gdunit4]
+
+settings/test/test_lookup_folder="Tests"
 
 [gui]
 
 theme/custom="uid://cdh68r2entt7h"
 
+[logging]
+
+level="INFO"
+
 [rendering]
 
 environment/glow/upscale_mode=0
 mesh_lod/lod_change/threshold_pixels=43.2
-vrs/mode=1

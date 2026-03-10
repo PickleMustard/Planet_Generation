@@ -2,22 +2,36 @@ using System.Text.RegularExpressions;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using UtilityLibrary;
+#if DEBUG
+using PlayerInteraction.CellSelection;
+#endif
 
 public partial class PlayerController : Node3D
 {
-    [Export] public float MaxSpeed { get; set; } = 10.0f;
-    [Export] public float Acceleration { get; set; } = 9.0f;
-    [Export] public float DecelerationTime { get; set; } = .8f;
-    [Export] public float CameraSensitivity { get; set; } = .1f;
-    [Export] public float ShipRotationSpeed { get; set; } = 2.0f;
-    [Export] public float CameraSnapSpeed { get; set; } = 5.0f;
+    [Export]
+    public float MaxSpeed { get; set; } = 10.0f;
+
+    [Export]
+    public float Acceleration { get; set; } = 9.0f;
+
+    [Export]
+    public float DecelerationTime { get; set; } = .8f;
+
+    [Export]
+    public float CameraSensitivity { get; set; } = .1f;
+
+    [Export]
+    public float ShipRotationSpeed { get; set; } = 2.0f;
+
+    [Export]
+    public float CameraSnapSpeed { get; set; } = 5.0f;
 
     //Scene Objects
-    private Node3D _parent;
-    private Node3D _pointerNode;
-    private Camera3D _camera;
-    private InputHandler _inputHandler;
-    private ShipMovement _shipMovement;
+    private Node3D? _parent;
+    private Node3D? _pointerNode;
+    private Camera3D? _camera;
+    private InputHandler? _inputHandler;
+    private ShipMovement? _shipMovement;
 
     //Local Variables
     private Quaternion _defaultCameraRotation;
@@ -53,6 +67,9 @@ public partial class PlayerController : Node3D
 
     public override void _PhysicsProcess(double delta)
     {
+        if (_parent == null || _camera == null)
+            return;
+
         float deltaTime = (float)delta;
         Vector3 worldDirection = _parent.Basis * _movementDirection;
         Vector3 worldVertical = _parent.Basis * _verticalMovement;
@@ -84,23 +101,40 @@ public partial class PlayerController : Node3D
         var query = PhysicsRayQueryParameters3D.Create(origin, direction);
         query.CollideWithAreas = true;
         var result = GetWorld3D().DirectSpaceState.IntersectRay(query);
-        GD.Print(result);
+        if (result.Count == 0)
+            return;
+
         var collider = (Node3D)result["collider"];
         var position = (Vector3)result["position"];
         string parentName = ((string)collider.GetName()).Split("_")[0];
         parentName = Regex.Replace(parentName, "[0-9]", "");
         var celestialBody = collider.FindParent(parentName) as CelestialBody;
+        if (celestialBody == null)
+            return;
+
         var root = GetTree().GetRoot();
         PolygonRendererSDL.DrawLine(root, 1, origin, direction, Colors.Red);
-        GD.Print(celestialBody.GetName());
-        var nearest = celestialBody.FindNearest(position);
-        GD.Print(nearest);
 
+        var selectionResult = celestialBody.FindNearestCell(position);
+        if (selectionResult?.Cell != null)
+        {
+#if DEBUG
+            CellSelectionManager.Instance?.SelectCell(
+                selectionResult.Cell,
+                selectionResult.CellContinent,
+                celestialBody
+            );
+#endif
+        }
     }
 
     private void UpdateCamera()
     {
-        if (_mousePosition.LengthSquared() < 0.1f) return;
+        if (_camera == null || _shipMovement == null)
+            return;
+
+        if (_mousePosition.LengthSquared() < 0.1f)
+            return;
         _mousePosition *= CameraSensitivity;
         var yaw = _mousePosition.X;
         var pitch = _mousePosition.Y;
@@ -147,6 +181,9 @@ public partial class PlayerController : Node3D
 
     private void OnMakeCameraIndependent(bool isMouseButtonPressed)
     {
+        if (_camera == null || _pointerNode == null)
+            return;
+
         if (isMouseButtonPressed)
         {
             _defaultCameraRotation = _camera.Quaternion;

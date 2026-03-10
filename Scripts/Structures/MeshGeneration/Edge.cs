@@ -27,7 +27,7 @@ public partial class Edge : Resource, IEquatable<Edge>
 
     public int ContinentIndex { get; set; }
     public EdgeType Type { get; set; }
-    public EdgeStress Stress { get; set; }
+    public EdgeStress? Stress { get; set; }
 
     public float StressMagnitude { get; set; } = 0.0f;
 
@@ -72,8 +72,9 @@ public partial class Edge : Resource, IEquatable<Edge>
         return e;
     }
 
-    public bool Equals(Edge other)
+    public bool Equals(Edge? other)
     {
+        if (other is null) return false;
         return other.Index == Index;
     }
 
@@ -88,7 +89,7 @@ public partial class Edge : Resource, IEquatable<Edge>
         if (e1 is null || e2 is null) return false;
         return !e1.Equals(e2);
     }
-    public override bool Equals(Object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is null) return false;
         if (obj is Edge e) return Equals(e);

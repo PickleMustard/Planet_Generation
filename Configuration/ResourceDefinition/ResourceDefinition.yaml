@@ -1,0 +1,206 @@
+resources:
+  - id_name: iron_ore
+    resource_tier: 0
+    resource_type: ore
+    display_color: [139, 69, 19]
+    biome_affinity:
+      Mountain: 2.0
+      StoneDesert: 1.5
+      Taiga: 1.2
+      RustedMountain: 1.8
+    elevation_range: [0.5, 1.0]
+
+  - id_name: iron
+    resource_tier: 0
+    resource_type: raw_material
+    display_color: [112, 128, 144]
+    biome_affinity: {}
+    elevation_range: [0.0, 1.0]
+
+  - id_name: copper_ore
+    resource_tier: 0
+    resource_type: ore
+    display_color: [184, 115, 51]
+    biome_affinity:
+      Mountain: 2.0
+      StoneDesert: 1.6
+      RustedMountain: 1.4
+      RustedDesert: 1.2
+    elevation_range: [0.45, 0.95]
+
+  - id_name: copper
+    resource_tier: 0
+    resource_type: raw_material
+    display_color: [255, 140, 0]
+    biome_affinity: {}
+    elevation_range: [0.0, 1.0]
+
+  - id_name: gold_ore
+    resource_tier: 0
+    resource_type: ore
+    display_color: [255, 215, 0]
+    biome_affinity:
+      Mountain: 1.8
+      Coastal: 1.5
+      RustedPlain: 1.3
+      RustedMountain: 1.6
+    elevation_range: [0.35, 0.85]
+
+  - id_name: gold
+    resource_tier: 0
+    resource_type: raw_material
+    display_color: [255, 223, 0]
+    biome_affinity: {}
+    elevation_range: [0.0, 1.0]
+
+  - id_name: water_ice
+    resource_tier: 0
+    resource_type: ore
+    display_color: [173, 216, 230]
+    biome_affinity:
+      Glacier: 2.5
+      Icecap: 2.2
+      FrozenPlain: 2.0
+      Tundra: 1.5
+      Taiga: 1.2
+    elevation_range: [0.4, 0.95]
+
+  - id_name: water
+    resource_tier: 0
+    resource_type: fuel
+    display_color: [30, 144, 255]
+    biome_affinity:
+      Ocean: 3.0
+      Coastal: 1.5
+      Swamp: 1.8
+      Grassland: 0.5
+    elevation_range: [0.0, 0.4]
+
+  - id_name: grain
+    resource_tier: 0
+    resource_type: food
+    display_color: [244, 164, 96]
+    biome_affinity:
+      Grassland: 2.5
+      Forest: 1.2
+      Coastal: 1.3
+      Rainforest: 0.5
+    elevation_range: [0.25, 0.55]
+
+  - id_name: vegetable
+    resource_tier: 0
+    resource_type: food
+    display_color: [34, 139, 34]
+    biome_affinity:
+      Grassland: 2.0
+      Forest: 1.8
+      Coastal: 1.5
+      Rainforest: 1.3
+      Swamp: 0.8
+    elevation_range: [0.2, 0.5]
+
+  - id_name: condensed_carbon
+    resource_tier: 1
+    resource_type: raw_material
+    display_color: [54, 69, 79]
+    biome_affinity:
+      Forest: 1.5
+      Rainforest: 1.3
+      Swamp: 1.2
+      Taiga: 1.0
+    elevation_range: [0.2, 0.6]
+
+  - id_name: steel
+    resource_tier: 1
+    resource_type: raw_material
+    display_color: [70, 70, 80]
+    biome_affinity: {}
+    elevation_range: [0.0, 1.0]
+
+  - id_name: protein
+    resource_tier: 1
+    resource_type: food
+    display_color: [255, 182, 193]
+    biome_affinity:
+      Ocean: 2.0
+      Coastal: 1.8
+      Grassland: 1.5
+      Forest: 1.3
+      Rainforest: 1.2
+    elevation_range: [0.0, 0.6]
+
+  - id_name: uranium_ore
+    resource_tier: 1
+    resource_type: ore
+    display_color: [0, 255, 0]
+    biome_affinity:
+      Mountain: 2.0
+      StoneDesert: 1.8
+      RustedMountain: 1.5
+      RustedDesert: 1.3
+    elevation_range: [0.55, 1.0]
+
+  - id_name: uranium
+    resource_tier: 1
+    resource_type: fuel
+    display_color: [50, 205, 50]
+    biome_affinity: {}
+    elevation_range: [0.0, 1.0]
+
+  - id_name: platinum_ore
+    resource_tier: 1
+    resource_type: ore
+    display_color: [229, 228, 226]
+    biome_affinity:
+      Mountain: 2.0
+      RustedMountain: 1.8
+      RustedPlain: 1.4
+      StoneDesert: 1.2
+    elevation_range: [0.6, 1.0]
+
+  - id_name: cobalt_ore
+    resource_tier: 1
+    resource_type: ore
+    display_color: [0, 71, 171]
+    biome_affinity:
+      Ocean: 2.2
+      Mountain: 1.6
+      RustedPlain: 1.4
+      RustedMountain: 1.5
+    elevation_range: [0.0, 0.35]
+
+  - id_name: nickel_ore
+    resource_tier: 1
+    resource_type: ore
+    display_color: [121, 150, 92]
+    biome_affinity:
+      Mountain: 1.8
+      Ocean: 2.0
+      RustedMountain: 1.5
+      RustedPlain: 1.3
+    elevation_range: [0.0, 0.3]
+
+  - id_name: loadstone_ore
+    resource_tier: 2
+    resource_type: ore
+    display_color: [47, 79, 79]
+    biome_affinity:
+      Mountain: 2.5
+      ScouredPlain: 2.0
+      RustedMountain: 1.8
+      StoneDesert: 1.2
+    elevation_range: [0.65, 1.0]
+
+  - id_name: liquid_uranium
+    resource_tier: 2
+    resource_type: fuel
+    display_color: [127, 255, 0]
+    biome_affinity: {}
+    elevation_range: [0.0, 1.0]
+
+  - id_name: antimatter
+    resource_tier: 3
+    resource_type: fuel
+    display_color: [255, 255, 255]
+    biome_affinity: {}
+    elevation_range: [0.0, 1.0]

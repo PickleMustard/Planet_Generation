@@ -24,7 +24,7 @@ public class VoronoiCellGeneration
     /// <summary>
     /// Spherical triangulator used for triangulating projected points.
     /// </summary>
-    private SphericalDelaunayTriangulation sphericalTriangulator;
+    private SphericalDelaunayTriangulation? sphericalTriangulator;
 
     /// <summary>
     /// Initializes a new instance of the VoronoiCellGeneration class.
@@ -35,7 +35,7 @@ public class VoronoiCellGeneration
         StrDb = db;
     }
 
-    private UnifiedCelestialMesh mesh;
+    private UnifiedCelestialMesh? mesh;
 
     /// <summary>
     /// Generates Voronoi cells for all sites in the structure database.
@@ -126,11 +126,11 @@ public class VoronoiCellGeneration
                 VoronoiCell calculated = TriangulatePoints(unitNorm, triCircumcenters, StrDb.VoronoiCells.Count);
                 GameLogger.Info($"Generated Voronoi Cell: {calculated.Index} with {calculated.Points.Length} points, {calculated.Edges.Length} edges");
                 calculated.IsBorderTile = false;
-                if (calculated != null)
-                {
-                    StrDb.VoronoiCells.Add(calculated);
-                }
-                foreach (Edge e in calculated.Edges)
+                 if (calculated != null)
+                 {
+                     StrDb.VoronoiCells.Add(calculated);
+                 }
+                 foreach (Edge e in calculated!.Edges)
                 {
                     StrDb.AddCellForEdge(e.key, calculated);
                 }

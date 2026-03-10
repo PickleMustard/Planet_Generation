@@ -5,7 +5,6 @@ using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using UtilityLibrary;
-using Tommy;
 using FileAccess = Godot.FileAccess;
 
 namespace UI;
@@ -21,28 +20,28 @@ public partial class PlanetSystemGenerator : Control
     [Signal]
     public delegate void ValidatePressedEventHandler(Array<Dictionary> bodies);
 
-    private VBoxContainer _bodiesList;
-    private Label _countLabel;
-    private Button _addBtn;
-    private Button _removeBtn;
-    private Button _generateBtn;
-    private Button _validateBtn;
-    private Button _saveBtn;
-    private PackedScene _bodyItemScene;
-    private TabContainer _tabContainer;
-    private VBoxContainer _templatesList;
-    private TextureRect _stabilityIndicator;
+    private VBoxContainer? _bodiesList;
+    private Label? _countLabel;
+    private Button? _addBtn;
+    private Button? _removeBtn;
+    private Button? _generateBtn;
+    private Button? _validateBtn;
+    private Button? _saveBtn;
+    private PackedScene? _bodyItemScene;
+    private TabContainer? _tabContainer;
+    private VBoxContainer? _templatesList;
+    private TextureRect? _stabilityIndicator;
 
-    private Texture2D _checkMark;
-    private Texture2D _xMark;
-    private Dictionary<String, bool> _toggledSubcontainers;
-    private Array<BodyItem> _autoCalculateSubscribers;
+    private Texture2D? _checkMark;
+    private Texture2D? _xMark;
+    private Dictionary<String, bool>? _toggledSubcontainers;
+    private Array<BodyItem>? _autoCalculateSubscribers;
 
     public override void _EnterTree()
     {
         this.AddToGroup("GenerationMenu");
         var parent = GetParent() as Control;
-        parent.Size = BASE_SIZE;
+        parent!.Size = BASE_SIZE;
         _toggledSubcontainers = new Dictionary<String, bool>();
         _bodyItemScene = GD.Load<PackedScene>("res://UI/BodyItem.tscn");
         _tabContainer = GetNode<TabContainer>("MarginContainer/TabContainer");
@@ -72,15 +71,15 @@ public partial class PlanetSystemGenerator : Control
             "MarginContainer/TabContainer/TemplatesTab/TemplatesScroll/TemplatesList"
         );
 
-        _addBtn.Pressed += AddBodyItem;
-        _removeBtn.Pressed += RemoveLastBodyItem;
-        _generateBtn.Pressed += OnGeneratePressed;
-        _validateBtn.Pressed += OnValidatePressed;
-        _saveBtn.Pressed += OnSavePressed;
+        _addBtn!.Pressed += AddBodyItem;
+        _removeBtn!.Pressed += RemoveLastBodyItem;
+        _generateBtn!.Pressed += OnGeneratePressed;
+        _validateBtn!.Pressed += OnValidatePressed;
+        _saveBtn!.Pressed += OnSavePressed;
 
         _checkMark = GD.Load<Texture2D>("res://UI/checkmark.svg");
         _xMark = GD.Load<Texture2D>("res://UI/xmark.svg");
-        _stabilityIndicator.Texture = _checkMark;
+        _stabilityIndicator!.Texture = _checkMark;
 
         _autoCalculateSubscribers = new Array<BodyItem>();
 
@@ -98,17 +97,17 @@ public partial class PlanetSystemGenerator : Control
     public void ExpandMenu(String sender, bool toggle)
     {
         var parent = GetParent() as Control;
-        if (_toggledSubcontainers.ContainsKey(sender) && !toggle)
+        if (_toggledSubcontainers!.ContainsKey(sender) && !toggle)
         {
             _toggledSubcontainers.Remove(sender);
             if (_toggledSubcontainers.Count == 0)
             {
-                parent.Size = BASE_SIZE;
+                parent!.Size = BASE_SIZE;
             }
         }
         else
         {
-            parent.Size = EXPANDED_SIZE;
+            parent!.Size = EXPANDED_SIZE;
             if (!_toggledSubcontainers.ContainsKey(sender)) _toggledSubcontainers.Add(sender, toggle);
         }
     }
@@ -118,7 +117,7 @@ public partial class PlanetSystemGenerator : Control
         if (_bodyItemScene == null)
             return;
         var node = _bodyItemScene.Instantiate<BodyItem>();
-        _bodiesList.AddChild(node);
+        _bodiesList!.AddChild(node);
         // Wire per-item remove
         node.OnRemoveRequested += HandleItemRemove;
         // Wire position change
@@ -126,7 +125,7 @@ public partial class PlanetSystemGenerator : Control
         node.RecalculateVelocity += RecalculateVelocity;
         node.ShouldAutoCalculate += UpdateAutoCalculateSubscribers;
         node.ExpandMenu += ExpandMenu;
-        _autoCalculateSubscribers.Add(node);
+        _autoCalculateSubscribers!.Add(node);
         UpdateCountLabel();
         RedistributeOrbitalRings();
     }
@@ -135,16 +134,16 @@ public partial class PlanetSystemGenerator : Control
     {
         if (shouldAutoCalculate)
         {
-            _autoCalculateSubscribers.Add(item);
+            _autoCalculateSubscribers!.Add(item);
         }
         else
         {
-            _autoCalculateSubscribers.Remove(item);
+            _autoCalculateSubscribers!.Remove(item);
         }
     }
     private void RemoveLastBodyItem()
     {
-        if (_bodiesList.GetChildCount() == 0)
+        if (_bodiesList!.GetChildCount() == 0)
             return;
         var last = _bodiesList.GetChild(_bodiesList.GetChildCount() - 1);
         last.QueueFree();
@@ -163,13 +162,13 @@ public partial class PlanetSystemGenerator : Control
 
     private void UpdateCountLabel()
     {
-        int count = _bodiesList.GetChildCount();
-        _countLabel.Text = count == 1 ? "1 body" : $"{count} bodies";
+        int count = _bodiesList!.GetChildCount();
+        _countLabel!.Text = count == 1 ? "1 body" : $"{count} bodies";
     }
 
     private void RedistributeOrbitalRings()
     {
-        if (_bodiesList.GetChildCount() <= 1) return;
+        if (_bodiesList!.GetChildCount() <= 1) return;
         var bodiesByRing = new System.Collections.Generic.Dictionary<
             float,
             System.Collections.Generic.List<BodyItem>
@@ -201,8 +200,8 @@ public partial class PlanetSystemGenerator : Control
     private void RecalculateVelocity(BodyItem body)
     {
         GD.Print(body);
-        GD.Print($"Is subscribed: {_autoCalculateSubscribers.Contains(body)}");
-        if (_autoCalculateSubscribers.Contains(body) && _bodiesList.GetChildCount() > 1)
+        GD.Print($"Is subscribed: {_autoCalculateSubscribers!.Contains(body)}");
+        if (_autoCalculateSubscribers.Contains(body) && _bodiesList!.GetChildCount() > 1)
         {
             Godot.Collections.Array<Godot.Collections.Dictionary> bodies = new Godot.Collections.Array<Godot.Collections.Dictionary>();
             foreach (Node child in _bodiesList.GetChildren())
@@ -315,7 +314,7 @@ public partial class PlanetSystemGenerator : Control
     private void OnGeneratePressed()
     {
         var list = new Array<Dictionary>();
-        foreach (Node child in _bodiesList.GetChildren())
+        foreach (Node child in _bodiesList!.GetChildren())
         {
             if (child is BodyItem bi)
                 list.Add(bi.ToParams());
@@ -335,12 +334,12 @@ public partial class PlanetSystemGenerator : Control
         var templateFiles = DirAccess.GetFilesAt("res://Configuration/SystemTemplate/");
         foreach (var file in templateFiles)
         {
-            if (file.EndsWith(".toml"))
+            if (file.EndsWith(".yaml"))
             {
                 var button = new Button();
-                button.Text = file.Replace(".toml", "");
+                button.Text = file.Replace(".yaml", "");
                 button.Pressed += () => LoadTemplate(file);
-                _templatesList.AddChild(button);
+                _templatesList!.AddChild(button);
             }
         }
     }
@@ -348,14 +347,14 @@ public partial class PlanetSystemGenerator : Control
     private void LoadTemplate(string fileName)
     {
         // Clear existing bodies
-        foreach (Node child in _bodiesList.GetChildren())
+        foreach (Node child in _bodiesList!.GetChildren())
         {
             child.RemoveFromGroup("CelestialBody");
             child.QueueFree();
         }
 
         // Load bodies from utility library
-        var bodies = UtilityLibrary.SystemGenTemplates.LoadSolarSystemTemplate(fileName);
+        var bodies = TemplateHelpers.LoadSystemTemplate(fileName);
         GD.Print($"Table: {bodies}");
         foreach (var bodyDict in bodies)
         {
@@ -366,9 +365,9 @@ public partial class PlanetSystemGenerator : Control
             var mass = (float)template["mass"];
             var size = (int)template["size"];
 
-            var bodyItem = _bodyItemScene.Instantiate<BodyItem>();
-            _bodiesList.AddChild(bodyItem);
-            _autoCalculateSubscribers.Add(bodyItem);
+            var bodyItem = _bodyItemScene!.Instantiate<BodyItem>();
+            _bodiesList!.AddChild(bodyItem);
+            _autoCalculateSubscribers!.Add(bodyItem);
             // Wire per-item remove
             bodyItem.OnRemoveRequested += HandleItemRemove;
             // Wire position change
@@ -408,88 +407,6 @@ public partial class PlanetSystemGenerator : Control
         RedistributeOrbitalRings();
     }
 
-    private string ReadString(TomlTable table, string key, string fallback)
-    {
-        if (table.HasKey(key) && table[key] is TomlNode node)
-        {
-            return node.ToString().Trim('"');
-        }
-        return fallback;
-    }
-
-    private Vector3 ReadVector3(TomlTable table, string key, Vector3 fallback)
-    {
-        if (table.HasKey(key) && table[key] is TomlArray arr && arr.ChildrenCount >= 3)
-        {
-            float x = NodeToFloat(arr[0], 0f);
-            float y = NodeToFloat(arr[1], 0f);
-            float z = NodeToFloat(arr[2], 0f);
-            return new Vector3(x, y, z);
-        }
-        return fallback;
-    }
-
-    private float ReadFloat(TomlTable table, string key, float fallback)
-    {
-        if (table.HasKey(key) && table[key] is TomlNode node)
-        {
-            return NodeToFloat(node, fallback);
-        }
-        return fallback;
-    }
-
-    private float NodeToFloat(TomlNode node, float fallback)
-    {
-        try
-        {
-            if (node is Tommy.TomlInteger ti)
-                return (float)ti.Value;
-            if (node is Tommy.TomlFloat tf)
-                return (float)tf.Value;
-
-            var s = node.ToString();
-            if (s.Length >= 2 && s[0] == '"' && s[^1] == '"')
-                s = s.Substring(1, s.Length - 2);
-            if (float.TryParse(s, out var v))
-                return v;
-        }
-        catch { }
-        return fallback;
-    }
-
-    private int ReadInt(TomlTable table, string key, int fallback)
-    {
-        if (!table.HasKey(key))
-            return fallback;
-        var node = table[key];
-        if (node is Tommy.TomlInteger ti)
-            return (int)ti.Value;
-        if (node is Tommy.TomlFloat tf)
-            return (int)tf.Value;
-        var s = node.ToString();
-        if (int.TryParse(s, out var v))
-            return v;
-        if (float.TryParse(s, out var vf))
-            return (int)vf;
-        return fallback;
-    }
-
-    private int[] ReadIntArray(TomlTable table, string key, int[] fallback)
-    {
-        if (!table.HasKey(key))
-            return fallback;
-        if (table[key] is TomlArray arr && arr.ChildrenCount > 0)
-        {
-            int[] result = new int[arr.ChildrenCount];
-            for (int i = 0; i < arr.ChildrenCount; i++)
-            {
-                result[i] = (int)NodeToFloat(arr[i], fallback[i % fallback.Length]);
-            }
-            return result;
-        }
-        return fallback;
-    }
-
     private Dictionary ConvertParamsToDict<T>(T parameters)
     {
         Dictionary dict = new Dictionary();
@@ -497,7 +414,7 @@ public partial class PlanetSystemGenerator : Control
         FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
         foreach (FieldInfo field in fields)
         {
-            object value = field.GetValue(parameters);
+            object? value = field.GetValue(parameters);
             if (value != null)
             {
                 Type fieldType = field.FieldType;
@@ -513,7 +430,7 @@ public partial class PlanetSystemGenerator : Control
     private void CheckSystemStability()
     {
         var list = new Array<Dictionary>();
-        foreach (Node child in _bodiesList.GetChildren())
+        foreach (Node child in _bodiesList!.GetChildren())
         {
             if (child is BodyItem bi)
                 list.Add(bi.ToParams());
@@ -643,10 +560,10 @@ public partial class PlanetSystemGenerator : Control
             fileName = "UntitledSystem";
         }
 
-        // Ensure .toml extension
-        if (!fileName.EndsWith(".toml", StringComparison.OrdinalIgnoreCase))
+        // Ensure .yaml extension
+        if (!fileName.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase))
         {
-            fileName += ".toml";
+            fileName += ".yaml";
         }
 
         SaveSystemToFile(fileName);
@@ -663,13 +580,13 @@ public partial class PlanetSystemGenerator : Control
         try
         {
             var bodies = new Array<Dictionary>();
-            foreach (Node child in _bodiesList.GetChildren())
+            foreach (Node child in _bodiesList!.GetChildren())
             {
                 if (child is BodyItem bi)
                     bodies.Add(bi.ToParams());
             }
 
-            string tomlContent = UtilityLibrary.SystemGenTemplates.GenerateTOMLContent(bodies);
+            string yamlContent = TemplateHelpers.GenerateYamlContent(bodies);
 
             string filePath = $"res://Configuration/SystemTemplate/{fileName}";
 
@@ -681,7 +598,7 @@ public partial class PlanetSystemGenerator : Control
                 return;
             }
 
-            file.StoreString(tomlContent);
+            file.StoreString(yamlContent);
             file.Close();
 
             GD.Print($"System configuration saved to: {filePath}");

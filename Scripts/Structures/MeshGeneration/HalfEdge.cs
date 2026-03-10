@@ -17,13 +17,13 @@ namespace Structures.MeshGeneration
         /// Gets the twin half-edge that points in the opposite direction.
         /// The twin edge connects the same vertices but in reverse order (To -> From).
         /// </summary>
-        public HalfEdge Twin { get; internal set; }
+        public HalfEdge? Twin { get; internal set; }
 
         /// <summary>
         /// Gets the triangle that lies on the left side of this directed edge.
         /// When traversing the edge from From to To, this triangle is to the left.
         /// </summary>
-        public Triangle Left { get; internal set; }
+        public Triangle? Left { get; internal set; }
 
         /// <summary>
         /// Gets the edge key that uniquely identifies the undirected edge between two points.

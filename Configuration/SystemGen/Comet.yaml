@@ -1,0 +1,29 @@
+categories:
+  potential:
+    - mythology
+    - scientists
+    - explorers
+    - adjectives
+
+satellite:
+  template:
+    position: [450, 0, 0]
+    velocity: [0, 2, 0]
+    size_range: [1, 4]
+    mass_range: [4, 10]
+
+  mesh:
+    base_mesh:
+      subdivisions: 1
+      vertices_per_edge: [[2, 3]]
+      num_abberations: 0
+      num_deformation_cycles: 0
+
+    scaling:
+      scaling_range_x: [0.8, 1.8]
+      scaling_range_y: [0.8, 1.5]
+      scaling_range_z: [0.8, 1.8]
+
+    noise_settings:
+      amplitude_range: [0.5, 1.2]
+      scaling_range: [0.2, 1.7]

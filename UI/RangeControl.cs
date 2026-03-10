@@ -8,16 +8,16 @@ public partial class RangeControl : HBoxContainer
     public delegate void ValueChangedEventHandler(float lowerValue, float upperValue);
 
     [Export]
-    public Label ParameterLabel;
+    public Label? ParameterLabel;
 
     [Export]
-    public SpinBox LowerBound;
+    public SpinBox? LowerBound;
 
     [Export]
-    public SpinBox UpperBound;
+    public SpinBox? UpperBound;
 
     [Export]
-    public Label SeparatorLabel;
+    public Label? SeparatorLabel;
 
     private bool _isUpdating = false;
 

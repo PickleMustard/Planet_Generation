@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Godot;
-using UtilityLibrary;
+using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.MeshGeneration.ResourceGeneration;
+using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
-using Structures.Enums;
-using ProceduralGeneration.MeshGeneration;
+using Structures.Resources;
+using UtilityLibrary;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
@@ -16,10 +20,16 @@ public partial class SatelliteBody : Node3D
     Vector3 TotalForce;
     bool isSatelliteGroup = false;
     SatelliteBodyType SatelliteType;
-    UnifiedCelestialMesh Mesh;
-    Octree<Point> Oct;
-    Godot.Collections.Dictionary bodyDict;
-    StructureDatabase StrDb;
+    UnifiedCelestialMesh? Mesh;
+    Octree<Point>? Oct;
+    Godot.Collections.Dictionary? bodyDict;
+    StructureDatabase? StrDb;
+
+    /// <summary>
+    /// Resource deposits available on this satellite body.
+    /// Key is the resource ID, value is the deposit information.
+    /// </summary>
+    public Dictionary<string, ResourceDeposit> Resources { get; set; } = new();
 
     public class Builder
     {
@@ -29,10 +39,10 @@ public partial class SatelliteBody : Node3D
         internal Vector3 _totalForce = Vector3.Zero;
         internal bool _isSatelliteGroup = false;
         internal SatelliteBodyType _satelliteType;
-        internal UnifiedCelestialMesh _mesh;
-        internal Octree<Point> _oct;
-        internal Godot.Collections.Dictionary _bodyDict;
-        internal StructureDatabase _strDb;
+        internal UnifiedCelestialMesh? _mesh;
+        internal Octree<Point>? _oct;
+        internal Godot.Collections.Dictionary? _bodyDict;
+        internal StructureDatabase? _strDb;
 
         public Builder WithVelocity(Vector3 velocity)
         {
@@ -94,7 +104,11 @@ public partial class SatelliteBody : Node3D
             return new SatelliteBody(this);
         }
 
-        public Builder FromBodyDict(CelestialBodyType parentType, Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
+        public Builder FromBodyDict(
+            CelestialBodyType parentType,
+            Godot.Collections.Dictionary bodyDict,
+            UnifiedCelestialMesh mesh
+        )
         {
             _bodyDict = bodyDict;
             _mesh = mesh;
@@ -117,11 +131,13 @@ public partial class SatelliteBody : Node3D
             return this;
         }
 
-        public static SatelliteBody BuildFromBodyDict(CelestialBodyType parentType, Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
+        public static SatelliteBody BuildFromBodyDict(
+            CelestialBodyType parentType,
+            Godot.Collections.Dictionary bodyDict,
+            UnifiedCelestialMesh mesh
+        )
         {
-            return new Builder()
-                .FromBodyDict(parentType, bodyDict, mesh)
-                .Build();
+            return new Builder().FromBodyDict(parentType, bodyDict, mesh).Build();
         }
     }
 
@@ -148,9 +164,9 @@ public partial class SatelliteBody : Node3D
     }
 
     public SatelliteBody(
-            CelestialBodyType parentType,
-            Godot.Collections.Dictionary bodyDict,
-            UnifiedCelestialMesh mesh
+        CelestialBodyType parentType,
+        Godot.Collections.Dictionary bodyDict,
+        UnifiedCelestialMesh mesh
     )
     {
         this.bodyDict = bodyDict;
@@ -177,7 +193,14 @@ public partial class SatelliteBody : Node3D
         }
     }
 
-    public SatelliteBody(CelestialBodyType parentType, String satType, float mass, float size, Vector3 velocity, UnifiedCelestialMesh mesh)
+    public SatelliteBody(
+        CelestialBodyType parentType,
+        String satType,
+        float mass,
+        float size,
+        Vector3 velocity,
+        UnifiedCelestialMesh mesh
+    )
     {
         this.bodyDict = null;
         this.Mesh = mesh;
@@ -195,6 +218,7 @@ public partial class SatelliteBody : Node3D
     {
         TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
         var parent = GetParent() as CelestialBody;
+        if (parent == null) return;
         float distance = this.GlobalPosition.DistanceTo(parent.GlobalPosition);
         Vector3 direction = (parent.GlobalPosition - this.GlobalPosition);
 
@@ -206,53 +230,84 @@ public partial class SatelliteBody : Node3D
         GlobalPosition += Velocity * (float)delta;
     }
 
-    public void GenerateMesh()
+    public async Task GenerateMesh()
+    {
+        StartMeshGeneration(
+            onCompleted: (_) => { },
+            onFailed: (_, error) => GD.PrintErr($"Mesh generation failed: {error}")
+        );
+        while (Mesh?.Mesh == null)
+        {
+            await Task.Delay(10);
+        }
+    }
+
+    public void StartMeshGeneration(
+        Action<SatelliteBody>? onCompleted = null,
+        Action<SatelliteBody, string>? onFailed = null
+    )
     {
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
-        if (
-            bodyDict != null
-        )
+        if (bodyDict != null)
         {
             meshParams.Add("Type", bodyDict["type"]);
             meshParams.Add("name", bodyDict["name"]);
-            if (bodyDict.ContainsKey("base_mesh") && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            if (
+                bodyDict.ContainsKey("base_mesh")
+                && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
+            )
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
-            if (bodyDict.ContainsKey("scaling_settings") && bodyDict["scaling_settings"].Obj is Godot.Collections.Dictionary scaling)
+            if (
+                bodyDict.ContainsKey("scaling_settings")
+                && bodyDict["scaling_settings"].Obj is Godot.Collections.Dictionary scaling
+            )
             {
                 CalculateScalingFromParams(scaling, meshParams);
             }
-            if (bodyDict.ContainsKey("noise_settings") && bodyDict["noise_settings"].Obj is Godot.Collections.Dictionary noise)
+            if (
+                bodyDict.ContainsKey("noise_settings")
+                && bodyDict["noise_settings"].Obj is Godot.Collections.Dictionary noise
+            )
             {
                 CalculateNoiseSettingsFromParams(noise, meshParams);
             }
         }
         else
         {
-            var t = SystemGenTemplates.GetSatelliteBodyDefaults(SatelliteType);
+            var t = TemplateHelpers.GetSatelliteBodyDefaults(SatelliteType);
             var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
             meshParams.Add("name", name);
-            meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType));
+            meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType)!);
             var template = (Godot.Collections.Dictionary)t["template"];
             var position = (Vector3)template["position"];
-            var velocity = (Vector3)template["velocity"];
+            var velocity = (Vector3)template["template"];
             meshParams.Add("position", position);
             meshParams.Add("velocity", velocity);
             var size = (int)template["size"];
             var mass = (float)template["mass"];
             meshParams.Add("size", size);
             meshParams.Add("mass", mass);
-            if (t.ContainsKey("base_mesh") && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh)
+            if (
+                t.ContainsKey("base_mesh")
+                && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
+            )
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
-            if (t.ContainsKey("scaling_settings") && t["scaling_settings"].Obj is Godot.Collections.Dictionary scaling)
+            if (
+                t.ContainsKey("scaling_settings")
+                && t["scaling_settings"].Obj is Godot.Collections.Dictionary scaling
+            )
             {
                 CalculateScalingFromParams(scaling, meshParams);
             }
-            if (t.ContainsKey("noise_settings") && t["noise_settings"].Obj is Godot.Collections.Dictionary noise)
+            if (
+                t.ContainsKey("noise_settings")
+                && t["noise_settings"].Obj is Godot.Collections.Dictionary noise
+            )
             {
                 CalculateNoiseSettingsFromParams(noise, meshParams);
             }
@@ -266,8 +321,48 @@ public partial class SatelliteBody : Node3D
         {
             meshParams["size"] = Size;
         }
-        Mesh.ConfigureFrom(StrDb, meshParams);
-        Mesh.GenerateMesh(Oct);
+        Mesh!.ConfigureFrom(StrDb!, meshParams);
+        Mesh.StartMeshGeneration(
+            Oct!,
+            onCompleted: (mesh) =>
+            {
+                GenerateResources();
+                onCompleted?.Invoke(this);
+            },
+            onFailed: (mesh, error) =>
+            {
+                GD.PrintErr($"Mesh generation failed for {meshParams["name"]}: {error}");
+                onFailed?.Invoke(this, error);
+            }
+        );
+    }
+
+    /// <summary>
+    /// Generates resources for this satellite based on its configuration.
+    /// </summary>
+    public void GenerateResources()
+    {
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        Godot.Collections.Dictionary? resourceConfig = null;
+
+        if (bodyDict != null && bodyDict.ContainsKey("resources"))
+        {
+            resourceConfig = bodyDict["resources"].AsGodotDictionary();
+        }
+        else
+        {
+            var template = TemplateHelpers.GetSatelliteBodyDefaults(SatelliteType);
+            if (template.ContainsKey("resources"))
+            {
+                resourceConfig = template["resources"].AsGodotDictionary();
+            }
+        }
+
+        if (resourceConfig != null)
+        {
+            Resources = SatelliteResourceGenerator.GenerateResources(resourceConfig, rng);
+            GD.Print($"SatelliteBody '{Name}' generated {Resources.Count} resource deposits");
+        }
     }
 
     public String PickName(Godot.Collections.Dictionary nameDict)
@@ -289,22 +384,29 @@ public partial class SatelliteBody : Node3D
         return (string)names[random.RandiRange(0, names.Count - 1)];
     }
 
-    private void CalculateBaseMeshFromParams(Godot.Collections.Dictionary definedMesh, Godot.Collections.Dictionary meshParams)
+    private void CalculateBaseMeshFromParams(
+        Godot.Collections.Dictionary definedMesh,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         meshParams.Add("subdivisions", (int)definedMesh["subdivisions"]);
-        var vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)definedMesh["vertices_per_edge"];
+        var vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)
+            definedMesh["vertices_per_edge"];
         int[] vertices_per_edge = new int[(int)definedMesh["subdivisions"]];
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         GD.Print($"VPE Array: {vpeArray}");
         for (int i = 0; i < vertices_per_edge.Length; i++)
         {
-            if (vpeArray.Count - 1 > i)//Defined subdivisions
+            if (vpeArray.Count - 1 > i) //Defined subdivisions
             {
                 vertices_per_edge[i] = rng.RandiRange(vpeArray[i][0], vpeArray[i][1]);
             }
             else
             {
-                vertices_per_edge[i] = rng.RandiRange(vpeArray[vpeArray.Count - 1][0], vpeArray[vpeArray.Count - 1][1]);
+                vertices_per_edge[i] = rng.RandiRange(
+                    vpeArray[vpeArray.Count - 1][0],
+                    vpeArray[vpeArray.Count - 1][1]
+                );
             }
         }
         meshParams.Add("vertices_per_edge", vertices_per_edge);
@@ -312,7 +414,10 @@ public partial class SatelliteBody : Node3D
         meshParams.Add("num_deformation_cycles", (int)definedMesh["num_deformation_cycles"]);
     }
 
-    private void CalculateScalingFromParams(Godot.Collections.Dictionary definedScaling, Godot.Collections.Dictionary meshParams)
+    private void CalculateScalingFromParams(
+        Godot.Collections.Dictionary definedScaling,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var scalingDict = new Godot.Collections.Dictionary();
@@ -325,7 +430,10 @@ public partial class SatelliteBody : Node3D
         meshParams.Add("scaling_settings", scalingDict);
     }
 
-    private void CalculateNoiseSettingsFromParams(Godot.Collections.Dictionary definedNoise, Godot.Collections.Dictionary meshParams)
+    private void CalculateNoiseSettingsFromParams(
+        Godot.Collections.Dictionary definedNoise,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var noiseDict = new Godot.Collections.Dictionary();

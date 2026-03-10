@@ -39,6 +39,11 @@ public partial class InputHandler : Node
 
     public override void _Input(InputEvent @event)
     {
+#if DEBUG
+        if (UI.Debug.DebugMenu.Instance?.IsVisible == true)
+            return;
+#endif
+
         if (@event is InputEventMouseButton mouseEvent)
         {
             if (mouseEvent.ButtonIndex == MouseButton.Right && mouseEvent.Pressed)
