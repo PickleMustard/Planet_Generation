@@ -1,0 +1,64 @@
+categories:
+  potential:
+    - mythology
+    - scientists
+    - explorers
+    - adjectives
+
+celestial:
+  template:
+    position: [150, 0, 0]
+    velocity: [0, 0, 0]
+    mass: 100
+    size: 50
+
+  mesh:
+    base_mesh:
+      subdivisions: 2
+      vertices_per_edge: [[4, 6], [2, 3]]
+      num_abberations: 3
+      num_deformation_cycles: 3
+
+    tectonic:
+      num_continents: [13, 25]
+      stress_scale: [1.1, 1.1]
+      shear_scale: [1.1, 1.1]
+      max_propagation_distance: [0.01, 0.01]
+      propagation_falloff: [0.2, 0.2]
+      inactive_stress_threshold: [0.01, 0.01]
+      general_height_scale: [0.6, 0.6]
+      general_shear_scale: [1.1, 1.1]
+      general_compression_scale: [1.2, 1.2]
+      general_transform_scale: [1.0, 1.2]
+
+  resources:
+    primary_count: [1, 3]
+    secondary_count: [0, 5]
+    balance_penalty_factor: 0.8
+    balance_threshold: 0.15
+    primary:
+      - resource_id: iron_ore
+        base_weight: 1.0
+        elevation_weight_curve: [0.0, 0.3, 0.6, 0.9, 1.0]
+      - resource_id: copper_ore
+        base_weight: 0.8
+        elevation_weight_curve: [0.1, 0.4, 0.7, 0.8, 0.5]
+      - resource_id: water_ice
+        base_weight: 0.7
+        elevation_weight_curve: [1.0, 0.8, 0.4, 0.1, 0.0]
+    secondary:
+      - resource_id: gold_ore
+        base_weight: 0.3
+        elevation_weight_curve: [0.0, 0.1, 0.3, 0.7, 0.9]
+      - resource_id: uranium_ore
+        base_weight: 0.2
+        elevation_weight_curve: [0.0, 0.2, 0.4, 0.8, 0.9]
+      - resource_id: platinum_ore
+        base_weight: 0.15
+        elevation_weight_curve: [0.0, 0.1, 0.3, 0.6, 0.8]
+      - resource_id: cobalt_ore
+        base_weight: 0.25
+        elevation_weight_curve: [0.8, 0.6, 0.3, 0.2, 0.1]
+      - resource_id: nickel_ore
+        base_weight: 0.3
+        elevation_weight_curve: [0.7, 0.5, 0.3, 0.4, 0.3]

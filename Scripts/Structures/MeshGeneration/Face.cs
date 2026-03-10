@@ -7,7 +7,7 @@ namespace Structures.MeshGeneration;
 public partial class Face : Resource
 {
     public Point[] v;
-    public Edge[] e;
+    public Edge?[]? e;
 
     public Face(Point v0, Point v1, Point v2, Edge e0, Edge e1, Edge e2)
     {

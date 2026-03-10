@@ -250,13 +250,13 @@ public class ConfigurableSubdivider
                 if (k < 0) continue;
                 if (i + 1 <= resolution && j + 1 <= resolution && k - 1 >= 0)
                 {
-                    Point p1 = barycentricMap[(i, j, k)];
-                    Point p2 = barycentricMap[(i + 1, j, k - 1)];
-                    Point p3 = barycentricMap[(i, j + 1, k - 1)];
-                    Edge e1 = StrDb.AddEdge(p1, p2);
-                    Edge e2 = StrDb.AddEdge(p2, p3);
-                    Edge e3 = StrDb.AddEdge(p3, p1);
-                    if (p1 != null && p2 != null && p3 != null)
+                    Point? p1 = barycentricMap[(i, j, k)];
+                    Point? p2 = barycentricMap[(i + 1, j, k - 1)];
+                    Point? p3 = barycentricMap[(i, j + 1, k - 1)];
+                    Edge e1 = StrDb.AddEdge(p1!, p2!);
+                    Edge e2 = StrDb.AddEdge(p2!, p3!);
+                    Edge e3 = StrDb.AddEdge(p3!, p1!);
+                    if (p1 is not null && p2 is not null && p3 is not null)
                     {
                         faces.Add(new Face(p1, p2, p3, e1, e2, e3));
                     }
@@ -267,13 +267,13 @@ public class ConfigurableSubdivider
                 }
                 if (i + 1 <= resolution && j - 1 >= 0 && k - 1 >= 0)
                 {
-                    Point p3 = barycentricMap[(i, j, k)];
-                    Point p2 = barycentricMap[(i + 1, j - 1, k)];
-                    Point p1 = barycentricMap[(i + 1, j, k - 1)];
-                    Edge e1 = StrDb.AddEdge(p2, p1);
-                    Edge e2 = StrDb.AddEdge(p3, p2);
-                    Edge e3 = StrDb.AddEdge(p1, p3);
-                    if (p1 != null && p2 != null && p3 != null)
+                    Point? p3 = barycentricMap[(i, j, k)];
+                    Point? p2 = barycentricMap[(i + 1, j - 1, k)];
+                    Point? p1 = barycentricMap[(i + 1, j, k - 1)];
+                    Edge e1 = StrDb.AddEdge(p2!, p1!);
+                    Edge e2 = StrDb.AddEdge(p3!, p2!);
+                    Edge e3 = StrDb.AddEdge(p1!, p3!);
+                    if (p1 is not null && p2 is not null && p3 is not null)
                     {
                         faces.Add(new Face(p1, p2, p3, e1, e2, e3));
                     }

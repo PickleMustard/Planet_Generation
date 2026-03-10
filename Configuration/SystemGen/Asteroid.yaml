@@ -1,0 +1,49 @@
+categories:
+  potential:
+    - mythology
+    - scientists
+    - explorers
+    - adjectives
+
+satellite:
+  template:
+    position: [450, 0, 0]
+    velocity: [0, 2, 0]
+    size_range: [10, 25]
+    mass_range: [4, 10]
+
+  mesh:
+    base_mesh:
+      subdivisions: 1
+      vertices_per_edge: [[2, 3]]
+      num_abberations: 0
+      num_deformation_cycles: 0
+
+    scaling:
+      scaling_range_x: [1.0, 1.2]
+      scaling_range_y: [1.0, 1.2]
+      scaling_range_z: [1.0, 1.2]
+
+    noise_settings:
+      amplitude_range: [5.0, 5.0]
+      scaling_range: [5.0, 5.0]
+      octave_range: [4, 8]
+
+  resources:
+    main:
+      - resource_id: iron_ore
+        base_weight: 1.0
+        distance_weight: 1.0
+      - resource_id: gold_ore
+        base_weight: 0.8
+        distance_weight: 1.2
+      - resource_id: copper_ore
+        base_weight: 0.6
+        distance_weight: 1.0
+    secondary:
+      - resource_id: cobalt_ore
+        base_weight: 0.4
+        distance_weight: 1.0
+      - resource_id: uranium_ore
+        base_weight: 0.2
+        distance_weight: 1.8

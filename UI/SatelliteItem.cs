@@ -11,45 +11,45 @@ public partial class SatelliteItem : HBoxContainer
     public delegate void ItemUpdateEventHandler();
 
     [Export]
-    public Button Toggle;
+    public Button? Toggle;
 
     [Export]
-    public Button RemoveItem;
+    public Button? RemoveItem;
 
     [Export]
-    public Button DetailsToggle;
+    public Button? DetailsToggle;
 
     [Export]
-    public OptionButton OptionButton;
+    public OptionButton? OptionButton;
 
     [Export]
-    public SpinBox X;
+    public SpinBox? X;
 
     [Export]
-    public SpinBox Y;
+    public SpinBox? Y;
 
     [Export]
-    public SpinBox Z;
+    public SpinBox? Z;
 
     [Export]
-    public SpinBox velX;
+    public SpinBox? velX;
 
     [Export]
-    public SpinBox velY;
+    public SpinBox? velY;
 
     [Export]
-    public SpinBox velZ;
+    public SpinBox? velZ;
 
     [Export]
-    public SpinBox mass;
+    public SpinBox? mass;
 
     [Export]
-    public SpinBox size;
+    public SpinBox? size;
 
     [Export]
-    public VBoxContainer DetailsPanel;
+    public VBoxContainer? DetailsPanel;
 
-    public Action<SatelliteItem> OnRemoveRequested;
+    public Action<SatelliteItem>? OnRemoveRequested;
 
     private CelestialBodyType parentType;
     private int NumberInBelt = 25;
@@ -57,41 +57,41 @@ public partial class SatelliteItem : HBoxContainer
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
 
-    private PackedScene _detailPanelScene;
+    private PackedScene? _detailPanelScene;
 
     //Hidden Values
     //Base Mesh
     private int subdivisions;
-    private int[,] verticesPerEdge;
+    private int[,]? verticesPerEdge;
     private int numAbberations;
     private int numDeformationCycles;
 
     //Tectonics
     bool hasTectonics = false;
-    private int[] numContinents;
-    private float[] stressScale;
-    private float[] shearScale;
-    private float[] maxPropagationDistance;
-    private float[] propagationFalloff;
-    private float[] inactiveStressThreshold;
-    private float[] generalHeightScale;
-    private float[] generalShearScale;
-    private float[] generalCompressionScale;
-    private float[] generalTransformScale;
+    private int[]? numContinents;
+    private float[]? stressScale;
+    private float[]? shearScale;
+    private float[]? maxPropagationDistance;
+    private float[]? propagationFalloff;
+    private float[]? inactiveStressThreshold;
+    private float[]? generalHeightScale;
+    private float[]? generalShearScale;
+    private float[]? generalCompressionScale;
+    private float[]? generalTransformScale;
 
     //Scaling
     bool hasScaling = false;
-    private float[] xScaleRange;
-    private float[] yScaleRange;
-    private float[] zScaleRange;
+    private float[]? xScaleRange;
+    private float[]? yScaleRange;
+    private float[]? zScaleRange;
 
     //Noise Settings
     bool hasNoise = false;
-    private float[] amplitudeRange;
-    private float[] scalingRange;
-    private int[] octaveRange;
+    private float[]? amplitudeRange;
+    private float[]? scalingRange;
+    private int[]? octaveRange;
 
-    private String satName;
+    private String? satName;
 
     public void SetParentType(CelestialBodyType type)
     {
@@ -182,7 +182,7 @@ public partial class SatelliteItem : HBoxContainer
     public void ApplyTemplate(SatelliteBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetSatelliteBodyDefaults(type);
+        var t = TemplateHelpers.GetSatelliteBodyDefaults(type);
         var template = (Godot.Collections.Dictionary)t["template"];
         satName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
 
@@ -398,9 +398,9 @@ public partial class SatelliteItem : HBoxContainer
 
     public new Vector3 GetPosition()
     {
-        float x = Mathf.Clamp((float)X.Value, -Limit, Limit);
-        float y = Mathf.Clamp((float)Y.Value, -Limit, Limit);
-        float z = Mathf.Clamp((float)Z.Value, -Limit, Limit);
+        float x = Mathf.Clamp((float)X!.Value, -Limit, Limit);
+        float y = Mathf.Clamp((float)Y!.Value, -Limit, Limit);
+        float z = Mathf.Clamp((float)Z!.Value, -Limit, Limit);
         return new Vector3(x, y, z);
     }
 
@@ -416,9 +416,9 @@ public partial class SatelliteItem : HBoxContainer
 
     public Vector3 GetVelocity()
     {
-        float vx = Mathf.Clamp((float)velX.Value, -Limit, Limit);
-        float vy = Mathf.Clamp((float)velY.Value, -Limit, Limit);
-        float vz = Mathf.Clamp((float)velZ.Value, -Limit, Limit);
+        float vx = Mathf.Clamp((float)velX!.Value, -Limit, Limit);
+        float vy = Mathf.Clamp((float)velY!.Value, -Limit, Limit);
+        float vz = Mathf.Clamp((float)velZ!.Value, -Limit, Limit);
         return new Vector3(vx, vy, vz);
     }
 
@@ -430,7 +430,7 @@ public partial class SatelliteItem : HBoxContainer
 
     public float GetMass()
     {
-        return Mathf.Clamp((float)mass.Value, 0f, MassLimit);
+        return Mathf.Clamp((float)mass!.Value, 0f, MassLimit);
     }
 
     public void SetSize(float sizeValue)
@@ -441,7 +441,7 @@ public partial class SatelliteItem : HBoxContainer
 
     public new float GetSize()
     {
-        return Mathf.Clamp((float)size.Value, 0f, SizeLimit);
+        return Mathf.Clamp((float)size!.Value, 0f, SizeLimit);
     }
 
     public string GetSatelliteType()
@@ -455,14 +455,14 @@ public partial class SatelliteItem : HBoxContainer
 
     public Vector3 GetBodyPosition()
     {
-        return new Vector3(Mathf.Clamp((float)X.Value, -Limit, Limit), Mathf.Clamp((float)Y.Value, -Limit, Limit), Mathf.Clamp((float)Z.Value, -Limit, Limit));
+        return new Vector3(Mathf.Clamp((float)X!.Value, -Limit, Limit), Mathf.Clamp((float)Y!.Value, -Limit, Limit), Mathf.Clamp((float)Z!.Value, -Limit, Limit));
     }
 
     public Godot.Collections.Dictionary ToParams()
     {
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
         dict.Add("type", GetSatelliteType());
-        dict.Add("name", satName);
+        dict.Add("name", satName!);
         Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
         templateDict.Add("base_position", GetPosition());
         templateDict.Add("satellite_velocity", GetVelocity());
@@ -475,7 +475,7 @@ public partial class SatelliteItem : HBoxContainer
         for (int i = 0; i < subdivisions; i++)
         {
             Godot.Collections.Array<int> row = new Godot.Collections.Array<int>();
-            row.Add(verticesPerEdge[i, 0]);
+            row.Add(verticesPerEdge![i, 0]);
             row.Add(verticesPerEdge[i, 1]);
             vpeArray.Add(row);
         }
@@ -486,32 +486,32 @@ public partial class SatelliteItem : HBoxContainer
         if (hasTectonics)
         {
             var tectonics = new Godot.Collections.Dictionary();
-            tectonics.Add("num_continents", numContinents);
-            tectonics.Add("stress_scale", stressScale);
-            tectonics.Add("shear_scale", shearScale);
-            tectonics.Add("max_propagation_distance", maxPropagationDistance);
-            tectonics.Add("propagation_falloff", propagationFalloff);
-            tectonics.Add("inactive_stress_threshold", inactiveStressThreshold);
-            tectonics.Add("general_height_scale", generalHeightScale);
-            tectonics.Add("general_shear_scale", generalShearScale);
-            tectonics.Add("general_compression_scale", generalCompressionScale);
-            tectonics.Add("general_transform_scale", generalTransformScale);
+            tectonics.Add("num_continents", numContinents!);
+            tectonics.Add("stress_scale", stressScale!);
+            tectonics.Add("shear_scale", shearScale!);
+            tectonics.Add("max_propagation_distance", maxPropagationDistance!);
+            tectonics.Add("propagation_falloff", propagationFalloff!);
+            tectonics.Add("inactive_stress_threshold", inactiveStressThreshold!);
+            tectonics.Add("general_height_scale", generalHeightScale!);
+            tectonics.Add("general_shear_scale", generalShearScale!);
+            tectonics.Add("general_compression_scale", generalCompressionScale!);
+            tectonics.Add("general_transform_scale", generalTransformScale!);
             dict.Add("tectonics", tectonics);
         }
         if (hasScaling)
         {
             Godot.Collections.Dictionary scalingDict = new Godot.Collections.Dictionary();
-            scalingDict.Add("x_scale_range", xScaleRange);
-            scalingDict.Add("y_scale_range", yScaleRange);
-            scalingDict.Add("z_scale_range", zScaleRange);
+            scalingDict.Add("x_scale_range", xScaleRange!);
+            scalingDict.Add("y_scale_range", yScaleRange!);
+            scalingDict.Add("z_scale_range", zScaleRange!);
             dict.Add("scaling_settings", scalingDict);
         }
         if (hasNoise)
         {
             Godot.Collections.Dictionary noiseDict = new Godot.Collections.Dictionary();
-            noiseDict.Add("amplitude_range", amplitudeRange);
-            noiseDict.Add("scaling_range", scalingRange);
-            noiseDict.Add("octave_range", octaveRange);
+            noiseDict.Add("amplitude_range", amplitudeRange!);
+            noiseDict.Add("scaling_range", scalingRange!);
+            noiseDict.Add("octave_range", octaveRange!);
             dict.Add("noise_settings", noiseDict);
         }
         return dict;
@@ -524,7 +524,7 @@ public partial class SatelliteItem : HBoxContainer
         if (DetailsPanel.GetChildCount() == 0)
         {
             // Create and setup detail panel
-            var detailPanel = _detailPanelScene.Instantiate<DetailPanel>();
+            var detailPanel = _detailPanelScene!.Instantiate<DetailPanel>();
             DetailsPanel.AddChild(detailPanel);
             detailPanel.SetupForSatelliteItem();
             detailPanel.ValueChanged += OnDetailValueChanged;
@@ -552,19 +552,19 @@ public partial class SatelliteItem : HBoxContainer
             {
                 // Base Mesh values
                 detailPanel.SetSubdivisions(subdivisions);
-                detailPanel.SetVerticesPerEdge(verticesPerEdge);
+                detailPanel.SetVerticesPerEdge(verticesPerEdge!);
                 detailPanel.SetAberrations(numAbberations);
                 detailPanel.SetDeformationCycles(numDeformationCycles);
 
                 // Scaling values
-                detailPanel.SetTectonicsValues("X Scale", xScaleRange);
-                detailPanel.SetTectonicsValues("Y Scale", yScaleRange);
-                detailPanel.SetTectonicsValues("Z Scale", zScaleRange);
+                detailPanel.SetTectonicsValues("X Scale", xScaleRange!);
+                detailPanel.SetTectonicsValues("Y Scale", yScaleRange!);
+                detailPanel.SetTectonicsValues("Z Scale", zScaleRange!);
 
                 // Noise values
-                detailPanel.SetTectonicsValues("Amplitude", amplitudeRange);
-                detailPanel.SetTectonicsValues("Scaling", scalingRange);
-                detailPanel.SetTectonicsValues("Octaves", Array.ConvertAll(octaveRange, x => (float)x));
+                detailPanel.SetTectonicsValues("Amplitude", amplitudeRange!);
+                detailPanel.SetTectonicsValues("Scaling", scalingRange!);
+                detailPanel.SetTectonicsValues("Octaves", Array.ConvertAll(octaveRange!, x => (float)x));
             }
         }
     }

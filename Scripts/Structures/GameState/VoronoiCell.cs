@@ -9,7 +9,7 @@ public partial class VoronoiCell : Resource
     public Point[] Points { get; set; }
     public Triangle[] Triangles { get; set; }
     public Edge[] Edges { get; set; }
-    public Edge[] OutsideEdges { get; set; } //Edges that lie on the border of a continent
+    public Edge[]? OutsideEdges { get; set; } //Edges that lie on the border of a continent
     public Aabb BoundingBox { get; set; }
     public int Index { get; set; }
     public int ContinentIndex { get; set; }
@@ -22,6 +22,13 @@ public partial class VoronoiCell : Resource
     public Vector3 Center { get; set; }
     public float Stress { get; set; } = 0.0f;
     public int Increment { get; set; } = 1;
+
+    /// <summary>
+    /// Resources available in this cell.
+    /// Key is the resource ID, value is the abundance (0-1).
+    /// </summary>
+    public Dictionary<string, float> Resources { get; set; } = new();
+
     public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles, Edge[] edges)
     {
         Triangles = triangles;

@@ -3,22 +3,33 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
 using PlanetGeneration;
-using Structures.Enums;
 using ProceduralGeneration.MeshGeneration;
+using Structures.Enums;
 using UtilityLibrary;
+using UtilityLibrary.TaskSystem;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
 public partial class SystemGenerator : Node
 {
+    [Signal]
+    public delegate void SystemGenerationCompleteEventHandler();
+
     [Export]
-    public Node SystemContainer;
+    public Node? SystemContainer;
 
     [ExportCategory("Thread Pool Settings")]
-    [Export] public int MaxConcurrentThreads = -1; // -1 = auto-detect
-    [Export] public bool EnableThreading = true;
-    [Export] public int MemoryThresholdMB = 1024; // Memory threshold for thread pool activation
-    [Export] public bool ShowProgressUI = true;
+    [Export]
+    public int MaxConcurrentThreads = -1; // -1 = auto-detect
+
+    [Export]
+    public bool EnableThreading = true;
+
+    [Export]
+    public int MemoryThresholdMB = 1024; // Memory threshold for thread pool activation
+
+    [Export]
+    public bool ShowProgressUI = true;
 
     // Progress tracking
     private int totalBodiesToGenerate = 0;
@@ -30,20 +41,16 @@ public partial class SystemGenerator : Node
         var GenerateButton = GetTree().GetFirstNodeInGroup("GenerationMenu");
         ((UI.PlanetSystemGenerator)GenerateButton).GeneratePressed += GenerateMesh;
 
-        // Initialize thread pool
-        if (EnableThreading && MeshGenerationThreadPool.Instance == null)
-        {
-            var threadPool = new MeshGenerationThreadPool();
-            AddChild(threadPool);
-            threadPool.Initialize();
-            GD.Print("Thread pool initialized");
-        }
+        // ThreadPooler is now an autoload, no manual initialization needed
+        GD.Print(
+            $"SystemGenerator ready, ThreadPooler available: {UtilityLibrary.TaskSystem.ThreadPooler.Instance != null}"
+        );
     }
 
-    private async void GenerateMesh(Godot.Collections.Array<Godot.Collections.Dictionary> bodies)
+    private void GenerateMesh(Godot.Collections.Array<Godot.Collections.Dictionary> bodies)
     {
         // Clear existing bodies
-        if (SystemContainer.GetChildCount() > 0)
+        if (SystemContainer!.GetChildCount() > 0)
         {
             var children = SystemContainer.GetChildren();
             foreach (Node child in children)
@@ -57,64 +64,87 @@ public partial class SystemGenerator : Node
         totalBodiesToGenerate = bodies.Count;
         bodiesCompleted = 0;
 
-        // Queue all celestial body generation tasks
-        var generationTasks = new List<Task>();
+        // Start generation session
+        totalBodiesToGenerate = bodies.Count;
+        bodiesCompleted = 0;
+
         GD.Print($"Generating System: {bodies}");
 
         foreach (Godot.Collections.Dictionary body in bodies)
         {
-            var task = GenerateCelestialBodyAsync(body);
-            generationTasks.Add(task);
+            CreateAndQueueCelestialBody(body);
         }
 
-        // Wait for all bodies to complete generation
-        await Task.WhenAll(generationTasks);
-
-        // Final progress update
-        if (ShowProgressUI)
-        {
-            GD.Print($"System generation complete: {bodiesCompleted}/{totalBodiesToGenerate} bodies generated");
-        }
+        GD.Print($"System generation started: {totalBodiesToGenerate} bodies queued");
     }
 
-    private async Task GenerateCelestialBodyAsync(Godot.Collections.Dictionary body)
+    private void CreateAndQueueCelestialBody(Godot.Collections.Dictionary body)
     {
         var mesh = new UnifiedCelestialMesh();
         CelestialBody celBody = CelestialBody.Builder.BuildFromBodyDict(body, mesh);
-        SystemContainer.AddChild(celBody);
+
+        SystemContainer!.AddChild(celBody);
         celBody.Position = (Vector3)((Godot.Collections.Dictionary)body["template"])["position"];
 
-        if (EnableThreading && MeshGenerationThreadPool.Instance != null)
-        {
-            // Queue mesh generation as high priority
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { celBody.GenerateMesh(); },
-                celBody.Name,
-                TaskPriority.High,
-                celBody.Name
-            );
-        }
-        else
-        {
-            // Fallback to synchronous generation
-            celBody.GenerateMesh();
-        }
+        celBody.StartMeshGeneration(
+            onCompleted: (completedBody) => OnBodyGenerationComplete(completedBody, celBody, body),
+            onFailed: (failedBody, error) => OnBodyGenerationFailed(failedBody, error, celBody)
+        );
+    }
 
-        // Handle satellites if present
-        if (body.ContainsKey("satellites") && body["satellites"].Obj is Godot.Collections.Array satellites)
-        {
-            await GenerateSatellitesAsync(celBody, satellites);
-        }
-
-        // Update progress
+    private void OnBodyGenerationComplete(
+        CelestialBody completedBody,
+        CelestialBody celBody,
+        Godot.Collections.Dictionary bodyDict
+    )
+    {
         bodiesCompleted++;
         if (ShowProgressUI)
         {
-            GD.Print($"Generated {bodiesCompleted}/{totalBodiesToGenerate} bodies ({(float)bodiesCompleted / totalBodiesToGenerate * 100:F1}%)");
+            GD.Print(
+                $"Generated {bodiesCompleted}/{totalBodiesToGenerate} bodies ({(float)bodiesCompleted / totalBodiesToGenerate * 100:F1}%)"
+            );
+        }
+
+        // Handle satellites if present
+        if (
+            bodyDict.ContainsKey("satellites")
+            && bodyDict["satellites"].Obj is Godot.Collections.Array satellites
+        )
+        {
+            QueueSatelliteGeneration(celBody, satellites);
+        }
+
+        // Check if all bodies are complete
+        if (bodiesCompleted >= totalBodiesToGenerate)
+        {
+            GD.Print(
+                $"System generation complete: {bodiesCompleted}/{totalBodiesToGenerate} bodies generated"
+            );
+            EmitSignal(SignalName.SystemGenerationComplete);
         }
     }
 
-    private async Task GenerateSatellitesAsync(CelestialBody parentBody, Godot.Collections.Array satellites)
+    private void OnBodyGenerationFailed(
+        CelestialBody failedBody,
+        string error,
+        CelestialBody celBody
+    )
+    {
+        GD.PrintErr($"Body generation failed: {celBody.Name}, error: {error}");
+        celBody.QueueFree();
+
+        bodiesCompleted++;
+        if (bodiesCompleted >= totalBodiesToGenerate)
+        {
+            EmitSignal(SignalName.SystemGenerationComplete);
+        }
+    }
+
+    private void QueueSatelliteGeneration(
+        CelestialBody parentBody,
+        Godot.Collections.Array satellites
+    )
     {
         if (
             parentBody.Type == CelestialBodyType.Star
@@ -135,32 +165,6 @@ public partial class SystemGenerator : Node
         }
     }
 
-    private void GenerateSatellites(CelestialBody parentBody, Godot.Collections.Array satellites)
-    {
-        if (
-            parentBody.Type == CelestialBodyType.Star
-            || parentBody.Type == CelestialBodyType.BlackHole
-        )
-        {
-            foreach (Godot.Collections.Dictionary satBelt in satellites)
-            {
-                GenerateSatelliteBelt(satBelt, parentBody);
-            }
-        }
-        else
-        {
-            foreach (Godot.Collections.Dictionary sat in satellites)
-            {
-                var type = sat["Type"];
-                var templateDict = (Godot.Collections.Dictionary)sat["Template"];
-                var position = templateDict["BasePosition"];
-                var velocity = templateDict["SatelliteVelocity"];
-                var mass = templateDict["Mass"];
-                var size = templateDict["Size"];
-            }
-        }
-    }
-
     public bool CheckGravitationalStability(
         Godot.Collections.Array<Godot.Collections.Dictionary> bodies,
         float simulationTime = 1000000.0f,
@@ -171,7 +175,8 @@ public partial class SystemGenerator : Node
         foreach (var body in bodies)
         {
             GD.Print($"Chekcing gravitational stability for {body}");
-            Godot.Collections.Dictionary templateDict = (Godot.Collections.Dictionary)body["template"];
+            Godot.Collections.Dictionary templateDict = (Godot.Collections.Dictionary)
+                body["template"];
             var position = (Vector3)templateDict["position"];
             var velocity = (Vector3)templateDict["velocity"];
             var mass = (float)templateDict["mass"];
@@ -259,51 +264,59 @@ public partial class SystemGenerator : Node
         return true; // No collisions detected
     }
 
-    private async void GenerateSingleSatellite(Godot.Collections.Dictionary sat, CelestialBody parentBody)
+    private void GenerateSingleSatellite(Godot.Collections.Dictionary sat, CelestialBody parentBody)
     {
         var templateDict = (Godot.Collections.Dictionary)sat["template"];
         var position = (Vector3)templateDict["base_position"];
         var mesh = new UnifiedCelestialMesh();
         SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(parentBody.Type, sat, mesh);
+
         parentBody.AddChild(satBody);
         satBody.Position = position;
-        if (EnableThreading && MeshGenerationThreadPool.Instance != null)
-        {
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { satBody.GenerateMesh(); },
-                satBody.Name,
-                TaskPriority.Medium,
-                satBody.Name
-            );
-            GD.Print($"Enqueued {satBody.Name}");
-        }
-        else
-        {
-            satBody.GenerateMesh();
-        }
 
+        satBody.StartMeshGeneration(
+            onCompleted: (completedSat) =>
+            {
+                GD.Print($"Generated {completedSat.Name}");
+            },
+            onFailed: (failedSat, error) =>
+            {
+                GD.PrintErr($"Satellite generation failed: {failedSat.Name}, error: {error}");
+                failedSat.QueueFree();
+            }
+        );
     }
 
-    private async void GenerateSatelliteBelt(Godot.Collections.Dictionary satBelt, CelestialBody parentBody)
+    private void GenerateSatelliteBelt(
+        Godot.Collections.Dictionary satBelt,
+        CelestialBody parentBody
+    )
     {
-        SatelliteBeltBody beltBody = SatelliteBeltBody.Builder.BuildFromBodyDict(parentBody.Type, satBelt);
-        string name = $"{parentBody.Name}_{beltBody.GroupType}";
+        SatelliteBeltBody beltBody = SatelliteBeltBody.Builder.BuildFromBodyDict(
+            parentBody.Type,
+            satBelt
+        );
         var sats = beltBody.GenerateSatelliteBelt(parentBody);
-        if (EnableThreading && MeshGenerationThreadPool.Instance != null)
+
+        foreach (var sat in sats)
         {
-            foreach (var sat in sats)
-            {
-                GD.Print($"Enqueued {sat.Name}, Position: {sat.Position}");
-                parentBody.AddChild(sat);
-                sat.Position = sat.Position;
-                await MeshGenerationThreadPool.Instance.EnqueueTask(() =>
+            GD.Print($"Generating {sat.Name}, Position: {sat.Position}");
+            parentBody.AddChild(sat);
+            sat.Position = sat.Position;
+
+            sat.StartMeshGeneration(
+                onCompleted: (completedSat) =>
                 {
-                    sat.GenerateMesh();
+                    GD.Print($"Generated satellite belt body: {completedSat.Name}");
                 },
-                name,
-                TaskPriority.Medium,
-                name);
-            }
+                onFailed: (failedSat, error) =>
+                {
+                    GD.PrintErr(
+                        $"Satellite belt body generation failed: {failedSat.Name}, error: {error}"
+                    );
+                    failedSat.QueueFree();
+                }
+            );
         }
     }
 

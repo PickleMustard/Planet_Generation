@@ -36,7 +36,7 @@ namespace UtilityLibrary
             var meshInstance = new MeshInstance3D();
             var immediateMesh = new ImmediateMesh();
             var material = ResourceLoader.Load("res://face_shader.tres") as ShaderMaterial;
-            material.Set("base_color", new Color(Math.Abs(50), Math.Abs(70), Math.Abs(50)));
+            material!.Set("base_color", new Color(Math.Abs(50), Math.Abs(70), Math.Abs(50)));
             material.Set("border_thickness", 0.01);
 
             meshInstance.Mesh = immediateMesh;

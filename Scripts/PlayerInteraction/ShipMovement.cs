@@ -5,9 +5,9 @@ public partial class ShipMovement : Node3D
     [Export]
     public float ShipTurnSpeed { get; set; } = .2f;
     [Export]
-    Node3D Target;
+    Node3D? Target;
 
-    private Node3D _parent;
+    private Node3D? _parent;
     private Basis _startBasis { get; set; }
     private Basis _endBasis { get; set; }
     private Quaternion _startingRotation { get; set; }
