@@ -271,7 +271,7 @@ public partial class SystemGenerator : Node
         var mesh = new UnifiedCelestialMesh();
         SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(parentBody.Type, sat, mesh);
 
-        parentBody.AddChild(satBody);
+        parentBody.CallDeferred("add_child", satBody);
         satBody.Position = position;
 
         satBody.StartMeshGeneration(

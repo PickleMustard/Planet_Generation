@@ -14,19 +14,44 @@ public partial class Point : Resource, IEquatable<Point>
 
     // Deterministic, collision-free mapping from quantized coordinates -> unique index
     private static readonly object IndexLock = new object();
-    private static readonly Dictionary<(int ix, int iy, int iz), int> KeyToIndex = new Dictionary<(int, int, int), int>();
+    private static readonly Dictionary<(int ix, int iy, int iz), int> KeyToIndex =
+        new Dictionary<(int, int, int), int>();
 #pragma warning disable CS0414
     private static int NextIndex = 0;
 #pragma warning restore CS0414
 
-    public float[] Components { get { return _position; } set { value.CopyTo(_position, 0); } }
-    public int Index { get { return _index; } set { _index = value; } }
-    public int VectorSpace { get { return 3; } }
-    public Vector3 Position { get { return new Vector3(_position[0], _position[1], _position[2]); } set { _position[0] = value.X; _position[1] = value.Y; _position[2] = value.Z; } }
+    public float[] Components
+    {
+        get { return _position; }
+        set { value.CopyTo(_position, 0); }
+    }
+    public int Index
+    {
+        get { return _index; }
+        set { _index = value; }
+    }
+    public int VectorSpace
+    {
+        get { return 3; }
+    }
+    public Vector3 Position
+    {
+        get { return new Vector3(_position[0], _position[1], _position[2]); }
+        set
+        {
+            _position[0] = value.X;
+            _position[1] = value.Y;
+            _position[2] = value.Z;
+        }
+    }
     public HashSet<int>? ContinentIndecies { get; set; }
     public float Height { get; set; }
     public Vector3 Velocity { get; set; }
-    public float Stress { get { return _stress; } set { _stress = value; } }
+    public float Stress
+    {
+        get { return _stress; }
+        set { _stress = value; }
+    }
     public bool isOnContinentBorder { get; set; }
     public float Radius { get; set; }
     public Biome.BiomeType Biome { get; set; }
@@ -50,14 +75,17 @@ public partial class Point : Resource, IEquatable<Point>
 
     public bool Equals(Point? other)
     {
-        if (other is null) return false;
+        if (other is null)
+            return false;
         return other.Index == Index;
     }
 
     public override bool Equals(object? obj)
     {
-        if (obj is null) return false;
-        if (obj is Point p) return Equals(p);
+        if (obj is null)
+            return false;
+        if (obj is Point p)
+            return Equals(p);
         return false;
     }
 
@@ -129,12 +157,25 @@ public partial class Point : Resource, IEquatable<Point>
         }
     }
 
-    public static Vector3[] ToVectors3(IEnumerable<Point> points) => points.Select(point => ((Point)point).ToVector3()).ToArray();
-    public static Point[] ToPoints(IEnumerable<Vector3> vertices) => vertices.Select(vertex => ToPoint(vertex)).ToArray();
+    public static Vector3[] ToVectors3(IEnumerable<Point> points) =>
+        points.Select(point => ((Point)point).ToVector3()).ToArray();
+
+    public static Point[] ToPoints(IEnumerable<Vector3> vertices) =>
+        vertices.Select(vertex => ToPoint(vertex)).ToArray();
+
     public static Point ToPoint(Vector3 vertex) => new Point(vertex);
+
     public Vector3 ToVector3() => new Vector3(Components[0], Components[1], Components[2]);
+
     public Vector2 ToVector2() => new Vector2(Components[0], Components[1]);
-    public Edge ReverseEdge(Edge e) { var t = e.Q; e.Q = e.P; e.P = t; return e; }
+
+    public Edge ReverseEdge(Edge e)
+    {
+        var t = e.Q;
+        e.Q = e.P;
+        e.P = t;
+        return e;
+    }
 
     private string printContinents()
     {
@@ -149,5 +190,6 @@ public partial class Point : Resource, IEquatable<Point>
         return continents;
     }
 
-    public override string ToString() => $"Point: ({Index},{Components[0]},{Components[1]},{Components[2]}) Continents: {printContinents()}";
+    public override string ToString() =>
+        $"Point: ({Index},{Components[0]},{Components[1]},{Components[2]}) Continents: {printContinents()}";
 }

@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using UtilityLibrary;
-using Structures.MeshGeneration;
 using Structures.GameState;
-
+using Structures.MeshGeneration;
+using UtilityLibrary;
 
 namespace ProceduralGeneration.MeshGeneration;
 
@@ -43,10 +42,17 @@ public class VoronoiCellGeneration
     /// and creates Voronoi cells by triangulating the projected circumcenters.
     /// </summary>
     /// <param name="percent">Progress tracking object for monitoring generation progress.</param>
-    public void GenerateVoronoiCells(GenericPercent percent, UnifiedCelestialMesh mesh, Octree<Point> oct)
+    public void GenerateVoronoiCells(
+        GenericPercent percent,
+        UnifiedCelestialMesh mesh,
+        Octree<Point> oct
+    )
     {
         this.mesh = mesh;
-        GameLogger.EnterFunction("GenerateVoronoiCells", $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}");
+        GameLogger.EnterFunction(
+            "GenerateVoronoiCells",
+            $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}"
+        );
         GD.Print($"Generating Voronoi Cells: {StrDb.BaseVertices.Count} Sites");
         GameLogger.Info($"Structure Database: {StrDb.Index}");
         try
@@ -68,7 +74,7 @@ public class VoronoiCellGeneration
                 }
                 // Build Voronoi vertices (spherical circumcenters of incident triangles)
                 List<Point> triCircumcenters = new List<Point>();
-                GameLogger.Info($"Building Voronoi Cell: incidentTris={trianglesWithPoint.Count}, siteIndex={p.Index}");
+                // GameLogger.Info($"Building Voronoi Cell: incidentTris={trianglesWithPoint.Count}, siteIndex={p.Index}");  // Moved to Debug to reduce console noise
                 foreach (var tri in trianglesWithPoint)
                 {
                     GameLogger.Debug($"Calculating circumcenter for triangle: {tri.Index}");
@@ -76,7 +82,11 @@ public class VoronoiCellGeneration
                     var ac = v3[2] - v3[0];
                     var ab = v3[1] - v3[0];
                     var abXac = ab.Cross(ac);
-                    var vToCircumsphereCenter = (abXac.Cross(ab) * ac.LengthSquared() + ac.Cross(abXac) * ab.LengthSquared()) / (2.0f * abXac.LengthSquared());
+                    var vToCircumsphereCenter =
+                        (
+                            abXac.Cross(ab) * ac.LengthSquared()
+                            + ac.Cross(abXac) * ab.LengthSquared()
+                        ) / (2.0f * abXac.LengthSquared());
                     Point cc = new Point(v3[0] + vToCircumsphereCenter);
                     if (triCircumcenters.Contains(cc))
                     {
@@ -123,14 +133,20 @@ public class VoronoiCellGeneration
                 }
 
                 GameLogger.Debug($"Unit Norm: {unitNorm}");
-                VoronoiCell calculated = TriangulatePoints(unitNorm, triCircumcenters, StrDb.VoronoiCells.Count);
-                GameLogger.Info($"Generated Voronoi Cell: {calculated.Index} with {calculated.Points.Length} points, {calculated.Edges.Length} edges");
+                VoronoiCell calculated = TriangulatePoints(
+                    unitNorm,
+                    triCircumcenters,
+                    StrDb.VoronoiCells.Count
+                );
+                GameLogger.Debug(
+                    $"Generated Voronoi Cell: {calculated.Index} with {calculated.Points.Length} points, {calculated.Edges.Length} edges"
+                );
                 calculated.IsBorderTile = false;
-                 if (calculated != null)
-                 {
-                     StrDb.VoronoiCells.Add(calculated);
-                 }
-                 foreach (Edge e in calculated!.Edges)
+                if (calculated != null)
+                {
+                    StrDb.VoronoiCells.Add(calculated);
+                }
+                foreach (Edge e in calculated!.Edges)
                 {
                     StrDb.AddCellForEdge(e.key, calculated);
                 }
@@ -147,7 +163,10 @@ public class VoronoiCellGeneration
             GD.PrintErr($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
             GameLogger.Error($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
         }
-        GameLogger.ExitFunction("GenerateVoronoiCells", $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}");
+        GameLogger.ExitFunction(
+            "GenerateVoronoiCells",
+            $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}"
+        );
     }
 
     /// <summary>
@@ -161,7 +180,10 @@ public class VoronoiCellGeneration
     /// <returns>A new VoronoiCell containing the triangulated structure.</returns>
     public VoronoiCell TriangulatePoints(Vector3 unitNorm, List<Point> TriCircumcenters, int index)
     {
-        GameLogger.EnterFunction("TriangulatePoints", $"unitNorm=({unitNorm.X:F3},{unitNorm.Y:F3},{unitNorm.Z:F3}), count={TriCircumcenters.Count}, index={index}");
+        GameLogger.EnterFunction(
+            "TriangulatePoints",
+            $"unitNorm=({unitNorm.X:F3},{unitNorm.Y:F3},{unitNorm.Z:F3}), count={TriCircumcenters.Count}, index={index}"
+        );
         var u = new Vector3(0, 0, 0);
         if (!Mathf.Equals(unitNorm.X, 0.0f))
         {
@@ -183,7 +205,9 @@ public class VoronoiCellGeneration
         for (int i = 0; i < TriCircumcenters.Count; i++)
         {
             var projection = new Vector2((ccs[i] - ccs[0]).Dot(u), (ccs[i] - ccs[0]).Dot(v));
-            projectedPoints.Add(new Point(new Vector3(projection.X, projection.Y, 0.0f), TriCircumcenters[i].Index));
+            projectedPoints.Add(
+                new Point(new Vector3(projection.X, projection.Y, 0.0f), TriCircumcenters[i].Index)
+            );
         }
 
         // Order and clean points to form a simple polygon before CDT
@@ -207,9 +231,14 @@ public class VoronoiCellGeneration
                 CellEdges.Add(e);
             }
         }
-        GameLogger.Info($"# Triangles: {Triangles.Count}, # Edges: {CellEdges.Count}");
+        GameLogger.Debug($"# Triangles: {Triangles.Count}, # Edges: {CellEdges.Count}");
 
-        VoronoiCell GeneratedCell = new VoronoiCell(index, TriangulatedIndices.ToArray(), Triangles.ToArray(), CellEdges.ToArray());
+        VoronoiCell GeneratedCell = new VoronoiCell(
+            index,
+            TriangulatedIndices.ToArray(),
+            Triangles.ToArray(),
+            CellEdges.ToArray()
+        );
         foreach (Point p in TriangulatedIndices)
         {
             // Canonical registration
@@ -251,17 +280,28 @@ public class VoronoiCellGeneration
         List<Point> orderedPoints = new List<Point>();
         for (int i = 0; i < points.Count; i++)
         {
-            orderedPoints.Add(new Point(new Vector3(points[i].Position.X, points[i].Position.Y, less(center, new Vector2(points[i].Position.X, points[i].Position.Y))), points[i].Index));
+            orderedPoints.Add(
+                new Point(
+                    new Vector3(
+                        points[i].Position.X,
+                        points[i].Position.Y,
+                        less(center, new Vector2(points[i].Position.X, points[i].Position.Y))
+                    ),
+                    points[i].Index
+                )
+            );
         }
         orderedPoints = orderedPoints.OrderBy(p => p.Position.Z).ToList();
         for (int i = 0; i < orderedPoints.Count; i++)
         {
-            points[i] = new Point(new Vector3(orderedPoints[i].Position.X, orderedPoints[i].Position.Y, 0.0f), orderedPoints[i].Index);
+            points[i] = new Point(
+                new Vector3(orderedPoints[i].Position.X, orderedPoints[i].Position.Y, 0.0f),
+                orderedPoints[i].Index
+            );
         }
         GameLogger.ExitFunction("ReorderPoints", $"returned count={points.Count}");
         return points;
     }
-
 
     /// <summary>
     /// Determines if a 2D point lies inside a triangle defined by three vertices.
@@ -286,7 +326,6 @@ public class VoronoiCellGeneration
 
         if (reversed)
         {
-
             if (ab.Cross(ap) < 0f || bc.Cross(bp) < 0f || ca.Cross(cp) < 0f)
             {
                 GameLogger.ExitFunction("IsPointInTriangle", "returned false");
@@ -361,7 +400,10 @@ public class VoronoiCellGeneration
             return new List<Point[]>();
 
         if (orderedPoints.Count == 3)
-            return new List<Point[]> { new Point[] { orderedPoints[0], orderedPoints[1], orderedPoints[2] } };
+            return new List<Point[]>
+            {
+                new Point[] { orderedPoints[0], orderedPoints[1], orderedPoints[2] },
+            };
 
         List<Point[]> triangles = new List<Point[]>();
 
@@ -414,7 +456,10 @@ public class VoronoiCellGeneration
         // Ensure we have at least 3 points
         if (cleanedPoints.Count < 3 && points.Count >= 3)
         {
-            GameLogger.ExitFunction("RemoveCollinearPoints", "returned original first three points");
+            GameLogger.ExitFunction(
+                "RemoveCollinearPoints",
+                "returned original first three points"
+            );
             return new List<Point> { points[0], points[1], points[2] };
         }
 
