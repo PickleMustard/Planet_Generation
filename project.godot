@@ -29,13 +29,17 @@ ResourceDatabase="*res://Scripts/Structures/Resources/ResourceDatabase.cs"
 CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
 DebugMenu="*res://UI/Debug/DebugMenu.tscn"
 
+[display]
+
+window/size/mode=2
+
 [dotnet]
 
 project/assembly_name="Delaunay Triangulation Map Generation"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/runtime_settings_editor/plugin.cfg")
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
 
 [filesystem]
 

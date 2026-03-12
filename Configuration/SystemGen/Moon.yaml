@@ -9,7 +9,7 @@ satellite:
   template:
     position: [450, 0, 0]
     velocity: [0, 2, 0]
-    size_range: [1, 4]
+    size_range: [10, 40]
     mass_range: [4, 10]
 
   mesh:
@@ -23,6 +23,8 @@ satellite:
       amplitude_range: [0.5, 1.2]
       scaling_range: [0.2, 1.7]
       octave_range: [2, 4]
+      lacunarity: 5.0
+      gain: 4.5
 
     tectonic:
       num_continents: [13, 25]

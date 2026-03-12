@@ -120,6 +120,11 @@ public static class TemplateHelpers
                 result["scaling_settings"] = scalingVariant.AsGodotDictionary();
             }
 
+            if (mesh.TryGetValue("spherical_harmonics", out var shVariant))
+            {
+                result["spherical_harmonics_settings"] = shVariant.AsGodotDictionary();
+            }
+
             if (mesh.TryGetValue("noise_settings", out var noiseVariant))
             {
                 result["noise_settings"] = noiseVariant.AsGodotDictionary();
@@ -172,6 +177,11 @@ public static class TemplateHelpers
             if (mesh.TryGetValue("scaling", out var scalingVariant))
             {
                 result["scaling_settings"] = scalingVariant.AsGodotDictionary();
+            }
+
+            if (mesh.TryGetValue("spherical_harmonics", out var shVariant))
+            {
+                result["spherical_harmonics_settings"] = shVariant.AsGodotDictionary();
             }
 
             if (mesh.TryGetValue("noise_settings", out var noiseVariant))
@@ -297,6 +307,11 @@ public static class TemplateHelpers
                 result["scaling_settings"] = scalingVariant.AsGodotDictionary();
             }
 
+            if (mesh.TryGetValue("spherical_harmonics", out var shVariant))
+            {
+                result["spherical_harmonics_settings"] = shVariant.AsGodotDictionary();
+            }
+
             if (mesh.TryGetValue("noise_settings", out var noiseVariant))
             {
                 result["noise_settings"] = noiseVariant.AsGodotDictionary();
@@ -375,6 +390,11 @@ public static class TemplateHelpers
             if (mesh.TryGetValue("scaling", out var scalingVariant))
             {
                 result["scaling_settings"] = scalingVariant.AsGodotDictionary();
+            }
+
+            if (mesh.TryGetValue("spherical_harmonics", out var shVariant))
+            {
+                result["spherical_harmonics_settings"] = shVariant.AsGodotDictionary();
             }
 
             if (mesh.TryGetValue("noise_settings", out var noiseVariant))

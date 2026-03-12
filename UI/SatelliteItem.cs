@@ -1,7 +1,7 @@
 using System;
 using Godot;
-using UtilityLibrary;
 using Structures.Enums;
+using UtilityLibrary;
 
 namespace UI;
 
@@ -79,11 +79,15 @@ public partial class SatelliteItem : HBoxContainer
     private float[]? generalCompressionScale;
     private float[]? generalTransformScale;
 
-    //Scaling
+    //Scaling (backward compatibility)
     bool hasScaling = false;
     private float[]? xScaleRange;
     private float[]? yScaleRange;
     private float[]? zScaleRange;
+
+    //Spherical Harmonics
+    bool hasSphericalHarmonics = false;
+    private float[]? shAmplitudeRange;
 
     //Noise Settings
     bool hasNoise = false;
@@ -101,7 +105,9 @@ public partial class SatelliteItem : HBoxContainer
     public override void _EnterTree()
     {
         // Cache field nodes if not set via exported references
-        OptionButton ??= GetNodeOrNull<OptionButton>("MainContent/Content/TypeContent/OptionButton");
+        OptionButton ??= GetNodeOrNull<OptionButton>(
+            "MainContent/Content/TypeContent/OptionButton"
+        );
         X ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/X");
         Y ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Y");
         Z ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Z");
@@ -134,17 +140,7 @@ public partial class SatelliteItem : HBoxContainer
 
         _detailPanelScene = GD.Load<PackedScene>("res://UI/DetailPanel.tscn");
         // Hook up input events for updates
-        var spinBoxes = new[]
-        {
-            X,
-            Y,
-            Z,
-            velX,
-            velY,
-            velZ,
-            mass,
-            size,
-        };
+        var spinBoxes = new[] { X, Y, Z, velX, velY, velZ, mass, size };
         foreach (var sb in spinBoxes)
         {
             if (sb != null)
@@ -211,7 +207,8 @@ public partial class SatelliteItem : HBoxContainer
         var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
         subdivisions = (int)baseMesh["subdivisions"];
         verticesPerEdge = new int[subdivisions, 2];
-        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray =
+            (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
         for (int i = 0; i < subdivisions; i++)
         {
             verticesPerEdge[i, 0] = (int)vpeArray[i][0];
@@ -235,13 +232,20 @@ public partial class SatelliteItem : HBoxContainer
             generalCompressionScale = (float[])tectonics["general_compression_scale"];
             generalTransformScale = (float[])tectonics["general_transform_scale"];
         }
-        if (t.ContainsKey("scaling_settings"))
+        // Check for spherical_harmonics_settings first, fall back to scaling_settings
+        if (t.ContainsKey("spherical_harmonics_settings"))
+        {
+            hasSphericalHarmonics = true;
+            var shSettings = (Godot.Collections.Dictionary)t["spherical_harmonics_settings"];
+            shAmplitudeRange = (float[])shSettings["amplitude_range"];
+        }
+        else if (t.ContainsKey("scaling_settings"))
         {
             hasScaling = true;
             var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
-            xScaleRange = (float[])scaling["x_scale_range"];
-            yScaleRange = (float[])scaling["y_scale_range"];
-            zScaleRange = (float[])scaling["z_scale_range"];
+            xScaleRange = (float[])scaling["scaling_range_x"];
+            yScaleRange = (float[])scaling["scaling_range_y"];
+            zScaleRange = (float[])scaling["scaling_range_z"];
         }
 
         if (t.ContainsKey("noise_settings"))
@@ -283,7 +287,8 @@ public partial class SatelliteItem : HBoxContainer
         var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
         subdivisions = (int)baseMesh["subdivisions"];
         verticesPerEdge = new int[subdivisions, 2];
-        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray =
+            (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
         for (int i = 0; i < subdivisions; i++)
         {
             verticesPerEdge[i, 0] = (int)vpeArray[i][0];
@@ -308,13 +313,20 @@ public partial class SatelliteItem : HBoxContainer
             generalTransformScale = (float[])tectonics["general_transform_scale"];
         }
 
-        if (t.ContainsKey("scaling_settings"))
+        // Check for spherical_harmonics_settings first, fall back to scaling_settings
+        if (t.ContainsKey("spherical_harmonics_settings"))
+        {
+            hasSphericalHarmonics = true;
+            var shSettings = (Godot.Collections.Dictionary)t["spherical_harmonics_settings"];
+            shAmplitudeRange = (float[])shSettings["amplitude_range"];
+        }
+        else if (t.ContainsKey("scaling_settings"))
         {
             hasScaling = true;
             var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
-            xScaleRange = (float[])scaling["x_scale_range"];
-            yScaleRange = (float[])scaling["y_scale_range"];
-            zScaleRange = (float[])scaling["z_scale_range"];
+            xScaleRange = (float[])scaling["scaling_range_x"];
+            yScaleRange = (float[])scaling["scaling_range_y"];
+            zScaleRange = (float[])scaling["scaling_range_z"];
         }
 
         if (t.ContainsKey("noise_settings"))
@@ -325,7 +337,6 @@ public partial class SatelliteItem : HBoxContainer
             scalingRange = (float[])noiseSettings["scaling_range"];
             octaveRange = (int[])noiseSettings["octave_range"];
         }
-
     }
 
     public String PickName(Godot.Collections.Dictionary nameDict)
@@ -455,7 +466,11 @@ public partial class SatelliteItem : HBoxContainer
 
     public Vector3 GetBodyPosition()
     {
-        return new Vector3(Mathf.Clamp((float)X!.Value, -Limit, Limit), Mathf.Clamp((float)Y!.Value, -Limit, Limit), Mathf.Clamp((float)Z!.Value, -Limit, Limit));
+        return new Vector3(
+            Mathf.Clamp((float)X!.Value, -Limit, Limit),
+            Mathf.Clamp((float)Y!.Value, -Limit, Limit),
+            Mathf.Clamp((float)Z!.Value, -Limit, Limit)
+        );
     }
 
     public Godot.Collections.Dictionary ToParams()
@@ -471,7 +486,8 @@ public partial class SatelliteItem : HBoxContainer
         dict.Add("template", templateDict);
         Godot.Collections.Dictionary meshDict = new Godot.Collections.Dictionary();
         meshDict.Add("subdivisions", subdivisions);
-        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = new Godot.Collections.Array<Godot.Collections.Array<int>>();
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray =
+            new Godot.Collections.Array<Godot.Collections.Array<int>>();
         for (int i = 0; i < subdivisions; i++)
         {
             Godot.Collections.Array<int> row = new Godot.Collections.Array<int>();
@@ -498,12 +514,19 @@ public partial class SatelliteItem : HBoxContainer
             tectonics.Add("general_transform_scale", generalTransformScale!);
             dict.Add("tectonics", tectonics);
         }
-        if (hasScaling)
+        if (hasSphericalHarmonics)
         {
+            Godot.Collections.Dictionary shDict = new Godot.Collections.Dictionary();
+            shDict.Add("amplitude_range", shAmplitudeRange!);
+            dict.Add("spherical_harmonics_settings", shDict);
+        }
+        else if (hasScaling)
+        {
+            // Backward compatibility: output scaling_settings if SH not set
             Godot.Collections.Dictionary scalingDict = new Godot.Collections.Dictionary();
-            scalingDict.Add("x_scale_range", xScaleRange!);
-            scalingDict.Add("y_scale_range", yScaleRange!);
-            scalingDict.Add("z_scale_range", zScaleRange!);
+            scalingDict.Add("scaling_range_x", xScaleRange!);
+            scalingDict.Add("scaling_range_y", yScaleRange!);
+            scalingDict.Add("scaling_range_z", zScaleRange!);
             dict.Add("scaling_settings", scalingDict);
         }
         if (hasNoise)
@@ -519,7 +542,8 @@ public partial class SatelliteItem : HBoxContainer
 
     private void ToggleDetailsPanel()
     {
-        if (DetailsPanel == null) return;
+        if (DetailsPanel == null)
+            return;
 
         if (DetailsPanel.GetChildCount() == 0)
         {
@@ -556,15 +580,25 @@ public partial class SatelliteItem : HBoxContainer
                 detailPanel.SetAberrations(numAbberations);
                 detailPanel.SetDeformationCycles(numDeformationCycles);
 
-                // Scaling values
-                detailPanel.SetTectonicsValues("X Scale", xScaleRange!);
-                detailPanel.SetTectonicsValues("Y Scale", yScaleRange!);
-                detailPanel.SetTectonicsValues("Z Scale", zScaleRange!);
+                // Spherical Harmonics values (preferred) or Scaling values (backward compatibility)
+                if (hasSphericalHarmonics)
+                {
+                    detailPanel.SetTectonicsValues("SH Amplitude", shAmplitudeRange!);
+                }
+                else if (hasScaling)
+                {
+                    detailPanel.SetTectonicsValues("X Scale", xScaleRange!);
+                    detailPanel.SetTectonicsValues("Y Scale", yScaleRange!);
+                    detailPanel.SetTectonicsValues("Z Scale", zScaleRange!);
+                }
 
                 // Noise values
                 detailPanel.SetTectonicsValues("Amplitude", amplitudeRange!);
                 detailPanel.SetTectonicsValues("Scaling", scalingRange!);
-                detailPanel.SetTectonicsValues("Octaves", Array.ConvertAll(octaveRange!, x => (float)x));
+                detailPanel.SetTectonicsValues(
+                    "Octaves",
+                    Array.ConvertAll(octaveRange!, x => (float)x)
+                );
             }
         }
     }
@@ -582,10 +616,17 @@ public partial class SatelliteItem : HBoxContainer
                 numAbberations = detailPanel.GetAberrations();
                 numDeformationCycles = detailPanel.GetDeformationCycles();
 
-                // Scaling values
-                xScaleRange = detailPanel.GetTectonicsValues("X Scale");
-                yScaleRange = detailPanel.GetTectonicsValues("Y Scale");
-                zScaleRange = detailPanel.GetTectonicsValues("Z Scale");
+                // Spherical Harmonics values (preferred) or Scaling values (backward compatibility)
+                if (hasSphericalHarmonics)
+                {
+                    shAmplitudeRange = detailPanel.GetTectonicsValues("SH Amplitude");
+                }
+                else if (hasScaling)
+                {
+                    xScaleRange = detailPanel.GetTectonicsValues("X Scale");
+                    yScaleRange = detailPanel.GetTectonicsValues("Y Scale");
+                    zScaleRange = detailPanel.GetTectonicsValues("Z Scale");
+                }
 
                 // Noise values
                 amplitudeRange = detailPanel.GetTectonicsValues("Amplitude");

@@ -8,7 +8,7 @@
            "type": "coreclr",
            "request": "launch",
            "preLaunchTask": "build",
-           "program": "/usr/local/bin/godot",
+           "program": "/usr/bin/godot",
            "args": [],
            "cwd": "${workspaceFolder}",
            "stopAtEntry": false

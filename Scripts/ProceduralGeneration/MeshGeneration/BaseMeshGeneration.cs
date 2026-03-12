@@ -143,7 +143,7 @@ public class BaseMeshGeneration
             var rp = StrDb.GetOrCreatePoint(p.Index, pos);
             cartesionPoints[i] = rp;
             normals.Add(new Vector3(rp.Position.X, rp.Position.Y, rp.Position.Z));
-            GameLogger.Point($"Point: {rp}");
+            // GameLogger.Point($"Point: {rp}");  // Removed to reduce console noise
         }
         faces = new List<Face>();
         indices = new List<int> {

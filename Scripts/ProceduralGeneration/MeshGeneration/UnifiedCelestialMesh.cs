@@ -8,6 +8,7 @@ using ProceduralGeneration.MeshGeneration.ResourceGeneration;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
+using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.TaskSystem;
 
@@ -63,6 +64,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         /// Creates purely procedural terrain features.
         /// </summary>
         NoiseOnly,
+
+        /// <summary>
+        /// Generate using Spherical Harmonics global shape deformation combined with noise-based surface detail.
+        /// Suitable for satellite bodies (moons, asteroids) with realistic large-scale shape variation
+        /// and fine surface irregularities. SH deformation creates ellipsoidal/irregular base shapes
+        /// while noise adds surface texture.
+        /// </summary>
+        SphericalHarmonicsWithNoise,
     }
 
     [Signal]
@@ -355,10 +364,45 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     public int NoiseSeed { get; set; } = 0;
 
     /// <summary>
+    /// Lacunarity for fractal noise. Controls how much frequency increases per octave.
+    /// Standard FBM value is 2.0. Higher values create more detailed high-frequency features.
+    /// </summary>
+    [Export]
+    public float NoiseLacunarity { get; set; } = 2.0f;
+
+    /// <summary>
+    /// Gain for fractal noise. Controls how much amplitude decreases per octave.
+    /// Standard FBM value is 0.5. Values above 1.0 cause amplitude to grow (chaotic patterns).
+    /// </summary>
+    [Export]
+    public float NoiseGain { get; set; } = 0.5f;
+
+    /// <summary>
     /// Noise generator instance for procedural deformation.
     /// Uses Godot's FastNoiseLite for efficient 3D noise computation.
     /// </summary>
     private FastNoiseLite? noise;
+
+    /// <summary>
+    /// Spherical Harmonics deformer for global shape deformation.
+    /// Used by SphericalHarmonicsWithNoise pipeline for satellite bodies.
+    /// </summary>
+    private SphericalHarmonicsDeformer? _shDeformer;
+
+    /// <summary>
+    /// Amplitude for Spherical Harmonics deformation. Controls the magnitude
+    /// of the global shape variation. Default: 0.3f.
+    /// </summary>
+    private float _shAmplitude = 0.3f;
+
+    protected Godot.Collections.Dictionary? _resourceConfig;
+    protected Dictionary<string, ResourceDeposit>? _satelliteResources;
+
+    /// <summary>
+    /// Gets the satellite-level resource deposits for this body.
+    /// Only populated for satellite-type bodies (NoiseOnly/ScalingWithNoise generation).
+    /// </summary>
+    public Dictionary<string, ResourceDeposit>? SatelliteResources => _satelliteResources;
 
     [ExportCategory("Thread Pool Settings")]
     [Export]
@@ -367,15 +411,15 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     [Export]
     public TaskPriority TaskPriority = TaskPriority.High;
 
-    public override void _Ready()
+    public UnifiedCelestialMesh()
     {
         // Initialize noise generator
         noise = new FastNoiseLite();
-        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.ValueCubic;
-        noise.FractalType = FastNoiseLite.FractalTypeEnum.Ridged;
+        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Perlin;
+        noise.FractalType = FastNoiseLite.FractalTypeEnum.Fbm;
         noise.FractalOctaves = NoiseOctaves;
-        noise.FractalLacunarity = 5.0f;
-        noise.FractalGain = 4.5f;
+        noise.FractalLacunarity = NoiseLacunarity;
+        noise.FractalGain = NoiseGain;
     }
 
     public void StartMeshGeneration(
@@ -574,9 +618,67 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             }
         );
 
+        if (GenerationType == BodyGenerationType.ScalingWithNoise)
+        {
+            builder.AddStep(
+                "ApplyScaling",
+                () =>
+                {
+                    GameLogger.EnterFunction("ApplyScaling", $"ScaleFactors: {ScaleFactors}");
+                    try
+                    {
+                        ApplyScalingToBaseVertices();
+                        GameLogger.ExitFunction(
+                            "ApplyScaling",
+                            $"Vertices scaled: {StrDb!.BaseVertices.Count}"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error($"ApplyScaling Error: {e.Message}\n{e.StackTrace}");
+                        GD.PrintErr($"ApplyScaling Error: {e.Message}\n{e.StackTrace}");
+                        return 1;
+                    }
+                }
+            );
+        }
+
+        if (GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise)
+        {
+            builder.AddStep(
+                "ApplySphericalHarmonics",
+                () =>
+                {
+                    GameLogger.EnterFunction(
+                        "ApplySphericalHarmonics",
+                        $"Amplitude: {_shAmplitude}"
+                    );
+                    try
+                    {
+                        ApplySphericalHarmonicsToBaseVertices();
+                        GameLogger.ExitFunction(
+                            "ApplySphericalHarmonics",
+                            $"Vertices processed: {StrDb!.BaseVertices.Count}"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"ApplySphericalHarmonics Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        GD.PrintErr($"ApplySphericalHarmonics Error: {e.Message}\n{e.StackTrace}");
+                        return 1;
+                    }
+                }
+            );
+        }
+
         if (
             GenerationType == BodyGenerationType.TectonicsWithNoise
             || GenerationType == BodyGenerationType.ScalingWithNoise
+            || GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise
             || GenerationType == BodyGenerationType.NoiseOnly
         )
         {
@@ -601,32 +703,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     {
                         GameLogger.Error($"ApplyFirstPassNoise Error: {e.Message}\n{e.StackTrace}");
                         GD.PrintErr($"ApplyFirstPassNoise Error: {e.Message}\n{e.StackTrace}");
-                        return 1;
-                    }
-                }
-            );
-        }
-
-        if (GenerationType == BodyGenerationType.ScalingWithNoise)
-        {
-            builder.AddStep(
-                "ApplyScaling",
-                () =>
-                {
-                    GameLogger.EnterFunction("ApplyScaling", $"ScaleFactors: {ScaleFactors}");
-                    try
-                    {
-                        ApplyScalingToBaseVertices();
-                        GameLogger.ExitFunction(
-                            "ApplyScaling",
-                            $"Vertices scaled: {StrDb!.BaseVertices.Count}"
-                        );
-                        return 0;
-                    }
-                    catch (Exception e)
-                    {
-                        GameLogger.Error($"ApplyScaling Error: {e.Message}\n{e.StackTrace}");
-                        GD.PrintErr($"ApplyScaling Error: {e.Message}\n{e.StackTrace}");
                         return 1;
                     }
                 }
@@ -890,63 +966,32 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             );
         }
 
-        builder.AddStep(
-            "AssignBiomes",
-            () =>
-            {
-                GameLogger.EnterFunction("AssignBiomes", "");
-                try
+        if (GenerationType == BodyGenerationType.ScalingWithNoise)
+        {
+            builder.AddStep(
+                "ApplySecondPassScaling",
+                () =>
                 {
-                    if (Continents == null)
+                    GameLogger.EnterFunction("ApplySecondPassScaling", $"Scaling: {ScaleFactors}");
+                    try
                     {
-                        GameLogger.ExitFunction("AssignBiomes", "Skipped - no continents");
+                        ApplyScalingToVoronoiVertices();
+                        GameLogger.ExitFunction(
+                            "ApplySecondPassNoise",
+                            $"Processed {StrDb!.VoronoiCellVertices.Count} vertices"
+                        );
                         return 0;
                     }
-                    maxHeight = StrDb!.VoronoiCellVertices.Max(p => p.Height);
-                    var task = AssignBiomes(Continents, StrDb!.VoronoiCells);
-                    GameLogger.ExitFunction(
-                        "AssignBiomes",
-                        $"MaxHeight: {maxHeight:F4}, Continents: {Continents.Count}"
-                    );
-                    return 0;
-                }
-                catch (Exception e)
-                {
-                    GameLogger.Error($"AssignBiomes Error: {e.Message}\n{e.StackTrace}");
-                    GD.PrintErr($"AssignBiomes Error: {e.Message}\n{e.StackTrace}");
-                    return 1;
-                }
-            }
-        );
-
-        builder.AddStep(
-            "GenerateSurfaceMesh",
-            () =>
-            {
-                GameLogger.EnterFunction("GenerateSurfaceMesh", "");
-                try
-                {
-                    if (Continents == null)
+                    catch (Exception e)
                     {
-                        GameLogger.ExitFunction("GenerateSurfaceMesh", "Skipped - no continents");
-                        return 0;
+                        GameLogger.Error(
+                            $"ApplySecondPassScaling Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        return 1;
                     }
-                    GenerateSurfaceMesh(StrDb!.VoronoiCells, oct);
-                    GameLogger.ExitFunction(
-                        "GenerateSurfaceMesh",
-                        $"Generated mesh with {StrDb!.VoronoiCells.Count} cells"
-                    );
-                    return 0;
                 }
-                catch (Exception e)
-                {
-                    GameLogger.Error($"GenerateSurfaceMesh Error: {e.Message}\n{e.StackTrace}");
-                    GD.PrintErr($"GenerateSurfaceMesh Error: {e.Message}\n{e.StackTrace}");
-                    return 1;
-                }
-            }
-        );
-
+            );
+        }
         if (
             GenerationType == BodyGenerationType.TectonicsWithNoise
             || GenerationType == BodyGenerationType.ScalingWithNoise
@@ -982,6 +1027,150 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             );
         }
 
+        // SH pipeline: apply noise at 50% amplitude while preserving SH shape
+        // (no scaling step - Voronoi inherits shape from base mesh)
+        if (GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise)
+        {
+            builder.AddStep(
+                "ApplySecondPassNoisePreserveSH",
+                () =>
+                {
+                    GameLogger.EnterFunction(
+                        "ApplySecondPassNoisePreserveSH",
+                        $"Amplitude: {NoiseAmplitude * 0.5f}"
+                    );
+                    try
+                    {
+                        ApplyNoiseToVoronoiVerticesPreserveSH(0.5f);
+                        GameLogger.ExitFunction(
+                            "ApplySecondPassNoisePreserveSH",
+                            $"Processed {StrDb!.VoronoiCellVertices.Count} vertices"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"ApplySecondPassNoisePreserveSH Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        GD.PrintErr(
+                            $"ApplySecondPassNoisePreserveSH Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        return 1;
+                    }
+                }
+            );
+        }
+
+        builder.AddStep(
+            "AssignBiomes",
+            () =>
+            {
+                GameLogger.EnterFunction("AssignBiomes", "");
+                try
+                {
+                    if (Continents == null)
+                    {
+                        GameLogger.ExitFunction("AssignBiomes", "Skipped - no continents");
+                        return 0;
+                    }
+                    maxHeight = StrDb!.VoronoiCellVertices.Max(p => p.Height);
+                    AssignBiomes(Continents, StrDb!.VoronoiCells);
+                    GameLogger.ExitFunction(
+                        "AssignBiomes",
+                        $"MaxHeight: {maxHeight:F4}, Continents: {Continents.Count}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"AssignBiomes Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"AssignBiomes Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "AssignResources",
+            () =>
+            {
+                GameLogger.EnterFunction("AssignResources", "");
+                try
+                {
+                    if (_resourceConfig == null)
+                        return 1;
+                    // Determine which resource pipeline to use based on generation type
+                    if (
+                        GenerationType == BodyGenerationType.ScalingWithNoise
+                        || GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise
+                        || GenerationType == BodyGenerationType.NoiseOnly
+                    )
+                    {
+                        // Satellite pipeline - store at body level
+                        _satelliteResources = SatelliteResourceGenerator.GenerateResources(
+                            _resourceConfig,
+                            rand
+                        );
+                        GD.Print(
+                            $"[ResourceDebug] Assigned satellite resources: {_satelliteResources?.Count ?? 0} deposits"
+                        );
+                        return 0;
+                    }
+                    else
+                    {
+                        // Continental pipeline - requires continents and distributes to cells
+                        if (Continents == null || Continents.Count == 0)
+                            return 1;
+
+                        ContinentResourceGenerator.GenerateResources(
+                            Continents,
+                            _resourceConfig,
+                            rand,
+                            this
+                        );
+                        GD.Print(
+                            $"[ResourceDebug] Assigned continental resources to {Continents.Count} continents"
+                        );
+                        return 0;
+                    }
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"AssignResources Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "GenerateSurfaceMesh",
+            () =>
+            {
+                GameLogger.EnterFunction("GenerateSurfaceMesh", "");
+                try
+                {
+                    if (Continents == null)
+                    {
+                        GameLogger.ExitFunction("GenerateSurfaceMesh", "Skipped - no continents");
+                        return 0;
+                    }
+                    GenerateSurfaceMesh(StrDb!.VoronoiCells, oct);
+                    GameLogger.ExitFunction(
+                        "GenerateSurfaceMesh",
+                        $"Generated mesh with {StrDb!.VoronoiCells.Count} cells"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"GenerateSurfaceMesh Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"GenerateSurfaceMesh Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
         builder.AddStep(
             "CreateCollisions",
             () =>
@@ -989,7 +1178,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 GameLogger.EnterFunction("CreateCollisions", "");
                 try
                 {
-                    CreateCollisions(_octree!);
+                    //CreateCollisions(_octree!);
                     GameLogger.ExitFunction(
                         "CreateCollisions",
                         $"Vertices: {StrDb!.VoronoiCellVertices.Count}, Octree points: {_octree!.GetPoints().Count}"
@@ -1025,8 +1214,9 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// <param name="meshParams">Dictionary containing mesh generation parameters.</param>
     /// <returns>The detected BodyGenerationType.</returns>
     /// <remarks>
-    /// The detection logic follows these rules:
+    /// The detection logic follows these rules (priority order):
     /// - If "tectonic" key exists: TectonicsOnly or TectonicsWithNoise (depending on noise_settings)
+    /// - If "spherical_harmonics" key exists: SphericalHarmonicsWithNoise
     /// - If "scaling_settings" key exists: ScalingWithNoise (if noise_settings exists) or fallback
     /// - If "noise_settings" key exists without tectonic or scaling: NoiseOnly
     /// - Default: TectonicsOnly
@@ -1037,15 +1227,20 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             return BodyGenerationType.TectonicsOnly;
 
         bool hasTectonic = meshParams.ContainsKey("tectonic");
+        bool hasSH = meshParams.ContainsKey("spherical_harmonics");
         bool hasScaling = meshParams.ContainsKey("scaling_settings");
         bool hasNoise = meshParams.ContainsKey("noise_settings");
 
-        // Priority order: Tectonics > Scaling > Noise
+        // Priority order: Tectonics > Spherical Harmonics > Scaling > Noise
         if (hasTectonic)
         {
             return hasNoise
                 ? BodyGenerationType.TectonicsWithNoise
                 : BodyGenerationType.TectonicsOnly;
+        }
+        else if (hasSH)
+        {
+            return BodyGenerationType.SphericalHarmonicsWithNoise;
         }
         else if (hasScaling)
         {
@@ -1289,9 +1484,9 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             var scaling = meshParams["scaling_settings"].As<Godot.Collections.Dictionary>();
             try
             {
-                var xScaleRange = (float)scaling["x_scale_range"];
-                var yScaleRange = (float)scaling["y_scale_range"];
-                var zScaleRange = (float)scaling["z_scale_range"];
+                var xScaleRange = (float)scaling["scaling_range_x"];
+                var yScaleRange = (float)scaling["scaling_range_y"];
+                var zScaleRange = (float)scaling["scaling_range_z"];
                 ScaleFactors = new Vector3(xScaleRange, yScaleRange, zScaleRange);
             }
             catch (Exception e)
@@ -1312,12 +1507,72 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 NoiseAmplitude = amplitude;
                 NoiseFrequency = scaling;
                 noise!.FractalOctaves = octaves;
+
+                // Parse lacunarity and gain from config if present
+                if (noiseSettings.ContainsKey("lacunarity"))
+                {
+                    NoiseLacunarity = (float)noiseSettings["lacunarity"];
+                }
+                if (noiseSettings.ContainsKey("gain"))
+                {
+                    NoiseGain = (float)noiseSettings["gain"];
+                }
+                noise.FractalLacunarity = NoiseLacunarity;
+                noise.FractalGain = NoiseGain;
             }
             catch (Exception e)
             {
                 GD.PrintRaw($"\u001b[2J\u001b[H");
                 GameLogger.Error($"Error in Noise Settings: {e.Message}\n{e.StackTrace}");
             }
+        }
+
+        // Parse spherical harmonics settings
+        if (meshParams.ContainsKey("spherical_harmonics"))
+        {
+            try
+            {
+                var shConfig = meshParams["spherical_harmonics"].As<Godot.Collections.Dictionary>();
+                if (shConfig != null && shConfig.ContainsKey("amplitude"))
+                {
+                    _shAmplitude = (float)shConfig["amplitude"];
+
+                    // Warn if amplitude is outside expected range
+                    if (_shAmplitude < 0.1f || _shAmplitude > 2.0f)
+                    {
+                        GameLogger.Warning(
+                            $"SH amplitude {_shAmplitude:F3} is outside expected range [0.1, 2.0]"
+                        );
+                    }
+                }
+                // Default amplitude is already set to 0.3f in field declaration
+
+                // Initialize SH deformer with random coefficients scaled by amplitude
+                _shDeformer = new SphericalHarmonicsDeformer();
+                _shDeformer.GenerateCoefficients(rand, _shAmplitude);
+
+                GameLogger.Info(
+                    $"SH configured: amplitude={_shAmplitude:F3}, coefficients generated"
+                );
+            }
+            catch (Exception e)
+            {
+                GD.PrintRaw($"\u001b[2J\u001b[H");
+                GameLogger.Error(
+                    $"Error in Spherical Harmonics Settings: {e.Message}\n{e.StackTrace}"
+                );
+            }
+        }
+
+        // If both scaling_settings AND spherical_harmonics exist, prefer spherical_harmonics (log warning)
+        if (
+            meshParams.ContainsKey("scaling_settings")
+            && meshParams.ContainsKey("spherical_harmonics")
+        )
+        {
+            GameLogger.Warning(
+                "Both scaling_settings and spherical_harmonics found in config; using spherical_harmonics"
+            );
         }
 
         if (meshParams.ContainsKey("resources"))
@@ -1426,6 +1681,9 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 break;
             case BodyGenerationType.NoiseOnly:
                 await GenerateNoiseOnlyPipeline(oct);
+                break;
+            case BodyGenerationType.SphericalHarmonicsWithNoise:
+                await GenerateSphericalHarmonicsWithNoisePipeline(oct);
                 break;
             default:
                 await GenerateTectonicsOnlyPipeline(oct); // Fallback
@@ -1735,6 +1993,83 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
+    /// <summary>
+    /// Pipeline for generating celestial bodies using Spherical Harmonics global shape
+    /// deformation combined with noise-based surface detail.
+    /// Suitable for satellite bodies (moons, asteroids) with realistic large-scale shape variation.
+    /// </summary>
+    private async Task GenerateSphericalHarmonicsWithNoisePipeline(Octree<Point> oct)
+    {
+        if (UseThreadPool && ThreadPooler.Instance != null)
+        {
+            GD.Print($"Using thread pooler for SphericalHarmonicsWithNoise mesh generation");
+            var tcs = new TaskCompletionSource<bool>();
+
+            var package = new WorkPackageBuilder()
+                .WithName(_name!)
+                .WithPriority(TaskPriority.High)
+                .AddStep(
+                    "FirstPassSphericalHarmonicsWithNoise",
+                    () =>
+                    {
+                        try
+                        {
+                            GenerateFirstPassSphericalHarmonicsWithNoise();
+                            return 0;
+                        }
+                        catch (Exception e)
+                        {
+                            GD.PrintErr(
+                                $"Error in GenerateFirstPassSphericalHarmonicsWithNoise: {e.Message}\n{e.StackTrace}"
+                            );
+                            return 1;
+                        }
+                    }
+                )
+                .AddStep(
+                    "IncrementMeshState",
+                    () =>
+                    {
+                        StrDb!.IncrementMeshState();
+                        return 0;
+                    }
+                )
+                .AddStep(
+                    "SecondPassSphericalHarmonicsWithNoise",
+                    () =>
+                    {
+                        try
+                        {
+                            GenerateSecondPassSphericalHarmonicsWithNoise(oct);
+                            return 0;
+                        }
+                        catch (Exception e)
+                        {
+                            GD.PrintErr(
+                                $"Error in GenerateSecondPassSphericalHarmonicsWithNoise: {e.Message}\n{e.StackTrace}"
+                            );
+                            return 1;
+                        }
+                    }
+                )
+                .OnCompleted(name =>
+                {
+                    SignalBus.Instance?.CallDeferred("EmitStopTimer", name);
+                    tcs.SetResult(true);
+                })
+                .Build();
+
+            SignalBus.Instance!.EmitQueuePackage(package);
+            await tcs.Task;
+        }
+        else
+        {
+            GenerateFirstPassSphericalHarmonicsWithNoise();
+            StrDb!.IncrementMeshState();
+            GenerateSecondPassSphericalHarmonicsWithNoise(oct);
+        }
+    }
+
     // Include all the existing methods from CelestialBodyMesh and SatelliteBodyMesh
     // First pass methods
     protected virtual void GenerateFirstPass()
@@ -1875,6 +2210,68 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
 
         // Apply only noise-based deformation
+        foreach (var vertex in StrDb!.BaseVertices.Values)
+        {
+            float noiseValue = noise!.GetNoise3D(
+                vertex.Position.X * NoiseFrequency,
+                vertex.Position.Y * NoiseFrequency,
+                vertex.Position.Z * NoiseFrequency
+            );
+
+            Vector3 normal = vertex.Position.Normalized();
+            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
+            vertex.Position += displacement;
+            vertex.Height += displacement.Length();
+        }
+    }
+
+    /// <summary>
+    /// First pass for Spherical Harmonics pipeline: generates base mesh, applies SH deformation,
+    /// then applies noise for surface detail.
+    /// </summary>
+    protected virtual void GenerateFirstPassSphericalHarmonicsWithNoise()
+    {
+        GenericPercent emptyPercent = new GenericPercent();
+        BaseMeshGeneration baseMesh = new BaseMeshGeneration(
+            rand,
+            StrDb!,
+            subdivide,
+            VerticesPerEdge,
+            this
+        );
+        emptyPercent.PercentTotal = 0;
+
+        try
+        {
+            baseMesh.PopulateArrays();
+            baseMesh.GenerateNonDeformedFaces();
+            baseMesh.GenerateTriangleList();
+        }
+        catch (Exception e)
+        {
+            GameLogger.Error(
+                $"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}",
+                "Base Mesh Generation Error"
+            );
+            GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
+        }
+
+        var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb!.Base.Triangles.Count;
+        float OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
+
+        try
+        {
+            baseMesh.InitiateDeformation(NumDeformationCycles, NumAbberations, OptimalSideLength);
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Deform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
+        }
+
+        // Apply Spherical Harmonics deformation to base vertices
+        ApplySphericalHarmonicsToBaseVertices();
+
+        // Apply noise-based deformation for surface detail
         foreach (var vertex in StrDb!.BaseVertices.Values)
         {
             float noiseValue = noise!.GetNoise3D(
@@ -2067,7 +2464,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         maxHeight = StrDb!.VoronoiCellVertices.Max(p => p.Height);
         try
         {
-            await AssignBiomes(continents, StrDb!.VoronoiCells);
+            AssignBiomes(continents, StrDb!.VoronoiCells);
         }
         catch (Exception biomeError)
         {
@@ -2211,64 +2608,53 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
-    // Include all the helper methods from the original classes
-    private async Task AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
+    /// <summary>
+    /// Second pass for Spherical Harmonics pipeline: generates Voronoi cells and applies
+    /// noise at 50% amplitude while preserving the SH shape (no spherical collapse).
+    /// </summary>
+    protected virtual void GenerateSecondPassSphericalHarmonicsWithNoise(Octree<Point> oct)
     {
-        if (UseThreadPool && ThreadPooler.Instance != null)
+        VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb!);
+        try
         {
-            var tcs = new TaskCompletionSource<bool>();
-            var builder = new WorkPackageBuilder()
-                .WithName($"{Name}_biomes")
-                .WithPriority(TaskPriority.Low);
+            GenericPercent emptyPercent = new GenericPercent();
+            GD.Print("Generating Voronoi Cells for SphericalHarmonicsWithNoise...");
+            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this, oct);
 
-            foreach (var continent in continents)
-            {
-                int continentKey = continent.Key;
-                Continent c = continent.Value;
-                builder.AddStep(
-                    $"Biome_Continent_{continentKey}",
-                    () =>
-                    {
-                        c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
-                        foreach (var cell in c.cells)
-                        {
-                            foreach (Point p in cell.Points)
-                            {
-                                p.Biome = BiomeAssigner.AssignBiome(
-                                    this,
-                                    p.Height,
-                                    c.averageMoisture
-                                );
-                            }
-                        }
-                        return 0;
-                    }
-                );
-            }
+            // Apply noise at 50% amplitude while preserving SH shape
+            ApplyNoiseToVoronoiVerticesPreserveSH(0.5f);
 
-            builder.OnCompleted(name => tcs.SetResult(true));
-            var package = builder.Build();
-            SignalBus.Instance!.EmitQueuePackage(package);
-            await tcs.Task;
+            GenerateSurfaceMesh(StrDb!.VoronoiCells, oct);
         }
-        else
+        catch (Exception e)
         {
-            foreach (var continent in continents)
+            GD.PrintRaw($"\u001b[2J\u001b[H");
+            GD.PrintErr("Voronoi Cell Generation Error: " + e.Message + "\n" + e.StackTrace);
+            GameLogger.Error(
+                $"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}",
+                "ERROR"
+            );
+        }
+    }
+
+    // Include all the helper methods from the original classes
+    private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
+    {
+        foreach (var continent in continents)
+        {
+            Continent c = continent.Value;
+            c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
+            foreach (var cell in c.cells)
             {
-                Continent c = continent.Value;
-                c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
-                foreach (var cell in c.cells)
+                foreach (Point p in cell.Points)
                 {
-                    foreach (Point p in cell.Points)
-                    {
-                        p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
-                    }
+                    p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
                 }
             }
         }
     }
 
-    private async Task AssignResources(Dictionary<int, Continent> continents)
+    private void AssignResources(Dictionary<int, Continent> continents)
     {
         GD.Print(
             $"[ResourceDebug] AssignResources called: _resourceConfig is null: {_resourceConfig == null}, continents is null: {continents == null}, continent count: {continents?.Count ?? 0}"
@@ -2282,37 +2668,32 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             return;
         }
 
-        await Task.Run(() =>
-        {
-            GD.Print($"[ResourceDebug] Calling ContinentResourceGenerator.GenerateResources");
-            ContinentResourceGenerator.GenerateResources(continents, _resourceConfig, rand, this);
-            GD.Print($"[ResourceDebug] Assigned resources to {continents.Count} continents");
+        GD.Print($"[ResourceDebug] Calling ContinentResourceGenerator.GenerateResources");
+        ContinentResourceGenerator.GenerateResources(continents, _resourceConfig, rand, this);
+        GD.Print($"[ResourceDebug] Assigned resources to {continents.Count} continents");
 
-            int totalCells = 0;
-            int cellsWithResources = 0;
-            foreach (var kvp in continents)
+        int totalCells = 0;
+        int cellsWithResources = 0;
+        foreach (var kvp in continents)
+        {
+            var c = kvp.Value;
+            if (c.cells != null)
             {
-                var c = kvp.Value;
-                if (c.cells != null)
+                totalCells += c.cells.Count;
+                foreach (var cell in c.cells)
                 {
-                    totalCells += c.cells.Count;
-                    foreach (var cell in c.cells)
-                    {
-                        if (cell.Resources != null && cell.Resources.Count > 0)
-                            cellsWithResources++;
-                    }
+                    if (cell.Resources != null && cell.Resources.Count > 0)
+                        cellsWithResources++;
                 }
-                GD.Print(
-                    $"[ResourceDebug] Continent {kvp.Key}: {c.cells?.Count ?? 0} cells, {c.ContinentalResources?.Count ?? 0} continental resources"
-                );
             }
             GD.Print(
-                $"[ResourceDebug] Total cells: {totalCells}, cells with resources: {cellsWithResources}"
+                $"[ResourceDebug] Continent {kvp.Key}: {c.cells?.Count ?? 0} cells, {c.ContinentalResources?.Count ?? 0} continental resources"
             );
-        });
+        }
+        GD.Print(
+            $"[ResourceDebug] Total cells: {totalCells}, cells with resources: {cellsWithResources}"
+        );
     }
-
-    protected Godot.Collections.Dictionary? _resourceConfig;
 
     public void UpdateVertexHeights(HashSet<Point> Vertices, Dictionary<int, Continent> Continents)
     {
@@ -2749,9 +3130,26 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     st.SetNormal(tangent);
                     if (ProjectToSphere)
                     {
-                        vor.Points[3 * i + j].Position =
-                            vor.Points[3 * i + j].Position.Normalized()
-                            * (size + vor.Points[3 * i + j].Height / 10f);
+                        // Check generation type to determine projection method
+                        if (
+                            GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise
+                            || GenerationType == BodyGenerationType.ScalingWithNoise
+                            || GenerationType == BodyGenerationType.NoiseOnly
+                        )
+                        {
+                            // Non-spherical bodies: preserve actual position, add small height offset
+                            Vector3 direction = vor.Points[3 * i + j].Position.Normalized();
+                            float currentRadius = vor.Points[3 * i + j].Position.Length();
+                            vor.Points[3 * i + j].Position =
+                                direction * (size + vor.Points[3 * i + j].Height);
+                        }
+                        else
+                        {
+                            // Tectonic bodies (planets): existing spherical projection
+                            vor.Points[3 * i + j].Position =
+                                vor.Points[3 * i + j].Position.Normalized()
+                                * (size + vor.Points[3 * i + j].Height / 10f);
+                        }
                         st.SetColor(
                             GetBiomeColor(
                                 ((Point)vor.Points[3 * i + j]).Biome,
@@ -2949,7 +3347,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             Vector3 normal = vertex.Position.Normalized();
             Vector3 displacement = normal * noiseValue * NoiseAmplitude;
             vertex.Position += displacement;
-            vertex.Height += displacement.Length();
+            //vertex.Height += displacement.Length();
+            vertex.Height += displacement.Dot(vertex.Position.Normalized());
         }
     }
 
@@ -2959,6 +3358,45 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         {
             vertex.Position *= ScaleFactors;
         }
+    }
+
+    private void ApplyScalingToVoronoiVertices()
+    {
+        foreach (var vertex in StrDb!.VoronoiCellVertices)
+        {
+            vertex.Position *= ScaleFactors;
+        }
+    }
+
+    /// <summary>
+    /// Applies Spherical Harmonics deformation to base vertices only.
+    /// The Voronoi vertices inherit the shape naturally through circumcenter computation.
+    /// </summary>
+    /// <remarks>
+    /// This method applies SH deformation ONLY to base vertices. Unlike scaling which is
+    /// applied twice (base + Voronoi), SH is applied once because Voronoi vertices are
+    /// circumcenters computed from the deformed base mesh, naturally inheriting the SH shape.
+    ///
+    /// The height is stored as signed displacement (positive = outward bulge, negative = inward depression).
+    /// Radius is clamped to prevent vertices from collapsing past the origin (minimum 30% of base size).
+    /// </remarks>
+    private void ApplySphericalHarmonicsToBaseVertices()
+    {
+        GameLogger.EnterFunction("ApplySphericalHarmonicsToBaseVertices", "");
+        foreach (var vertex in StrDb!.BaseVertices.Values)
+        {
+            Vector3 direction = vertex.Position.Normalized();
+            float displacement = _shDeformer!.Evaluate(direction);
+            float newRadius = displacement;
+            // Floor: prevent radius from going below 30% of size
+            newRadius = Mathf.Clamp(newRadius, size * 0.3f, size * 1.3f);
+            vertex.Position = direction * newRadius;
+            //vertex.Height = displacement; // Signed height — positive=outward, negative=inward
+        }
+        GameLogger.ExitFunction(
+            "ApplySphericalHarmonicsToBaseVertices",
+            $"Vertices: {StrDb.BaseVertices.Count}, Amplitude: {_shAmplitude}"
+        );
     }
 
     private void ApplyNoiseToVoronoiVertices(float amplitudeMultiplier = 1.0f)
@@ -2974,14 +3412,69 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             Vector3 normal = p.Position.Normalized();
             Vector3 displacement = normal * noiseValue * NoiseAmplitude * amplitudeMultiplier;
             p.Position += displacement;
-            p.Height += displacement.Length();
+            //p.Height += displacement.Length();
+            p.Height += displacement.Dot(p.Position.Normalized());
         }
+
+        float maxDistance = StrDb.VoronoiCellVertices.Max(p => p.Position.Length());
+        foreach (Point p in StrDb.VoronoiCellVertices)
+        {
+            float currentDistance = p.Position.Length();
+            float scaleFactor = size * (currentDistance / maxDistance);
+            p.Position = p.Position.Normalized() * scaleFactor;
+        }
+    }
+
+    /// <summary>
+    /// Applies noise to Voronoi vertices while preserving the Spherical Harmonics shape.
+    /// Unlike ApplyNoiseToVoronoiVertices, this does NOT normalize all vertices back to a sphere.
+    /// Instead, it preserves relative proportions and only clamps extreme outliers.
+    /// </summary>
+    /// <param name="amplitudeMultiplier">Multiplier for noise amplitude (typically 0.5 for second pass).</param>
+    private void ApplyNoiseToVoronoiVerticesPreserveSH(float amplitudeMultiplier = 1.0f)
+    {
+        GameLogger.EnterFunction(
+            "ApplyNoiseToVoronoiVerticesPreserveSH",
+            $"Amplitude: {NoiseAmplitude * amplitudeMultiplier}"
+        );
+
+        foreach (Point p in StrDb!.VoronoiCellVertices)
+        {
+            Vector3 direction = p.Position * size;
+            float displacement = _shDeformer!.Evaluate(direction);
+            // Floor: prevent radius from going below 30% of size
+            p.Height = displacement * rand.RandfRange(0.8f * size, 1.5f * size); // Signed height — positive=outward, negative=inward
+
+            //Vector3 normal = p.Position.Normalized();
+            //Vector3 displacement = normal * noiseValue * NoiseAmplitude * amplitudeMultiplier;
+            //p.Position += displacement;
+            ////p.Height += displacement.Length();
+            //p.Height += displacement.Dot(p.Position.Normalized());
+        }
+
+        // Preserve SH shape: only rescale if distance exceeds 2x average (safety clamp)
+        // This prevents extreme outliers while maintaining the global shape
+        //float avgDistance = StrDb.VoronoiCellVertices.Average(p => p.Position.Length());
+        //foreach (Point p in StrDb.VoronoiCellVertices)
+        //{
+        //    float currentDistance = p.Position.Length();
+        //    if (currentDistance > avgDistance * 2.0f)
+        //    {
+        //        p.Position = p.Position.Normalized() * (avgDistance * 2.0f);
+        //    }
+        //}
+
+        GameLogger.ExitFunction(
+            "ApplyNoiseToVoronoiVerticesPreserveSH",
+            $"Processed {StrDb.VoronoiCellVertices.Count} vertices, AvgDistance: "
+        );
     }
 
     private void CreateCollisions(Octree<Point> oct)
     {
-        GD.Print($"# of Voronoi Cell Vertices: {StrDb!.VoronoiCellVertices.Count}");
-        GD.Print($"# of vertices in Octree: {oct.GetPoints().Count}");
+        GameLogger.Info(
+            $"Creating collision mesh: {StrDb!.VoronoiCellVertices.Count} Voronoi vertices, {oct.GetPoints().Count} octree points"
+        );
         MeshConvexDecompositionSettings settings = new MeshConvexDecompositionSettings();
         settings.ConvexHullApproximation = false;
         settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Tetrahedron;

@@ -218,7 +218,8 @@ public partial class SatelliteBody : Node3D
     {
         TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
         var parent = GetParent() as CelestialBody;
-        if (parent == null) return;
+        if (parent == null)
+            return;
         float distance = this.GlobalPosition.DistanceTo(parent.GlobalPosition);
         Vector3 direction = (parent.GlobalPosition - this.GlobalPosition);
 
@@ -260,7 +261,15 @@ public partial class SatelliteBody : Node3D
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
+            // Check for spherical_harmonics_settings first, fall back to scaling
             if (
+                bodyDict.ContainsKey("spherical_harmonics_settings")
+                && bodyDict["spherical_harmonics_settings"].Obj is Godot.Collections.Dictionary shSettings
+            )
+            {
+                CalculateSphericalHarmonicsFromParams(shSettings, meshParams);
+            }
+            else if (
                 bodyDict.ContainsKey("scaling_settings")
                 && bodyDict["scaling_settings"].Obj is Godot.Collections.Dictionary scaling
             )
@@ -297,7 +306,15 @@ public partial class SatelliteBody : Node3D
             {
                 CalculateBaseMeshFromParams(customMesh, meshParams);
             }
+            // Check for spherical_harmonics_settings first, fall back to scaling
             if (
+                t.ContainsKey("spherical_harmonics_settings")
+                && t["spherical_harmonics_settings"].Obj is Godot.Collections.Dictionary shSettings
+            )
+            {
+                CalculateSphericalHarmonicsFromParams(shSettings, meshParams);
+            }
+            else if (
                 t.ContainsKey("scaling_settings")
                 && t["scaling_settings"].Obj is Godot.Collections.Dictionary scaling
             )
@@ -367,6 +384,7 @@ public partial class SatelliteBody : Node3D
 
     public String PickName(Godot.Collections.Dictionary nameDict)
     {
+        GD.Print($"SatelliteBody.PickName: {nameDict}");
         if (nameDict == null || nameDict.Count == 0)
             return "";
 
@@ -421,13 +439,28 @@ public partial class SatelliteBody : Node3D
     {
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var scalingDict = new Godot.Collections.Dictionary();
-        float[] xScaleRange = (float[])definedScaling["x_scale_range"];
+        float[] xScaleRange = (float[])definedScaling["scaling_range_x"];
         scalingDict.Add("scaling_range_x", rng.RandfRange(xScaleRange[0], xScaleRange[1]));
-        float[] yScaleRange = (float[])definedScaling["y_scale_range"];
+        float[] yScaleRange = (float[])definedScaling["scaling_range_y"];
         scalingDict.Add("scaling_range_y", rng.RandfRange(yScaleRange[0], yScaleRange[1]));
-        float[] zScaleRange = (float[])definedScaling["z_scale_range"];
+        float[] zScaleRange = (float[])definedScaling["scaling_range_z"];
         scalingDict.Add("scaling_range_z", rng.RandfRange(zScaleRange[0], zScaleRange[1]));
         meshParams.Add("scaling_settings", scalingDict);
+    }
+
+    private void CalculateSphericalHarmonicsFromParams(
+        Godot.Collections.Dictionary definedSH,
+        Godot.Collections.Dictionary meshParams
+    )
+    {
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var shDict = new Godot.Collections.Dictionary();
+
+        // Randomize amplitude from range
+        float[] amplitudeRange = (float[])definedSH["amplitude_range"];
+        shDict.Add("amplitude", rng.RandfRange(amplitudeRange[0], amplitudeRange[1]));
+
+        meshParams.Add("spherical_harmonics", shDict);
     }
 
     private void CalculateNoiseSettingsFromParams(
@@ -443,6 +476,15 @@ public partial class SatelliteBody : Node3D
         noiseDict.Add("scaling", rng.RandfRange(scaling[0], scaling[1]));
         int[] octaves = (int[])definedNoise["octave_range"];
         noiseDict.Add("octaves", rng.RandiRange(octaves[0], octaves[1]));
+        // Pass through lacunarity and gain if present in config
+        if (definedNoise.ContainsKey("lacunarity"))
+        {
+            noiseDict.Add("lacunarity", (float)definedNoise["lacunarity"]);
+        }
+        if (definedNoise.ContainsKey("gain"))
+        {
+            noiseDict.Add("gain", (float)definedNoise["gain"]);
+        }
         meshParams.Add("noise_settings", noiseDict);
     }
 }

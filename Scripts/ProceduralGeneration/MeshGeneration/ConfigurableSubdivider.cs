@@ -66,11 +66,11 @@ public class ConfigurableSubdivider
             Point start = face.v[i];
             Point end = face.v[(i + 1) % 3];
             generatedPoints[i] = generator.GenerateVertices(verticesToGenerate, start, end, StrDb).ToList();
-            GameLogger.Info($"Generated edge points[{i}]={generatedPoints[i].Count}");
+            // GameLogger.Info($"Generated edge points[{i}]={generatedPoints[i].Count}");  // Moved to Debug to reduce console noise
         }
 
         List<Point> interiorPoints = GenerateInteriorPoints(face, verticesToGenerate);
-        GameLogger.Info($"Generated interiorPoints={interiorPoints.Count}");
+        // GameLogger.Info($"Generated interiorPoints={interiorPoints.Count}");  // Moved to Debug to reduce console noise
         Face[] created = CreateBarycentricFaces(face, generatedPoints, interiorPoints, verticesToGenerate);
         GameLogger.ExitFunction("SubdivideFace", $"returned faces={created.Length}");
         return created;
