@@ -238,8 +238,11 @@ public static class TemplateHelpers
     {
         var result = new Dictionary();
 
-        result["position"] = ReadVector3(raw, "position", Vector3.Zero);
-        result["velocity"] = ReadVector3(raw, "velocity", Vector3.Zero);
+        // Replace position/velocity with orbital parameters
+        result["apogee"] = ReadFloat(raw, "apogee", 500f);
+        result["perigee"] = ReadFloat(raw, "perigee", 300f);
+        result["starting_angle"] = ReadFloat(raw, "starting_angle", 0f);
+        result["vertical_offset"] = ReadFloat(raw, "vertical_offset", 0f);
 
         var sizeRange = ReadFloatRange(raw, "size_range", (1f, 4f));
         var massRange = ReadFloatRange(raw, "mass_range", (1f, 10f));
@@ -359,8 +362,8 @@ public static class TemplateHelpers
             var numRange = ReadIntRange(groupTemplate, "number_asteroids", (1, 4));
             result["lower_range"] = numRange.Item1;
             result["upper_range"] = numRange.Item2;
-            result["ring_apogee"] = ReadFloat(groupTemplate, "apogee", 0f);
-            result["ring_perigee"] = ReadFloat(groupTemplate, "perigee", 0f);
+            result["ring_apogee"] = ReadFloat(groupTemplate, "ring_apogee", 0f);
+            result["ring_perigee"] = ReadFloat(groupTemplate, "ring_perigee", 0f);
             result["ring_velocity"] = ReadVector3(groupTemplate, "ring_velocity", Vector3.Zero);
             result["grouping"] = ReadString(groupTemplate, "grouping", "Balanced");
 

@@ -33,79 +33,53 @@ text = "⚙"
 [node name="Content" type="VBoxContainer" parent="MainContent"]
 layout_mode = 2
 
-[node name="PositionContent" type="GridContainer" parent="MainContent/Content"]
+[node name="OrbitalContent" type="GridContainer" parent="MainContent/Content"]
 layout_mode = 2
 columns = 2
 
-[node name="LabelX" type="Label" parent="MainContent/Content/PositionContent"]
+[node name="LabelApogee" type="Label" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
-text = "X"
+text = "Apogee"
 
-[node name="X" type="SpinBox" parent="MainContent/Content/PositionContent"]
+[node name="Apogee" type="SpinBox" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = -10000.0
+min_value = 0.0
 max_value = 10000.0
-step = 0.1
+step = 1.0
 
-[node name="LabelY" type="Label" parent="MainContent/Content/PositionContent"]
+[node name="LabelPerigee" type="Label" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
-text = "Y"
+text = "Perigee"
 
-[node name="Y" type="SpinBox" parent="MainContent/Content/PositionContent"]
+[node name="Perigee" type="SpinBox" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = -10000.0
+min_value = 0.0
 max_value = 10000.0
-step = 0.1
+step = 1.0
 
-[node name="LabelZ" type="Label" parent="MainContent/Content/PositionContent"]
+[node name="LabelStartingAngle" type="Label" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
-text = "Z"
+text = "Starting Angle"
 
-[node name="Z" type="SpinBox" parent="MainContent/Content/PositionContent"]
+[node name="StartingAngle" type="SpinBox" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = -10000.0
-max_value = 10000.0
-step = 0.1
+min_value = 0.0
+max_value = 360.0
+step = 1.0
 
-[node name="VelocityContent" type="GridContainer" parent="MainContent/Content"]
+[node name="LabelVerticalOffset" type="Label" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
-columns = 2
+text = "Vertical Offset"
 
-[node name="LabelVelX" type="Label" parent="MainContent/Content/VelocityContent"]
-layout_mode = 2
-text = "velX"
-
-[node name="velX" type="SpinBox" parent="MainContent/Content/VelocityContent"]
+[node name="VerticalOffset" type="SpinBox" parent="MainContent/Content/OrbitalContent"]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = -10000.0
-max_value = 10000.0
-step = 0.1
-
-[node name="LabelVelY" type="Label" parent="MainContent/Content/VelocityContent"]
-layout_mode = 2
-text = "velY"
-
-[node name="velY" type="SpinBox" parent="MainContent/Content/VelocityContent"]
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = -10000.0
-max_value = 10000.0
-step = 0.1
-
-[node name="LabelVelZ" type="Label" parent="MainContent/Content/VelocityContent"]
-layout_mode = 2
-text = "velZ"
-
-[node name="velZ" type="SpinBox" parent="MainContent/Content/VelocityContent"]
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = -10000.0
-max_value = 10000.0
-step = 0.1
+min_value = -90.0
+max_value = 90.0
+step = 1.0
 
 [node name="TypeContent" type="HBoxContainer" parent="MainContent/Content"]
 layout_mode = 2

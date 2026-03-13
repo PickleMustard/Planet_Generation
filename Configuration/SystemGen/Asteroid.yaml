@@ -7,8 +7,10 @@ categories:
 
 satellite:
   template:
-    position: [450, 0, 0]
-    velocity: [0, 2, 0]
+    apogee: 500
+    perigee: 300
+    starting_angle: 0
+    vertical_offset: 0
     size_range: [10, 25]
     mass_range: [4, 10]
 

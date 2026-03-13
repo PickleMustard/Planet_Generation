@@ -267,12 +267,27 @@ public partial class SystemGenerator : Node
     private void GenerateSingleSatellite(Godot.Collections.Dictionary sat, CelestialBody parentBody)
     {
         var templateDict = (Godot.Collections.Dictionary)sat["template"];
-        var position = (Vector3)templateDict["base_position"];
+        
+        // Read orbital parameters
+        float apogee = templateDict.ContainsKey("apogee") ? (float)templateDict["apogee"] : 500f;
+        float perigee = templateDict.ContainsKey("perigee") ? (float)templateDict["perigee"] : 300f;
+        float startingAngle = templateDict.ContainsKey("starting_angle") ? (float)templateDict["starting_angle"] : 0f;
+        float verticalOffset = templateDict.ContainsKey("vertical_offset") ? (float)templateDict["vertical_offset"] : 0f;
+        
+        // Calculate position and velocity from orbital parameters
+        var (position, velocity) = SatelliteBody.CalculateOrbitalState(
+            apogee, perigee, startingAngle, verticalOffset, parentBody.Mass
+        );
+        
         var mesh = new UnifiedCelestialMesh();
         SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(parentBody.Type, sat, mesh);
 
         parentBody.CallDeferred("add_child", satBody);
+        
+        // Override position with calculated orbital position
         satBody.Position = position;
+        // Override velocity with calculated orbital velocity
+        satBody.Velocity = velocity;
 
         satBody.StartMeshGeneration(
             onCompleted: (completedSat) =>
@@ -298,11 +313,12 @@ public partial class SystemGenerator : Node
         );
         var sats = beltBody.GenerateSatelliteBelt(parentBody);
 
-        foreach (var sat in sats)
+        foreach (SatelliteBody sat in sats)
         {
+            parentBody.CallDeferred("add_child", sat);
+            var templateDict = (Godot.Collections.Dictionary)sat.bodyDict!["template"];
+            sat.Position = (Vector3)templateDict["base_position"];
             GD.Print($"Generating {sat.Name}, Position: {sat.Position}");
-            parentBody.AddChild(sat);
-            sat.Position = sat.Position;
 
             sat.StartMeshGeneration(
                 onCompleted: (completedSat) =>

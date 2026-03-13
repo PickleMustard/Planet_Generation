@@ -29,7 +29,7 @@ type = "AsteroidBelt"
 [[bodies.celestial.satellites.template]]
 ring_apogee = 8000.0
 ring_perigee = 250.0
-ring_velocity = [0.0, 2.0, 0.0]
+ring_velocity = [0.0, 1.0, 0.0]
 lower_range = 6
 upper_range = 15
 grouping = "Balanced"

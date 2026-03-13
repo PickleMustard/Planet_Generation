@@ -4,9 +4,9 @@ satellite_group:
     grouping: Balanced
     apogee: 8000
     perigee: 250
-    ring_velocity: [0, 2, 0]
-    size_range: [1, 5]
-    mass_range: [1, 10]
+    ring_velocity: [0, 1, 0]
+    size_range: [12, 30]
+    mass_range: [10, 20]
     possible_subtypes:
       - DwarfPlanet
       - Asteroid

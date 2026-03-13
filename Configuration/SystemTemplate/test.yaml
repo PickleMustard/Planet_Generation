@@ -31,7 +31,7 @@ bodies:
           grouping: Balanced
           apogee: 8000.0
           perigee: 250.0
-          ring_velocity: [0.0, 2.0, 0.0]
+          ring_velocity: [0.0, 1.0, 0.0]
           size_range: [1.0, 5.0]
           mass_range: [1.0, 10.0]
 
