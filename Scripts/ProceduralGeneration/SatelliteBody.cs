@@ -14,15 +14,22 @@ namespace ProceduralGeneration.PlanetGeneration;
 
 public partial class SatelliteBody : Node3D
 {
-    Vector3 Velocity;
-    float Mass;
-    float Size;
-    Vector3 TotalForce;
+    [Export]
+    public Vector3 Velocity;
+
+    [Export]
+    public float Mass;
+
+    [Export]
+    public float Size;
+
+    [Export]
+    public Vector3 accelerationVector;
     bool isSatelliteGroup = false;
     SatelliteBodyType SatelliteType;
     UnifiedCelestialMesh? Mesh;
     Octree<Point>? Oct;
-    Godot.Collections.Dictionary? bodyDict;
+    public Godot.Collections.Dictionary? bodyDict;
     StructureDatabase? StrDb;
 
     /// <summary>
@@ -43,6 +50,12 @@ public partial class SatelliteBody : Node3D
         internal Octree<Point>? _oct;
         internal Godot.Collections.Dictionary? _bodyDict;
         internal StructureDatabase? _strDb;
+        
+        // Orbital parameters
+        internal float _apogee;
+        internal float _perigee;
+        internal float _startingAngle;
+        internal float _verticalOffset;
 
         public Builder WithVelocity(Vector3 velocity)
         {
@@ -92,6 +105,15 @@ public partial class SatelliteBody : Node3D
             return this;
         }
 
+        public Builder WithOrbitalParameters(float apogee, float perigee, float startingAngle, float verticalOffset)
+        {
+            _apogee = apogee;
+            _perigee = perigee;
+            _startingAngle = startingAngle;
+            _verticalOffset = verticalOffset;
+            return this;
+        }
+
         private void Validate()
         {
             if (_mesh == null)
@@ -116,13 +138,17 @@ public partial class SatelliteBody : Node3D
             var type = (String)bodyDict["type"];
             var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
             var mass = (float)baseTemplates["mass"];
-            var velocity = (Vector3)baseTemplates["satellite_velocity"];
             var size = (int)baseTemplates["size"];
 
             _satelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
             _mass = mass;
-            _velocity = velocity;
             _size = size;
+            
+            // Read orbital parameters
+            _apogee = baseTemplates.ContainsKey("apogee") ? (float)baseTemplates["apogee"] : 500f;
+            _perigee = baseTemplates.ContainsKey("perigee") ? (float)baseTemplates["perigee"] : 300f;
+            _startingAngle = baseTemplates.ContainsKey("starting_angle") ? (float)baseTemplates["starting_angle"] : 0f;
+            _verticalOffset = baseTemplates.ContainsKey("vertical_offset") ? (float)baseTemplates["vertical_offset"] : 0f;
 
             var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
             _strDb = new StructureDatabase(rand.RandiRange(0, 100000));
@@ -146,7 +172,7 @@ public partial class SatelliteBody : Node3D
         Velocity = builder._velocity;
         Mass = builder._mass;
         Size = builder._size;
-        TotalForce = builder._totalForce;
+        accelerationVector = builder._totalForce;
         isSatelliteGroup = builder._isSatelliteGroup;
         SatelliteType = builder._satelliteType;
         Mesh = builder._mesh;
@@ -158,40 +184,40 @@ public partial class SatelliteBody : Node3D
 
         if (Mesh != null)
         {
-            Mesh.size = (int)Size;
-            AddChild(Mesh);
+            Mesh.size = Size;
+            this.CallDeferred("add_child", Mesh);
         }
     }
 
-    public SatelliteBody(
-        CelestialBodyType parentType,
-        Godot.Collections.Dictionary bodyDict,
-        UnifiedCelestialMesh mesh
-    )
-    {
-        this.bodyDict = bodyDict;
-        var type = (String)bodyDict["type"];
-        var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
-        var mass = (float)baseTemplates["mass"];
-        var velocity = (Vector3)baseTemplates["satellite_velocity"];
-        var size = (int)baseTemplates["size"];
-        var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
-        Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(size, size, size)));
+    //public SatelliteBody(
+    //    CelestialBodyType parentType,
+    //    Godot.Collections.Dictionary bodyDict,
+    //    UnifiedCelestialMesh mesh
+    //)
+    //{
+    //    this.bodyDict = bodyDict;
+    //    var type = (String)bodyDict["type"];
+    //    var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
+    //    var mass = (float)baseTemplates["mass"];
+    //    var velocity = (Vector3)baseTemplates["satellite_velocity"];
+    //    var size = (int)baseTemplates["size"];
+    //    var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+    //    StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
+    //    Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(size, size, size)));
 
-        this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
-        this.Mass = mass;
-        this.Velocity = velocity;
-        this.Mesh = mesh;
-        mesh.size = size;
-        this.AddChild(mesh);
+    //    this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
+    //    this.Mass = mass;
+    //    this.Velocity = velocity;
+    //    this.Mesh = mesh;
+    //    mesh.size = size;
+    //    this.AddChild(mesh);
 
-        switch (SatelliteType)
-        {
-            case SatelliteBodyType.Asteroid:
-                break;
-        }
-    }
+    //    switch (SatelliteType)
+    //    {
+    //        case SatelliteBodyType.Asteroid:
+    //            break;
+    //    }
+    //}
 
     public SatelliteBody(
         CelestialBodyType parentType,
@@ -214,20 +240,70 @@ public partial class SatelliteBody : Node3D
         Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(size, size, size)));
     }
 
+    /// <summary>
+    /// Calculates the position and velocity of a satellite given orbital parameters.
+    /// </summary>
+    /// <param name="apogee">Farthest distance from parent body</param>
+    /// <param name="perigee">Closest distance to parent body</param>
+    /// <param name="startingAngle">Starting angle in degrees (0-360)</param>
+    /// <param name="verticalOffset">Orbital inclination/vertical offset in degrees (-90 to 90)</param>
+    /// <param name="parentMass">Mass of the parent body for velocity calculation</param>
+    /// <returns>Tuple of (position, velocity)</returns>
+    public static (Vector3 position, Vector3 velocity) CalculateOrbitalState(
+        float apogee,
+        float perigee,
+        float startingAngle,
+        float verticalOffset,
+        float parentMass
+    )
+    {
+        // Convert angles to radians
+        float angleRad = Mathf.DegToRad(startingAngle);
+        float inclinationRad = Mathf.DegToRad(verticalOffset);
+        
+        // Create orbital plane basis vectors from starting angle and inclination
+        // pHat is the direction of the starting angle in the orbital plane
+        // qHat incorporates the inclination (vertical offset)
+        Vector3 pHat = new Vector3(Mathf.Cos(angleRad), 0, Mathf.Sin(angleRad)).Normalized();
+        Vector3 qHat = new Vector3(
+            -Mathf.Sin(angleRad) * Mathf.Cos(inclinationRad),
+            Mathf.Sin(inclinationRad),
+            Mathf.Cos(angleRad) * Mathf.Cos(inclinationRad)
+        ).Normalized();
+        
+        // Calculate eccentricity
+        float eccentricity = OrbitalMath.CalculateEccentricity(apogee, perigee);
+        
+        // Calculate position on the orbit
+        Vector3 position = OrbitalMath.CalculateOrbitalPosition(
+            pHat, qHat, apogee, perigee, angleRad, eccentricity
+        );
+        
+        // Calculate velocity at this position
+        Vector3 velocity = OrbitalMath.CalculateEllipticalOrbitalVelocity(
+            pHat, qHat, parentMass, apogee, perigee, angleRad, false
+        );
+        
+        return (position, velocity);
+    }
+
     public override void _PhysicsProcess(double delta)
     {
-        TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
+        accelerationVector = new Vector3(0.0f, 0.0f, 0.0f);
         var parent = GetParent() as CelestialBody;
         if (parent == null)
+        {
+            GD.PrintErr("SatelliteBody._PhysicsProcess: Parent body is null");
             return;
+        }
         float distance = this.GlobalPosition.DistanceTo(parent.GlobalPosition);
         Vector3 direction = (parent.GlobalPosition - this.GlobalPosition);
 
-        float force = OrbitalMath.GRAVITATIONAL_CONSTANT * parent.Mass / (distance * distance);
-        TotalForce += direction.Normalized() * force;
+        float acceleration =
+            OrbitalMath.GRAVITATIONAL_CONSTANT * parent.Mass / (distance * distance);
+        accelerationVector += direction.Normalized() * acceleration;
 
-        var deltaV = (TotalForce / Mass) * (float)delta;
-        Velocity += deltaV;
+        Velocity += accelerationVector * (float)delta;
         GlobalPosition += Velocity * (float)delta;
     }
 
@@ -248,12 +324,28 @@ public partial class SatelliteBody : Node3D
         Action<SatelliteBody, string>? onFailed = null
     )
     {
+        GD.Print($"Generating satellite: {Name}, bodyDict: {bodyDict}");
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
         if (bodyDict != null)
         {
             meshParams.Add("Type", bodyDict["type"]);
-            meshParams.Add("name", bodyDict["name"]);
+
+            // Use provided name, or pick from possible_names if available
+            if (bodyDict.ContainsKey("name"))
+            {
+                meshParams.Add("name", bodyDict["name"]);
+            }
+            else if (bodyDict.ContainsKey("possible_names"))
+            {
+                var name = PickName((Godot.Collections.Dictionary)bodyDict["possible_names"]);
+                meshParams.Add("name", name);
+            }
+            else
+            {
+                // Fallback to type name
+                meshParams.Add("name", SatelliteType.ToString());
+            }
             if (
                 bodyDict.ContainsKey("base_mesh")
                 && bodyDict["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
@@ -264,7 +356,8 @@ public partial class SatelliteBody : Node3D
             // Check for spherical_harmonics_settings first, fall back to scaling
             if (
                 bodyDict.ContainsKey("spherical_harmonics_settings")
-                && bodyDict["spherical_harmonics_settings"].Obj is Godot.Collections.Dictionary shSettings
+                && bodyDict["spherical_harmonics_settings"].Obj
+                    is Godot.Collections.Dictionary shSettings
             )
             {
                 CalculateSphericalHarmonicsFromParams(shSettings, meshParams);
@@ -292,7 +385,7 @@ public partial class SatelliteBody : Node3D
             meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType)!);
             var template = (Godot.Collections.Dictionary)t["template"];
             var position = (Vector3)template["position"];
-            var velocity = (Vector3)template["template"];
+            var velocity = (Vector3)template["velocity"];
             meshParams.Add("position", position);
             meshParams.Add("velocity", velocity);
             var size = (int)template["size"];

@@ -71,31 +71,56 @@ public partial class InputHandler : Node
         //Button Press
         else if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.IsEcho())
         {
-            if (keyEvent.Keycode == Key.W || keyEvent.Keycode == Key.S || keyEvent.Keycode == Key.A || keyEvent.Keycode == Key.D)
+            if (
+                keyEvent.Keycode == Key.W
+                || keyEvent.Keycode == Key.S
+                || keyEvent.Keycode == Key.A
+                || keyEvent.Keycode == Key.D
+            )
             {
-                if (keyEvent.Keycode == Key.W) _moveDirection.Z -= 1;
-                else if (keyEvent.Keycode == Key.S) _moveDirection.Z += 1;
-                if (keyEvent.Keycode == Key.A) _moveDirection.X -= 1;
-                else if (keyEvent.Keycode == Key.D) _moveDirection.X += 1;
+                if (keyEvent.Keycode == Key.W)
+                    _moveDirection.Z -= 1;
+                else if (keyEvent.Keycode == Key.S)
+                    _moveDirection.Z += 1;
+                if (keyEvent.Keycode == Key.A)
+                    _moveDirection.X -= 1;
+                else if (keyEvent.Keycode == Key.D)
+                    _moveDirection.X += 1;
                 _moveDirection = _moveDirection.Normalized();
                 EmitSignal(SignalName.Move, _moveDirection);
             }
             if (keyEvent.Keycode == Key.Space || keyEvent.Keycode == Key.Ctrl)
             {
-                if (keyEvent.Keycode == Key.Space) _verticalMovement.Y += 1;
-                else if (keyEvent.Keycode == Key.Ctrl) _verticalMovement.Y -= 1;
+                if (keyEvent.Keycode == Key.Space)
+                    _verticalMovement.Y += 1;
+                else if (keyEvent.Keycode == Key.Ctrl)
+                    _verticalMovement.Y -= 1;
                 _verticalMovement = _verticalMovement.Normalized();
                 EmitSignal(SignalName.VerticalMove, _verticalMovement);
             }
             if (keyEvent.Keycode == Key.Q || keyEvent.Keycode == Key.E)
             {
-                if (keyEvent.Keycode == Key.Q) _rotation -= 1;
-                else if (keyEvent.Keycode == Key.E) _rotation += 1;
+                if (keyEvent.Keycode == Key.Q)
+                    _rotation -= 1;
+                else if (keyEvent.Keycode == Key.E)
+                    _rotation += 1;
                 EmitSignal(SignalName.RotateAxis, _rotation);
             }
             if (keyEvent.Keycode == Key.Shift)
             {
                 EmitSignal(SignalName.Accelerate, true);
+            }
+            if (keyEvent.Keycode == Key.Bracketright)
+            {
+                Godot.Engine.TimeScale += .5;
+                GD.Print($"TimeScale: {Godot.Engine.TimeScale}");
+                Godot.Engine.PhysicsTicksPerSecond += 5;
+            }
+            if (keyEvent.Keycode == Key.Bracketleft)
+            {
+                Godot.Engine.TimeScale -= .5;
+                GD.Print($"TimeScale: {Godot.Engine.TimeScale}");
+                Godot.Engine.PhysicsTicksPerSecond -= 5;
             }
             if (keyEvent.Keycode == Key.R)
             {
@@ -109,33 +134,45 @@ public partial class InputHandler : Node
         //Button release
         else if (@event is InputEventKey keyUpEvent && !keyUpEvent.Pressed)
         {
-            if (keyUpEvent.Keycode == Key.W || keyUpEvent.Keycode == Key.S || keyUpEvent.Keycode == Key.A || keyUpEvent.Keycode == Key.D)
+            if (
+                keyUpEvent.Keycode == Key.W
+                || keyUpEvent.Keycode == Key.S
+                || keyUpEvent.Keycode == Key.A
+                || keyUpEvent.Keycode == Key.D
+            )
             {
-                if (keyUpEvent.Keycode == Key.W) _moveDirection.Z += -_moveDirection.Z;
-                else if (keyUpEvent.Keycode == Key.S) _moveDirection.Z += -_moveDirection.Z;
-                if (keyUpEvent.Keycode == Key.A) _moveDirection.X += -_moveDirection.X;
-                else if (keyUpEvent.Keycode == Key.D) _moveDirection.X += -_moveDirection.X;
+                if (keyUpEvent.Keycode == Key.W)
+                    _moveDirection.Z += -_moveDirection.Z;
+                else if (keyUpEvent.Keycode == Key.S)
+                    _moveDirection.Z += -_moveDirection.Z;
+                if (keyUpEvent.Keycode == Key.A)
+                    _moveDirection.X += -_moveDirection.X;
+                else if (keyUpEvent.Keycode == Key.D)
+                    _moveDirection.X += -_moveDirection.X;
                 _moveDirection = _moveDirection.Normalized();
                 EmitSignal(SignalName.Move, _moveDirection);
             }
             if (keyUpEvent.Keycode == Key.Space || keyUpEvent.Keycode == Key.Ctrl)
             {
-                if (keyUpEvent.Keycode == Key.Space) _verticalMovement.Y -= 1;
-                else if (keyUpEvent.Keycode == Key.Ctrl) _verticalMovement.Y += 1;
+                if (keyUpEvent.Keycode == Key.Space)
+                    _verticalMovement.Y -= 1;
+                else if (keyUpEvent.Keycode == Key.Ctrl)
+                    _verticalMovement.Y += 1;
                 _verticalMovement = _verticalMovement.Normalized();
                 EmitSignal(SignalName.VerticalMove, _verticalMovement);
             }
             if (keyUpEvent.Keycode == Key.Q || keyUpEvent.Keycode == Key.E)
             {
-                if (keyUpEvent.Keycode == Key.Q) _rotation += 1;
-                else if (keyUpEvent.Keycode == Key.E) _rotation -= 1;
+                if (keyUpEvent.Keycode == Key.Q)
+                    _rotation += 1;
+                else if (keyUpEvent.Keycode == Key.E)
+                    _rotation -= 1;
                 EmitSignal(SignalName.RotateAxis, _rotation);
             }
             if (keyUpEvent.Keycode == Key.Shift)
             {
                 EmitSignal(SignalName.Accelerate, false);
             }
-
         }
     }
 }

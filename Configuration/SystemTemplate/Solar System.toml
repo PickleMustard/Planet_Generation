@@ -32,7 +32,7 @@ size = 1
 [[bodies.satellites.template]]
 number_asteroids = [10, 15]
 grouping = ["balanced", "clustered", "dual grouping"]
-ring_velocity = [0, 2, 0]
+ring_velocity = [0, 1, 0]
 size_range = [1, 5]
 possible_subtypes = ["planet", "asteroid"]
 

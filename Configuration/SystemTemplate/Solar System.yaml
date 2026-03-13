@@ -31,7 +31,7 @@ bodies:
           grouping: balanced
           apogee: 8000
           perigee: 250
-          ring_velocity: [0, 2, 0]
+          ring_velocity: [0, 1, 0]
           size_range: [1, 5]
           possible_subtypes:
             - planet

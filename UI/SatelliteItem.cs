@@ -23,22 +23,16 @@ public partial class SatelliteItem : HBoxContainer
     public OptionButton? OptionButton;
 
     [Export]
-    public SpinBox? X;
+    public SpinBox? Apogee;
 
     [Export]
-    public SpinBox? Y;
+    public SpinBox? Perigee;
 
     [Export]
-    public SpinBox? Z;
+    public SpinBox? StartingAngle;
 
     [Export]
-    public SpinBox? velX;
-
-    [Export]
-    public SpinBox? velY;
-
-    [Export]
-    public SpinBox? velZ;
+    public SpinBox? VerticalOffset;
 
     [Export]
     public SpinBox? mass;
@@ -108,12 +102,10 @@ public partial class SatelliteItem : HBoxContainer
         OptionButton ??= GetNodeOrNull<OptionButton>(
             "MainContent/Content/TypeContent/OptionButton"
         );
-        X ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/X");
-        Y ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Y");
-        Z ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Z");
-        velX ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velX");
-        velY ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velY");
-        velZ ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velZ");
+        Apogee ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/Apogee");
+        Perigee ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/Perigee");
+        StartingAngle ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/StartingAngle");
+        VerticalOffset ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/VerticalOffset");
         mass ??= GetNodeOrNull<SpinBox>("MainContent/Content/MassContent/mass");
         size ??= GetNodeOrNull<SpinBox>("MainContent/Content/SizeContent/size");
 
@@ -140,7 +132,7 @@ public partial class SatelliteItem : HBoxContainer
 
         _detailPanelScene = GD.Load<PackedScene>("res://UI/DetailPanel.tscn");
         // Hook up input events for updates
-        var spinBoxes = new[] { X, Y, Z, velX, velY, velZ, mass, size };
+        var spinBoxes = new[] { Apogee, Perigee, StartingAngle, VerticalOffset, mass, size };
         foreach (var sb in spinBoxes)
         {
             if (sb != null)
@@ -182,22 +174,21 @@ public partial class SatelliteItem : HBoxContainer
         var template = (Godot.Collections.Dictionary)t["template"];
         satName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
 
-        // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
-        var position = (Vector3)template["position"];
-        var velocity = (Vector3)template["velocity"];
-        if (X != null)
-            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
-        if (Y != null)
-            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
-        if (Z != null)
-            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+        // Assign orbital parameters to UI (already clamped by GetDefaults, but clamp again defensively)
+        // Default values: apogee=500, perigee=300, starting_angle=0, vertical_offset=0
+        float defaultApogee = template.ContainsKey("apogee") ? (float)template["apogee"] : 500f;
+        float defaultPerigee = template.ContainsKey("perigee") ? (float)template["perigee"] : 300f;
+        float defaultStartingAngle = template.ContainsKey("starting_angle") ? (float)template["starting_angle"] : 0f;
+        float defaultVerticalOffset = template.ContainsKey("vertical_offset") ? (float)template["vertical_offset"] : 0f;
 
-        if (velX != null)
-            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
-        if (velY != null)
-            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
-        if (velZ != null)
-            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+        if (Apogee != null)
+            Apogee.Value = Mathf.Clamp(defaultApogee, 0f, Limit);
+        if (Perigee != null)
+            Perigee.Value = Mathf.Clamp(defaultPerigee, 0f, Limit);
+        if (StartingAngle != null)
+            StartingAngle.Value = Mathf.Clamp(defaultStartingAngle, 0f, 360f);
+        if (VerticalOffset != null)
+            VerticalOffset.Value = Mathf.Clamp(defaultVerticalOffset, -90f, 90f);
 
         if (mass != null)
             mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
@@ -262,22 +253,20 @@ public partial class SatelliteItem : HBoxContainer
     {
         var template = (Godot.Collections.Dictionary)t["template"];
 
-        // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
-        var position = (Vector3)template["position"];
-        var velocity = (Vector3)template["velocity"];
-        if (X != null)
-            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
-        if (Y != null)
-            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
-        if (Z != null)
-            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+        // Assign orbital parameters to UI
+        float apogee = template.ContainsKey("apogee") ? (float)template["apogee"] : 500f;
+        float perigee = template.ContainsKey("perigee") ? (float)template["perigee"] : 300f;
+        float startingAngle = template.ContainsKey("starting_angle") ? (float)template["starting_angle"] : 0f;
+        float verticalOffset = template.ContainsKey("vertical_offset") ? (float)template["vertical_offset"] : 0f;
 
-        if (velX != null)
-            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
-        if (velY != null)
-            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
-        if (velZ != null)
-            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+        if (Apogee != null)
+            Apogee.Value = Mathf.Clamp(apogee, 0f, Limit);
+        if (Perigee != null)
+            Perigee.Value = Mathf.Clamp(perigee, 0f, Limit);
+        if (StartingAngle != null)
+            StartingAngle.Value = Mathf.Clamp(startingAngle, 0f, 360f);
+        if (VerticalOffset != null)
+            VerticalOffset.Value = Mathf.Clamp(verticalOffset, -90f, 90f);
 
         if (mass != null)
             mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
@@ -360,15 +349,34 @@ public partial class SatelliteItem : HBoxContainer
 
     private void ApplyConstraints()
     {
-        // Positions and velocities: clamp to [-Limit, Limit]
-        foreach (var sb in new[] { X, Y, Z, velX, velY, velZ })
+        // Orbital parameters: apogee/perigee [0, Limit], starting_angle [0, 360], vertical_offset [-90, 90]
+        if (Apogee != null)
         {
-            if (sb == null)
-                continue;
-            sb.MinValue = -Limit;
-            sb.MaxValue = Limit;
-            sb.AllowGreater = false;
-            sb.AllowLesser = false;
+            Apogee.MinValue = 0f;
+            Apogee.MaxValue = Limit;
+            Apogee.AllowGreater = false;
+            Apogee.AllowLesser = false;
+        }
+        if (Perigee != null)
+        {
+            Perigee.MinValue = 0f;
+            Perigee.MaxValue = Limit;
+            Perigee.AllowGreater = false;
+            Perigee.AllowLesser = false;
+        }
+        if (StartingAngle != null)
+        {
+            StartingAngle.MinValue = 0f;
+            StartingAngle.MaxValue = 360f;
+            StartingAngle.AllowGreater = false;
+            StartingAngle.AllowLesser = false;
+        }
+        if (VerticalOffset != null)
+        {
+            VerticalOffset.MinValue = -90f;
+            VerticalOffset.MaxValue = 90f;
+            VerticalOffset.AllowGreater = false;
+            VerticalOffset.AllowLesser = false;
         }
         // Mass: [0, MassLimit]
         if (mass != null)
@@ -397,40 +405,121 @@ public partial class SatelliteItem : HBoxContainer
         }
     }
 
+    public void SetApogee(float value)
+    {
+        if (Apogee != null)
+            Apogee.Value = Mathf.Clamp(value, 0f, Limit);
+    }
+
+    public float GetApogee()
+    {
+        return Mathf.Clamp((float)Apogee!.Value, 0f, Limit);
+    }
+
+    public void SetPerigee(float value)
+    {
+        if (Perigee != null)
+            Perigee.Value = Mathf.Clamp(value, 0f, Limit);
+    }
+
+    public float GetPerigee()
+    {
+        return Mathf.Clamp((float)Perigee!.Value, 0f, Limit);
+    }
+
+    public void SetStartingAngle(float value)
+    {
+        if (StartingAngle != null)
+            StartingAngle.Value = Mathf.Clamp(value, 0f, 360f);
+    }
+
+    public float GetStartingAngle()
+    {
+        return Mathf.Clamp((float)StartingAngle!.Value, 0f, 360f);
+    }
+
+    public void SetVerticalOffset(float value)
+    {
+        if (VerticalOffset != null)
+            VerticalOffset.Value = Mathf.Clamp(value, -90f, 90f);
+    }
+
+    public float GetVerticalOffset()
+    {
+        return Mathf.Clamp((float)VerticalOffset!.Value, -90f, 90f);
+    }
+
+    /// <summary>
+    /// Backwards compatibility method for loading old saves with position/velocity.
+    /// Converts position to approximate apogee/perigee and calculates starting angle.
+    /// </summary>
     public void SetPosition(Vector3 position)
     {
-        if (X != null)
-            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
-        if (Y != null)
-            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
-        if (Z != null)
-            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+        // For backwards compatibility: approximate orbital parameters from position
+        // This is a rough conversion - the user should update to new format
+        float distance = position.Length();
+        if (distance > 0)
+        {
+            if (Apogee != null)
+                Apogee.Value = Mathf.Clamp(distance * 1.2f, 0f, Limit); // Approximate apogee as 1.2x distance
+            if (Perigee != null)
+                Perigee.Value = Mathf.Clamp(distance * 0.8f, 0f, Limit); // Approximate perigee as 0.8x distance
+        }
     }
 
-    public new Vector3 GetPosition()
-    {
-        float x = Mathf.Clamp((float)X!.Value, -Limit, Limit);
-        float y = Mathf.Clamp((float)Y!.Value, -Limit, Limit);
-        float z = Mathf.Clamp((float)Z!.Value, -Limit, Limit);
-        return new Vector3(x, y, z);
-    }
-
+    /// <summary>
+    /// Backwards compatibility method - velocity is now calculated automatically.
+    /// </summary>
     public void SetVelocity(Vector3 velocity)
     {
-        if (velX != null)
-            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
-        if (velY != null)
-            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
-        if (velZ != null)
-            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+        // Velocity is now calculated automatically from orbital parameters
+        // This method exists for backwards compatibility with old saves
     }
 
+    /// <summary>
+    /// Backwards compatibility method for loading old saves.
+    /// </summary>
+    public new Vector3 GetPosition()
+    {
+        // Return the calculated position based on orbital parameters
+        // This is approximate - for display purposes only
+        float apogee = GetApogee();
+        float perigee = GetPerigee();
+        float angle = GetStartingAngle();
+        float inclination = GetVerticalOffset();
+        
+        float angleRad = Mathf.DegToRad(angle);
+        float inclinationRad = Mathf.DegToRad(inclination);
+        
+        float eccentricity = (apogee - perigee) / (apogee + perigee);
+        float semiMajorAxis = (apogee + perigee) / 2f;
+        float radius = semiMajorAxis * (1 - eccentricity * eccentricity) / (1 + eccentricity * Mathf.Cos(angleRad));
+        
+        Vector3 pHat = new Vector3(Mathf.Cos(angleRad), 0, Mathf.Sin(angleRad)).Normalized();
+        Vector3 qHat = new Vector3(
+            -Mathf.Sin(angleRad) * Mathf.Cos(inclinationRad),
+            Mathf.Sin(inclinationRad),
+            Mathf.Cos(angleRad) * Mathf.Cos(inclinationRad)
+        ).Normalized();
+        
+        return radius * Mathf.Cos(angleRad) * pHat + radius * Mathf.Sin(angleRad) * qHat;
+    }
+
+    /// <summary>
+    /// Backwards compatibility method - velocity is calculated automatically.
+    /// </summary>
     public Vector3 GetVelocity()
     {
-        float vx = Mathf.Clamp((float)velX!.Value, -Limit, Limit);
-        float vy = Mathf.Clamp((float)velY!.Value, -Limit, Limit);
-        float vz = Mathf.Clamp((float)velZ!.Value, -Limit, Limit);
-        return new Vector3(vx, vy, vz);
+        // Velocity is calculated automatically - return zero as placeholder
+        return Vector3.Zero;
+    }
+
+    /// <summary>
+    /// Backwards compatibility method for loading old saves.
+    /// </summary>
+    public Vector3 GetBodyPosition()
+    {
+        return GetPosition();
     }
 
     public void SetMass(float massValue)
@@ -464,13 +553,19 @@ public partial class SatelliteItem : HBoxContainer
         return "Asteroid";
     }
 
-    public Vector3 GetBodyPosition()
+    /// <summary>
+    /// Gets the orbital parameters as a dictionary with calculated position and velocity.
+    /// The position and velocity are calculated based on apogee, perigee, starting angle, and vertical offset.
+    /// </summary>
+    public Godot.Collections.Dictionary GetOrbitalParameters()
     {
-        return new Vector3(
-            Mathf.Clamp((float)X!.Value, -Limit, Limit),
-            Mathf.Clamp((float)Y!.Value, -Limit, Limit),
-            Mathf.Clamp((float)Z!.Value, -Limit, Limit)
-        );
+        return new Godot.Collections.Dictionary()
+        {
+            { "apogee", GetApogee() },
+            { "perigee", GetPerigee() },
+            { "starting_angle", GetStartingAngle() },
+            { "vertical_offset", GetVerticalOffset() }
+        };
     }
 
     public Godot.Collections.Dictionary ToParams()
@@ -479,8 +574,10 @@ public partial class SatelliteItem : HBoxContainer
         dict.Add("type", GetSatelliteType());
         dict.Add("name", satName!);
         Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
-        templateDict.Add("base_position", GetPosition());
-        templateDict.Add("satellite_velocity", GetVelocity());
+        templateDict.Add("apogee", GetApogee());
+        templateDict.Add("perigee", GetPerigee());
+        templateDict.Add("starting_angle", GetStartingAngle());
+        templateDict.Add("vertical_offset", GetVerticalOffset());
         templateDict.Add("size", GetSize());
         templateDict.Add("mass", GetMass());
         dict.Add("template", templateDict);
