@@ -150,6 +150,26 @@ namespace UtilityLibrary
 
                 ValidateTemplateSection(celestial, "celestial", result);
                 ValidateMeshSection(celestial, "celestial", result);
+
+                // Validate orbital parameters or position/velocity in template
+                if (celestial.Children.ContainsKey("template"))
+                {
+                    var template = celestial.Children["template"] as YamlMappingNode;
+                    if (template != null)
+                    {
+                        bool hasOrbitalParams = template.Children.ContainsKey("apogee");
+                        bool hasPosition = template.Children.ContainsKey("position");
+
+                        if (hasOrbitalParams)
+                        {
+                            ValidateOrbitalParameters(template, "celestial.template", result);
+                        }
+                        else if (!hasPosition)
+                        {
+                            result.AddWarning("'celestial.template' has neither orbital parameters (apogee/perigee) nor position/velocity");
+                        }
+                    }
+                }
             }
             else if (root.Children.ContainsKey("satellite"))
             {
@@ -162,6 +182,16 @@ namespace UtilityLibrary
 
                 ValidateTemplateSection(satellite, "satellite", result);
                 ValidateMeshSection(satellite, "satellite", result);
+
+                // Validate orbital parameters in satellite template
+                if (satellite.Children.ContainsKey("template"))
+                {
+                    var template = satellite.Children["template"] as YamlMappingNode;
+                    if (template != null && template.Children.ContainsKey("apogee"))
+                    {
+                        ValidateOrbitalParameters(template, "satellite.template", result);
+                    }
+                }
             }
             else if (root.Children.ContainsKey("satellite_group"))
             {
@@ -210,6 +240,32 @@ namespace UtilityLibrary
                 if (!body.Children.ContainsKey("type"))
                 {
                     result.AddWarning($"Body at index {bodyIndex} missing 'type' field");
+                }
+                else
+                {
+                    var typeNode = body.Children["type"] as YamlScalarNode;
+                    string typeStr = typeNode?.Value ?? "";
+                    bool isDominant = typeStr.Equals("Star", StringComparison.OrdinalIgnoreCase)
+                        || typeStr.Equals("BlackHole", StringComparison.OrdinalIgnoreCase);
+
+                    if (isDominant)
+                    {
+                        if (!body.Children.ContainsKey("position"))
+                        {
+                            result.AddWarning($"Dominant body at index {bodyIndex} ({typeStr}) missing 'position'");
+                        }
+                    }
+                    else
+                    {
+                        if (!body.Children.ContainsKey("apogee"))
+                        {
+                            result.AddWarning($"Non-dominant body at index {bodyIndex} ({typeStr}) missing orbital parameters (apogee/perigee)");
+                        }
+                        else
+                        {
+                            ValidateOrbitalParameters(body, $"bodies[{bodyIndex}]", result);
+                        }
+                    }
                 }
 
                 bodyIndex++;
@@ -297,6 +353,18 @@ namespace UtilityLibrary
                 if (tectonic == null)
                 {
                     result.AddError($"'{parentName}.mesh.tectonic' must be a mapping");
+                }
+            }
+        }
+
+        private static void ValidateOrbitalParameters(YamlMappingNode node, string path, ValidationResult result)
+        {
+            var optionalFields = new[] { "apogee", "perigee", "starting_angle", "vertical_offset" };
+            foreach (var field in optionalFields)
+            {
+                if (!node.Children.ContainsKey(field))
+                {
+                    result.AddWarning($"'{path}' missing orbital parameter '{field}'");
                 }
             }
         }

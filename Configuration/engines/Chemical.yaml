@@ -1,0 +1,5 @@
+engines:
+  - name: Chemical Rocket
+    specific_impulse: 450
+    thrust: 5000
+    description: Traditional rocket engine using chemical reactions for propulsion. Offers high thrust suitable for launch and orbital maneuvers but has relatively low specific impulse compared to advanced propulsion systems.

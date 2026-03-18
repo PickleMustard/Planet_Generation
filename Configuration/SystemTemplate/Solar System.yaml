@@ -3,7 +3,7 @@ bodies:
     position: [0, 0, 0]
     velocity: [0, 0, 0]
     mass: 500000
-    size: 75
+    size: 500
 
     mesh:
       base_mesh:
@@ -32,16 +32,18 @@ bodies:
           apogee: 8000
           perigee: 250
           ring_velocity: [0, 1, 0]
-          size_range: [1, 5]
+          size_range: [5, 20]
           possible_subtypes:
             - planet
             - asteroid
 
   - type: RockyPlanet
-    position: [400, 0, 0]
-    velocity: [0, 10, 0]
-    mass: 10
-    size: 12
+    apogee: 800
+    perigee: 400
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 1000
+    size: 150
 
     mesh:
       base_mesh:
@@ -64,10 +66,12 @@ bodies:
 
     satellites:
       - type: Moon
-        position: [100, 0, 0]
-        velocity: [0, 2, 0]
-        mass: 1
-        size: 1
+        apogee: 200
+        perigee: 100
+        starting_angle: 0
+        vertical_offset: 0
+        mass: 80
+        size: 40
 
         mesh:
           base_mesh:
@@ -87,10 +91,12 @@ bodies:
             gain: 4.5
 
       - type: Moon
-        position: [-100, 0, 0]
-        velocity: [0, -2, 0]
-        mass: 1
-        size: 1
+        apogee: 200
+        perigee: 100
+        starting_angle: 180
+        vertical_offset: 0
+        mass: 80
+        size: 40
 
         mesh:
           base_mesh:
@@ -110,10 +116,12 @@ bodies:
             gain: 4.5
 
   - type: GasGiant
-    position: [700, 0, 0]
-    velocity: [0, 7, 0]
-    mass: 100
-    size: 35
+    apogee: 1400
+    perigee: 700
+    starting_angle: 90
+    vertical_offset: 0
+    mass: 17000
+    size: 350
 
     mesh:
       base_mesh:

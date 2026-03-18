@@ -1,0 +1,24 @@
+ships:
+  - name: Small_Freighter
+    dry_mass: 500
+    cargo_capacity: 1000
+    fuel_capacity: 200
+    engine_category: Chemical
+
+  - name: Medium_Freighter
+    dry_mass: 2000
+    cargo_capacity: 5000
+    fuel_capacity: 800
+    engine_category: Chemical
+
+  - name: Large_Freighter
+    dry_mass: 10000
+    cargo_capacity: 30000
+    fuel_capacity: 5000
+    engine_category: Nuclear
+
+  - name: Bulk_Hauler
+    dry_mass: 50000
+    cargo_capacity: 150000
+    fuel_capacity: 25000
+    engine_category: Nuclear

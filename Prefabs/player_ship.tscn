@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://brice0jo72tpo"]
+[gd_scene format=3 uid="uid://brice0jo72tpo"]
 
 [ext_resource type="Script" uid="uid://6cu37byqa6it" path="res://Scripts/PlayerInteraction/ShipMovement.cs" id="1_bc0l8"]
 [ext_resource type="Script" uid="uid://ccfxuom517kn0" path="res://Scripts/PlayerInteraction/PlayerController.cs" id="3_2llaf"]
@@ -7,39 +7,40 @@
 
 [sub_resource type="SphereMesh" id="SphereMesh_nd1sr"]
 
-[node name="PlayerShip" type="Node3D" node_paths=PackedStringArray("Target")]
+[node name="PlayerShip" type="Node3D" unique_id=1609752387 node_paths=PackedStringArray("Target")]
 top_level = true
 script = ExtResource("1_bc0l8")
 ShipTurnSpeed = 0.02
 Target = NodePath("Camera3D/Pointer")
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="Camera3D" type="Camera3D" parent="." unique_id=2127372463]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
 top_level = true
 keep_aspect = 0
 fov = 90.0
 frustum_offset = Vector2(-0.14, 0.035)
 
-[node name="Pointer" type="MeshInstance3D" parent="Camera3D"]
+[node name="Pointer" type="MeshInstance3D" parent="Camera3D" unique_id=1207942000]
 transform = Transform3D(1, 1.42109e-14, 0, 0, 1, -2.98023e-08, 0, 0, 1, 2.45018e-06, -4.17917, -31.0807)
 mesh = SubResource("SphereMesh_nd1sr")
 
-[node name="PlayerController" type="Node3D" parent="."]
+[node name="PlayerController" type="Node3D" parent="." unique_id=1828874929]
 transform = Transform3D(-0.596936, 5.21858e-08, 2.28111e-15, 0, -2.60929e-08, 0.596936, 5.21858e-08, 0.596936, 2.60929e-08, 0, 0, 0)
 script = ExtResource("3_2llaf")
 MaxSpeed = 100.0
 Acceleration = 4.0
 DecelerationTime = 1.4
 
-[node name="InputHandler" type="Node3D" parent="."]
+[node name="InputHandler" type="Node3D" parent="." unique_id=378932319]
 transform = Transform3D(-0.596936, 5.21858e-08, 2.28111e-15, 0, -2.60929e-08, 0.596936, 5.21858e-08, 0.596936, 2.60929e-08, 0, 0, 0)
 script = ExtResource("4_bce5k")
 
-[node name="ShipMesh" type="MeshInstance3D" parent="."]
+[node name="ShipMesh" type="MeshInstance3D" parent="." unique_id=167466139]
 transform = Transform3D(-1, 8.74228e-08, -3.82137e-15, 0, -4.37114e-08, -1, -8.74228e-08, -1, 4.37114e-08, 0, 0, 0)
+visible = false
 mesh = ExtResource("5_rool1")
 skeleton = NodePath("../..")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1201711080]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.133972, -21.758)
 directional_shadow_mode = 0

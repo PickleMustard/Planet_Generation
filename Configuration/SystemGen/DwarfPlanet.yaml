@@ -7,10 +7,12 @@ categories:
 
 celestial:
   template:
-    position: [1200, 0, 0]
-    velocity: [0, 10, 0]
-    mass: 10
-    size: 3
+    apogee: 2000
+    perigee: 1000
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 200
+    size: 30
 
   mesh:
     base_mesh:
@@ -44,8 +46,8 @@ satellite:
     perigee: 300
     starting_angle: 0
     vertical_offset: 0
-    size_range: [1, 4]
-    mass_range: [4, 10]
+    size_range: [8, 20]
+    mass_range: [20, 50]
 
   mesh:
     base_mesh:

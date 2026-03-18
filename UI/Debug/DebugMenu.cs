@@ -95,16 +95,16 @@ public partial class DebugMenu : CanvasLayer
     /// <param name="module">The module to register.</param>
     public void RegisterModule(IDebugModule module)
     {
-		if (!_modules.Contains(module))
-		{
-			_modules.Add(module);
-			_controller!.RegisterModule(module);
+        if (!_modules.Contains(module))
+        {
+            _modules.Add(module);
+            _controller!.RegisterModule(module);
 
-			if (module is Control control)
-			{
-				_tabContainer!.AddChild(control);
-			}
-		}
+            if (module is Control control)
+            {
+                _tabContainer!.AddChild(control);
+            }
+        }
     }
 
     /// <summary>
@@ -113,15 +113,15 @@ public partial class DebugMenu : CanvasLayer
     /// <param name="module">The module to unregister.</param>
     public void UnregisterModule(IDebugModule module)
     {
-		if (_modules.Remove(module))
-		{
-			_controller!.UnregisterModule(module);
+        if (_modules.Remove(module))
+        {
+            _controller!.UnregisterModule(module);
 
-			if (module is Control control && control.IsInsideTree())
-			{
-				_tabContainer!.RemoveChild(control);
-			}
-		}
+            if (module is Control control && control.IsInsideTree())
+            {
+                _tabContainer!.RemoveChild(control);
+            }
+        }
     }
 
     /// <summary>

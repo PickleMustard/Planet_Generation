@@ -60,6 +60,8 @@ public partial class SatelliteBeltItem : VBoxContainer
     public Action<SatelliteBeltItem>? OnRemoveRequested;
 
     private CelestialBodyType parentType;
+    private int _orbitalCenterIndex = -1; // -1 = barycenter, 0+ = dominant body index
+    private OptionButton? OrbitalCenterDropdown;
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
@@ -211,6 +213,9 @@ public partial class SatelliteBeltItem : VBoxContainer
             BeltGrouping.Clear();
             foreach (var name in System.Enum.GetNames(typeof(GroupingCategories)))
                 BeltGrouping.AddItem(name);
+            // Select the grouping value from the template
+            if (System.Enum.TryParse<GroupingCategories>(grouping, true, out var group))
+                BeltGrouping.Select((int)group);
         }
         templateDict = t;
     }
@@ -218,40 +223,42 @@ public partial class SatelliteBeltItem : VBoxContainer
     public void SetTemplate(Godot.Collections.Dictionary t)
     {
         var template = (Godot.Collections.Dictionary)t["template"];
-        var apogee = (float)template["ring_apogee"];
-        var perigee = (float)template["ring_perigee"];
-        var velocity = (Vector3)template["ring_velocity"];
-        var lowerRange = (int)template["lower_range"];
-        var upperRange = (int)template["upper_range"];
-        var grouping = (String)template["grouping"];
+
+        // Read belt parameters from the template sub-dictionary with safe fallbacks
+        var apogee = template.ContainsKey("ring_apogee") ? (float)template["ring_apogee"] : 0f;
+        var perigee = template.ContainsKey("ring_perigee") ? (float)template["ring_perigee"] : 0f;
+        var velocity = template.ContainsKey("ring_velocity") ? (Vector3)template["ring_velocity"] : Vector3.Zero;
+        var lowerRange = template.ContainsKey("lower_range") ? (int)template["lower_range"] : 1;
+        var upperRange = template.ContainsKey("upper_range") ? (int)template["upper_range"] : 4;
+        var grouping = template.ContainsKey("grouping") ? (String)template["grouping"] : "Balanced";
 
         if (Apogee != null)
         {
-            Apogee.Value = Mathf.Clamp((float)apogee, 0f, Limit);
+            Apogee.Value = Mathf.Clamp(apogee, 0f, Limit);
         }
         if (Perigee != null)
         {
-            Perigee.Value = Mathf.Clamp((float)perigee, 0f, Limit);
+            Perigee.Value = Mathf.Clamp(perigee, 0f, Limit);
         }
         if (RingVelocityX != null)
         {
-            RingVelocityX.Value = Mathf.Clamp((float)velocity.X, 0f, Limit);
+            RingVelocityX.Value = Mathf.Clamp(velocity.X, 0f, Limit);
         }
         if (RingVelocityY != null)
         {
-            RingVelocityY.Value = Mathf.Clamp((float)velocity.Y, 0f, Limit);
+            RingVelocityY.Value = Mathf.Clamp(velocity.Y, 0f, Limit);
         }
         if (RingVelocityZ != null)
         {
-            RingVelocityZ.Value = Mathf.Clamp((float)velocity.Z, 0f, Limit);
+            RingVelocityZ.Value = Mathf.Clamp(velocity.Z, 0f, Limit);
         }
-        if (MinMass != null)
+        if (MinMass != null && template.ContainsKey("mass_min"))
             MinMass.Value = Mathf.Clamp((float)template["mass_min"], 0f, MassLimit);
-        if (MaxMass != null)
+        if (MaxMass != null && template.ContainsKey("mass_max"))
             MaxMass.Value = Mathf.Clamp((float)template["mass_max"], 0f, MassLimit);
-        if (MinSize != null)
+        if (MinSize != null && template.ContainsKey("size_min"))
             MinSize.Value = Mathf.Clamp((float)template["size_min"], 0f, SizeLimit);
-        if (MaxSize != null)
+        if (MaxSize != null && template.ContainsKey("size_max"))
             MaxSize.Value = Mathf.Clamp((float)template["size_max"], 0f, SizeLimit);
         if (NumInBeltLower != null)
         {
@@ -261,12 +268,39 @@ public partial class SatelliteBeltItem : VBoxContainer
         {
             NumInBeltUpper.Value = upperRange;
         }
+
+        // Select the belt type in OptionButton from the dict's "type" field
+        if (OptionButton != null && t.ContainsKey("type"))
+        {
+            var typeStr = (string)t["type"];
+            if (System.Enum.TryParse<SatelliteGroupTypes>(typeStr, out var groupType))
+            {
+                for (int i = 0; i < OptionButton.ItemCount; i++)
+                {
+                    if (OptionButton.GetItemText(i) == typeStr)
+                    {
+                        OptionButton.Select(i);
+                        UpdateHeaderFromType(typeStr);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Select the grouping category in BeltGrouping dropdown
         if (BeltGrouping != null)
         {
-            if (System.Enum.TryParse<GroupingCategories>(grouping, false, out var group))
+            // Ensure grouping dropdown is populated
+            if (BeltGrouping.ItemCount == 0)
+            {
+                foreach (var name in System.Enum.GetNames(typeof(GroupingCategories)))
+                    BeltGrouping.AddItem(name);
+            }
+            if (System.Enum.TryParse<GroupingCategories>(grouping, true, out var group))
                 BeltGrouping.Select((int)group);
         }
 
+        templateDict = template;
     }
 
     private void ApplyConstraints()
@@ -403,6 +437,61 @@ public partial class SatelliteBeltItem : VBoxContainer
         dict.Add("lower_range", numRange.Item1);
         dict.Add("upper_range", numRange.Item2);
         dict.Add("grouping", GetBeltGrouping());
+        dict.Add("orbital_center_index", _orbitalCenterIndex);
         return dict;
     }
+
+    public void UpdateOrbitalCenterOptions(Godot.Collections.Array<string> options)
+    {
+        // Find or create orbital center dropdown
+        if (OrbitalCenterDropdown == null)
+        {
+            OrbitalCenterDropdown = GetNodeOrNull<OptionButton>("Content/OrbitalCenterContent/OrbitalCenterDropdown");
+
+            if (OrbitalCenterDropdown == null)
+            {
+                // Create the container and dropdown if they don't exist
+                var content = GetNodeOrNull<VBoxContainer>("Content");
+                if (content == null)
+                    return;
+
+                var orbitalCenterContainer = new VBoxContainer();
+                orbitalCenterContainer.Name = "OrbitalCenterContent";
+                content.AddChild(orbitalCenterContainer);
+
+                var label = new Label();
+                label.Text = "Orbital Center:";
+                orbitalCenterContainer.AddChild(label);
+
+                OrbitalCenterDropdown = new OptionButton();
+                OrbitalCenterDropdown.Name = "OrbitalCenterDropdown";
+                OrbitalCenterDropdown.Connect(OptionButton.SignalName.ItemSelected, Callable.From((int index) =>
+                {
+                    _orbitalCenterIndex = index - 1; // -1 because "Barycenter" is at index 0
+                    EmitSignal(SignalName.ItemUpdate);
+                }));
+                orbitalCenterContainer.AddChild(OrbitalCenterDropdown);
+            }
+        }
+
+        if (OrbitalCenterDropdown != null)
+        {
+            OrbitalCenterDropdown.Clear();
+            foreach (var option in options)
+            {
+                OrbitalCenterDropdown.AddItem(option);
+            }
+
+            // Clamp index to valid range: _orbitalCenterIndex is 0-based dominant body index
+            // (-1 = Barycenter), and options includes "Barycenter" at index 0, so the max
+            // valid _orbitalCenterIndex is options.Count - 2 (the last dominant body).
+            int maxDominantIndex = options.Count - 2;
+            if (_orbitalCenterIndex > maxDominantIndex || _orbitalCenterIndex < -1)
+                _orbitalCenterIndex = -1;
+
+            OrbitalCenterDropdown.Select(_orbitalCenterIndex + 1); // +1 because "Barycenter" is at index 0
+        }
+    }
+
+    public int GetOrbitalCenterIndex() => _orbitalCenterIndex;
 }

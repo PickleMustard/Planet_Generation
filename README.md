@@ -1,15 +1,12 @@
 # Delaunay Triangulation Map Generation
 
 ![Godot](https://img.shields.io/badge/Godot-4.6-%23478cbf?logo=godot-engine&logoColor=white)
-![.NET](https://img.shields.io/badge/.NET-8.0-512bd4?logo=dotnet&logoColor=white)
-![GDUnit4](https://img.shields.io/badge/GDUnit4-v6.1-blue)
+![.NET](https://img.shields.io/badge/.NET-9.0-512bd4?logo=dotnet&logoColor=white)
+![GDUnit4](https://img.shields.io/badge/GDUnit4-v5.1-blue)
 ![C#](https://img.shields.io/badge/C%23-12.0-239120?logo=csharp&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-[![Jenkins Build](https://img.shields.io/jenkins/build?jobUrl=${JENKINS_URL}/job/${JOB_NAME})](JENKINS_URL_PLACEHOLDER)
-[![Test Results](https://img.shields.io/jenkins/tests?jobUrl=${JENKINS_URL}/job/${JOB_NAME})](JENKINS_URL_PLACEHOLDER/lastCompletedBuild/testReport/)
-
-A Godot 4.6 project using C# (.NET 8.0) for procedural celestial body and planetary system generation via spherical Delaunay triangulation, tectonic simulation, and Voronoi cell partitioning.
+A Godot 4.6 project using C# (.NET 9.0) for procedural celestial body and planetary system generation via spherical Delaunay triangulation, tectonic simulation, and Voronoi cell partitioning.
 
 ## Table of Contents
 
@@ -24,12 +21,14 @@ A Godot 4.6 project using C# (.NET 8.0) for procedural celestial body and planet
 
 ## Features
 
-- **Spherical Delaunay Triangulation** - Generate spherical meshes from icosahedron subdivision
-- **Tectonic Plate Simulation** - Realistic tectonic movement and collision
-- **Voronoi Cell Partitioning** - Divide surface into discrete cells for gameplay
+- **Spherical Delaunay Triangulation** - Generate spherical meshes from icosahedron subdivision with configurable vertex distribution
+- **Tectonic Plate Simulation** - Realistic tectonic movement and collision modeling with edge stress calculations
+- **Voronoi Cell Partitioning** - Divide surface into discrete cells for gameplay and resource management
 - **Biome Distribution** - Temperature, moisture, and elevation-based biome assignment
 - **Resource Deposit Generation** - Procedural resource placement with biome affinity
-- **Celestial Body Generation** - Stars, planets, moons, and other celestial objects
+- **Celestial Body Generation** - Stars, planets, moons, asteroids, and satellite belts
+- **Orbital Mechanics** - Lambert solver for interplanetary transfers, orbital configuration
+- **Logistics System** - Ships, stations, trajectory planning, and cargo management with engine modifiers
 
 ## CI/CD
 
@@ -72,8 +71,8 @@ After each build, test reports are available:
 | Dependency | Version | Notes |
 |------------|---------|-------|
 | Godot | 4.6+ | .NET/Mono edition required |
-| .NET SDK | 8.0 | For C# compilation |
-| GDUnit4 | 6.1+ | Included as addon |
+| .NET SDK | 9.0 | For C# compilation |
+| GDUnit4 | 5.1+ | Included as addon |
 
 ## Getting Started
 
@@ -110,16 +109,13 @@ dotnet build
 export GODOT_BIN=/path/to/godot
 
 # Run all tests
-./addons/gdUnit4/runtest.sh -a res://Tests
+dotnet test
 
-# Run with continue-on-failure (run all tests even if some fail)
-./addons/gdUnit4/runtest.sh -a res://Tests -c
+# Run a specific test
+dotnet test --filter "Name=DepositCreation"
 
-# Run with custom report directory
-./addons/gdUnit4/runtest.sh -a res://Tests -rd ./my-reports
-
-# Run specific test file
-./addons/gdUnit4/runtest.sh -a res://Tests/ThreadPoolTest.cs
+# Run with GDUnit4 CLI (requires Godot binary)
+./addons/gdUnit4/runtest.sh --godot_binary "$GODOT_BIN" -a "res://Tests" -c -rd "./test-reports"
 ```
 
 ### Using Godot Editor
@@ -136,9 +132,9 @@ After running tests:
 
 ```bash
 # Open HTML report in browser
-xdg-open reports/index.html  # Linux
-open reports/index.html      # macOS
-start reports/index.html     # Windows
+xdg-open test-reports/index.html  # Linux
+open test-reports/index.html      # macOS
+start test-reports/index.html     # Windows
 ```
 
 ## Project Structure
@@ -146,33 +142,46 @@ start reports/index.html     # Windows
 ```
 Planet_Generation/
 ├── Scripts/
-│   ├── ProceduralGeneration/   # Core generation algorithms
-│   │   ├── MeshGeneration/     # Delaunay, Voronoi, tectonics
-│   │   ├── CelestialBody.cs    # Base celestial body class
-│   │   └── PlanetGeneration/   # Planet-specific generation
+│   ├── ProceduralGeneration/      # Core generation algorithms
+│   │   ├── MeshGeneration/        # Delaunay, Voronoi, tectonics
+│   │   │   ├── ResourceGeneration/# Resource deposit placement
+│   │   │   ├── SphericalDelaunayTriangulation.cs
+│   │   │   ├── TectonicGeneration.cs
+│   │   │   ├── VoronoiCellGeneration.cs
+│   │   │   └── BiomeAssigner.cs
+│   │   ├── CelestialBody.cs       # Base celestial body class
+│   │   ├── SatelliteBody.cs      # Satellite/moon generation
+│   │   ├── SatelliteBeltBody.cs  # Asteroid belt generation
+│   │   └── SystemGenerator.cs    # System-wide generation
 │   ├── Structures/
-│   │   ├── MeshGeneration/     # Point, Edge, Triangle, Face
-│   │   ├── Enums/              # Biome, CelestialBodyType
-│   │   ├── GameState/          # VoronoiCell, Continent
-│   │   └── Resources/          # ResourceDefinition, Deposit
-│   ├── UtilityLibrary/         # GameLogger, ThreadPool, etc.
-│   └── PlayerInteraction/      # Input handling, controls
-├── Tests/                      # GDUnit4 test suites
-│   ├── Settings/               # RuntimeSettings tests
-│   ├── ResourceGeneration/     # Resource system tests
-│   ├── ThreadPoolTest.cs
-│   └── TaskSystemTest.cs
+│   │   ├── MeshGeneration/        # Point, Edge, Triangle, Face
+│   │   ├── Enums/                 # Biome, CelestialBodyType
+│   │   ├── GameState/              # VoronoiCell, Continent, Orbit
+│   │   ├── Resources/              # ResourceDefinition, Deposit
+│   │   └── Logistics/             # Engine, Trajectory, Cargo
+│   ├── Constructables/
+│   │   └── ArtificialSatellites/  # Ships, stations
+│   ├── UtilityLibrary/            # Logger, ThreadPool, Settings
+│   └── PlayerInteraction/          # Input, cell selection
+├── Tests/                         # GDUnit4 test suites
+│   ├── Settings/                  # RuntimeSettings tests
+│   ├── ResourceGeneration/        # Resource system tests
+│   ├── UtilityLibrary/            # ThreadPool, Lambert solver
+│   └── ThreadPoolTest.cs
 ├── Configuration/
-│   ├── SystemGen/              # Body type definitions (YAML)
-│   ├── SystemTemplate/         # Pre-built system templates
-│   └── ResourceDefinition/     # Resource configs
-├── UI/                         # User interface scenes
-├── addons/                     # Godot plugins
-│   └── gdUnit4/               # Testing framework
-├── docs/                       # Documentation
-├── Jenkinsfile                 # CI/CD pipeline
-├── AGENTS.md                   # Development guidelines
-└── README.md                   # This file
+│   ├── SystemGen/                 # Body type definitions (YAML)
+│   ├── SystemTemplate/            # Pre-built system templates
+│   ├── ResourceDefinition/        # Resource configs
+│   ├── engines/                   # Engine type definitions
+│   └── ships/                     # Ship templates
+├── UI/                            # User interface scenes
+├── addons/                        # Godot plugins
+│   └── gdUnit4/                   # Testing framework
+├── docs/                          # Documentation
+│   └── LogisticsSystem.md         # Logistics system deep dive
+├── Jenkinsfile                    # CI/CD pipeline
+├── AGENTS.md                      # Development guidelines
+└── README.md                      # This file
 ```
 
 ## Development
@@ -207,12 +216,18 @@ See [AGENTS.md](./AGENTS.md) for detailed development guidelines including:
 | `ResourceDatabase` | Resource definitions storage |
 | `CellSelectionManager` | Cell selection handling |
 
+### Core Systems
+
+- **Mesh Generation Pipeline**: ConfigurableSubdivider → SphericalDelaunayTriangulation → TectonicGeneration → VoronoiCellGeneration → BiomeAssigner
+- **Orbital Mechanics**: LambertSolver for transfer calculations, OrbitalMath for Keplerian orbits
+- **Logistics**: EngineDefinition with modifiers, TrajectoryPlanner for pathfinding, CargoManifest for resource tracking ([Detailed Docs](./docs/LogisticsSystem.md))
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run tests (`./addons/gdUnit4/runtest.sh -a res://Tests`)
+4. Run tests (`dotnet test`)
 5. Commit changes (`git commit -m 'Add amazing feature'`)
 6. Push to branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request

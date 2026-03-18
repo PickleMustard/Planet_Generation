@@ -252,10 +252,10 @@ namespace UtilityLibrary
             if (_configFile.HasSectionKey(category, key))
             {
                 Variant fileValue = _configFile.GetValue(category, key);
-            if (!_settingsCache.ContainsKey(category))
-            {
-                _settingsCache[category] = new System.Collections.Generic.Dictionary<string, Variant>();
-            }
+                if (!_settingsCache.ContainsKey(category))
+                {
+                    _settingsCache[category] = new System.Collections.Generic.Dictionary<string, Variant>();
+                }
                 _settingsCache[category][key] = fileValue;
                 return ConvertVariant<T>(fileValue);
             }
@@ -456,7 +456,7 @@ namespace UtilityLibrary
         private void WriteDefaultsForConfigurable(IConfigurable configurable)
         {
             string category = configurable.SettingsCategory;
-            
+
             // Only write if the file already exists (not first run case)
             if (!FileAccess.FileExists(SettingsFilePath))
             {

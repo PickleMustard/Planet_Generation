@@ -11,8 +11,8 @@ satellite:
     perigee: 400
     starting_angle: 0
     vertical_offset: 0
-    size_range: [10, 40]
-    mass_range: [4, 10]
+    size_range: [25, 50]
+    mass_range: [50, 150]
 
   mesh:
     base_mesh:

@@ -7,10 +7,12 @@ categories:
 
 celestial:
   template:
-    position: [500, 0, 0]
-    velocity: [0, 7, 0]
-    mass: 1000
-    size: 35
+    apogee: 1500
+    perigee: 1000
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 17000
+    size: 350
 
   mesh:
     base_mesh:

@@ -1,0 +1,5 @@
+engines:
+  - name: Fusion Torch
+    specific_impulse: 25000
+    thrust: 1000
+    description: An advanced theoretical propulsion system using nuclear fusion for thrust. Offers extremely high specific impulse with substantial thrust capability. Still largely theoretical but represents the pinnacle of space propulsion technology.
