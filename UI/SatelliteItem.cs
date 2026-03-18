@@ -487,21 +487,21 @@ public partial class SatelliteItem : HBoxContainer
         float perigee = GetPerigee();
         float angle = GetStartingAngle();
         float inclination = GetVerticalOffset();
-        
+
         float angleRad = Mathf.DegToRad(angle);
         float inclinationRad = Mathf.DegToRad(inclination);
-        
+
         float eccentricity = (apogee - perigee) / (apogee + perigee);
         float semiMajorAxis = (apogee + perigee) / 2f;
         float radius = semiMajorAxis * (1 - eccentricity * eccentricity) / (1 + eccentricity * Mathf.Cos(angleRad));
-        
+
         Vector3 pHat = new Vector3(Mathf.Cos(angleRad), 0, Mathf.Sin(angleRad)).Normalized();
         Vector3 qHat = new Vector3(
             -Mathf.Sin(angleRad) * Mathf.Cos(inclinationRad),
             Mathf.Sin(inclinationRad),
             Mathf.Cos(angleRad) * Mathf.Cos(inclinationRad)
         ).Normalized();
-        
+
         return radius * Mathf.Cos(angleRad) * pHat + radius * Mathf.Sin(angleRad) * qHat;
     }
 

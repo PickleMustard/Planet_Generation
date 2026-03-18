@@ -131,6 +131,100 @@ public static class InstanceRegistry
     }
 
     /// <summary>
+    /// Registers a logistics unit (ship) under the Constructables.Ships namespace.
+    /// </summary>
+    /// <param name="ship">The logistics unit to register.</param>
+    /// <returns>The generated namespace (e.g., Ships.0).</returns>
+    public static string RegisterShip(object ship)
+    {
+        if (ship == null)
+        {
+            throw new ArgumentNullException(nameof(ship));
+        }
+
+        lock (_lock)
+        {
+            // Check if already registered
+            if (_reverseLookup.TryGetValue(ship, out var existingNs))
+            {
+                return existingNs;
+            }
+
+            // Count existing ships
+            int shipCount = _instances.Count(kvp =>
+                kvp.Key.StartsWith("Ships.", StringComparison.OrdinalIgnoreCase));
+
+            var ns = $"Ships.{shipCount}";
+            _instances[ns] = ship;
+            _reverseLookup[ship] = ns;
+
+            return ns;
+        }
+    }
+
+    /// <summary>
+    /// Registers a station under the Constructables.Stations namespace.
+    /// </summary>
+    /// <param name="station">The station to register.</param>
+    /// <returns>The generated namespace (e.g., Stations.0).</returns>
+    public static string RegisterStation(object station)
+    {
+        if (station == null)
+        {
+            throw new ArgumentNullException(nameof(station));
+        }
+
+        lock (_lock)
+        {
+            // Check if already registered
+            if (_reverseLookup.TryGetValue(station, out var existingNs))
+            {
+                return existingNs;
+            }
+
+            // Count existing stations
+            int stationCount = _instances.Count(kvp =>
+                kvp.Key.StartsWith("Stations.", StringComparison.OrdinalIgnoreCase));
+
+            var ns = $"Stations.{stationCount}";
+            _instances[ns] = station;
+            _reverseLookup[station] = ns;
+
+            return ns;
+        }
+    }
+
+    /// <summary>
+    /// Gets all registered ship namespaces.
+    /// </summary>
+    /// <returns>Enumerable of ship namespaces.</returns>
+    public static IEnumerable<string> GetAllShipNamespaces()
+    {
+        lock (_lock)
+        {
+            return _instances.Keys
+                .Where(ns => ns.StartsWith("Ships.", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(ns => ns)
+                .ToList();
+        }
+    }
+
+    /// <summary>
+    /// Gets all registered station namespaces.
+    /// </summary>
+    /// <returns>Enumerable of station namespaces.</returns>
+    public static IEnumerable<string> GetAllStationNamespaces()
+    {
+        lock (_lock)
+        {
+            return _instances.Keys
+                .Where(ns => ns.StartsWith("Stations.", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(ns => ns)
+                .ToList();
+        }
+    }
+
+    /// <summary>
     /// Gets the next sequential ID for a type (used for node fallback naming).
     /// </summary>
     private static int GetNextId(Type type)

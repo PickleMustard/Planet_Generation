@@ -242,7 +242,8 @@ public partial class DatabaseViewer : BaseDebugModule
 
     private void OnCategorySelected(long index)
     {
-        if (index < 0 || index >= _categoryList!.ItemCount)        {
+        if (index < 0 || index >= _categoryList!.ItemCount)
+        {
             return;
         }
 

@@ -1,0 +1,5 @@
+engines:
+  - name: Nuclear Thermal
+    specific_impulse: 900
+    thrust: 250
+    description: A nuclear propulsion system that heats a propellant (typically hydrogen) using a nuclear reactor. Provides significantly higher specific impulse than chemical rockets while maintaining moderate thrust levels.

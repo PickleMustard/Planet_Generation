@@ -2348,7 +2348,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         );
         MeshConvexDecompositionSettings settings = new MeshConvexDecompositionSettings();
         settings.ConvexHullApproximation = false;
+        settings.NormalizeMesh = true;
         settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Tetrahedron;
-        this.CallDeferred("create_multiple_convex_collisions", settings);
+        //this.CallDeferred("create_multiple_convex_collisions", settings);
     }
 }

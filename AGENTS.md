@@ -1,54 +1,46 @@
 # Agent Configuration for Delaunay Triangulation Map Generation
 
-A Godot 4.4 project using C# (.NET 8.0) for procedural celestial body and planetary system generation via spherical Delaunay triangulation, tectonic simulation, and Voronoi cell partitioning.
+Godot 4.6 / C# (.NET 9.0, LangVersion 12) project for procedural celestial body and planetary system generation via spherical Delaunay triangulation, tectonic simulation, and Voronoi cell partitioning.
 
 ## Build/Lint/Test Commands
 
 ```bash
-# Build the project
+# Build
 dotnet build
 
-# Build with verbose output
-dotnet build -v detailed
-
-# Clean build artifacts
-dotnet clean
+# Clean + rebuild
+dotnet clean && dotnet build
 
 # Format code
 dotnet format
 
-# Run all tests via Godot editor
-# Open Godot and press F6 on any test scene, or use GUT/gdUnit4 runner
+# Run ALL tests (requires GODOT_BIN env var for [RequireGodotRuntime] tests)
+GODOT_BIN=/path/to/godot dotnet test
 
-# Run a single test file (via Godot command line)
-godot --headless --path . -s Tests/ThreadPoolTest.cs
+# Run a single test by exact method name (works without Godot for pure unit tests)
+dotnet test --filter "Name=DepositCreation"
 
-# Run specific test via gdUnit4 inspector (in Godot editor)
-# Right-click test file > Run Tests, or use gdUnit4 dock
+# Run multiple specific tests
+dotnet test --filter "Name=DepositCreation|Name=ValidationErrorHandling"
+
+# Run tests via gdUnit4 CLI runner (CI pipeline)
+./addons/gdUnit4/runtest.sh --godot_binary "$GODOT_BIN" -a "res://Tests" -c -rd "./test-reports"
+
+# Build for release (CI)
+dotnet build --configuration Release --no-restore
 ```
+
+**Note:** Tests marked `[RequireGodotRuntime]` need a running Godot engine. Without `GODOT_BIN` set, only pure unit tests (no `[RequireGodotRuntime]` attribute) can be discovered and run. The `--filter` `~` (contains) operator may fail for gdUnit4 tests without Godot; use exact `Name=` matching instead.
 
 ## Project Structure
 
-```
-Scripts/
-├── ProceduralGeneration/     # Core generation algorithms
-│   ├── MeshGeneration/       # Delaunay, Voronoi, tectonics, biomes
-│   ├── CelestialBody.cs      # Base celestial body class
-│   ├── SystemGenerator.cs    # System-wide orchestration
-│   └── PlanetGeneration/     # Planet-specific generation
-├── Structures/
-│   ├── MeshGeneration/       # Point, Edge, Triangle, HalfEdge, Face
-│   ├── Enums/                # Biome, CelestialBodyType, VertexDistribution
-│   ├── GameState/            # VoronoiCell, Continent, Octree
-│   └── Resources/            # ResourceDefinition, ResourceDeposit
-├── UtilityLibrary/           # GameLogger, ThreadPool, Randomizer, OrbitalMath
-└── PlayerInteraction/        # Input handling, player controls
-Tests/                        # gdUnit4 test suites
-Configuration/
-├── SystemGen/                # Body type definitions (YAML)
-├── SystemTemplate/           # Pre-built system templates
-└── ResourceDefinition/       # Resource configs
-```
+`Scripts/ProceduralGeneration/` — Core generation (MeshGeneration/, ResourceGeneration/, CelestialBody, SystemGenerator, SatelliteBody)
+`Scripts/Structures/` — Data types (MeshGeneration/, Enums/, GameState/, Resources/, Logistics/)
+`Scripts/Constructables/` — Ships, stations, logistics units
+`Scripts/UtilityLibrary/` — GameLogger, Randomizer, OrbitalMath, Settings/, TaskSystem/
+`Scripts/PlayerInteraction/` — Input handling, cell selection
+`Tests/` — gdUnit4 test suites (mirrors Scripts/ structure)
+`Configuration/` — YAML configs (SystemGen/, SystemTemplate/, ResourceDefinition/)
 
 ## Code Style Guidelines
 
@@ -58,72 +50,59 @@ Configuration/
 |---------|------------|---------|
 | Classes, Methods, Properties | PascalCase | `GenerateMesh()`, `StructureDatabase` |
 | Public fields | PascalCase | `MaxHeight`, `NumContinents` |
-| Private fields | _camelCase or camelCase | `_bodiesList`, `totalBodiesToGenerate` |
+| Private fields | `_camelCase` | `_bodiesList`, `_isInitialized` |
 | Local variables | camelCase | `baseMesh`, `continents` |
 | Constants | PascalCase or SCREAMING_SNAKE | `GRAVITATIONAL_CONSTANT`, `BASE_SIZE` |
 | Enums | PascalCase (type and values) | `BodyGenerationType.TectonicsOnly` |
-| Interfaces | IPascalCase | `IPoint`, `IVoronoiCell` |
-| Namespaces | PascalCase (feature-based) | `ProceduralGeneration.MeshGeneration` |
+| Interfaces | `IPascalCase` | `IPoint`, `IVoronoiCell`, `IConfigurable` |
+| Namespaces | PascalCase, feature-based | `ProceduralGeneration.MeshGeneration` |
+| File-scoped namespaces | Preferred for enums/simple types | `namespace Structures.Enums;` |
 
 ### Import Organization
 
-Organize imports alphabetically within groups:
-1. System namespaces (`System`, `System.Collections.Generic`, `System.Threading.Tasks`)
-2. Godot namespaces (`Godot`, `Godot.Collections`)
+Alphabetical within groups, separated by blank lines:
+1. `System` namespaces
+2. `Godot` namespaces
 3. Third-party (`GdUnit4`, `YamlDotNet`)
 4. Project namespaces (`ProceduralGeneration.*`, `Structures.*`, `UtilityLibrary`)
+5. `#if DEBUG` conditional imports last
 
 ```csharp
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
-using Godot.Collections;
-using GdUnit4;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
 using UtilityLibrary;
+#if DEBUG
+using UI.Debug;
+#endif
 ```
 
 ### Types and Godot Integration
 
 - Prefer `float` over `double` for Godot API compatibility
-- Use Godot math types: `Vector3`, `Vector2`, `Mathf` (not `Math`)
+- Use Godot math types: `Vector3`, `Vector2`, `Mathf` (not `System.Math`)
 - Use `RandomNumberGenerator` for deterministic procedural generation
-- Export fields with `[Export]` for Godot inspector visibility
-- Use `[ExportCategory]` and `[ExportGroup]` to organize properties
-
-```csharp
-[ExportCategory("Planet Generation")]
-[ExportGroup("Mesh Generation")]
-[Export]
-public int Subdivide = 1;
-```
+- Nullable reference types are enabled (`<Nullable>enable</Nullable>`)
+- Use `[Export]` for inspector visibility; group with `[ExportCategory]`/`[ExportGroup]`
+- Singleton autoloads expose `public static T? Instance { get; private set; }` set in `_Ready()`
 
 ### Error Handling
 
 - Use try/catch for configuration parsing and mesh generation
 - Log errors via `GameLogger.Error()` or `GD.PrintErr()`
-- Return error codes from thread pool tasks
-
-```csharp
-try
-{
-    await baseMesh.InitiateDeformation(cycles, aberrations, sideLength);
-}
-catch (Exception e)
-{
-    GameLogger.Error($"Deformation Error: {e.Message}\n{e.StackTrace}");
-    return 1;
-}
-```
+- Return error codes (int) from thread pool work steps
+- Use `ArgumentNullException` for null guard checks in constructors
+- Use null-conditional access for singletons: `RuntimeSettings.Instance?.GetSetting<int>(...) ?? default`
 
 ### Logging
 
-Use `GameLogger` class (in UtilityLibrary namespace):
+Use `GameLogger` (UtilityLibrary namespace), not raw `GD.Print()`:
 
 ```csharp
-GameLogger.Debug("Detailed diagnostic information");
+GameLogger.Debug("Detailed diagnostic info");
 GameLogger.Info("General information");
 GameLogger.Warning("Warning conditions");
 GameLogger.Error("Error conditions");
@@ -132,121 +111,73 @@ GameLogger.EnterFunction("MethodName", "param1, param2");
 GameLogger.ExitFunction("MethodName", "returnValue");
 ```
 
-For quick debugging: `GD.Print()`, `GD.PrintErr()`
-
 ### Async and Threading
 
-- Use `async/await` for mesh generation to avoid blocking main thread
+- Use `async/await` for mesh generation pipelines
 - Use `CallDeferred()` for Godot API calls from background threads
-
-```csharp
-this.CallDeferred("set_mesh", new ArrayMesh());
-```
+- Queue background work via `ThreadPooler.Instance?.EnqueuePackage(package)`
+- Build work packages with `WorkPackageBuilder`: name, steps, priority, batch ID
 
 ### Testing with gdUnit4
 
 ```csharp
 using GdUnit4;
 using static GdUnit4.Assertions;
-
 namespace Tests;
 
 [TestSuite]
 public class MyTest
 {
     [TestCase]
-    [RequireGodotRuntime]  // Use when Godot APIs are needed
-    public void TestSomething()
+    public void PureUnitTest()  // Runs without Godot
     {
         AssertThat(actualValue).IsEqual(expectedValue);
-        AssertThat(list.Count).IsGreater(0);
     }
 
     [TestCase]
-    public async void TestAsyncOperation()
+    [RequireGodotRuntime]  // Needs GODOT_BIN env var
+    public void GodotDependentTest()
     {
-        await someAsyncOperation();
-        AssertThat(result).IsNotNull();
+        var node = new Node3D();
+        AssertThat(node).IsNotNull();
     }
 }
 ```
 
-### GDScript Files
-
-- Use snake_case for functions and variables
-- Use PascalCase for class names with `class_name`
-- Add type hints: `var _velocity: Vector3 = Vector3.ZERO`
-
-## Configuration System
-
-The project uses YAML files via YamlDotNet:
-
-- `Configuration/SystemGen/*.yaml` - Body type definitions
-- `Configuration/SystemTemplate/*.yaml` - Complete system templates
-
-Load templates using:
-```csharp
-var raw = TemplateLoader.Load("RockyPlanet", TemplateLoader.CelestialBodyValidator);
-var defaults = TemplateHelpers.GetCelestialBodyDefaults(CelestialBodyType.RockyPlanet);
-```
+Test files live in `Tests/` mirroring the `Scripts/` folder structure. Test lookup folder is configured as `Tests` in `project.godot`.
 
 ## Autoload Singletons
 
-The project uses the following autoload singletons registered in `project.godot`:
-
 | Singleton | Path | Purpose |
 |-----------|------|---------|
-| `RuntimeSettings` | `Scripts/UtilityLibrary/Settings/RuntimeSettings.cs` | Centralized settings management with persistence |
+| `RuntimeSettings` | `Scripts/UtilityLibrary/Settings/RuntimeSettings.cs` | Settings management with persistence |
 | `SignalBus` | `Scripts/UtilityLibrary/SignalBus.cs` | Global signal/event dispatcher |
 | `ThreadPooler` | `Scripts/UtilityLibrary/TaskSystem/ThreadPooler.cs` | Background task execution |
 | `TaskTimer` | `Scripts/UtilityLibrary/TaskTimer.cs` | Progress tracking and timing |
 | `ResourceDatabase` | `Scripts/Structures/Resources/ResourceDatabase.cs` | Resource definitions storage |
 | `CellSelectionManager` | `Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs` | Cell selection handling |
-| `DebugMenu` | `UI/Debug/DebugMenu.tscn` | Debug console and database viewer |
+| `DebugMenu` | `UI/Debug/DebugMenu.tscn` | Debug console (scene-based) |
 
-Access singletons via their static `Instance` property:
-
-```csharp
-// Get a setting value
-int threadCount = RuntimeSettings.Instance?.GetSetting<int>("threading", "manual_thread_count") ?? 0;
-
-// Emit a signal
-SignalBus.Instance?.EmitStartTimer("Generation", 5, 0, stepNames);
-
-// Queue a background task
-ThreadPooler.Instance?.EnqueuePackage(package);
-```
+Access via `Instance`: `SignalBus.Instance?.EmitStartTimer(...)`, `ThreadPooler.Instance?.EnqueuePackage(...)`
 
 ## Key Architecture Patterns
 
-1. **Builder Pattern**: `CelestialBody.Builder.BuildFromBodyDict()` for constructing bodies
-2. **Strategy Pattern**: `BodyGenerationType` enum selects generation pipeline
-3. **Two-Pass Generation**: First pass creates base mesh, second adds Voronoi/tectonics
-4. **IConfigurable Pattern**: Objects implement `IConfigurable` to expose settings to `RuntimeSettings`
+- **IConfigurable**: Objects expose settings via `IConfigurable` and register with `RuntimeSettings`
+- **Builder Pattern**: `CelestialBody.Builder.BuildFromBodyDict()` constructs bodies
+- **WorkPackageBuilder**: Fluent API for building background task pipelines
+- **Strategy Pattern**: `BodyGenerationType` enum selects generation pipeline
+- **Two-Pass Generation**: Base mesh first, then Voronoi/tectonics overlay
+- **YAML Configuration**: `TemplateLoader.Load()` + `TemplateHelpers` for body templates
+
+## Configuration System
+
+YAML files via YamlDotNet, loaded with validation:
+```csharp
+var raw = TemplateLoader.Load("RockyPlanet", TemplateLoader.CelestialBodyValidator);
+var defaults = TemplateHelpers.GetCelestialBodyDefaults(CelestialBodyType.RockyPlanet);
+```
 
 ## OpenProject Integration
 
-The project uses OpenProject for task tracking. Project name: **Startreprenuer**
+Project name: **Startreprenuer**. Hierarchy: EPIC > Feature > Task. All tasks/features must be placed under an existing EPIC. **All OpenProject API requests must be separated by a 1-second delay** to avoid rate limiting.
 
-### Work Package Hierarchy
-
-- **EPIC**: Top-level containers for major features/initiatives
-- **Feature**: Groups of related tasks
-- **Task**: Smallest unit of work
-
-### Workflow
-
-1. Create tasks as the smallest work items
-2. Group related tasks under a Feature
-3. All tasks and features must be placed under an existing EPIC
-4. If no suitable EPIC exists, ask the user before creating a new one
-
-### API Rate Limiting
-
-**IMPORTANT**: All OpenProject API requests must be separated by a 1-second delay to avoid rate limiting:
-
-```bash
-sleep 1
-```
-
-When making multiple API calls, ensure proper sequencing with delays between each request.

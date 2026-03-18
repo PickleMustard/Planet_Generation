@@ -3,7 +3,7 @@ bodies:
     position: [0.0, 0.0, 0.0]
     velocity: [0.0, 0.0, 0.0]
     mass: 1000000.0
-    size: 10
+    size: 50
 
     mesh:
       base_mesh:
@@ -32,14 +32,16 @@ bodies:
           apogee: 8000.0
           perigee: 250.0
           ring_velocity: [0.0, 1.0, 0.0]
-          size_range: [1.0, 5.0]
-          mass_range: [1.0, 10.0]
+          size_range: [5.0, 15.0]
+          mass_range: [10.0, 30.0]
 
   - type: RockyPlanet
-    position: [150.0, 0.0, 0.0]
-    velocity: [0.0, 0.0, 0.0]
-    mass: 100.0
-    size: 50
+    apogee: 500
+    perigee: 150
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 1000.0
+    size: 150
 
     mesh:
       base_mesh:
@@ -62,9 +64,11 @@ bodies:
 
     satellites:
       - type: Asteroid
-        position: [450.0, 0.0, 0.0]
-        velocity: [0.0, 2.0, 0.0]
-        mass: 4.0
+        apogee: 500
+        perigee: 300
+        starting_angle: 0
+        vertical_offset: 0
+        mass: 20.0
         size: 10
 
         mesh:

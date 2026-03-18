@@ -36,18 +36,18 @@ public class SphericalHarmonicsDeformer
     private const float Y00_COEFF = 0.2820947917738781f;   // 1/2 * sqrt(1/pi)
 
     // l=1
-    private const float Y1_COEFF  = 0.4886025119029199f;   // 1/2 * sqrt(3/pi)
+    private const float Y1_COEFF = 0.4886025119029199f;   // 1/2 * sqrt(3/pi)
 
     // l=2
     private const float Y2M2_COEFF = 0.5462742152960396f;  // 1/4 * sqrt(15/pi)
     private const float Y2M1_COEFF = 1.0925484305920792f;  // 1/2 * sqrt(15/pi)
-    private const float Y20_COEFF  = 0.3153915652525200f;   // 1/4 * sqrt(5/pi)
+    private const float Y20_COEFF = 0.3153915652525200f;   // 1/4 * sqrt(5/pi)
 
     // l=3
     private const float Y3M3_COEFF = 0.5900435899266435f;  // 1/4 * sqrt(35/(2*pi))
     private const float Y3M2_COEFF = 1.4453057213202769f;  // 1/4 * sqrt(105/pi)
     private const float Y3M1_COEFF = 0.4570457994644658f;  // 1/4 * sqrt(21/(2*pi))
-    private const float Y30_COEFF  = 0.3731763325901154f;   // 1/4 * sqrt(7/pi)
+    private const float Y30_COEFF = 0.3731763325901154f;   // 1/4 * sqrt(7/pi)
 
     /// <summary>Total number of basis functions for degrees l=0..3.</summary>
     public const int CoefficientCount = 16;
@@ -92,19 +92,19 @@ public class SphericalHarmonicsDeformer
         if (r < 1e-8f) return 0f;
 
         float cosTheta = direction.Z / r;
-        float theta    = Mathf.Acos(Mathf.Clamp(cosTheta, -1f, 1f));
-        float phi      = Mathf.Atan2(direction.Y, direction.X);
+        float theta = Mathf.Acos(Mathf.Clamp(cosTheta, -1f, 1f));
+        float phi = Mathf.Atan2(direction.Y, direction.X);
 
         // ── Precompute trig values ─────────────────────────────────────────
-        float sinT  = Mathf.Sin(theta);
-        float cosT  = cosTheta;
+        float sinT = Mathf.Sin(theta);
+        float cosT = cosTheta;
         float sin2T = sinT * sinT;
         float sin3T = sin2T * sinT;
         float cos2T = cosT * cosT;
         float cos3T = cos2T * cosT;
 
-        float sinP  = Mathf.Sin(phi);
-        float cosP  = Mathf.Cos(phi);
+        float sinP = Mathf.Sin(phi);
+        float cosP = Mathf.Cos(phi);
         float sin2P = Mathf.Sin(2f * phi);
         float cos2P = Mathf.Cos(2f * phi);
         float sin3P = Mathf.Sin(3f * phi);
@@ -129,7 +129,7 @@ public class SphericalHarmonicsDeformer
         sum += _coefficients[8] * (Y2M2_COEFF * sin2T * cos2P); // Y2,+2
 
         // l=3  (indices 9–15)
-        sum += _coefficients[9]  * (Y3M3_COEFF * sin3T * sin3P);                  // Y3,-3
+        sum += _coefficients[9] * (Y3M3_COEFF * sin3T * sin3P);                  // Y3,-3
         sum += _coefficients[10] * (Y3M2_COEFF * sin2T * cosT * sin2P);           // Y3,-2
         sum += _coefficients[11] * (Y3M1_COEFF * sinT * (5f * cos2T - 1f) * sinP); // Y3,-1
         sum += _coefficients[12] * (Y30_COEFF * (5f * cos3T - 3f * cosT));         // Y3, 0

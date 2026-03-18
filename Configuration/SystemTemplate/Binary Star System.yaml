@@ -3,7 +3,7 @@ bodies:
     position: [-100, 0, 0]
     velocity: [0, 5, 0]
     mass: 500000
-    size: 75
+    size: 500
 
     mesh:
       base_mesh:
@@ -28,7 +28,7 @@ bodies:
     position: [100, 0, 0]
     velocity: [0, -5, 0]
     mass: 500000
-    size: 75
+    size: 500
 
     mesh:
       base_mesh:
@@ -57,17 +57,19 @@ bodies:
           apogee: 8000
           perigee: 250
           ring_velocity: [0, 1, 0]
-          size_range: [1, 5]
-          mass_range: [1, 10]
+          size_range: [5, 20]
+          mass_range: [10, 30]
           possible_subtypes:
             - DwarfPlanet
             - Asteroid
 
   - type: RockyPlanet
-    position: [200, 0, 0]
-    velocity: [0, 8, 0]
-    mass: 10
-    size: 12
+    apogee: 600
+    perigee: 200
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 1000
+    size: 150
 
     mesh:
       base_mesh:
@@ -90,9 +92,11 @@ bodies:
 
     satellites:
       - type: Asteroid
-        position: [0, 0, 0]
-        velocity: [0, 0, 0]
-        mass: 4
+        apogee: 500
+        perigee: 300
+        starting_angle: 0
+        vertical_offset: 0
+        mass: 20
         size: 10
 
         mesh:

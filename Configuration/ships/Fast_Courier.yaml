@@ -1,0 +1,24 @@
+ships:
+  - name: Light_Courier
+    dry_mass: 100
+    cargo_capacity: 50
+    fuel_capacity: 100
+    engine_category: Electric
+
+  - name: Swift_Courier
+    dry_mass: 250
+    cargo_capacity: 150
+    fuel_capacity: 200
+    engine_category: Chemical
+
+  - name: Express_Courier
+    dry_mass: 500
+    cargo_capacity: 300
+    fuel_capacity: 500
+    engine_category: Chemical
+
+  - name: Hyper_Courier
+    dry_mass: 1000
+    cargo_capacity: 500
+    fuel_capacity: 1500
+    engine_category: Nuclear

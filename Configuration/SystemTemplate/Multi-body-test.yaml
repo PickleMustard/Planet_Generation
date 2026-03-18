@@ -3,7 +3,7 @@ bodies:
     position: [0.0, 0.0, 0.0]
     velocity: [0.0, 0.0, 0.0]
     mass: 500000.0
-    size: 300
+    size: 500
 
     mesh:
       base_mesh:
@@ -25,10 +25,12 @@ bodies:
         general_transform_scale: [1.1, 1.4]
 
   - type: RockyPlanet
-    position: [2000.0, 0.0, 0.0]
-    velocity: [0.0, -0.4, 0.0]
-    mass: 100.0
-    size: 50
+    apogee: 2500
+    perigee: 2000
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 1000.0
+    size: 150
 
     mesh:
       base_mesh:
@@ -51,10 +53,12 @@ bodies:
 
     satellites:
       - type: Moon
-        position: [450.0, 0.0, 0.0]
-        velocity: [0.0, 2.0, 0.0]
-        mass: 4.0
-        size: 1
+        apogee: 600
+        perigee: 400
+        starting_angle: 0
+        vertical_offset: 0
+        mass: 80.0
+        size: 40
 
         mesh:
           base_mesh:
@@ -74,10 +78,12 @@ bodies:
             gain: 4.5
 
   - type: RockyPlanet
-    position: [2500.0, 129.9, 1200.0]
-    velocity: [0.0, 0.0, 0.0]
-    mass: 100.0
-    size: 50
+    apogee: 3500
+    perigee: 2500
+    starting_angle: 120
+    vertical_offset: 3
+    mass: 1000.0
+    size: 150
 
     mesh:
       base_mesh:
@@ -99,10 +105,12 @@ bodies:
         general_transform_scale: [1.0, 1.2]
 
   - type: RockyPlanet
-    position: [6000.0, -129.9, 0.0]
-    velocity: [-0.3, 0.2, 0.0]
-    mass: 100.0
-    size: 50
+    apogee: 7000
+    perigee: 6000
+    starting_angle: 240
+    vertical_offset: -1
+    mass: 1000.0
+    size: 150
 
     mesh:
       base_mesh:

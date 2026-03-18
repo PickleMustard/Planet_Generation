@@ -4,7 +4,6 @@
 [ext_resource type="PackedScene" uid="uid://brice0jo72tpo" path="res://Prefabs/player_ship.tscn" id="3_8cch0"]
 [ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/ProceduralGeneration/SystemGenerator.cs" id="3_dl6d0"]
 [ext_resource type="PackedScene" uid="uid://ca805w5kf1f7q" path="res://UI/PlanetSystemGenerator.tscn" id="3_qqilr"]
-[ext_resource type="Script" uid="uid://6cu37byqa6it" path="res://Scripts/PlayerInteraction/ShipMovement.cs" id="5_8cch0"]
 [ext_resource type="PackedScene" uid="uid://cm6wlrb0j4qj8" path="res://UI/Generation/GenerationProgressPanel.tscn" id="6_progress"]
 
 [sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_dl6d0"]
@@ -14,18 +13,19 @@ dof_blur_amount = 0.0
 
 [sub_resource type="Compositor" id="Compositor_al28a"]
 
-[node name="root" type="Node3D" unique_id=627070733]
+[sub_resource type="SphereMesh" id="SphereMesh_8cch0"]
+
+[node name="system" type="Node3D" unique_id=627070733]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=429565684]
 environment = ExtResource("1_8cch0")
 camera_attributes = SubResource("CameraAttributesPractical_dl6d0")
 compositor = SubResource("Compositor_al28a")
 
-[node name="PlanetSystemGeneratorUI" type="Control" parent="." unique_id=1686312370 instance=ExtResource("3_qqilr")]
-layout_mode = 3
+[node name="PlanetSystemGeneratorUI" parent="." unique_id=1686312370 instance=ExtResource("3_qqilr")]
+anchors_preset = -1
 anchor_left = 0.04
 anchor_right = 0.25
-anchor_bottom = 1.0
 offset_left = 20.0
 
 [node name="Control" type="Control" parent="." unique_id=25134836]
@@ -62,17 +62,17 @@ grow_vertical = 2
 script = ExtResource("3_dl6d0")
 SystemContainer = NodePath("../system_container")
 
-[node name="PlayerShip" type="Node3D" parent="." unique_id=201229155 node_paths=PackedStringArray("Target") instance=ExtResource("3_8cch0")]
-top_level = true
-script = ExtResource("5_8cch0")
-ShipTurnSpeed = 0.02
-Target = NodePath("Camera3D/Pointer")
+[node name="PlayerShip" parent="." unique_id=201229155 instance=ExtResource("3_8cch0")]
 
 [node name="system_container" type="Node" parent="." unique_id=780170180]
 
 [node name="GenerationProgressPanel" parent="." unique_id=167728332 instance=ExtResource("6_progress")]
-layout_mode = 3
-anchors_preset = 0
 offset_left = -300.0
 offset_top = 10.0
 offset_right = -10.0
+
+[node name="Node3D" type="Node3D" parent="." unique_id=1833043350]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Node3D" unique_id=1722004426]
+mesh = SubResource("SphereMesh_8cch0")

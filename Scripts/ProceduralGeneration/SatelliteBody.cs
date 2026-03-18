@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Constructables.ArtificialSatellites;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using ProceduralGeneration.MeshGeneration.ResourceGeneration;
@@ -12,16 +13,28 @@ using UtilityLibrary;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
-public partial class SatelliteBody : Node3D
+[GlobalClass]
+public partial class SatelliteBody : Node3D, IOrbitalBody
 {
+    private float _mass;
+    private float _radius;
+
     [Export]
     public Vector3 Velocity;
 
     [Export]
-    public float Mass;
+    public float Mass
+    {
+        get => _mass;
+        set => _mass = value;
+    }
 
     [Export]
-    public float Size;
+    public float Radius
+    {
+        get => _radius;
+        set => _radius = value;
+    }
 
     [Export]
     public Vector3 accelerationVector;
@@ -38,6 +51,17 @@ public partial class SatelliteBody : Node3D
     /// </summary>
     public Dictionary<string, ResourceDeposit> Resources { get; set; } = new();
 
+    // Orbit System
+    [Export]
+    public OrbitConfiguration? OrbitConfig { get; private set; }
+
+    [Export]
+    public Godot.Collections.Array<OrbitBand> OrbitBands { get; private set; } = new();
+
+    [Export]
+    public Node3D SatellitesContainer { get; private set; } = null!;
+    private Dictionary<int, int> _bandSatelliteCounts = new();
+
     public class Builder
     {
         internal Vector3 _velocity;
@@ -50,7 +74,7 @@ public partial class SatelliteBody : Node3D
         internal Octree<Point>? _oct;
         internal Godot.Collections.Dictionary? _bodyDict;
         internal StructureDatabase? _strDb;
-        
+
         // Orbital parameters
         internal float _apogee;
         internal float _perigee;
@@ -105,7 +129,12 @@ public partial class SatelliteBody : Node3D
             return this;
         }
 
-        public Builder WithOrbitalParameters(float apogee, float perigee, float startingAngle, float verticalOffset)
+        public Builder WithOrbitalParameters(
+            float apogee,
+            float perigee,
+            float startingAngle,
+            float verticalOffset
+        )
         {
             _apogee = apogee;
             _perigee = perigee;
@@ -143,12 +172,18 @@ public partial class SatelliteBody : Node3D
             _satelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
             _mass = mass;
             _size = size;
-            
+
             // Read orbital parameters
             _apogee = baseTemplates.ContainsKey("apogee") ? (float)baseTemplates["apogee"] : 500f;
-            _perigee = baseTemplates.ContainsKey("perigee") ? (float)baseTemplates["perigee"] : 300f;
-            _startingAngle = baseTemplates.ContainsKey("starting_angle") ? (float)baseTemplates["starting_angle"] : 0f;
-            _verticalOffset = baseTemplates.ContainsKey("vertical_offset") ? (float)baseTemplates["vertical_offset"] : 0f;
+            _perigee = baseTemplates.ContainsKey("perigee")
+                ? (float)baseTemplates["perigee"]
+                : 300f;
+            _startingAngle = baseTemplates.ContainsKey("starting_angle")
+                ? (float)baseTemplates["starting_angle"]
+                : 0f;
+            _verticalOffset = baseTemplates.ContainsKey("vertical_offset")
+                ? (float)baseTemplates["vertical_offset"]
+                : 0f;
 
             var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
             _strDb = new StructureDatabase(rand.RandiRange(0, 100000));
@@ -171,7 +206,7 @@ public partial class SatelliteBody : Node3D
     {
         Velocity = builder._velocity;
         Mass = builder._mass;
-        Size = builder._size;
+        Radius = builder._size;
         accelerationVector = builder._totalForce;
         isSatelliteGroup = builder._isSatelliteGroup;
         SatelliteType = builder._satelliteType;
@@ -180,11 +215,11 @@ public partial class SatelliteBody : Node3D
         bodyDict = builder._bodyDict;
         var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
-        Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(Size, Size, Size)));
+        Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(Radius, Radius, Radius)));
 
         if (Mesh != null)
         {
-            Mesh.size = Size;
+            Mesh.size = Radius;
             this.CallDeferred("add_child", Mesh);
         }
     }
@@ -230,7 +265,7 @@ public partial class SatelliteBody : Node3D
     {
         this.bodyDict = null;
         this.Mesh = mesh;
-        this.Size = size;
+        this.Radius = size;
         this.AddChild(mesh);
         this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), satType);
         this.Mass = mass;
@@ -260,7 +295,7 @@ public partial class SatelliteBody : Node3D
         // Convert angles to radians
         float angleRad = Mathf.DegToRad(startingAngle);
         float inclinationRad = Mathf.DegToRad(verticalOffset);
-        
+
         // Create orbital plane basis vectors from starting angle and inclination
         // pHat is the direction of the starting angle in the orbital plane
         // qHat incorporates the inclination (vertical offset)
@@ -270,21 +305,156 @@ public partial class SatelliteBody : Node3D
             Mathf.Sin(inclinationRad),
             Mathf.Cos(angleRad) * Mathf.Cos(inclinationRad)
         ).Normalized();
-        
+
         // Calculate eccentricity
         float eccentricity = OrbitalMath.CalculateEccentricity(apogee, perigee);
-        
+
         // Calculate position on the orbit
         Vector3 position = OrbitalMath.CalculateOrbitalPosition(
-            pHat, qHat, apogee, perigee, angleRad, eccentricity
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angleRad,
+            eccentricity
         );
-        
+
         // Calculate velocity at this position
         Vector3 velocity = OrbitalMath.CalculateEllipticalOrbitalVelocity(
-            pHat, qHat, parentMass, apogee, perigee, angleRad, false
+            pHat,
+            qHat,
+            parentMass,
+            apogee,
+            perigee,
+            angleRad,
+            false
         );
-        
+
         return (position, velocity);
+    }
+
+    public override void _Ready()
+    {
+        base._Ready();
+    }
+
+    /// <summary>
+    /// Initializes the orbit system based on the satellite's size (treated as radius).
+    /// Creates orbit bands and sets up the satellites container.
+    /// </summary>
+    public void InitializeOrbitSystem()
+    {
+        // Use Size as the body radius for satellites
+        float bodyRadius = Mesh!.size;
+
+        // Create orbit configuration from mass
+        OrbitConfig = OrbitConfiguration.CreateFromMass(Mass, bodyRadius);
+
+        // Create all orbit bands
+        OrbitBands = OrbitConfig.CreateAllOrbitBands(bodyRadius);
+
+        // Initialize satellite counts for each band
+        _bandSatelliteCounts.Clear();
+        for (int i = 0; i < OrbitBands.Count; i++)
+        {
+            _bandSatelliteCounts[i] = 0;
+        }
+
+        // Create the satellites container
+        SatellitesContainer = new Node3D { Name = "SatellitesContainer" };
+        AddChild(SatellitesContainer);
+
+        GameLogger.Debug(
+            $"SatelliteBody OrbitSystem initialized: {OrbitBands.Count} bands for mass {Mass}"
+        );
+    }
+
+    /// <summary>
+    /// Creates a station satellite in the specified orbit band.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
+    /// <param name="name">Name for the station</param>
+    /// <returns>The created station satellite, or null if invalid band</returns>
+    public StationSatellite? CreateStation(int bandIndex, string name)
+    {
+        if (!CanAddToBand(bandIndex))
+        {
+            GameLogger.Warning($"Cannot add station to band {bandIndex}: band is full or invalid");
+            return null;
+        }
+
+        var station = new StationSatellite { Name = name };
+
+        SatellitesContainer.AddChild(station);
+        station.Initialize(this, bandIndex);
+
+        _bandSatelliteCounts[bandIndex]++;
+
+        GameLogger.Debug($"Created station '{name}' in band {bandIndex}");
+        return station;
+    }
+
+    /// <summary>
+    /// Creates a ship in a random valid orbit band.
+    /// </summary>
+    /// <param name="name">Name for the ship</param>
+    /// <returns>The created ship satellite, or null if no valid band available</returns>
+    public StationSatellite? CreateShip(string name)
+    {
+        // Find a band with available capacity
+        for (int i = 0; i < OrbitBands.Count; i++)
+        {
+            if (CanAddToBand(i))
+            {
+                return CreateStation(i, name);
+            }
+        }
+
+        GameLogger.Warning($"Cannot create ship '{name}': no available bands");
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the number of available orbit bands.
+    /// </summary>
+    public int GetBandCount()
+    {
+        return OrbitBands?.Count ?? 0;
+    }
+
+    /// <summary>
+    /// Checks if a satellite can be added to the specified band.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band</param>
+    /// <returns>True if the band exists and has capacity</returns>
+    public bool CanAddToBand(int bandIndex)
+    {
+        if (OrbitBands == null || bandIndex < 0 || bandIndex >= OrbitBands.Count)
+        {
+            return false;
+        }
+
+        int currentCount = _bandSatelliteCounts.ContainsKey(bandIndex)
+            ? _bandSatelliteCounts[bandIndex]
+            : 0;
+        int capacity = OrbitBands[bandIndex].Capacity;
+
+        return currentCount < capacity;
+    }
+
+    /// <summary>
+    /// Gets the current count of satellites in a band.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band</param>
+    /// <returns>Number of satellites in the band, or -1 if band is invalid</returns>
+    public int GetBandSatelliteCount(int bandIndex)
+    {
+        if (bandIndex < 0 || bandIndex >= OrbitBands?.Count)
+        {
+            return -1;
+        }
+
+        return _bandSatelliteCounts.ContainsKey(bandIndex) ? _bandSatelliteCounts[bandIndex] : 0;
     }
 
     public override void _PhysicsProcess(double delta)
@@ -427,9 +597,9 @@ public partial class SatelliteBody : Node3D
         {
             meshParams["mass"] = Mass;
         }
-        if (Size > 0)
+        if (Radius > 0)
         {
-            meshParams["size"] = Size;
+            meshParams["size"] = Radius;
         }
         Mesh!.ConfigureFrom(StrDb!, meshParams);
         Mesh.StartMeshGeneration(

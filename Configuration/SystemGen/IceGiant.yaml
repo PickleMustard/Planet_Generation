@@ -7,7 +7,9 @@ categories:
 
 celestial:
   template:
-    position: [800, 0, 0]
-    velocity: [0, 5, 0]
-    mass: 50
-    size: 45
+    apogee: 1200
+    perigee: 800
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 4500
+    size: 200

@@ -239,13 +239,13 @@ namespace UI.Debug.CellInfo
             SetInitialVisibility();
         }
 
-	private void SetInitialVisibility()
-	{
-		_noSelectionLabel!.Visible = true;
-		_cellSection!.Visible = false;
-		_resourcesSection!.Visible = false;
-		_continentSection!.Visible = false;
-	}
+        private void SetInitialVisibility()
+        {
+            _noSelectionLabel!.Visible = true;
+            _cellSection!.Visible = false;
+            _resourcesSection!.Visible = false;
+            _continentSection!.Visible = false;
+        }
 
         private void UpdateCellInfo(
             VoronoiCell cell,
@@ -253,31 +253,31 @@ namespace UI.Debug.CellInfo
             Continent continent
         )
         {
-		GD.Print("UpdateCellInfo");
-		_noSelectionLabel!.Visible = true;
-		_cellSection!.Visible = true;
-		_resourcesSection!.Visible = true;
+            GD.Print("UpdateCellInfo");
+            _noSelectionLabel!.Visible = true;
+            _cellSection!.Visible = true;
+            _resourcesSection!.Visible = true;
 
-		_cellIndexLabel!.Text = cell.Index.ToString();
-		_cellHeightLabel!.Text = cell.Height.ToString("F4");
-		_cellStressLabel!.Text = cell.Stress.ToString("F4");
-		_cellMovementLabel!.Text = cell.MovementDirection.ToString();
-		_cellBorderLabel!.Text = cell.IsBorderTile ? "Yes" : "No";
-		_cellInteriornessLabel!.Text =
-			cell.Interiorness == int.MaxValue ? "Max" : cell.Interiorness.ToString();
-		_cellCenterLabel!.Text = cell.Center.ToString("F2");
+            _cellIndexLabel!.Text = cell.Index.ToString();
+            _cellHeightLabel!.Text = cell.Height.ToString("F4");
+            _cellStressLabel!.Text = cell.Stress.ToString("F4");
+            _cellMovementLabel!.Text = cell.MovementDirection.ToString();
+            _cellBorderLabel!.Text = cell.IsBorderTile ? "Yes" : "No";
+            _cellInteriornessLabel!.Text =
+                cell.Interiorness == int.MaxValue ? "Max" : cell.Interiorness.ToString();
+            _cellCenterLabel!.Text = cell.Center.ToString("F2");
 
-		UpdateResourcesList(cell);
+            UpdateResourcesList(cell);
 
-		if (continent != null)
-		{
-			_continentSection!.Visible = true;
-			UpdateContinentInfo(cell.ContinentIndex, continent);
-		}
-		else
-		{
-			_continentSection!.Visible = false;
-		}
+            if (continent != null)
+            {
+                _continentSection!.Visible = true;
+                UpdateContinentInfo(cell.ContinentIndex, continent);
+            }
+            else
+            {
+                _continentSection!.Visible = false;
+            }
         }
 
         private void UpdateResourcesList(VoronoiCell cell)
