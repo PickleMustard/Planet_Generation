@@ -131,7 +131,7 @@ public class ResourceIntegrationTest
             ["resources"] = CreateMockSatelliteConfig()
         };
 
-        var satellite = SatelliteBody.Builder.BuildFromBodyDict(CelestialBodyType.RockyPlanet, bodyDict, mesh);
+        var satellite = SatelliteBody.Builder.BuildFromBodyDict(PlanetaryBodyType.RockyPlanet, bodyDict, mesh);
 
         AssertThat(satellite).IsNotNull();
         AssertThat(satellite.Resources).IsNotNull();

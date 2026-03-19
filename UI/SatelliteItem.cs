@@ -45,7 +45,7 @@ public partial class SatelliteItem : HBoxContainer
 
     public Action<SatelliteItem>? OnRemoveRequested;
 
-    private CelestialBodyType parentType;
+    private PlanetaryBodyType parentType;
     private int NumberInBelt = 25;
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
@@ -91,7 +91,7 @@ public partial class SatelliteItem : HBoxContainer
 
     private String? satName;
 
-    public void SetParentType(CelestialBodyType type)
+    public void SetParentType(PlanetaryBodyType type)
     {
         this.parentType = type;
     }
@@ -104,8 +104,12 @@ public partial class SatelliteItem : HBoxContainer
         );
         Apogee ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/Apogee");
         Perigee ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/Perigee");
-        StartingAngle ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/StartingAngle");
-        VerticalOffset ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/VerticalOffset");
+        StartingAngle ??= GetNodeOrNull<SpinBox>(
+            "MainContent/Content/OrbitalContent/StartingAngle"
+        );
+        VerticalOffset ??= GetNodeOrNull<SpinBox>(
+            "MainContent/Content/OrbitalContent/VerticalOffset"
+        );
         mass ??= GetNodeOrNull<SpinBox>("MainContent/Content/MassContent/mass");
         size ??= GetNodeOrNull<SpinBox>("MainContent/Content/SizeContent/size");
 
@@ -141,16 +145,20 @@ public partial class SatelliteItem : HBoxContainer
             }
         }
 
-        // Populate satellite types and hook selection
+        // Populate satellite types from YAML configuration and hook selection
         if (OptionButton != null)
         {
-            OptionButton.Clear();
-            foreach (var name in System.Enum.GetNames(typeof(SatelliteBodyType)))
-                OptionButton.AddItem(name);
+            PlanetaryTypeLoader.PopulateOptionButton(
+                OptionButton,
+                PlanetaryTypeLoader.GetSatelliteBodyTypes()
+            );
 
             OptionButton.ItemSelected += idx =>
             {
-                var type = (SatelliteBodyType)(int)idx;
+                var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (internalName == null)
+                    return;
+                var type = PlanetaryTypeLoader.ToSatelliteBodyType(internalName);
                 ApplyTemplate(type);
                 UpdateHeaderFromType(OptionButton.GetItemText((int)idx));
                 EmitSignal(SignalName.ItemUpdate);
@@ -161,8 +169,12 @@ public partial class SatelliteItem : HBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                ApplyTemplate((SatelliteBodyType)OptionButton.Selected);
-                UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                var initialName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (initialName != null)
+                {
+                    ApplyTemplate(PlanetaryTypeLoader.ToSatelliteBodyType(initialName));
+                    UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                }
             }
         }
     }
@@ -178,8 +190,12 @@ public partial class SatelliteItem : HBoxContainer
         // Default values: apogee=500, perigee=300, starting_angle=0, vertical_offset=0
         float defaultApogee = template.ContainsKey("apogee") ? (float)template["apogee"] : 500f;
         float defaultPerigee = template.ContainsKey("perigee") ? (float)template["perigee"] : 300f;
-        float defaultStartingAngle = template.ContainsKey("starting_angle") ? (float)template["starting_angle"] : 0f;
-        float defaultVerticalOffset = template.ContainsKey("vertical_offset") ? (float)template["vertical_offset"] : 0f;
+        float defaultStartingAngle = template.ContainsKey("starting_angle")
+            ? (float)template["starting_angle"]
+            : 0f;
+        float defaultVerticalOffset = template.ContainsKey("vertical_offset")
+            ? (float)template["vertical_offset"]
+            : 0f;
 
         if (Apogee != null)
             Apogee.Value = Mathf.Clamp(defaultApogee, 0f, Limit);
@@ -256,8 +272,12 @@ public partial class SatelliteItem : HBoxContainer
         // Assign orbital parameters to UI
         float apogee = template.ContainsKey("apogee") ? (float)template["apogee"] : 500f;
         float perigee = template.ContainsKey("perigee") ? (float)template["perigee"] : 300f;
-        float startingAngle = template.ContainsKey("starting_angle") ? (float)template["starting_angle"] : 0f;
-        float verticalOffset = template.ContainsKey("vertical_offset") ? (float)template["vertical_offset"] : 0f;
+        float startingAngle = template.ContainsKey("starting_angle")
+            ? (float)template["starting_angle"]
+            : 0f;
+        float verticalOffset = template.ContainsKey("vertical_offset")
+            ? (float)template["vertical_offset"]
+            : 0f;
 
         if (Apogee != null)
             Apogee.Value = Mathf.Clamp(apogee, 0f, Limit);
@@ -493,7 +513,10 @@ public partial class SatelliteItem : HBoxContainer
 
         float eccentricity = (apogee - perigee) / (apogee + perigee);
         float semiMajorAxis = (apogee + perigee) / 2f;
-        float radius = semiMajorAxis * (1 - eccentricity * eccentricity) / (1 + eccentricity * Mathf.Cos(angleRad));
+        float radius =
+            semiMajorAxis
+            * (1 - eccentricity * eccentricity)
+            / (1 + eccentricity * Mathf.Cos(angleRad));
 
         Vector3 pHat = new Vector3(Mathf.Cos(angleRad), 0, Mathf.Sin(angleRad)).Normalized();
         Vector3 qHat = new Vector3(
@@ -548,7 +571,7 @@ public partial class SatelliteItem : HBoxContainer
     {
         if (OptionButton != null && OptionButton.Selected >= 0)
         {
-            return OptionButton.GetItemText(OptionButton.Selected);
+            return PlanetaryTypeLoader.GetSelectedInternalName(OptionButton) ?? "Asteroid";
         }
         return "Asteroid";
     }
@@ -564,7 +587,7 @@ public partial class SatelliteItem : HBoxContainer
             { "apogee", GetApogee() },
             { "perigee", GetPerigee() },
             { "starting_angle", GetStartingAngle() },
-            { "vertical_offset", GetVerticalOffset() }
+            { "vertical_offset", GetVerticalOffset() },
         };
     }
 

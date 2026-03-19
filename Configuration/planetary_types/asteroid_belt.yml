@@ -1,0 +1,3 @@
+potential_types:
+  - name: Asteroid
+  - name: DwarfPlanet

@@ -1,10 +1,8 @@
 using System.Text.RegularExpressions;
 using Godot;
+using PlayerInteraction.CellSelection;
 using ProceduralGeneration.PlanetGeneration;
 using UtilityLibrary;
-#if DEBUG
-using PlayerInteraction.CellSelection;
-#endif
 
 public partial class PlayerController : Node3D
 {
@@ -106,25 +104,24 @@ public partial class PlayerController : Node3D
 
         var collider = (Node3D)result["collider"];
         var position = (Vector3)result["position"];
+
+        // Find the parent body that supports cell selection.
+        // Try CelestialBody first, then SatelliteBody.
         string parentName = ((string)collider.GetName()).Split("_")[0];
         parentName = Regex.Replace(parentName, "[0-9]", "");
-        var celestialBody = collider.FindParent(parentName) as CelestialBody;
-        if (celestialBody == null)
+        ISelectableBody? selectableBody = collider.FindParent(parentName) as CelestialBody;
+        selectableBody ??= collider.FindParent(parentName) as SatelliteBody;
+        if (selectableBody == null)
             return;
 
-        var root = GetTree().GetRoot();
-        PolygonRendererSDL.DrawLine(root, 1, origin, direction, Colors.Red);
-
-        var selectionResult = celestialBody.FindNearestCell(position);
+        var selectionResult = selectableBody.FindNearestCell(position);
         if (selectionResult?.Cell != null)
         {
-#if DEBUG
             CellSelectionManager.Instance?.SelectCell(
                 selectionResult.Cell,
                 selectionResult.CellContinent,
-                celestialBody
+                (Node3D)selectableBody
             );
-#endif
         }
     }
 

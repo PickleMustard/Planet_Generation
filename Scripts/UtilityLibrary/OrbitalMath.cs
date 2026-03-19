@@ -7,7 +7,7 @@ namespace UtilityLibrary;
 
 public static class OrbitalMath
 {
-    public const float GRAVITATIONAL_CONSTANT = 6.7394967f;
+    public const float GRAVITATIONAL_CONSTANT = .67394967f;
 
     public static Vector3 CalculateOrbitalPosition(
         Vector3 pHat,
@@ -88,6 +88,106 @@ public static class OrbitalMath
         Vector3 position =
             separation * (massB / massTotal) * (Mathf.Cos(angle) * pHat + Mathf.Sin(angle) * qHat);
         return (position, angularVelocity);
+    }
+
+    /// <summary>
+    /// Calculates positions and velocities for both bodies in a binary system using a
+    /// single relative orbit, guaranteeing the barycenter lies exactly at the origin.
+    ///
+    /// The apogee/perigee define the shape of the relative orbit (the ellipse that the
+    /// body-to-body separation vector traces). Each body's distance from the barycenter
+    /// is inversely proportional to its mass:
+    ///   r_A = r_total × M_B / (M_A + M_B)
+    ///   r_B = r_total × M_A / (M_A + M_B)
+    ///
+    /// This ensures M_A·posA + M_B·posB = 0 for any angle θ, eccentricity, or mass ratio.
+    /// </summary>
+    /// <param name="pHat">Unit vector defining the periapsis direction in the orbital plane</param>
+    /// <param name="qHat">Unit vector perpendicular to pHat in the orbital plane (90° ahead in direction of motion)</param>
+    /// <param name="relativeApogee">Farthest body-to-body separation (apoapsis of the relative orbit)</param>
+    /// <param name="relativePerigee">Closest body-to-body separation (periapsis of the relative orbit)</param>
+    /// <param name="angle">True anomaly in radians</param>
+    /// <param name="massA">Mass of body A</param>
+    /// <param name="massB">Mass of body B</param>
+    /// <returns>Tuple of (positionA, velocityA, positionB, velocityB) centered on the barycenter at origin</returns>
+    public static (
+        Vector3 posA,
+        Vector3 velA,
+        Vector3 posB,
+        Vector3 velB
+    ) CalculateBinaryOrbitalState(
+        Vector3 pHat,
+        Vector3 qHat,
+        float relativeApogee,
+        float relativePerigee,
+        float angle,
+        float massA,
+        float massB
+    )
+    {
+        float massTotal = massA + massB;
+
+        // Guard: masses must be positive
+        if (massTotal <= 0f)
+        {
+            GameLogger.Warning(
+                $"OrbitalMath.CalculateBinaryOrbitalState: Non-positive total mass {massTotal}, returning origin"
+            );
+            return (Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero);
+        }
+
+        // Relative orbit parameters
+        float semiMajorAxis = (relativeApogee + relativePerigee) / 2f;
+        float eccentricity = CalculateEccentricity(relativeApogee, relativePerigee);
+
+        // Guard: semi-major axis must be positive
+        if (semiMajorAxis <= 0f)
+        {
+            GameLogger.Warning(
+                $"OrbitalMath.CalculateBinaryOrbitalState: Invalid semi-major axis {semiMajorAxis}, returning origin"
+            );
+            return (Vector3.Zero, Vector3.Zero, Vector3.Zero, Vector3.Zero);
+        }
+
+        // Mass fractions: distance from barycenter is inversely proportional to mass
+        float fractionA = massB / massTotal; // body A's share of total separation
+        float fractionB = massA / massTotal; // body B's share of total separation
+
+        // Total body-to-body separation at true anomaly θ (conic section formula)
+        float oneMinusESq = 1f - eccentricity * eccentricity;
+        float semiLatusRectum = semiMajorAxis * oneMinusESq;
+        float rTotal = semiLatusRectum / (1f + eccentricity * Mathf.Cos(angle));
+
+        // Direction vector in the orbital plane at angle θ
+        Vector3 direction = Mathf.Cos(angle) * pHat + Mathf.Sin(angle) * qHat;
+
+        // Positions: bodies on opposite sides of barycenter (origin)
+        Vector3 posA = +rTotal * fractionA * direction;
+        Vector3 posB = -rTotal * fractionB * direction;
+
+        // Velocity of the relative orbit via vis-viva: v² = μ(2/r - 1/a)
+        // where μ = G·(M_A + M_B) for the relative orbit
+        float mu = GRAVITATIONAL_CONSTANT * massTotal;
+        float speedRelative = Mathf.Sqrt(mu * (2f / rTotal - 1f / semiMajorAxis));
+
+        // Velocity direction: perpendicular to radial direction in the orbital plane
+        // In the perifocal frame: v_dir = -sin(θ)·pHat + (e + cos(θ))·qHat, then normalize
+        Vector3 velDirection = (
+            -Mathf.Sin(angle) * pHat + (eccentricity + Mathf.Cos(angle)) * qHat
+        ).Normalized();
+
+        if (velDirection.LengthSquared() < 0.001f)
+        {
+            velDirection = qHat;
+        }
+
+        // Split relative velocity by mass fractions (same as positions)
+        // v_A = +v_rel · (M_B / M_total), v_B = -v_rel · (M_A / M_total)
+        // This guarantees M_A·v_A + M_B·v_B = 0 (zero net momentum)
+        Vector3 velA = +speedRelative * fractionA * velDirection;
+        Vector3 velB = -speedRelative * fractionB * velDirection;
+
+        return (posA, velA, posB, velB);
     }
 
     /// <summary>

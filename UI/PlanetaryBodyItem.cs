@@ -151,6 +151,14 @@ public partial class PlanetaryBodyItem : HBoxContainer
         );
         Mass ??= GetNodeOrNull<SpinBox>("MainContent/Content/MassContent/mass");
         BodySize ??= GetNodeOrNull<SpinBox>("MainContent/Content/SizeContent/size");
+        Apogee ??= GetNodeOrNull<SpinBox>("MainContent/Content/ApogeeContent/apogee");
+        Perigee ??= GetNodeOrNull<SpinBox>("MainContent/Content/PerigeeContent/perigee");
+        StartingAngle ??= GetNodeOrNull<SpinBox>(
+            "MainContent/Content/StartAngleContent/startAngle"
+        );
+        VerticalOffset ??= GetNodeOrNull<SpinBox>(
+            "MainContent/Content/VertOffsetContent/vertOffset"
+        );
         DetailsPanel ??= GetNodeOrNull<VBoxContainer>("DetailsPanel");
         SatellitesScroll ??= GetNodeOrNull<ScrollContainer>(
             "MainContent/Content/SatellitesContent/SatellitesScroll"
@@ -179,16 +187,20 @@ public partial class PlanetaryBodyItem : HBoxContainer
         // Apply input constraints to fields
         ApplyConstraints();
 
-        // Populate body types and hook selection
+        // Populate body types from YAML configuration and hook selection
         if (OptionButton != null)
         {
-            OptionButton.Clear();
-            foreach (var name in System.Enum.GetNames(typeof(CelestialBodyType)))
-                OptionButton.AddItem(name);
+            PlanetaryTypeLoader.PopulateOptionButton(
+                OptionButton,
+                PlanetaryTypeLoader.GetPlanetaryBodyTypes()
+            );
 
             OptionButton.ItemSelected += idx =>
             {
-                var type = (CelestialBodyType)(int)idx;
+                var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (internalName == null)
+                    return;
+                var type = PlanetaryTypeLoader.ToCelestialBodyType(internalName);
                 PropogateChangeDown(type);
                 UpdateHeaderFromBodyType(OptionButton.GetItemText((int)idx));
                 ApplyTemplate(type);
@@ -200,8 +212,12 @@ public partial class PlanetaryBodyItem : HBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                ApplyTemplate((CelestialBodyType)OptionButton.Selected);
-                UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
+                var initialName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (initialName != null)
+                {
+                    ApplyTemplate(PlanetaryTypeLoader.ToCelestialBodyType(initialName));
+                    UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
+                }
             }
         }
 
@@ -411,20 +427,15 @@ public partial class PlanetaryBodyItem : HBoxContainer
                 var satItem = _satelliteItemScene!.Instantiate<SatelliteItem>();
                 SatellitesList!.AddChild(satItem);
                 satItem.SubscribeEvents();
-                if (Enum.TryParse<SatelliteBodyType>(typeStr, out var satBodyType))
+                if (satItem.OptionButton != null)
                 {
-                    if (satItem.OptionButton != null)
+                    if (PlanetaryTypeLoader.SelectByInternalName(satItem.OptionButton, typeStr))
                     {
-                        for (int i = 0; i < satItem.OptionButton.ItemCount; i++)
-                        {
-                            if (satItem.OptionButton.GetItemText(i) == typeStr)
-                            {
-                                satItem.OptionButton.Select(i);
-                                satItem.UpdateHeaderFromType(typeStr);
-                                satItem.SetTemplate(sat);
-                                break;
-                            }
-                        }
+                        var displayName = satItem.OptionButton.GetItemText(
+                            satItem.OptionButton.Selected
+                        );
+                        satItem.UpdateHeaderFromType(displayName);
+                        satItem.SetTemplate(sat);
                     }
                 }
                 // Individual satellites use orbital parameters, not position/velocity
@@ -506,7 +517,7 @@ public partial class PlanetaryBodyItem : HBoxContainer
             SizeLimit
         );
 
-        dict["type"] = Enum.GetName(typeof(CelestialBodyType), (CelestialBodyType)ob.Selected)!;
+        dict["type"] = PlanetaryTypeLoader.GetSelectedInternalName(ob) ?? "RockyPlanet";
         dict.Add("name", bodyName!);
         var templateDict = new Godot.Collections.Dictionary();
 
@@ -579,7 +590,11 @@ public partial class PlanetaryBodyItem : HBoxContainer
         if (SatellitesList == null || _satelliteItemScene == null)
             return;
         var satelliteItem = _satelliteItemScene.Instantiate<SatelliteItem>();
-        satelliteItem.SetParentType((CelestialBodyType)ob.Selected);
+        var parentInternalName = PlanetaryTypeLoader.GetSelectedInternalName(ob);
+        if (parentInternalName != null)
+            satelliteItem.SetParentType(
+                PlanetaryTypeLoader.ToPlanetaryBodyType(parentInternalName)
+            );
         satelliteItem.OnRemoveRequested += RemoveSatelliteItem;
         satelliteItem.ItemUpdate += OnSatelliteItemUpdate;
         SatellitesList!.AddChild(satelliteItem);

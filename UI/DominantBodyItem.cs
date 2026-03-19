@@ -42,12 +42,6 @@ public partial class DominantBodyItem : HBoxContainer
     public SpinBox? BodySize;
 
     [Export]
-    public SpinBox? Apogee;
-
-    [Export]
-    public SpinBox? Perigee;
-
-    [Export]
     public SpinBox? Inclination;
 
     [Export]
@@ -59,7 +53,6 @@ public partial class DominantBodyItem : HBoxContainer
     private const float Limit = 10000f; // constrain within ±10,000 units (mass 0..10,000)
     private const float MassLimit = 100000000f; // constrain within ±100,000,000,000 units (mass 0..100,000,000,000)
     private const float SizeLimit = 10000f; // constrain within ±10,000 units (size 0..10,000)
-    private const float OrbitalLimit = 100000f; // constrain orbital parameters 0..100,000
 
     private Vector3 position;
     private Vector3 velocity;
@@ -87,8 +80,6 @@ public partial class DominantBodyItem : HBoxContainer
         );
         Mass ??= GetNodeOrNull<SpinBox>("MainContent/Content/MassContent/mass");
         BodySize ??= GetNodeOrNull<SpinBox>("MainContent/Content/SizeContent/size");
-        Apogee ??= GetNodeOrNull<SpinBox>("MainContent/Content/ApogeeContent/apogee");
-        Perigee ??= GetNodeOrNull<SpinBox>("MainContent/Content/PerigeeContent/perigee");
         StartAngle ??= GetNodeOrNull<SpinBox>("MainContent/Content/StartAngleContent/startAngle");
         Inclination ??= GetNodeOrNull<SpinBox>(
             "MainContent/Content/InclinationContent/inclination"
@@ -97,16 +88,20 @@ public partial class DominantBodyItem : HBoxContainer
         // Apply input constraints to fields
         ApplyConstraints();
 
-        // Populate body types and hook selection
+        // Populate body types from YAML configuration and hook selection
         if (OptionButton != null)
         {
-            OptionButton.Clear();
-            foreach (var name in System.Enum.GetNames(typeof(CelestialBodyType)))
-                OptionButton.AddItem(name);
+            PlanetaryTypeLoader.PopulateOptionButton(
+                OptionButton,
+                PlanetaryTypeLoader.GetDominantBodyTypes()
+            );
 
             OptionButton.ItemSelected += idx =>
             {
-                var type = (CelestialBodyType)(int)idx;
+                var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (internalName == null)
+                    return;
+                var type = PlanetaryTypeLoader.ToCelestialBodyType(internalName);
                 UpdateHeaderFromBodyType(OptionButton.GetItemText((int)idx));
                 ApplyTemplate(type);
                 EmitSignal(SignalName.ItemUpdate);
@@ -117,8 +112,12 @@ public partial class DominantBodyItem : HBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                ApplyTemplate((CelestialBodyType)OptionButton.Selected);
-                UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
+                var initialName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (initialName != null)
+                {
+                    ApplyTemplate(PlanetaryTypeLoader.ToCelestialBodyType(initialName));
+                    UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
+                }
             }
         }
 
@@ -145,20 +144,7 @@ public partial class DominantBodyItem : HBoxContainer
             BodySize.AllowGreater = true;
             BodySize.AllowLesser = false;
         }
-        if (Apogee != null)
-        {
-            Apogee.MinValue = 0.0;
-            Apogee.MaxValue = Limit;
-            Apogee.AllowGreater = true;
-            Apogee.AllowLesser = false;
-        }
-        if (Perigee != null)
-        {
-            Perigee.MinValue = 0.0;
-            Perigee.MaxValue = Limit;
-            Perigee.AllowGreater = true;
-            Perigee.AllowLesser = false;
-        }
+
         if (Inclination != null)
         {
             Inclination.MinValue = 0.0;
@@ -182,11 +168,6 @@ public partial class DominantBodyItem : HBoxContainer
         var template = (Godot.Collections.Dictionary)t["template"];
         bodyName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
 
-        // Planetary bodies use orbital parameters from template
-        if (template.ContainsKey("apogee"))
-            SetApogee((float)template["apogee"]);
-        if (template.ContainsKey("perigee"))
-            SetPerigee((float)template["perigee"]);
         if (template.ContainsKey("starting_angle"))
             SetStartingAngle((float)template["starting_angle"]);
         if (template.ContainsKey("vertical_offset"))
@@ -227,11 +208,6 @@ public partial class DominantBodyItem : HBoxContainer
         var template = (Godot.Collections.Dictionary)t["template"];
         var meshSettings = (Godot.Collections.Dictionary)t["mesh"];
 
-        // Planetary bodies use orbital parameters from template
-        if (template.ContainsKey("apogee"))
-            SetApogee((float)template["apogee"]);
-        if (template.ContainsKey("perigee"))
-            SetPerigee((float)template["perigee"]);
         if (template.ContainsKey("starting_angle"))
             SetStartingAngle((float)template["starting_angle"]);
         if (template.ContainsKey("vertical_offset"))
@@ -295,7 +271,7 @@ public partial class DominantBodyItem : HBoxContainer
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
         var ob = GetNode<OptionButton>("MainContent/Content/BodyTypeContent/OptionButton");
 
-        dict["type"] = Enum.GetName(typeof(CelestialBodyType), (CelestialBodyType)ob.Selected)!;
+        dict["type"] = PlanetaryTypeLoader.GetSelectedInternalName(ob) ?? "Star";
         dict.Add("name", bodyName!);
         var templateDict = new Godot.Collections.Dictionary();
 
@@ -306,10 +282,8 @@ public partial class DominantBodyItem : HBoxContainer
         templateDict.Add("velocity", GetBodyVelocity());
         dict.Add("template", templateDict);
 
-        // Add orbital parameters
+        // Add orbital parameters (per-body only; apogee/perigee are shared at the section level)
         var centralParams = new Godot.Collections.Dictionary();
-        centralParams["apogee"] = GetApogee();
-        centralParams["perigee"] = GetPerigee();
         centralParams["inclination"] = GetInclination();
         centralParams["starting_angle"] = GetStartingAngle();
         dict.Add("central_parameters", centralParams);
@@ -338,24 +312,6 @@ public partial class DominantBodyItem : HBoxContainer
         }
 
         return dict;
-    }
-
-    public float GetApogee() => (float)Apogee!.Value;
-
-    public void SetApogee(float value)
-    {
-        float apogee = Mathf.Clamp(value, 0f, Limit);
-        if (Apogee != null)
-            Apogee.Value = apogee;
-    }
-
-    public float GetPerigee() => (float)Perigee!.Value;
-
-    public void SetPerigee(float value)
-    {
-        float perigee = Mathf.Clamp(value, 0f, Limit);
-        if (Perigee != null)
-            Perigee.Value = perigee;
     }
 
     public float GetInclination() => (float)Inclination!.Value;

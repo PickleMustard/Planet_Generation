@@ -79,14 +79,35 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
             }
             level++;
         }
+
+        // Sort children by proximity to the query point so the closest octant
+        // is visited first. This establishes a tight bestDistSq early, allowing
+        // more aggressive pruning of distant octants.
+        Span<(int index, float dist)> childDists = stackalloc (int, float)[8];
+        int count = 0;
         for (int i = 0; i < 8; i++)
         {
             if (node.children[i] != null)
             {
-                FindNearestRecursive(node.children[i], query, ref bestDistSq, ref nearest, ref level);
+                childDists[count++] = (i, node.children[i].DistanceToPointSq(query));
             }
         }
-
+        // Simple insertion sort — at most 8 elements, no allocations
+        for (int i = 1; i < count; i++)
+        {
+            var key = childDists[i];
+            int j = i - 1;
+            while (j >= 0 && childDists[j].dist > key.dist)
+            {
+                childDists[j + 1] = childDists[j];
+                j--;
+            }
+            childDists[j + 1] = key;
+        }
+        for (int i = 0; i < count; i++)
+        {
+            FindNearestRecursive(node.children[childDists[i].index], query, ref bestDistSq, ref nearest, ref level);
+        }
     }
 
     private void queryRangeRecursive(OctreeNode<T> node, Aabb range, Array<T> result)
@@ -131,7 +152,7 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
         {
             if (child != null)
             {
-                child.Grow(factor / 2f);
+                child.Grow(factor);
             }
         }
     }
@@ -196,13 +217,13 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
             children[i] = new OctreeNode<T>(new Aabb(aabbStart, size).Abs());
         }
 
-        //foreach (var point in points)
-        //{
-        //    int octant = GetOctant(point);
-        //    children[octant].Insert(point);
-        //}
+        foreach (var point in points)
+        {
+            int octant = GetOctant(point);
+            children[octant].Insert(point);
+        }
 
-        //points.Clear();
+        points.Clear();
     }
 
     public bool Insert(T point)

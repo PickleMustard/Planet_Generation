@@ -404,6 +404,78 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// </summary>
     public Dictionary<string, ResourceDeposit>? SatelliteResources => _satelliteResources;
 
+    /// <summary>
+    /// Per-instance ShaderMaterial instances for the cell selection highlight shader.
+    /// One per surface (continent) in the ArrayMesh. Used to set the selected_cell_id
+    /// uniform independently per body.
+    /// </summary>
+    private List<ShaderMaterial> _cellHighlightMaterials = new List<ShaderMaterial>();
+
+    /// <summary>
+    /// Gets the list of cell highlight shader materials for this mesh.
+    /// Each entry corresponds to one surface in the ArrayMesh.
+    /// Use <see cref="SetSelectedCell"/> to update the selected cell across all surfaces.
+    /// </summary>
+    public IReadOnlyList<ShaderMaterial> CellHighlightMaterials => _cellHighlightMaterials;
+
+    /// <summary>
+    /// Sets the selected cell ID on all cell highlight materials for this mesh.
+    /// Pass -1.0f to clear the selection.
+    /// </summary>
+    /// <param name="cellId">The VoronoiCell.Index to highlight, or -1.0f for no selection.</param>
+    public void SetSelectedCell(float cellId)
+    {
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("selected_cell_id", cellId);
+        }
+    }
+
+    // Pre-loaded shader resources (loaded on main thread in constructor, safe for background use)
+    private static Shader? _rockyPlanetShader;
+    private static ShaderMaterial? _outlinerMaterialBase;
+    private static ShaderMaterial? _cellHighlightMaterialBase;
+
+    /// <summary>
+    /// Ensures the shared shader resources are loaded (must be called on main thread).
+    /// Uses lazy initialization so resources are only loaded once across all instances.
+    /// </summary>
+    private static void EnsureShaderResourcesLoaded()
+    {
+        _rockyPlanetShader ??= GD.Load<Shader>("res://Shaders/rocky_planet_shader.gdshader");
+        _outlinerMaterialBase ??= GD.Load<ShaderMaterial>(
+            "res://Materials/voronoi_outliner_material.tres"
+        );
+        _cellHighlightMaterialBase ??= GD.Load<ShaderMaterial>(
+            "res://Materials/cell_selection_highlight_material.tres"
+        );
+    }
+
+    /// <summary>
+    /// Creates per-instance material duplicates for one surface of the mesh.
+    /// Must be called on the main thread (called from constructor or _Ready).
+    /// The returned ShaderMaterial is the root material to set on the SurfaceTool.
+    /// </summary>
+    private ShaderMaterial CreateSurfaceMaterials()
+    {
+        EnsureShaderResourcesLoaded();
+
+        var material = new ShaderMaterial();
+        material.Shader = _rockyPlanetShader;
+
+        // Duplicate both materials so each body/surface has independent uniforms.
+        var outlinerInstance = (ShaderMaterial)_outlinerMaterialBase!.Duplicate();
+        var cellHighlightInstance = (ShaderMaterial)_cellHighlightMaterialBase!.Duplicate();
+        cellHighlightInstance.SetShaderParameter("selected_cell_id", -1.0f);
+        _cellHighlightMaterials.Add(cellHighlightInstance);
+
+        // Chain: rocky_planet_shader -> voronoi_outliner -> cell_selection_highlight
+        outlinerInstance.NextPass = cellHighlightInstance;
+        material.NextPass = outlinerInstance;
+
+        return material;
+    }
+
     [ExportCategory("Thread Pool Settings")]
     [Export]
     public bool UseThreadPool = true;
@@ -413,6 +485,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
     public UnifiedCelestialMesh()
     {
+        // Pre-load shader resources on the main thread so they're cached
+        // for later use by GenerateSurfaceMesh (which may run on a background thread).
+        EnsureShaderResourcesLoaded();
+
         // Initialize noise generator
         noise = new FastNoiseLite();
         noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Perlin;
@@ -1951,11 +2027,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
-        var material = new ShaderMaterial();
-        material.Shader = GD.Load<Shader>("res://Shaders/rocky_planet_shader.gdshader");
-        material.NextPass = GD.Load<ShaderMaterial>(
-            "res://Materials/voronoi_outliner_material.tres"
-        );
+
+        // Create per-surface material instances using pre-loaded shader resources.
+        // Resources are loaded on main thread in constructor; duplicates are safe to
+        // create from any thread since they're not yet in the scene tree.
+        var material = CreateSurfaceMaterials();
         st.SetMaterial(material);
         foreach (VoronoiCell vor in VoronoiList)
         {
@@ -2348,8 +2424,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         );
         MeshConvexDecompositionSettings settings = new MeshConvexDecompositionSettings();
         settings.ConvexHullApproximation = false;
-        settings.NormalizeMesh = true;
-        settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Tetrahedron;
-        //this.CallDeferred("create_multiple_convex_collisions", settings);
+        settings.NormalizeMesh = false;
+        settings.ConvexHullDownsampling = 16;
+        settings.MaxNumVerticesPerConvexHull = 256;
+        settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Voxel;
+        this.CallDeferred("create_multiple_convex_collisions", settings);
     }
 }

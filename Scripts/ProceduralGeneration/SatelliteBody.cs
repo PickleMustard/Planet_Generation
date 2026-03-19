@@ -14,7 +14,7 @@ using UtilityLibrary;
 namespace ProceduralGeneration.PlanetGeneration;
 
 [GlobalClass]
-public partial class SatelliteBody : Node3D, IOrbitalBody
+public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
 {
     private float _mass;
     private float _radius;
@@ -40,7 +40,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody
     public Vector3 accelerationVector;
     bool isSatelliteGroup = false;
     SatelliteBodyType SatelliteType;
-    UnifiedCelestialMesh? Mesh;
+    public UnifiedCelestialMesh? Mesh { get; set; }
     Octree<Point>? Oct;
     public Godot.Collections.Dictionary? bodyDict;
     StructureDatabase? StrDb;
@@ -156,7 +156,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody
         }
 
         public Builder FromBodyDict(
-            CelestialBodyType parentType,
+            PlanetaryBodyType parentType,
             Godot.Collections.Dictionary bodyDict,
             UnifiedCelestialMesh mesh
         )
@@ -193,7 +193,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody
         }
 
         public static SatelliteBody BuildFromBodyDict(
-            CelestialBodyType parentType,
+            PlanetaryBodyType parentType,
             Godot.Collections.Dictionary bodyDict,
             UnifiedCelestialMesh mesh
         )
@@ -255,7 +255,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody
     //}
 
     public SatelliteBody(
-        CelestialBodyType parentType,
+        PlanetaryBodyType parentType,
         String satType,
         float mass,
         float size,
@@ -455,6 +455,63 @@ public partial class SatelliteBody : Node3D, IOrbitalBody
         }
 
         return _bandSatelliteCounts.ContainsKey(bandIndex) ? _bandSatelliteCounts[bandIndex] : 0;
+    }
+
+    /// <summary>
+    /// Finds the nearest Voronoi cell to a given world-space position.
+    /// Converts the position to local space, queries the Octree for the nearest vertex,
+    /// then uses the PlanetMap to identify the containing Voronoi cell.
+    /// </summary>
+    /// <param name="position">World-space position (typically from a raycast hit).</param>
+    /// <returns>A <see cref="CellSelectionResult"/> if a cell was found, or null otherwise.</returns>
+    public CellSelectionResult? FindNearestCell(Vector3 position)
+    {
+        if (Oct is null || StrDb is null || Mesh is null)
+            return null;
+
+        Vector3 localSpace = position - this.GlobalPosition;
+        Point desired = new Point(localSpace, 0);
+        Point? result = Oct.FindNearest(desired);
+        if (result is null)
+            return null;
+
+        if (!StrDb.PlanetMap.ContainsKey(result))
+            return null;
+
+        var cells = StrDb.PlanetMap[result];
+
+        // Use angular distance (dot product of normalized directions) to find the
+        // closest Voronoi cell center. This is curvature-invariant and works correctly
+        // for cells at any position on the sphere, unlike the previous AABB approach
+        // which degraded near the sphere edges due to axis-aligned boxes poorly
+        // approximating curved surface regions.
+        Vector3 desiredDir = desired.Position.Normalized();
+        float bestDot = -2f;
+        VoronoiCell? bestCell = null;
+        foreach (var cell in cells)
+        {
+            Vector3 cellDir = cell.Center.Normalized();
+            float dot = desiredDir.Dot(cellDir);
+            if (dot > bestDot)
+            {
+                bestDot = dot;
+                bestCell = cell;
+            }
+        }
+        if (bestCell == null)
+            return null;
+        // SatelliteBody may not have continent data — try to look it up if available
+        Continent? continent = null;
+        if (Mesh.Continents != null && Mesh.Continents.ContainsKey(bestCell.ContinentIndex))
+        {
+            continent = Mesh.GetContinent(bestCell.ContinentIndex);
+        }
+        return new CellSelectionResult
+        {
+            Point = result,
+            Cell = bestCell,
+            CellContinent = continent,
+        };
     }
 
     public override void _PhysicsProcess(double delta)

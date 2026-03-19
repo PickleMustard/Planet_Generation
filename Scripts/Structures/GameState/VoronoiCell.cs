@@ -70,9 +70,11 @@ public partial class VoronoiCell : Resource
         height /= Points.Length;
         Center = center;
         Height = height;
-        Vector3 size = new Vector3(maxX - minX, maxY - minY, maxZ - minZ) * 1.1f;
-        Vector3 centerOffset = center - size / 2f;
-        BoundingBox = new Aabb(centerOffset, size).Abs();
+        Vector3 min = new Vector3(minX, minY, minZ);
+        Vector3 max = new Vector3(maxX, maxY, maxZ);
+        Vector3 extents = (max - min) * 1.1f;
+        Vector3 expandedMin = min - (extents - (max - min)) / 2f;
+        BoundingBox = new Aabb(expandedMin, extents).Abs();
     }
 
     public override string ToString()

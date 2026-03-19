@@ -7,8 +7,8 @@ categories:
 
 celestial:
   template:
-    apogee: 1500
-    perigee: 1000
+    apogee: 8000
+    perigee: 8000
     starting_angle: 0
     vertical_offset: 0
     mass: 17000

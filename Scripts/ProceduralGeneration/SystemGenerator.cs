@@ -482,7 +482,15 @@ public partial class SystemGenerator : Node
         );
 
         var mesh = new UnifiedCelestialMesh();
-        SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(parentBody.Type, sat, mesh);
+        var parentPlanetaryType = (PlanetaryBodyType)Enum.Parse(
+            typeof(PlanetaryBodyType),
+            parentBody.Type.ToString()
+        );
+        SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(
+            parentPlanetaryType,
+            sat,
+            mesh
+        );
 
         parentBody.CallDeferred("add_child", satBody);
 
@@ -509,8 +517,12 @@ public partial class SystemGenerator : Node
         CelestialBody parentBody
     )
     {
+        var parentDominantType = (DominantBodyType)Enum.Parse(
+            typeof(DominantBodyType),
+            parentBody.Type.ToString()
+        );
         SatelliteBeltBody beltBody = SatelliteBeltBody.Builder.BuildFromBodyDict(
-            parentBody.Type,
+            parentDominantType,
             satBelt
         );
         var sats = beltBody.GenerateSatelliteBelt(parentBody);

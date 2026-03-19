@@ -4,40 +4,26 @@ public enum CelestialBodyType
 {
     BlackHole,
     Star,
+    NeutronStar,
     RockyPlanet,
     GasGiant,
     IceGiant,
     DwarfPlanet,
 }
 
-public enum RockyPlanetType
+public enum DominantBodyType
 {
-    Temparate, Ice, Tropical, Desert, Rusted, Scoured,
+    Star,
+    NeutronStar,
+    BlackHole,
 }
 
-public enum SatelliteGroupTypes
+public enum PlanetaryBodyType
 {
-    AsteroidBelt,
-    IceBelt,
-    Comet,
-}
-
-public enum PotentialSatTypeAstBelt
-{
-    Asteroid,
+    RockyPlanet,
     DwarfPlanet,
-}
-
-public enum PotentialSatTypeComet
-{
-    Comet,
-}
-
-public enum PotentialSatTypeIce
-{
-    Comet,
-    Asteroid,
-    DwarfPlanet,
+    GasGiant,
+    IceGiant,
 }
 
 public enum GroupingCategories
@@ -45,6 +31,8 @@ public enum GroupingCategories
     Balanced,
     Clustered,
     DualGrouping,
+    Random,
+    HalfAndHalf,
 }
 
 public enum SatelliteBodyType
@@ -55,4 +43,11 @@ public enum SatelliteBodyType
     DwarfPlanet,
     Satellite,
     Rings,
+}
+
+public enum SatelliteGroupTypes
+{
+    AsteroidBelt,
+    IceBelt,
+    Comet,
 }

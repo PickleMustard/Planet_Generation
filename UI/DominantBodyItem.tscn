@@ -32,36 +32,6 @@ text = "-"
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ApogeeContent" type="GridContainer" parent="MainContent/Content" unique_id=1876939446]
-layout_mode = 2
-columns = 2
-
-[node name="LabelApogee" type="Label" parent="MainContent/Content/ApogeeContent" unique_id=722452355]
-layout_mode = 2
-text = "Apogee"
-
-[node name="apogee" type="SpinBox" parent="MainContent/Content/ApogeeContent" unique_id=1152225179]
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = -10000.0
-max_value = 10000.0
-step = 0.1
-
-[node name="PerigeeContent" type="GridContainer" parent="MainContent/Content" unique_id=661336889]
-layout_mode = 2
-columns = 2
-
-[node name="LabelPerigee" type="Label" parent="MainContent/Content/PerigeeContent" unique_id=38624420]
-layout_mode = 2
-text = "Perigee"
-
-[node name="perigee" type="SpinBox" parent="MainContent/Content/PerigeeContent" unique_id=949183406]
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = -10000.0
-max_value = 10000.0
-step = 0.0
-
 [node name="StartAngleContent" type="GridContainer" parent="MainContent/Content" unique_id=1863325899]
 layout_mode = 2
 columns = 2

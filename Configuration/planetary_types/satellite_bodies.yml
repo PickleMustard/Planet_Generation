@@ -1,0 +1,13 @@
+potential_types:
+  - name: Asteroid
+    display_name: Asteroid
+  - name: Comet
+    display_name: Comet
+  - name: Moon
+    display_name: Moon
+  - name: DwarfPlanet
+    display_name: Dwarf Planet
+  - name: Rings
+    display_name: Rings
+  - name: Satellite
+    display_name: Satellite
