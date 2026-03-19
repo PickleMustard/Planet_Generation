@@ -101,7 +101,7 @@ public class SatelliteBeltBody
         }
 
         public Builder FromBodyDict(
-            CelestialBodyType parentType,
+            DominantBodyType parentType,
             Godot.Collections.Dictionary bodyDict
         )
         {
@@ -126,7 +126,7 @@ public class SatelliteBeltBody
         }
 
         public static SatelliteBeltBody BuildFromBodyDict(
-            CelestialBodyType parentType,
+            DominantBodyType parentType,
             Godot.Collections.Dictionary bodyDict
         )
         {
@@ -300,10 +300,5 @@ public class SatelliteBeltBody
             SatelliteGroupTypes.IceBelt => SatelliteBodyType.Comet,
             _ => SatelliteBodyType.Asteroid,
         };
-    }
-
-    private bool SupportsBeltGeneration(CelestialBodyType parentType)
-    {
-        return parentType == CelestialBodyType.Star || parentType == CelestialBodyType.BlackHole;
     }
 }

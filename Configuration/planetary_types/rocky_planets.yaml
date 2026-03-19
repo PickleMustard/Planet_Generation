@@ -1,0 +1,8 @@
+potential_types:
+  - name: Temparate
+  - name: Ice
+  - name: Tropical
+  - name: Desert
+  - name: Rusted
+  - name: Scoured
+

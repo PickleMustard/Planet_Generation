@@ -226,7 +226,7 @@ namespace UI.Debug.CellInfo
 
         private void OnCellSelected(
             VoronoiCell cell,
-            ProceduralGeneration.PlanetGeneration.CelestialBody body,
+            Node3D body,
             Continent continent
         )
         {
@@ -249,7 +249,7 @@ namespace UI.Debug.CellInfo
 
         private void UpdateCellInfo(
             VoronoiCell cell,
-            ProceduralGeneration.PlanetGeneration.CelestialBody body,
+            Node3D body,
             Continent continent
         )
         {

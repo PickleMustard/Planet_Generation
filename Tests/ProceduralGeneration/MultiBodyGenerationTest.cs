@@ -330,4 +330,322 @@ public class MultiBodyGenerationTest
     }
 
     #endregion
+
+    #region Binary Orbital State Tests
+
+    /// <summary>
+    /// For a binary system with unequal masses and an eccentric orbit, the
+    /// mass-weighted center of the two positions must be at the origin (barycenter).
+    /// M_A·posA + M_B·posB = 0
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_BarycenterAtOrigin_UnequalMasses()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float apogee = 1000f;
+        float perigee = 500f;
+        float angle = Mathf.Pi / 3f; // 60 degrees
+        float massA = 5000f;
+        float massB = 3000f;
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angle,
+            massA,
+            massB
+        );
+
+        // Mass-weighted center should be at origin
+        Vector3 barycenterPos = (massA * posA + massB * posB) / (massA + massB);
+        AssertThat(barycenterPos.Length()).IsLess(Epsilon);
+    }
+
+    /// <summary>
+    /// Momentum conservation: M_A·velA + M_B·velB = 0 (zero net momentum).
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_ZeroNetMomentum_UnequalMasses()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float apogee = 1000f;
+        float perigee = 500f;
+        float angle = Mathf.Pi / 3f;
+        float massA = 5000f;
+        float massB = 3000f;
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angle,
+            massA,
+            massB
+        );
+
+        // Net momentum should be zero
+        Vector3 totalMomentum = massA * velA + massB * velB;
+        AssertThat(totalMomentum.Length()).IsLess(Epsilon);
+    }
+
+    /// <summary>
+    /// The distance between the two bodies should match the conic section formula
+    /// for the relative orbit: r = a(1-e²) / (1 + e·cos(θ))
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_CorrectSeparation()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float apogee = 1200f;
+        float perigee = 600f;
+        float angle = Mathf.Pi / 4f; // 45 degrees
+        float massA = 4000f;
+        float massB = 6000f;
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angle,
+            massA,
+            massB
+        );
+
+        // Expected separation from conic section formula
+        float semiMajorAxis = (apogee + perigee) / 2f;
+        float eccentricity = (apogee - perigee) / (apogee + perigee);
+        float expectedSeparation =
+            semiMajorAxis
+            * (1f - eccentricity * eccentricity)
+            / (1f + eccentricity * Mathf.Cos(angle));
+
+        float actualSeparation = (posA - posB).Length();
+        AssertThat(Mathf.Abs(actualSeparation - expectedSeparation)).IsLess(1f);
+    }
+
+    /// <summary>
+    /// Circular orbit: when apogee == perigee, eccentricity is 0 and both bodies
+    /// should be equidistant from the origin (scaled by inverse mass ratio).
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_CircularOrbit_SymmetricPlacement()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float radius = 800f; // apogee == perigee
+        float angle = 0f;
+        float massA = 5000f;
+        float massB = 5000f;
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            radius,
+            radius,
+            angle,
+            massA,
+            massB
+        );
+
+        // Equal masses: both bodies at same distance from origin
+        float distA = posA.Length();
+        float distB = posB.Length();
+        AssertThat(Mathf.Abs(distA - distB)).IsLess(Epsilon);
+
+        // Each should be at half the total separation (equal masses)
+        AssertThat(Mathf.Abs(distA - radius / 2f)).IsLess(1f);
+
+        // Barycenter at origin
+        Vector3 barycenterPos = (massA * posA + massB * posB) / (massA + massB);
+        AssertThat(barycenterPos.Length()).IsLess(Epsilon);
+    }
+
+    /// <summary>
+    /// Equal masses: both bodies should be at equal distances from the origin,
+    /// on exactly opposite sides.
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_EqualMasses_EqualDistancesOpposite()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float apogee = 1000f;
+        float perigee = 600f;
+        float angle = Mathf.Pi / 6f; // 30 degrees
+        float mass = 4000f;
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angle,
+            mass,
+            mass
+        );
+
+        // Equal masses: equal distances
+        AssertThat(Mathf.Abs(posA.Length() - posB.Length())).IsLess(Epsilon);
+
+        // Opposite directions: posA + posB should be zero
+        AssertThat((posA + posB).Length()).IsLess(Epsilon);
+
+        // Equal and opposite velocities
+        AssertThat(Mathf.Abs(velA.Length() - velB.Length())).IsLess(Epsilon);
+        AssertThat((velA + velB).Length()).IsLess(Epsilon);
+    }
+
+    /// <summary>
+    /// Barycenter centering must hold for multiple different true anomaly angles
+    /// across the full orbit, not just a single snapshot.
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_BarycenterAtOrigin_MultipleAngles()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float apogee = 1500f;
+        float perigee = 400f;
+        float massA = 7000f;
+        float massB = 2000f;
+
+        float[] angles =
+        {
+            0f,
+            Mathf.Pi / 4f,
+            Mathf.Pi / 2f,
+            Mathf.Pi,
+            3f * Mathf.Pi / 2f,
+            Mathf.Pi * 1.9f,
+        };
+
+        foreach (float angle in angles)
+        {
+            var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+                pHat,
+                qHat,
+                apogee,
+                perigee,
+                angle,
+                massA,
+                massB
+            );
+
+            Vector3 barycenterPos = (massA * posA + massB * posB) / (massA + massB);
+            AssertThat(barycenterPos.Length())
+                .OverrideFailureMessage(
+                    $"Barycenter not at origin for angle {angle}: offset={barycenterPos.Length()}"
+                )
+                .IsLess(Epsilon);
+
+            Vector3 totalMomentum = massA * velA + massB * velB;
+            AssertThat(totalMomentum.Length())
+                .OverrideFailureMessage(
+                    $"Non-zero momentum for angle {angle}: magnitude={totalMomentum.Length()}"
+                )
+                .IsLess(Epsilon);
+        }
+    }
+
+    /// <summary>
+    /// Zero or negative total mass should return all-zero vectors without NaN.
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_ZeroMass_ReturnsZero()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            1000f,
+            500f,
+            0f,
+            0f,
+            0f
+        );
+
+        AssertThat(posA).IsEqual(Vector3.Zero);
+        AssertThat(velA).IsEqual(Vector3.Zero);
+        AssertThat(posB).IsEqual(Vector3.Zero);
+        AssertThat(velB).IsEqual(Vector3.Zero);
+    }
+
+    /// <summary>
+    /// With valid inputs, no component of position or velocity should be NaN.
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_NoNaN()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float apogee = 1000f;
+        float perigee = 500f;
+        float angle = Mathf.Pi / 4f;
+        float massA = 5000f;
+        float massB = 3000f;
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angle,
+            massA,
+            massB
+        );
+
+        foreach (
+            var vec in new[] { posA, velA, posB, velB }
+        )
+        {
+            AssertThat(Single.IsNaN(vec.X)).IsFalse();
+            AssertThat(Single.IsNaN(vec.Y)).IsFalse();
+            AssertThat(Single.IsNaN(vec.Z)).IsFalse();
+        }
+
+        // Both positions and velocities should be non-zero
+        AssertThat(posA.Length()).IsGreater(0f);
+        AssertThat(posB.Length()).IsGreater(0f);
+        AssertThat(velA.Length()).IsGreater(0f);
+        AssertThat(velB.Length()).IsGreater(0f);
+    }
+
+    /// <summary>
+    /// Heavier body should be closer to the barycenter (origin) than the lighter body.
+    /// </summary>
+    [TestCase]
+    public void BinaryOrbitalState_HeavierBodyCloserToBarycenter()
+    {
+        Vector3 pHat = new Vector3(1, 0, 0);
+        Vector3 qHat = new Vector3(0, 0, 1);
+        float apogee = 1000f;
+        float perigee = 500f;
+        float angle = 0f;
+        float massA = 8000f; // heavier
+        float massB = 2000f; // lighter
+
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angle,
+            massA,
+            massB
+        );
+
+        // Body A (heavier) should be closer to origin
+        AssertThat(posA.Length()).IsLess(posB.Length());
+    }
+
+    #endregion
 }

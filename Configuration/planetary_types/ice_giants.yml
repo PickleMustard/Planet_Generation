@@ -1,0 +1,4 @@
+potential_types:
+  - name: IceGiant
+  - name: ToxicGiant
+  - name: SilverGiant

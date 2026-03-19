@@ -7,8 +7,6 @@ categories:
 
 celestial:
   template:
-    distance: 500
-    eccentricity: 0.1
     starting_angle: 0
     vertical_offset: 0
     mass: 1000000

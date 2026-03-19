@@ -19,8 +19,12 @@ public partial class SatelliteBeltItem : VBoxContainer
     [Export]
     public OptionButton? OptionButton;
 
-    [Export] public SpinBox? Apogee;
-    [Export] public SpinBox? Perigee;
+    [Export]
+    public SpinBox? Apogee;
+
+    [Export]
+    public SpinBox? Perigee;
+
     //[Export]
     //public SpinBox RingDistanceX;
 
@@ -59,14 +63,14 @@ public partial class SatelliteBeltItem : VBoxContainer
 
     public Action<SatelliteBeltItem>? OnRemoveRequested;
 
-    private CelestialBodyType parentType;
+    private DominantBodyType parentType;
     private int _orbitalCenterIndex = -1; // -1 = barycenter, 0+ = dominant body index
     private OptionButton? OrbitalCenterDropdown;
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
 
-    public void SetParentType(CelestialBodyType type)
+    public void SetParentType(DominantBodyType type)
     {
         this.parentType = type;
     }
@@ -124,16 +128,20 @@ public partial class SatelliteBeltItem : VBoxContainer
             }
         }
 
-        // Populate satellite types and hook selection
+        // Populate satellite belt types from YAML configuration and hook selection
         if (OptionButton != null)
         {
-            OptionButton.Clear();
-            foreach (var name in System.Enum.GetNames(typeof(SatelliteGroupTypes)))
-                OptionButton.AddItem(name);
+            PlanetaryTypeLoader.PopulateOptionButton(
+                OptionButton,
+                PlanetaryTypeLoader.GetSatelliteBeltTypes()
+            );
 
             OptionButton.ItemSelected += idx =>
             {
-                var type = (SatelliteGroupTypes)(int)idx;
+                var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (internalName == null)
+                    return;
+                var type = PlanetaryTypeLoader.ToSatelliteGroupType(internalName);
                 ApplyTemplate(type);
                 UpdateHeaderFromType(OptionButton.GetItemText((int)idx));
                 EmitSignal(SignalName.ItemUpdate);
@@ -144,8 +152,12 @@ public partial class SatelliteBeltItem : VBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                ApplyTemplate((SatelliteGroupTypes)OptionButton.Selected);
-                UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                var initialName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (initialName != null)
+                {
+                    ApplyTemplate(PlanetaryTypeLoader.ToSatelliteGroupType(initialName));
+                    UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                }
             }
         }
 
@@ -227,7 +239,9 @@ public partial class SatelliteBeltItem : VBoxContainer
         // Read belt parameters from the template sub-dictionary with safe fallbacks
         var apogee = template.ContainsKey("ring_apogee") ? (float)template["ring_apogee"] : 0f;
         var perigee = template.ContainsKey("ring_perigee") ? (float)template["ring_perigee"] : 0f;
-        var velocity = template.ContainsKey("ring_velocity") ? (Vector3)template["ring_velocity"] : Vector3.Zero;
+        var velocity = template.ContainsKey("ring_velocity")
+            ? (Vector3)template["ring_velocity"]
+            : Vector3.Zero;
         var lowerRange = template.ContainsKey("lower_range") ? (int)template["lower_range"] : 1;
         var upperRange = template.ContainsKey("upper_range") ? (int)template["upper_range"] : 4;
         var grouping = template.ContainsKey("grouping") ? (String)template["grouping"] : "Balanced";
@@ -273,17 +287,10 @@ public partial class SatelliteBeltItem : VBoxContainer
         if (OptionButton != null && t.ContainsKey("type"))
         {
             var typeStr = (string)t["type"];
-            if (System.Enum.TryParse<SatelliteGroupTypes>(typeStr, out var groupType))
+            if (PlanetaryTypeLoader.SelectByInternalName(OptionButton, typeStr))
             {
-                for (int i = 0; i < OptionButton.ItemCount; i++)
-                {
-                    if (OptionButton.GetItemText(i) == typeStr)
-                    {
-                        OptionButton.Select(i);
-                        UpdateHeaderFromType(typeStr);
-                        break;
-                    }
-                }
+                var displayName = OptionButton.GetItemText(OptionButton.Selected);
+                UpdateHeaderFromType(displayName);
             }
         }
 
@@ -306,16 +313,7 @@ public partial class SatelliteBeltItem : VBoxContainer
     private void ApplyConstraints()
     {
         // Positions and velocities: clamp to [-Limit, Limit]
-        foreach (
-            var sb in new[]
-            {
-                Apogee,
-                Perigee,
-                RingVelocityX,
-                RingVelocityY,
-                RingVelocityZ,
-            }
-        )
+        foreach (var sb in new[] { Apogee, Perigee, RingVelocityX, RingVelocityY, RingVelocityZ })
         {
             if (sb == null)
                 continue;
@@ -397,9 +395,9 @@ public partial class SatelliteBeltItem : VBoxContainer
     {
         if (OptionButton != null && OptionButton.Selected >= 0)
         {
-            return OptionButton.GetItemText(OptionButton.Selected);
+            return PlanetaryTypeLoader.GetSelectedInternalName(OptionButton) ?? "AsteroidBelt";
         }
-        return "Asteroid";
+        return "AsteroidBelt";
     }
 
     public (int, int) GetNumberInBelt()
@@ -446,7 +444,9 @@ public partial class SatelliteBeltItem : VBoxContainer
         // Find or create orbital center dropdown
         if (OrbitalCenterDropdown == null)
         {
-            OrbitalCenterDropdown = GetNodeOrNull<OptionButton>("Content/OrbitalCenterContent/OrbitalCenterDropdown");
+            OrbitalCenterDropdown = GetNodeOrNull<OptionButton>(
+                "Content/OrbitalCenterContent/OrbitalCenterDropdown"
+            );
 
             if (OrbitalCenterDropdown == null)
             {
@@ -465,11 +465,16 @@ public partial class SatelliteBeltItem : VBoxContainer
 
                 OrbitalCenterDropdown = new OptionButton();
                 OrbitalCenterDropdown.Name = "OrbitalCenterDropdown";
-                OrbitalCenterDropdown.Connect(OptionButton.SignalName.ItemSelected, Callable.From((int index) =>
-                {
-                    _orbitalCenterIndex = index - 1; // -1 because "Barycenter" is at index 0
-                    EmitSignal(SignalName.ItemUpdate);
-                }));
+                OrbitalCenterDropdown.Connect(
+                    OptionButton.SignalName.ItemSelected,
+                    Callable.From(
+                        (int index) =>
+                        {
+                            _orbitalCenterIndex = index - 1; // -1 because "Barycenter" is at index 0
+                            EmitSignal(SignalName.ItemUpdate);
+                        }
+                    )
+                );
                 orbitalCenterContainer.AddChild(OrbitalCenterDropdown);
             }
         }

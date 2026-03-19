@@ -25,7 +25,7 @@ namespace ProceduralGeneration.PlanetGeneration;
 [DebugData("CelestialBody", Category = "Game")]
 #endif
 [GlobalClass]
-public partial class CelestialBody : Node3D, IOrbitalBody
+public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 #if DEBUG
         , IDebugDataProvider
 #endif
@@ -61,8 +61,9 @@ public partial class CelestialBody : Node3D, IOrbitalBody
     public Vector3 TotalForce;
     private Vector3 _savedForce;
     public CelestialBodyType Type;
-    public RockyPlanetType? RockyType;
-    public UnifiedCelestialMesh? Mesh;
+    // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
+    // public RockyPlanetType? RockyType;
+    public UnifiedCelestialMesh? Mesh { get; set; }
     public Octree<Point> Oct;
     private Godot.Collections.Dictionary? bodyDict;
     private StructureDatabase StrDb;
@@ -117,7 +118,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody
         this.Velocity = builder._velocity ?? Vector3.Zero;
         this.Mass = builder._mass ?? 0f;
         this.Type = builder._type ?? CelestialBodyType.RockyPlanet;
-        this.RockyType = builder._rockyType;
+        // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
+        // this.RockyType = builder._rockyType;
         this.Mesh = builder._mesh;
         this.bodyDict = builder._bodyDict;
         this.TotalForce = Vector3.Zero;
@@ -396,19 +398,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody
         return _bandSatelliteCounts.ContainsKey(bandIndex) ? _bandSatelliteCounts[bandIndex] : 0;
     }
 
-    /// <summary>
-    /// Minimum mass threshold for the centripetal correcting force.
-    /// Bodies with mass at or below this value are not subject to the correction.
-    /// </summary>
-    private const float CENTRIPETAL_MASS_THRESHOLD = 100000f;
-
-    /// <summary>
-    /// Scaling coefficient for the centripetal correcting force.
-    /// The force magnitude is <c>CENTRIPETAL_FORCE_COEFFICIENT * Mass * distanceSquared</c>,
-    /// which causes it to grow quadratically with distance from the origin.
-    /// </summary>
-    private const float CENTRIPETAL_FORCE_COEFFICIENT = 0.00001f;
-
     public override void _PhysicsProcess(double delta)
     {
         TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
@@ -435,33 +424,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody
             }
         }
 
-        // Apply a centripetal correcting force towards the origin for massive bodies.
-        // This prevents long-running simulations from drifting celestial objects
-        // away from the system centre. The force grows with the square of the
-        // distance so that far-flung bodies experience a stronger pull back.
-        //if (Mass > CENTRIPETAL_MASS_THRESHOLD)
-        //{
-        //    Vector3 toOrigin = -GlobalPosition;
-        //    float distanceSq = toOrigin.LengthSquared();
-        //    if (distanceSq > 0f)
-        //    {
-        //        float centripetalMagnitude = CENTRIPETAL_FORCE_COEFFICIENT * Mass * distanceSq;
-        //        TotalForce += toOrigin.Normalized() * centripetalMagnitude;
-        //    }
-        //}
-        //
-        //float alpha = 0.01f;
-        //float beta = 0.01f;
-        //Vector3 acceleration = TotalForce / Mass;
-        //Velocity += acceleration * deltaT;
-        ////Baumgarte Stabilization
-        //Vector3 velocityCorrection =
-        //    -alpha * barycenter.Velocity - beta * barycenter.Position / deltaT;
-        //Velocity += (totalMass) / (totalMass + Mass) * velocityCorrection;
-        ////GlobalPosition += (totalMass) / (totalMass + Mass) * velocityCorrection;
-        //GlobalPosition += Velocity * deltaT;
-        //barycenter.AddEntry(GlobalPosition, Velocity, Mass);
-        //Velocity Verlet
         Vector3 acceleration = _savedForce / Mass;
         Velocity += 0.5f * acceleration * deltaT;
         GlobalPosition += Velocity * deltaT;
@@ -658,57 +620,37 @@ public partial class CelestialBody : Node3D, IOrbitalBody
         PolygonRendererSDL.DrawPoint(this, 1, result.ToVector3(), 0.05f, Colors.Red);
 
         var cells = StrDb.PlanetMap[result];
-        Godot.Collections.Array<VoronoiCell> contains = new Godot.Collections.Array<VoronoiCell>();
+
+        // Use angular distance (dot product of normalized directions) to find the
+        // closest Voronoi cell center. This is curvature-invariant and works correctly
+        // for cells at any position on the sphere, unlike the previous AABB approach
+        // which degraded near the sphere edges due to axis-aligned boxes poorly
+        // approximating curved surface regions.
+        Vector3 desiredDir = desired.Position.Normalized();
+        float bestDot = -2f;
+        VoronoiCell? bestCell = null;
         foreach (var cell in cells)
         {
-            desired.Position = desired.Position.Normalized() * (Mesh!.size + cell.Height);
-            if (cell.BoundingBox.HasPoint(desired.Position))
-                contains.Add(cell);
-        }
-        if (contains.Count == 0)
-        {
-            return null;
-        }
-        else if (contains.Count == 1)
-        {
-            var cell = contains[0];
-            var continent = Mesh!.GetContinent(cell.ContinentIndex);
-            return new CellSelectionResult
+            Vector3 cellDir = cell.Center.Normalized();
+            float dot = desiredDir.Dot(cellDir);
+            if (dot > bestDot)
             {
-                Point = result,
-                Cell = contains[0],
-                CellContinent = continent,
-            };
-        }
-        else
-        {
-            float minDist = float.MaxValue;
-            VoronoiCell? minCell = null;
-            foreach (var cell in contains)
-            {
-                float dist = (cell.Center - desired.Position).LengthSquared();
-                if (dist < minDist)
-                {
-                    minDist = dist;
-                    minCell = cell;
-                }
+                bestDot = dot;
+                bestCell = cell;
             }
-            var continent = Mesh!.GetContinent(minCell!.ContinentIndex);
-            return new CellSelectionResult
-            {
-                Point = result,
-                Cell = contains[0],
-                CellContinent = continent,
-            };
         }
+        if (bestCell == null)
+            return null;
+        var continent = Mesh!.GetContinent(bestCell.ContinentIndex);
+        return new CellSelectionResult
+        {
+            Point = result,
+            Cell = bestCell,
+            CellContinent = continent,
+        };
     }
 
-    public class CellSelectionResult
-    {
-        public required Point Point { get; set; }
-        public required VoronoiCell Cell { get; set; }
-        public required Continent CellContinent { get; set; }
-    }
+    // CellSelectionResult is now a shared class in ISelectableBody.cs
 
     public MeshInstance3D CreateDebugWireframe(Aabb aabb)
     {
@@ -914,7 +856,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody
         internal Vector3? _velocity;
         internal float? _mass;
         internal CelestialBodyType? _type;
-        internal RockyPlanetType? _rockyType;
+        // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
+        // internal RockyPlanetType? _rockyType;
         internal UnifiedCelestialMesh? _mesh;
         internal Godot.Collections.Dictionary? _bodyDict;
         internal string? _name;
@@ -943,11 +886,12 @@ public partial class CelestialBody : Node3D, IOrbitalBody
             return this;
         }
 
-        public Builder WithRockyType(RockyPlanetType? rockyType)
-        {
-            _rockyType = rockyType;
-            return this;
-        }
+        // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
+        // public Builder WithRockyType(RockyPlanetType? rockyType)
+        // {
+        //     _rockyType = rockyType;
+        //     return this;
+        // }
 
         public Builder WithMesh(UnifiedCelestialMesh mesh)
         {

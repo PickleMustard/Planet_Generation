@@ -1,31 +1,38 @@
-#if DEBUG
-using System.Collections.Generic;
 using Godot;
-using Structures.GameState;
-using Structures.MeshGeneration;
-using ProceduralGeneration.PlanetGeneration;
 using ProceduralGeneration.MeshGeneration;
-using UtilityLibrary;
+using ProceduralGeneration.PlanetGeneration;
+using Structures.GameState;
 
 namespace PlayerInteraction.CellSelection
 {
+    /// <summary>
+    /// Manages Voronoi cell selection state and shader-based highlight rendering.
+    /// When a cell is selected, this manager updates the cell selection highlight shader
+    /// uniform on the target body's mesh material, producing a GPU-driven outline and fill
+    /// effect. Works with both <see cref="CelestialBody"/> and <see cref="SatelliteBody"/>.
+    /// Registered as an autoload singleton.
+    /// </summary>
     public partial class CellSelectionManager : Node
     {
         public static CellSelectionManager? Instance { get; private set; }
 
         private VoronoiCell? _selectedCell;
-        private CelestialBody? _selectedBody;
+        private Node3D? _selectedBody;
         private Continent? _selectedContinent;
-        private List<MeshInstance3D> _highlightMeshes = new List<MeshInstance3D>();
 
         public VoronoiCell? SelectedCell => _selectedCell;
-        public CelestialBody? SelectedBody => _selectedBody;
+        public Node3D? SelectedBody => _selectedBody;
         public Continent? SelectedContinent => _selectedContinent;
 
+        /// <summary>
+        /// Emitted when a cell is selected. The body parameter is the Node3D
+        /// that implements <see cref="ISelectableBody"/> (either CelestialBody or SatelliteBody).
+        /// The continent parameter may be null for satellite bodies without continent data.
+        /// </summary>
         [Signal]
         public delegate void CellSelectedEventHandler(
             VoronoiCell cell,
-            CelestialBody body,
+            Node3D body,
             Continent continent
         );
 
@@ -48,7 +55,14 @@ namespace PlayerInteraction.CellSelection
             }
         }
 
-        public void SelectCell(VoronoiCell cell, Continent continent, CelestialBody body)
+        /// <summary>
+        /// Selects a Voronoi cell on the given body. Clears any previous selection
+        /// and updates shader uniforms on both the old and new body meshes.
+        /// </summary>
+        /// <param name="cell">The Voronoi cell to highlight.</param>
+        /// <param name="continent">The continent the cell belongs to (may be null).</param>
+        /// <param name="body">The Node3D body (must implement ISelectableBody).</param>
+        public void SelectCell(VoronoiCell cell, Continent? continent, Node3D body)
         {
             if (cell == null || body == null)
             {
@@ -56,21 +70,25 @@ namespace PlayerInteraction.CellSelection
                 return;
             }
 
-            ClearHighlight();
+            // Clear the highlight on the previously selected body's shader
+            ClearShaderHighlight();
 
             _selectedCell = cell;
             _selectedBody = body;
-
             _selectedContinent = continent;
 
-            DrawCellHighlight(cell, body);
+            // Set the highlight on the new body's shader
+            ApplyShaderHighlight(cell, body);
 
             EmitSignal(SignalName.CellSelected, cell, body, continent);
         }
 
+        /// <summary>
+        /// Clears the current cell selection and resets the shader highlight.
+        /// </summary>
         public void ClearSelection()
         {
-            ClearHighlight();
+            ClearShaderHighlight();
 
             _selectedCell = null;
             _selectedBody = null;
@@ -79,59 +97,38 @@ namespace PlayerInteraction.CellSelection
             EmitSignal(SignalName.SelectionCleared);
         }
 
-        private void DrawCellHighlight(VoronoiCell cell, CelestialBody body)
+        /// <summary>
+        /// Updates the cell selection highlight shader uniform on the target body's mesh.
+        /// Sets selected_cell_id to the cell's Index so the shader can highlight it.
+        /// </summary>
+        private void ApplyShaderHighlight(VoronoiCell cell, Node3D body)
         {
-            if (cell is null || cell.Edges is null || body is null)
-                return;
-
-            var root = GetTree().Root;
-            Color highlightColor = new Color(1.0f, 0.8f, 0.0f, 1.0f);
-
-            foreach (var edge in cell!.Edges!)
+            if (body is ISelectableBody selectable && selectable.Mesh != null)
             {
-                if (edge is null || edge.P is null || edge.Q is null)
-                    continue;
-
-                Vector3 worldPos1 = body!.ToGlobal(
-                    edge.P!.Position.Normalized() * (body.Mesh!.size + cell!.Height)
-                );
-                Vector3 worldPos2 = body!.ToGlobal(
-                    edge.Q!.Position.Normalized() * (body.Mesh!.size + cell!.Height)
-                );
-
-                var lineMesh = PolygonRendererSDL.DrawLine(
-                    root,
-                    1.0f,
-                    worldPos1,
-                    worldPos2,
-                    highlightColor
-                );
-                lineMesh.Name = $"CellHighlight_{cell.Index}";
-                _highlightMeshes.Add(lineMesh);
+                selectable.Mesh.SetSelectedCell((float)cell.Index);
             }
         }
 
-        private void ClearHighlight()
+        /// <summary>
+        /// Resets the cell selection highlight shader on the currently selected body.
+        /// Sets selected_cell_id to -1.0 so no cell is highlighted.
+        /// </summary>
+        private void ClearShaderHighlight()
         {
-            foreach (var mesh in _highlightMeshes)
+            if (_selectedBody is ISelectableBody selectable && selectable.Mesh != null)
             {
-                if (IsInstanceValid(mesh))
-                {
-                    mesh.QueueFree();
-                }
+                selectable.Mesh.SetSelectedCell(-1.0f);
             }
-            _highlightMeshes.Clear();
         }
 
         public override void _ExitTree()
         {
             if (Instance == this)
             {
-                ClearHighlight();
+                ClearShaderHighlight();
                 Instance = null;
             }
             base._ExitTree();
         }
     }
 }
-#endif

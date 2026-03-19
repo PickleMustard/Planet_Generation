@@ -121,8 +121,7 @@ layout_mode = 2
 
 [node name="BodyTypeLabel" type="Label" parent="MainContent/Content/BodyTypeContent" unique_id=1787146135]
 layout_mode = 2
-text = "BodyType
-"
+text = "BodyType"
 
 [node name="OptionButton" type="OptionButton" parent="MainContent/Content/BodyTypeContent" unique_id=498983656]
 layout_mode = 2

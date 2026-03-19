@@ -1,0 +1,5 @@
+potential_types:
+  - name: Asteroid
+  - name: Comet
+  - name: DwarfPlanet
+  - name: Iceroid

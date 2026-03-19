@@ -1,0 +1,7 @@
+potential_types:
+  - name: AsteroidBelt
+    display_name: Asteroid Belt
+  - name: IceBelt
+    display_name: Ice Belt
+  - name: Comet
+    display_name: Comet

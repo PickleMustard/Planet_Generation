@@ -7,8 +7,8 @@ categories:
 
 celestial:
   template:
-    position: [0, 0, 0]
-    velocity: [0, 0, 0]
+    starting_angle: 0
+    vertical_offset: 0
     mass: 500000
     size: 500
 

@@ -28,6 +28,11 @@ public partial class PlanetSystemGenerator : Control
     private SectionHeader? _satelliteBeltsSectionHeader;
     private SectionHeader? _planetarySectionHeader;
 
+    // Shared orbital parameters for dominant bodies (visible only when 2+ bodies exist)
+    private VBoxContainer? _sharedOrbitalParams;
+    private SpinBox? _sharedApogee;
+    private SpinBox? _sharedPerigee;
+
     // Body lists
     private VBoxContainer? _dominantBodiesList;
     private VBoxContainer? _satelliteBeltsList;
@@ -83,6 +88,33 @@ public partial class PlanetSystemGenerator : Control
         _planetarySectionHeader = GetNode<SectionHeader>(
             "MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection"
         );
+
+        // Get shared orbital parameters container and spinboxes
+        _sharedOrbitalParams = GetNode<VBoxContainer>(
+            "MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams"
+        );
+        _sharedApogee = GetNode<SpinBox>(
+            "MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams/ApogeeContent/apogee"
+        );
+        _sharedPerigee = GetNode<SpinBox>(
+            "MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams/PerigeeContent/perigee"
+        );
+
+        // Apply constraints to shared orbital parameter spinboxes
+        if (_sharedApogee != null)
+        {
+            _sharedApogee.MinValue = 0.0;
+            _sharedApogee.MaxValue = 10000.0;
+            _sharedApogee.AllowGreater = true;
+            _sharedApogee.AllowLesser = false;
+        }
+        if (_sharedPerigee != null)
+        {
+            _sharedPerigee.MinValue = 0.0;
+            _sharedPerigee.MaxValue = 10000.0;
+            _sharedPerigee.AllowGreater = true;
+            _sharedPerigee.AllowLesser = false;
+        }
 
         // Get body lists
         _dominantBodiesList = GetNode<VBoxContainer>(
@@ -177,6 +209,7 @@ public partial class PlanetSystemGenerator : Control
         node.MassSubmitted += OnMassSubmitted;
 
         UpdateDominantBodyOptions();
+        UpdateSharedOrbitalParamsVisibility();
         UpdateSectionCountLabels();
     }
 
@@ -188,6 +221,7 @@ public partial class PlanetSystemGenerator : Control
         _dominantBodiesList.RemoveChild(last);
         last.QueueFree();
         UpdateDominantBodyOptions();
+        UpdateSharedOrbitalParamsVisibility();
         UpdateSectionCountLabels();
     }
 
@@ -198,8 +232,24 @@ public partial class PlanetSystemGenerator : Control
             _dominantBodiesList.RemoveChild(item);
             item.QueueFree();
             UpdateDominantBodyOptions();
+            UpdateSharedOrbitalParamsVisibility();
             UpdateSectionCountLabels();
         }
+    }
+
+    /// <summary>
+    /// Shows or hides the shared Apogee/Perigee section based on how many
+    /// dominant bodies exist. When there are 2+ bodies they share a single
+    /// relative orbit, so one pair of Apogee/Perigee controls is shown at the
+    /// section level. For a single body the controls are hidden because that
+    /// body is placed at the origin with no orbit.
+    /// </summary>
+    private void UpdateSharedOrbitalParamsVisibility()
+    {
+        if (_sharedOrbitalParams == null || _dominantBodiesList == null)
+            return;
+
+        _sharedOrbitalParams.Visible = _dominantBodiesList.GetChildCount() >= 2;
     }
 
     #endregion
@@ -586,55 +636,36 @@ public partial class PlanetSystemGenerator : Control
 
     private void GenerateBinarySystem(Array<Dictionary> dominantBodies, Vector3 pHat, Vector3 qHat)
     {
-        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         DominantBodyItem? bi1 = _dominantBodiesList!.GetChild(0) as DominantBodyItem;
         DominantBodyItem? bi2 = _dominantBodiesList!.GetChild(1) as DominantBodyItem;
         float massA = bi1!.GetBodyMass();
         float massB = bi2!.GetBodyMass();
-        float apogeeA = bi1!.GetApogee();
-        float perigeeA = bi1!.GetPerigee();
-        float startAngleDegA = bi1!.GetStartingAngle();
-        float inclinationDegA = bi1!.GetInclination();
 
-        float startAngleRadA = Mathf.DegToRad(startAngleDegA);
-        float inclinationRadA = Mathf.DegToRad(inclinationDegA);
-        var (positionA, velocityA) = OrbitalMath.CalculateOrbitalFrame(
+        // Both bodies share a single relative orbit defined by the section-level
+        // apogee/perigee controls.
+        float relativeApogee = (float)_sharedApogee!.Value;
+        float relativePerigee = (float)_sharedPerigee!.Value;
+        float startAngleRad = Mathf.DegToRad(bi1!.GetStartingAngle());
+
+        // CalculateBinaryOrbitalState uses a single relative orbit and splits the
+        // separation by mass ratio, guaranteeing the barycenter lies at the origin:
+        //   M_A·posA + M_B·posB = 0 for any angle, eccentricity, or mass ratio.
+        var (posA, velA, posB, velB) = OrbitalMath.CalculateBinaryOrbitalState(
             pHat,
             qHat,
-            apogeeA,
-            perigeeA,
-            startAngleRadA,
+            relativeApogee,
+            relativePerigee,
+            startAngleRad,
             massA,
             massB
         );
 
-        var apogeeB = bi2!.GetApogee();
-        var perigeeB = bi2!.GetPerigee();
-        var startAngleDegB = bi2!.GetStartingAngle();
-        var inclinationDegB = bi2!.GetInclination();
-
-        // Convert the body's distance + starting angle + inclination into a 3D position
-        // relative to the origin, using spherical-to-Cartesian conversion
-        var startAngleRadB = Mathf.DegToRad(startAngleDegB);
-        var inclinationRadB = Mathf.DegToRad(inclinationDegB);
-        var (positionB, velocityB) = OrbitalMath.CalculateOrbitalFrame(
-            pHat,
-            qHat,
-            apogeeB,
-            perigeeB,
-            startAngleRadB,
-            massB,
-            massA
-        );
-
-        Vector3 totalMomentum = velocityA * massA + velocityB * massB;
-        velocityA -= totalMomentum / (massA + massB);
-        velocityB -= totalMomentum / (massA + massB);
-
-        bi1.SetBodyPosition(positionA);
-        bi1.SetBodyVelocity(velocityA.Cross(positionA));
-        bi2.SetBodyPosition(-positionB);
-        bi2.SetBodyVelocity(velocityB.Cross(-positionB));
+        bi1.SetBodyPosition(posA);
+        //bi1.SetBodyVelocity(velA.Cross(posA));
+        bi1.SetBodyVelocity(velA);
+        bi2.SetBodyPosition(posB);
+        //bi2.SetBodyVelocity(velB.Cross(posB));
+        bi2.SetBodyVelocity(velB);
         dominantBodies.Add(bi1!.ToParams());
         dominantBodies.Add(bi2!.ToParams());
     }
@@ -688,27 +719,47 @@ public partial class PlanetSystemGenerator : Control
             if (bodyDict.ContainsKey("is_top_level_belt") && (bool)bodyDict["is_top_level_belt"])
                 continue;
 
-            if (!Enum.TryParse<CelestialBodyType>(typeStr, out var type))
+            if (!Enum.TryParse<DominantBodyType>(typeStr, out var type))
                 continue;
 
-            if (type == CelestialBodyType.Star || type == CelestialBodyType.BlackHole)
-            {
-                var template = (Godot.Collections.Dictionary)bodyDict["template"];
-                var mass = (float)template["mass"];
-                var size = Mathf.RoundToInt((float)template["size"]);
+            var template = (Godot.Collections.Dictionary)bodyDict["template"];
+            var mass = (float)template["mass"];
+            var size = Mathf.RoundToInt((float)template["size"]);
 
-                var bodyItem = AddDominantBodyFromTemplate(typeStr, bodyDict);
-                if (bodyItem != null)
-                {
-                    if (bodyItem.Mass != null)
-                        bodyItem.Mass.Value = Mathf.Clamp(mass, 0f, 100000000f);
-                    bodyItem.SetSize(Size);
-                }
+            var bodyItem = AddDominantBodyFromTemplate(typeStr, bodyDict);
+            if (bodyItem != null)
+            {
+                if (bodyItem.Mass != null)
+                    bodyItem.Mass.Value = Mathf.Clamp(mass, 0f, 100000000f);
+                bodyItem.SetSize(Size);
             }
         }
 
         // Update dominant body options so orbital center dropdowns are populated
         UpdateDominantBodyOptions();
+        UpdateSharedOrbitalParamsVisibility();
+
+        // Set shared apogee/perigee from the first dominant body template (if multi-body)
+        if (_dominantBodiesList!.GetChildCount() >= 2)
+        {
+            // Look for apogee/perigee in the first dominant body's template data
+            foreach (var bodyDict in bodies)
+            {
+                var bTypeStr = (string)bodyDict["type"];
+                if (
+                    bodyDict.ContainsKey("is_top_level_belt") && (bool)bodyDict["is_top_level_belt"]
+                )
+                    continue;
+                if (!Enum.TryParse<DominantBodyType>(bTypeStr, out var bType))
+                    continue;
+                var bTemplate = (Godot.Collections.Dictionary)bodyDict["template"];
+                if (bTemplate.ContainsKey("apogee") && _sharedApogee != null)
+                    _sharedApogee.Value = (float)bTemplate["apogee"];
+                if (bTemplate.ContainsKey("perigee") && _sharedPerigee != null)
+                    _sharedPerigee.Value = (float)bTemplate["perigee"];
+                break; // Only need the first one
+            }
+        }
 
         // Pass 2: Satellite belts and planetary bodies
         foreach (var bodyDict in bodies)
@@ -725,11 +776,7 @@ public partial class PlanetSystemGenerator : Control
                 continue;
             }
 
-            if (!Enum.TryParse<CelestialBodyType>(typeStr, out var type))
-                continue;
-
-            // Skip dominant bodies (already handled in pass 1)
-            if (type == CelestialBodyType.Star || type == CelestialBodyType.BlackHole)
+            if (!Enum.TryParse<PlanetaryBodyType>(typeStr, out var type))
                 continue;
 
             // Planetary bodies
@@ -773,18 +820,14 @@ public partial class PlanetSystemGenerator : Control
         bodyItem.ExpandMenu += ExpandMenu;
         bodyItem.MassSubmitted += OnMassSubmitted;
 
-        // Set type
+        // Set type by matching internal name stored in OptionButton metadata
         if (bodyItem.OptionButton != null)
         {
-            for (int i = 0; i < bodyItem.OptionButton.ItemCount; i++)
+            if (PlanetaryTypeLoader.SelectByInternalName(bodyItem.OptionButton, typeStr))
             {
-                if (bodyItem.OptionButton.GetItemText(i) == typeStr)
-                {
-                    bodyItem.OptionButton.Select(i);
-                    bodyItem.UpdateHeaderFromBodyType(typeStr);
-                    bodyItem.SetConfiguration(bodyDict);
-                    break;
-                }
+                var displayName = bodyItem.OptionButton.GetItemText(bodyItem.OptionButton.Selected);
+                bodyItem.UpdateHeaderFromBodyType(displayName);
+                bodyItem.SetConfiguration(bodyDict);
             }
         }
 
@@ -804,18 +847,14 @@ public partial class PlanetSystemGenerator : Control
         bodyItem.ExpandMenu += ExpandMenu;
         bodyItem.UpdateOrbitalCenterOptions(_dominantBodyOptions);
 
-        // Set type
+        // Set type by matching internal name stored in OptionButton metadata
         if (bodyItem.OptionButton != null)
         {
-            for (int i = 0; i < bodyItem.OptionButton.ItemCount; i++)
+            if (PlanetaryTypeLoader.SelectByInternalName(bodyItem.OptionButton, typeStr))
             {
-                if (bodyItem.OptionButton.GetItemText(i) == typeStr)
-                {
-                    bodyItem.OptionButton.Select(i);
-                    bodyItem.UpdateHeaderFromBodyType(typeStr);
-                    bodyItem.SetConfiguration(bodyDict);
-                    break;
-                }
+                var displayName = bodyItem.OptionButton.GetItemText(bodyItem.OptionButton.Selected);
+                bodyItem.UpdateHeaderFromBodyType(displayName);
+                bodyItem.SetConfiguration(bodyDict);
             }
         }
 
