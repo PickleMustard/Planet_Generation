@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Structures.GameState;
+namespace Constructables.ArtificialSatellites;
 
 public interface IArtificialSatellite
 {

@@ -1226,7 +1226,7 @@ public static class OrbitalMath
         float inclinationRad = Mathf.DegToRad(inclination);
         float semiLatusRectum = semiMajorAxis * (1f - eccentricity * eccentricity);
         // Create orbital plane basis vectors
-        Vector3 orbitNormal = new Vector3(0, Mathf.Sin(inclinationRad), Mathf.Cos(inclinationRad));
+        Vector3 orbitNormal = new Vector3(Mathf.Sin(inclinationRad), Mathf.Cos(inclinationRad), 0);
         Vector3 pHat = new Vector3(Mathf.Cos(theta), 0, Mathf.Sin(theta)).Normalized();
         Vector3 qHat = pHat.Cross(orbitNormal).Normalized();
         // Position on orbit at starting angle
@@ -1238,7 +1238,7 @@ public static class OrbitalMath
         float mu = GRAVITATIONAL_CONSTANT * barycenter.Weight;
         float speed = Mathf.Sqrt(mu * (2f / r - 1f / semiMajorAxis));
         // Velocity direction is perpendicular to position vector in orbital plane
-        Vector3 velocityDir = (-pHat * Mathf.Sin(theta) + qHat * Mathf.Cos(theta)).Normalized();
+        Vector3 velocityDir = (pHat * Mathf.Sin(theta) + qHat * Mathf.Cos(theta)).Normalized();
         if (velocityDir.LengthSquared() < 0.001f)
         {
             velocityDir = new Vector3(0, 1, 0);

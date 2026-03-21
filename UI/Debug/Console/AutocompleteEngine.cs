@@ -13,7 +13,7 @@ public enum SuggestionSource
     History,
     Argument,
     FilePath,
-    PropertyPath
+    PropertyPath,
 }
 
 public class Suggestion : IComparable<Suggestion>
@@ -23,7 +23,12 @@ public class Suggestion : IComparable<Suggestion>
     public int Priority { get; }
     public string? Description { get; set; }
 
-    public Suggestion(string text, SuggestionSource source, int priority = 0, string? description = null)
+    public Suggestion(
+        string text,
+        SuggestionSource source,
+        int priority = 0,
+        string? description = null
+    )
     {
         Text = text;
         Source = source;
@@ -33,12 +38,15 @@ public class Suggestion : IComparable<Suggestion>
 
     public int CompareTo(Suggestion? other)
     {
-        if (other is null) return 1;
+        if (other is null)
+            return 1;
         int priorityCompare = other.Priority.CompareTo(Priority);
-        if (priorityCompare != 0) return priorityCompare;
+        if (priorityCompare != 0)
+            return priorityCompare;
 
         int sourceCompare = Source.CompareTo(other.Source);
-        if (sourceCompare != 0) return sourceCompare;
+        if (sourceCompare != 0)
+            return sourceCompare;
 
         return string.Compare(Text, other.Text, StringComparison.OrdinalIgnoreCase);
     }
@@ -66,28 +74,91 @@ public class AutocompleteEngine
         }
 
         var suggestions = new List<Suggestion>();
+
+        // Detect parenthesis context for namespace suggestions
+        if (IsInsideParens(input, out string partialNs))
+        {
+            // User is typing inside (...) — suggest namespaces
+            AddNamespaceSuggestions(suggestions, partialNs);
+            AddHistorySuggestions(suggestions, input);
+            return RankSuggestions(suggestions, input);
+        }
+
         var parsed = _parser.Parse(input);
 
-        if (string.IsNullOrEmpty(parsed.CommandName))
+        if (parsed.HasNamespaces)
         {
-            return Enumerable.Empty<Suggestion>();
-        }
+            // After closing paren — suggest commands compatible with the namespace types
+            string commandPartial = parsed.CommandName ?? "";
+            bool hasPartialArg =
+                input.TrimEnd().EndsWith(" ") && !string.IsNullOrEmpty(parsed.CommandName);
 
-        bool hasPartialArg = input.EndsWith(" ") || parsed.Arguments.Length > 0;
-        string lastToken = GetLastToken(input);
-
-        if (hasPartialArg && !string.IsNullOrEmpty(parsed.CommandName) && _registry.HasCommand(parsed.CommandName))
-        {
-            AddArgumentSuggestions(suggestions, parsed, lastToken);
+            if (hasPartialArg || parsed.Arguments.Length > 0)
+            {
+                // Suggesting arguments for a namespaced command
+                string lastToken = GetLastToken(input);
+                AddArgumentSuggestions(suggestions, parsed, lastToken);
+            }
+            else
+            {
+                // Suggest command names (filtered to target-requiring commands)
+                AddNamespacedCommandSuggestions(suggestions, commandPartial, parsed);
+            }
         }
-        else if (!hasPartialArg)
+        else
         {
-            AddCommandSuggestions(suggestions, parsed, input);
+            // Global command context
+            if (string.IsNullOrEmpty(parsed.CommandName))
+            {
+                AddHistorySuggestions(suggestions, input);
+                return RankSuggestions(suggestions, input);
+            }
+
+            bool hasPartialArg = input.EndsWith(" ") || parsed.Arguments.Length > 0;
+            string lastToken = GetLastToken(input);
+
+            if (
+                hasPartialArg
+                && !string.IsNullOrEmpty(parsed.CommandName)
+                && _registry.HasCommand(parsed.CommandName)
+            )
+            {
+                AddArgumentSuggestions(suggestions, parsed, lastToken);
+            }
+            else if (!hasPartialArg)
+            {
+                AddCommandSuggestions(suggestions, parsed, input);
+            }
         }
 
         AddHistorySuggestions(suggestions, input);
 
         return RankSuggestions(suggestions, input);
+    }
+
+    /// <summary>
+    /// Detects whether the user is currently typing inside an open parenthesis group.
+    /// </summary>
+    /// <param name="input">The current input text.</param>
+    /// <param name="partialNamespace">The partial namespace being typed (after last comma or open paren).</param>
+    /// <returns>True if inside parens (no closing paren yet).</returns>
+    private bool IsInsideParens(string input, out string partialNamespace)
+    {
+        partialNamespace = "";
+        int openParen = input.IndexOf('(');
+        int closeParen = input.IndexOf(')');
+
+        if (openParen >= 0 && closeParen < 0)
+        {
+            // Inside open parens
+            string insideParens = input.Substring(openParen + 1);
+            int lastComma = insideParens.LastIndexOf(',');
+            partialNamespace =
+                lastComma >= 0 ? insideParens.Substring(lastComma + 1).Trim() : insideParens.Trim();
+            return true;
+        }
+
+        return false;
     }
 
     private string GetLastToken(string input)
@@ -97,79 +168,179 @@ public class AutocompleteEngine
         return lastSpace >= 0 ? trimmed.Substring(lastSpace + 1) : trimmed;
     }
 
-    private void AddCommandSuggestions(List<Suggestion> suggestions, CommandParser.ParsedCommand parsed, string input)
+    /// <summary>
+    /// Suggests global commands (no namespace prefix).
+    /// </summary>
+    private void AddCommandSuggestions(
+        List<Suggestion> suggestions,
+        CommandParser.ParsedCommand parsed,
+        string input
+    )
     {
-        string? searchTerm = string.IsNullOrEmpty(parsed.Namespace)
-            ? parsed.CommandName
-            : parsed.Namespace.Contains(".")
-                ? parsed.Namespace
-                : parsed.CommandName;
-
         foreach (var cmd in _registry.GetAllCommands())
         {
             if (cmd.Name!.StartsWith(parsed.CommandName!, StringComparison.OrdinalIgnoreCase))
             {
-                int priority = cmd.Name.Equals(parsed.CommandName!, StringComparison.OrdinalIgnoreCase) ? 100 : 50;
-                if (cmd.Name.StartsWith(parsed.CommandName!, StringComparison.OrdinalIgnoreCase) &&
-                    cmd.Name.Length == parsed.CommandName!.Length)
+                int priority = cmd.Name.Equals(
+                    parsed.CommandName!,
+                    StringComparison.OrdinalIgnoreCase
+                )
+                    ? 100
+                    : 50;
+                if (cmd.Name.Length == parsed.CommandName!.Length)
                 {
                     priority = 100;
                 }
-                else if (cmd.Name.StartsWith(parsed.CommandName!, StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    priority = 50 + (10 - Math.Min(10, cmd.Name.Length - parsed.CommandName!.Length));
+                    priority =
+                        50 + (10 - Math.Min(10, cmd.Name.Length - parsed.CommandName!.Length));
                 }
 
-                suggestions.Add(new Suggestion(cmd.Name, SuggestionSource.Command, priority, cmd.Description!));
+                suggestions.Add(
+                    new Suggestion(cmd.Name, SuggestionSource.Command, priority, cmd.Description!)
+                );
             }
         }
 
-        AddNamespaceSuggestions(suggestions, searchTerm!, parsed);
+        // Also suggest starting a namespace group if the user typed something that looks
+        // like a namespace prefix (e.g., "Cel" could become "(CelestialBody.Earth)")
+        if (!string.IsNullOrEmpty(parsed.CommandName) && !_registry.HasCommand(parsed.CommandName))
+        {
+            var namespaces = InstanceRegistry.GetNamespacesByPrefix(parsed.CommandName);
+            foreach (var ns in namespaces.Take(10))
+            {
+                suggestions.Add(
+                    new Suggestion($"({ns}) ", SuggestionSource.Namespace, 40, "Target instance")
+                );
+            }
+        }
     }
 
-    private void AddNamespaceSuggestions(List<Suggestion> suggestions, string searchTerm, CommandParser.ParsedCommand parsed)
+    /// <summary>
+    /// Suggests commands after a closing paren, filtered to commands that require a target.
+    /// </summary>
+    private void AddNamespacedCommandSuggestions(
+        List<Suggestion> suggestions,
+        string commandPartial,
+        CommandParser.ParsedCommand parsed
+    )
     {
-        var namespaces = InstanceRegistry.GetNamespacesByPrefix(searchTerm);
+        // Resolve the type of the first namespace to filter compatible commands
+        Type? resolvedType = null;
+        if (parsed.Namespaces.Count > 0)
+        {
+            string firstNs = parsed.Namespaces[0];
+            if (
+                !firstNs.Contains('*') && InstanceRegistry.TryGetInstance(firstNs, out var instance)
+            )
+            {
+                resolvedType = instance?.GetType();
+            }
+        }
+
+        foreach (var cmd in _registry.GetAllCommands().Where(c => c.RequiresTarget))
+        {
+            if (
+                string.IsNullOrEmpty(commandPartial)
+                || cmd.Name!.StartsWith(commandPartial, StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                // If we resolved the type, filter to compatible commands
+                if (
+                    resolvedType != null
+                    && cmd.DeclaringType != null
+                    && !cmd.DeclaringType.IsAssignableFrom(resolvedType)
+                )
+                {
+                    continue;
+                }
+
+                int priority =
+                    string.IsNullOrEmpty(commandPartial) ? 50
+                    : cmd.Name!.Equals(commandPartial, StringComparison.OrdinalIgnoreCase) ? 100
+                    : 50 + (10 - Math.Min(10, cmd.Name!.Length - commandPartial.Length));
+
+                suggestions.Add(
+                    new Suggestion(cmd.Name!, SuggestionSource.Command, priority, cmd.Description!)
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Suggests namespaces for use inside parentheses.
+    /// </summary>
+    private void AddNamespaceSuggestions(List<Suggestion> suggestions, string partialNamespace)
+    {
+        IEnumerable<string> namespaces;
+
+        if (string.IsNullOrEmpty(partialNamespace))
+        {
+            namespaces = InstanceRegistry.GetAllNamespaces().Take(20);
+        }
+        else
+        {
+            namespaces = InstanceRegistry.GetNamespacesByPrefix(partialNamespace);
+        }
 
         foreach (var ns in namespaces)
         {
-            if (ns.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase))
+            int priority = ns.Equals(partialNamespace, StringComparison.OrdinalIgnoreCase)
+                ? 90
+                : 40;
+            suggestions.Add(new Suggestion(ns, SuggestionSource.Namespace, priority));
+        }
+
+        // Also suggest wildcard patterns
+        if (!string.IsNullOrEmpty(partialNamespace) && !partialNamespace.Contains('*'))
+        {
+            // Extract type prefix (before the first dot)
+            var dotIndex = partialNamespace.IndexOf('.');
+            string typePrefix =
+                dotIndex > 0 ? partialNamespace.Substring(0, dotIndex) : partialNamespace;
+
+            // Check if there are multiple instances with this prefix
+            var matchingNamespaces = InstanceRegistry.GetNamespacesByPrefix(typePrefix).ToList();
+            if (matchingNamespaces.Count > 1)
             {
-                int priority = ns.Equals(searchTerm, StringComparison.OrdinalIgnoreCase) ? 90 : 40;
-
-                if (!string.IsNullOrEmpty(parsed.CommandName) && parsed.CommandName.Contains("."))
-                {
-                    var matchingCommands = _registry.GetAllCommands()
-                        .Where(c => c.RequiresTarget)
-                        .Select(c => $"{ns}.{c.Name}");
-
-                    foreach (var fullCommand in matchingCommands)
-                    {
-                        suggestions.Add(new Suggestion(fullCommand, SuggestionSource.Namespace, priority));
-                    }
-                }
-                else
-                {
-                    suggestions.Add(new Suggestion(ns, SuggestionSource.Namespace, priority));
-                }
+                suggestions.Add(
+                    new Suggestion(
+                        $"{typePrefix}.*",
+                        SuggestionSource.Namespace,
+                        35,
+                        $"All {typePrefix} instances ({matchingNamespaces.Count})"
+                    )
+                );
             }
         }
     }
 
-    private void AddArgumentSuggestions(List<Suggestion> suggestions, CommandParser.ParsedCommand parsed, string lastToken)
+    private void AddArgumentSuggestions(
+        List<Suggestion> suggestions,
+        CommandParser.ParsedCommand parsed,
+        string lastToken
+    )
     {
         if (!_registry.TryGetCommand(parsed.CommandName!, out var command))
         {
             return;
         }
 
-        var commandSuggestions = GetCommandArgumentSuggestions(command!, parsed.Arguments, lastToken);
+        var commandSuggestions = GetCommandArgumentSuggestions(
+            command!,
+            parsed.Arguments,
+            lastToken
+        );
         foreach (var suggestion in commandSuggestions)
         {
             suggestions.Add(new Suggestion(suggestion, SuggestionSource.Argument, 30));
         }
 
-        if (command!.Usage != null && command.Usage!.Contains("path", StringComparison.OrdinalIgnoreCase))
+        if (
+            command!.Usage != null
+            && command.Usage!.Contains("path", StringComparison.OrdinalIgnoreCase)
+        )
         {
             AddFilePathSuggestions(suggestions, lastToken);
         }
@@ -180,19 +351,22 @@ public class AutocompleteEngine
         }
     }
 
-    private IEnumerable<string> GetCommandArgumentSuggestions(CommandInfo command, string[] args, string lastToken)
+    private IEnumerable<string> GetCommandArgumentSuggestions(
+        CommandInfo command,
+        string[] args,
+        string lastToken
+    )
     {
         if (command.Name == "help")
         {
-            return _registry.GetCommandNames()
+            return _registry
+                .GetCommandNames()
                 .Where(c => c.StartsWith(lastToken, StringComparison.OrdinalIgnoreCase));
         }
 
         if (command.Name == "list_namespaces")
         {
-            var types = InstanceRegistry.GetAllInstances()
-                .Select(i => i.GetType().Name)
-                .Distinct();
+            var types = InstanceRegistry.GetAllInstances().Select(i => i.GetType().Name).Distinct();
 
             return types.Where(t => t.StartsWith(lastToken, StringComparison.OrdinalIgnoreCase));
         }
@@ -221,7 +395,9 @@ public class AutocompleteEngine
         {
             foreach (var ns in InstanceRegistry.GetAllNamespaces().Take(10))
             {
-                suggestions.Add(new Suggestion(ns, SuggestionSource.PropertyPath, 15, "Instance namespace"));
+                suggestions.Add(
+                    new Suggestion(ns, SuggestionSource.PropertyPath, 15, "Instance namespace")
+                );
             }
             return;
         }
@@ -234,13 +410,24 @@ public class AutocompleteEngine
             if (InstanceRegistry.TryGetInstance(namespacePart, out var instance))
             {
                 var propertyPrefix = partialPath.Substring(lastDot + 1);
-                var properties = instance!.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                var properties = instance!
+                    .GetType()
+                    .GetProperties(
+                        System.Reflection.BindingFlags.Public
+                            | System.Reflection.BindingFlags.Instance
+                    );
 
                 foreach (var prop in properties)
                 {
                     if (prop.Name.StartsWith(propertyPrefix, StringComparison.OrdinalIgnoreCase))
                     {
-                        suggestions.Add(new Suggestion($"{namespacePart}.{prop.Name}", SuggestionSource.PropertyPath, 25));
+                        suggestions.Add(
+                            new Suggestion(
+                                $"{namespacePart}.{prop.Name}",
+                                SuggestionSource.PropertyPath,
+                                25
+                            )
+                        );
                     }
                 }
             }

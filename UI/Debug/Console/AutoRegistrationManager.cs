@@ -1,5 +1,6 @@
 #if DEBUG
 using System;
+using System.Reflection;
 using Godot;
 using UI.Debug.DatabaseViewer;
 
@@ -13,6 +14,7 @@ public static class AutoRegistrationManager
 {
     private static bool _initialized;
     private static SceneTree? _sceneTree;
+    private static CommandRegistry? _registry;
 
     /// <summary>
     /// Initializes the auto-registration system. Should be called once during debug menu setup.
@@ -30,8 +32,8 @@ public static class AutoRegistrationManager
 
         if (_sceneTree?.Root != null)
         {
-            _sceneTree.Root.ChildEnteredTree += OnChildEnteredTree;
-            _sceneTree.Root.ChildExitingTree += OnChildExitingTree;
+            _sceneTree.NodeAdded += OnChildEnteredTree;
+            _sceneTree.NodeRemoved += OnChildExitingTree;
 
             foreach (var child in _sceneTree.Root.GetChildren())
             {
@@ -40,6 +42,11 @@ public static class AutoRegistrationManager
         }
 
         GD.Print("[AutoRegistrationManager] Initialized");
+    }
+
+    public static void SetRegistry(CommandRegistry registry)
+    {
+        _registry = registry;
     }
 
     /// <summary>
@@ -96,6 +103,9 @@ public static class AutoRegistrationManager
             RegisterNode(node);
         }
 
+        if (ShouldRegisterInstanceMethods(node))
+            RegisterInstance(node);
+
         foreach (var child in node.GetChildren())
         {
             RegisterNodeRecursive(child);
@@ -142,6 +152,15 @@ public static class AutoRegistrationManager
         }
 
         return InstanceRegistry.RegisterNode(node);
+    }
+
+    public static void RegisterInstance(object instance)
+    {
+        if (instance == null)
+            return;
+
+        if (_registry != null)
+            _registry!.ScanInstance(instance);
     }
 
     /// <summary>
@@ -208,9 +227,31 @@ public static class AutoRegistrationManager
         }
 
         var type = node.GetType();
-        var debugDataAttr = Attribute.GetCustomAttribute(type, typeof(DebugDataAttribute)) as DebugDataAttribute;
+        var debugDataAttr =
+            Attribute.GetCustomAttribute(type, typeof(DebugDataAttribute)) as DebugDataAttribute;
 
         return debugDataAttr != null;
+    }
+
+    public static bool ShouldRegisterInstanceMethods(Node node)
+    {
+        if (node == null)
+            return false;
+
+        var type = node.GetType();
+        var methods = type.GetMethods(
+            System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
+        );
+        DebugCommandAttribute? debugCommandAttr = null;
+        foreach (var method in methods)
+        {
+            debugCommandAttr = method.GetCustomAttribute<DebugCommandAttribute>();
+            if (debugCommandAttr != null)
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

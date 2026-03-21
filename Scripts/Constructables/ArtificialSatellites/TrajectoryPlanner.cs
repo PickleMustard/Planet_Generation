@@ -69,6 +69,11 @@ public class TrajectoryPlanner
     /// Generates trajectory options between origin and destination celestial bodies.
     /// Uses the central body (origin's parent or dominant gravitational point) for μ.
     /// Returns options ranked by MostEfficient (lowest delta-v) by default.
+    ///
+    /// The solver accounts for:
+    /// - Ship's actual position in its orbit band (not planet center)
+    /// - Ship's orbital velocity around its parent body + parent's orbital velocity
+    /// - Target orbit band position and velocity at the destination
     /// </summary>
     /// <param name="unit">The logistics unit making the transfer.</param>
     /// <param name="origin">Origin celestial body.</param>
@@ -76,6 +81,7 @@ public class TrajectoryPlanner
     /// <param name="departureTime">Departure time in seconds from now.</param>
     /// <param name="numOptions">Number of options to generate.</param>
     /// <param name="rankingCriteria">Criteria for ranking the options.</param>
+    /// <param name="targetBandIndex">Target orbit band at destination (-1 = auto-select closest).</param>
     /// <returns>List of trajectory options ranked by the specified criteria.</returns>
     public List<TrajectorySolution> GetOptions(
         LogisticsUnit unit,
@@ -83,7 +89,8 @@ public class TrajectoryPlanner
         CelestialBody destination,
         float departureTime = 0f,
         int numOptions = 0,
-        TrajectorySolution.RankingCriteria rankingCriteria = TrajectorySolution.RankingCriteria.MostEfficient
+        TrajectorySolution.RankingCriteria rankingCriteria = TrajectorySolution.RankingCriteria.MostEfficient,
+        int targetBandIndex = -1
     )
     {
         if (unit == null)
@@ -111,7 +118,8 @@ public class TrajectoryPlanner
 
         GameLogger.Info(
             $"TrajectoryPlanner.GetOptions: Planning route from {origin.Name} to {destination.Name}, " +
-            $"departure in {departureTime:F1}s, generating {numOptions} options"
+            $"departure in {departureTime:F1}s, generating {numOptions} options, " +
+            $"target band: {(targetBandIndex >= 0 ? targetBandIndex.ToString() : "auto")}"
         );
 
         // Find the central body for gravitational parameter
@@ -127,12 +135,60 @@ public class TrajectoryPlanner
             return new List<TrajectorySolution>();
         }
 
-        // Predict origin position at departure time (same for all options)
-        Vector3 originPos = PredictBodyPosition(origin, departureTime);
+        // Central body position/velocity for reference frame conversion.
+        // The Lambert solver expects positions relative to the gravitational focus (central body).
+        Vector3 centralBodyPos = centralBody.GlobalPosition;
+        Vector3 centralBodyVel = centralBody.Velocity;
 
-        // Get orbital velocities from origin and destination bodies
-        Vector3 originOrbitalVelocity = origin.Velocity;
-        Vector3 destOrbitalVelocity = destination.Velocity;
+        // ---- Origin: use ship's actual position and velocity ----
+
+        // Ship's actual global position (in orbit band around origin planet)
+        Vector3 shipPosGlobal = unit.GlobalPosition;
+        Vector3 shipPosRelative = shipPosGlobal - centralBodyPos;
+
+        // Ship's total velocity relative to central body:
+        // ship orbital velocity around parent + parent orbital velocity around central body
+        Vector3 shipVelocityRelative = unit.GetOrbitalVelocityRelativeTo(centralBody);
+
+        // If ship velocity calculation failed, fall back to planet's orbital velocity
+        if (shipVelocityRelative.LengthSquared() <= 1e-10f)
+        {
+            GameLogger.Warning(
+                "TrajectoryPlanner.GetOptions: Ship velocity calculation failed, " +
+                "falling back to origin body velocity"
+            );
+            shipVelocityRelative = origin.Velocity - centralBodyVel;
+        }
+
+        int originBandIndex = unit.BandIndex;
+
+        GameLogger.Debug(
+            $"TrajectoryPlanner.GetOptions: Ship position (global): {shipPosGlobal}, " +
+            $"velocity (relative to {centralBody.Name}): {shipVelocityRelative} " +
+            $"({shipVelocityRelative.Length():F2} m/s), origin band: {originBandIndex}"
+        );
+
+        // ---- Destination: determine target orbit band ----
+
+        // Auto-select target band if not specified
+        int resolvedTargetBand = targetBandIndex;
+        if (resolvedTargetBand < 0)
+        {
+            // Default to closest band (band 0 if no bands available)
+            resolvedTargetBand = destination.GetClosestBandForApproach(
+                shipVelocityRelative.Length()
+            );
+        }
+
+        // Validate target band exists
+        if (resolvedTargetBand >= destination.GetBandCount())
+        {
+            GameLogger.Warning(
+                $"TrajectoryPlanner.GetOptions: Target band {resolvedTargetBand} exceeds " +
+                $"available bands ({destination.GetBandCount()}), defaulting to 0"
+            );
+            resolvedTargetBand = 0;
+        }
 
         // Pre-calculate mass/engine values (same for all options)
         float totalMass = unit.GetTotalMass();
@@ -159,12 +215,16 @@ public class TrajectoryPlanner
         {
             float tof = minTof + (tofStep * i);
 
-            // Predict destination position at THIS specific arrival time
-            Vector3 destPos = PredictBodyPosition(destination, departureTime + tof);
+            // ---- Calculate destination orbit band position and velocity at arrival ----
+            float arrivalTime = departureTime + tof;
+            var (destPosGlobal, destVelocityRelative) = CalculateTargetOrbitBandState(
+                destination, centralBody, resolvedTargetBand, arrivalTime
+            );
+            Vector3 destPosRelative = destPosGlobal - centralBodyPos;
 
-            // Solve Lambert's problem for this specific geometry and ToF
+            // Solve Lambert's problem in central-body-centered frame
             var solutions = OrbitalMath.SolveLambert(
-                originPos, destPos, tof, mu, MaxRevolutions, IncludeRetrograde);
+                shipPosRelative, destPosRelative, tof, mu, MaxRevolutions, IncludeRetrograde);
 
             foreach (var solution in solutions)
             {
@@ -176,13 +236,18 @@ public class TrajectoryPlanner
                 solution.DestinationBody = destination;
                 solution.DepartureTime = departureTime;
                 solution.GravitationalParameter = mu;
-                solution.PredictedOriginPosition = originPos;
-                solution.PredictedDestinationPosition = destPos;
+                // Store global positions — ship's actual position, not planet center
+                solution.PredictedOriginPosition = shipPosGlobal;
+                solution.PredictedDestinationPosition = destPosGlobal;
+
+                // Store orbit band metadata
+                solution.OriginBandIndex = originBandIndex;
+                solution.DestinationBandIndex = resolvedTargetBand;
 
                 // Set orbital velocities and recalculate delta-v correctly:
-                // ΔV = |v_lambert_depart - v_orbital_origin| + |v_lambert_arrive - v_orbital_dest|
-                solution.OriginOrbitalVelocity = originOrbitalVelocity;
-                solution.DestinationOrbitalVelocity = destOrbitalVelocity;
+                // ΔV = |v_lambert_depart - v_ship| + |v_lambert_arrive - v_dest_band|
+                solution.OriginOrbitalVelocity = shipVelocityRelative;
+                solution.DestinationOrbitalVelocity = destVelocityRelative;
                 solution.RecalculateDeltaV();
 
                 // Calculate fuel required (using corrected delta-v)
@@ -329,6 +394,132 @@ public class TrajectoryPlanner
         );
 
         return mu;
+    }
+
+    /// <summary>
+    /// Calculates the position and velocity of a point in a destination body's orbit band
+    /// at a given arrival time. This accounts for:
+    /// 1. The planet's predicted position at arrival
+    /// 2. The position within the orbit band (circular orbit around planet)
+    /// 3. The velocity in the orbit band + planet's orbital velocity
+    /// </summary>
+    /// <param name="destinationBody">The destination celestial body.</param>
+    /// <param name="centralBody">The central body for reference frame.</param>
+    /// <param name="targetBandIndex">Target orbit band index.</param>
+    /// <param name="arrivalTime">Time from now when the ship arrives.</param>
+    /// <returns>Tuple of (global position, velocity relative to central body).</returns>
+    private (Vector3 position, Vector3 velocity) CalculateTargetOrbitBandState(
+        CelestialBody destinationBody,
+        CelestialBody centralBody,
+        int targetBandIndex,
+        float arrivalTime
+    )
+    {
+        Vector3 centralBodyVel = centralBody.Velocity;
+
+        // 1. Get planet's predicted position at arrival
+        Vector3 planetPosGlobal = PredictBodyPosition(destinationBody, arrivalTime);
+        Vector3 planetVelRelative = destinationBody.Velocity - centralBodyVel;
+
+        // 2. Get orbit band radius and speed
+        float bandRadius = destinationBody.GetOrbitBandRadius(targetBandIndex);
+        float bandAngularSpeed = destinationBody.GetOrbitalSpeedForBand(targetBandIndex);
+
+        // If band data is unavailable, fall back to planet center
+        if (bandRadius <= 0f || bandAngularSpeed <= 0f)
+        {
+            GameLogger.Warning(
+                $"TrajectoryPlanner.CalculateTargetOrbitBandState: " +
+                $"Could not get band {targetBandIndex} data for {destinationBody.Name}, " +
+                $"falling back to planet center"
+            );
+            return (planetPosGlobal, planetVelRelative);
+        }
+
+        // 3. Calculate optimal arrival angle to minimize delta-v.
+        // The optimal arrival direction is along the transfer trajectory.
+        // We approximate this by choosing the angle on the destination side
+        // of the orbit band that faces the origin (the central body approach direction).
+        float arrivalAngle = CalculateOptimalArrivalAngle(
+            planetPosGlobal, centralBody.GlobalPosition, bandRadius
+        );
+
+        // 4. Calculate position in orbit band (circular orbit in XZ plane around planet)
+        Vector3 bandOffset = new Vector3(
+            Mathf.Cos(arrivalAngle) * bandRadius,
+            0f,
+            Mathf.Sin(arrivalAngle) * bandRadius
+        );
+        Vector3 bandPosGlobal = planetPosGlobal + bandOffset;
+
+        // 5. Calculate velocity in orbit band (tangent to circular orbit)
+        float bandLinearSpeed = bandRadius * bandAngularSpeed;
+        Vector3 bandOrbitalVelocity = new Vector3(
+            -bandLinearSpeed * Mathf.Sin(arrivalAngle),
+            0f,
+            bandLinearSpeed * Mathf.Cos(arrivalAngle)
+        );
+
+        // 6. Total velocity relative to central body: band orbital velocity + planet orbital velocity
+        Vector3 totalVelocityRelative = bandOrbitalVelocity + planetVelRelative;
+
+        GameLogger.Debug(
+            $"TrajectoryPlanner.CalculateTargetOrbitBandState: " +
+            $"band {targetBandIndex} r={bandRadius:F0}, ω={bandAngularSpeed:F3} rad/s, " +
+            $"angle={arrivalAngle:F3} rad, " +
+            $"band v={bandOrbitalVelocity.Length():F2} m/s, " +
+            $"total v={totalVelocityRelative.Length():F2} m/s"
+        );
+
+        return (bandPosGlobal, totalVelocityRelative);
+    }
+
+    /// <summary>
+    /// Calculates the optimal arrival angle in the destination orbit band
+    /// to minimize delta-v. The optimal point is where the orbit band velocity
+    /// is most aligned with the transfer trajectory direction.
+    /// </summary>
+    /// <param name="planetPos">Predicted planet position at arrival.</param>
+    /// <param name="centralBodyPos">Central body position.</param>
+    /// <param name="bandRadius">Orbit band radius.</param>
+    /// <returns>Optimal arrival angle in radians.</returns>
+    private float CalculateOptimalArrivalAngle(
+        Vector3 planetPos, Vector3 centralBodyPos, float bandRadius
+    )
+    {
+        // The approach direction from central body to destination planet (in XZ plane)
+        Vector3 approachDir = (planetPos - centralBodyPos);
+        approachDir.Y = 0f;
+
+        if (approachDir.LengthSquared() < 1e-6f)
+        {
+            return 0f;
+        }
+
+        approachDir = approachDir.Normalized();
+
+        // The optimal arrival point is where the orbital velocity (tangent to orbit)
+        // is most aligned with the approach direction. For a prograde orbit,
+        // velocity at angle θ is (-sin θ, 0, cos θ). We want this aligned with approachDir.
+        // The angle where the tangent aligns with approach is:
+        // θ = atan2(-approachDir.X, approachDir.Z)
+        // But we actually want the arrival POSITION to be on the approach side,
+        // so the ship flies "into" the orbit. The position angle that places
+        // the orbital velocity tangent closest to the incoming transfer arc
+        // direction is offset by π/2 from the approach direction.
+        float approachAngle = Mathf.Atan2(approachDir.Z, approachDir.X);
+
+        // Place arrival point 90° ahead of the approach direction (prograde matching)
+        float arrivalAngle = approachAngle + Mathf.Pi / 2f;
+
+        // Normalize to [0, 2π)
+        arrivalAngle %= Mathf.Tau;
+        if (arrivalAngle < 0f)
+        {
+            arrivalAngle += Mathf.Tau;
+        }
+
+        return arrivalAngle;
     }
 
     /// <summary>

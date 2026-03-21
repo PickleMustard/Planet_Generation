@@ -22,6 +22,12 @@ public class CommandInfo
     public Type? DeclaringType { get; set; }
     public bool IsStatic { get; set; }
     public object? SingletonInstance { get; set; }
+
+    /// <summary>
+    /// The type of instance this external command is called from.
+    /// Null for commands that are members of the target class or are global.
+    /// </summary>
+    public object? ExternalCaller { get; set; }
 }
 
 /// <summary>
@@ -116,10 +122,7 @@ public class CommandRegistry
         try
         {
             var methods = type.GetMethods(
-                BindingFlags.Static
-                    | BindingFlags.Instance
-                    | BindingFlags.Public
-                    | BindingFlags.NonPublic
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
             );
 
             foreach (var method in methods)
@@ -135,10 +138,11 @@ public class CommandRegistry
                     Usage = attr.Usage,
                     Aliases = attr.Aliases,
                     Category = attr.Category,
-                    RequiresTarget = attr.RequiresTarget,
+                    RequiresTarget = attr.RequiresTarget || attr.ExternalCaller != null,
                     Method = method,
                     DeclaringType = type,
                     IsStatic = method.IsStatic,
+                    ExternalCaller = attr.ExternalCaller,
                 };
 
                 RegisterCommand(commandInfo);
@@ -147,6 +151,45 @@ public class CommandRegistry
         catch (Exception ex)
         {
             GD.PrintErr($"[CommandRegistry] Error scanning type {type.FullName}: {ex.Message}");
+        }
+    }
+
+    public void ScanInstance(object instance)
+    {
+        try
+        {
+            GD.Print($"[CommandRegistry] Scanning instance {instance.GetType().FullName}");
+            var methods = instance
+                .GetType()
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            foreach (var method in methods)
+            {
+                var attr = method.GetCustomAttribute<DebugCommandAttribute>();
+                if (attr == null)
+                {
+                    continue;
+                }
+                var commandInfo = new CommandInfo
+                {
+                    Name = attr.Name,
+                    Description = attr.Description,
+                    Usage = attr.Usage,
+                    Aliases = attr.Aliases,
+                    Category = attr.Category,
+                    RequiresTarget = attr.RequiresTarget || attr.ExternalCaller != null,
+                    Method = method,
+                    DeclaringType = instance.GetType(),
+                    IsStatic = false,
+                    ExternalCaller = instance,
+                };
+                RegisterCommand(commandInfo);
+            }
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr(
+                $"[CommandRegistry] Error scanning type {instance.GetType().FullName}: {ex.Message}"
+            );
         }
     }
 
@@ -242,23 +285,30 @@ public class CommandRegistry
             return 1;
         }
 
-        return ExecuteCommand(command!, parsed, context);
-    }
-
-    /// <summary>
-    /// Executes a command with the given parsed data.
-    /// </summary>
-    private int ExecuteCommand(
-        CommandInfo command,
-        CommandParser.ParsedCommand parsed,
-        CommandContext context
-    )
-    {
         try
         {
-            if (command.RequiresTarget)
+            if (parsed.HasNamespaces)
             {
-                return ExecuteInstanceCommand(command, parsed, context);
+                return ExecuteOnNamespaces(command!, parsed, context);
+            }
+            else if (command!.RequiresTarget)
+            {
+                // Command requires a target but no namespace provided
+                if (command.SingletonInstance != null)
+                {
+                    return InvokeCommand(
+                        command,
+                        command.SingletonInstance,
+                        command.SingletonInstance,
+                        context,
+                        parsed
+                    );
+                }
+                context.WriteError(
+                    $"Command '{command.Name}' requires a target. "
+                        + $"Use: ({command.DeclaringType?.Name ?? "namespace"}) {command.Name}"
+                );
+                return 1;
             }
             else
             {
@@ -273,7 +323,7 @@ public class CommandRegistry
     }
 
     /// <summary>
-    /// Executes a static command.
+    /// Executes a static (global) command.
     /// </summary>
     private int ExecuteStaticCommand(
         CommandInfo command,
@@ -287,109 +337,173 @@ public class CommandRegistry
     }
 
     /// <summary>
-    /// Executes an instance command, resolving the target from namespace.
+    /// Executes a command on one or more namespace-resolved instances.
+    /// Handles both explicit namespaces and wildcard expansion.
     /// </summary>
-    private int ExecuteInstanceCommand(
+    private int ExecuteOnNamespaces(
         CommandInfo command,
         CommandParser.ParsedCommand parsed,
         CommandContext context
     )
     {
-        if (string.IsNullOrEmpty(parsed.Namespace))
+        // Expand all namespaces (resolving wildcards)
+        var expandedNamespaces = new List<string>();
+
+        foreach (var ns in parsed.Namespaces)
         {
-            if (command.SingletonInstance != null)
+            if (ns.Contains('*'))
             {
-                var parameters = new object[] { context, parsed.Arguments };
-                var result = command.Method!.Invoke(command.SingletonInstance, parameters);
-                return result is int exitCode ? exitCode : 0;
+                // Wildcard: extract prefix and expand
+                var (typeName, _) = _parser.SplitNamespace(ns);
+                if (string.IsNullOrEmpty(typeName))
+                {
+                    context.WriteError($"Invalid wildcard namespace: {ns}");
+                    return 1;
+                }
+
+                string prefix = typeName.Replace("*", "").TrimEnd('.');
+                var matchedNamespaces = InstanceRegistry.GetNamespacesByPrefix(prefix);
+                expandedNamespaces.AddRange(matchedNamespaces);
             }
-
-            context.WriteError(
-                $"Command '{command.Name}' requires a target instance. Use: <namespace>.{command.Name}"
-            );
-            return 1;
-        }
-
-        if (parsed.HasWildcard)
-        {
-            return ExecuteWildcardCommand(command, parsed, context);
-        }
-
-        if (!InstanceRegistry.TryGetInstance(parsed.Namespace, out var target))
-        {
-            context.WriteError($"No instance found with namespace: {parsed.Namespace}");
-            return 1;
-        }
-
-        if (!command.DeclaringType!.IsInstanceOfType(target))
-        {
-            context.WriteError(
-                $"Instance '{parsed.Namespace}' is not of type {command.DeclaringType!.Name}"
-            );
-            return 1;
-        }
-
-        var targetParams = new object[] { context, parsed.Arguments };
-        var targetResult = command.Method!.Invoke(target, targetParams);
-        return targetResult is int targetExitCode ? targetExitCode : 0;
-    }
-
-    /// <summary>
-    /// Executes a command on all instances matching a wildcard namespace.
-    /// </summary>
-    private int ExecuteWildcardCommand(
-        CommandInfo command,
-        CommandParser.ParsedCommand parsed,
-        CommandContext context
-    )
-    {
-        var (typeName, _) = _parser.SplitNamespace(parsed.Namespace!);
-        if (string.IsNullOrEmpty(typeName))
-        {
-            context.WriteError("Invalid wildcard namespace");
-            return 1;
-        }
-
-        typeName = typeName.Replace("*", "").TrimEnd('.');
-        var namespaces = InstanceRegistry.GetNamespacesByPrefix(typeName);
-        var successCount = 0;
-        var failCount = 0;
-
-        foreach (var ns in namespaces)
-        {
-            if (!InstanceRegistry.TryGetInstance(ns, out var target))
+            else
             {
-                failCount++;
-                continue;
+                expandedNamespaces.Add(ns);
             }
+        }
 
-            if (!command.DeclaringType!.IsInstanceOfType(target))
+        if (expandedNamespaces.Count == 0)
+        {
+            context.WriteError("No instances found matching the provided namespaces");
+            return 1;
+        }
+
+        int successCount = 0;
+        int failCount = 0;
+
+        foreach (var ns in expandedNamespaces)
+        {
+            // Resolve instance
+            if (!InstanceRegistry.TryGetInstance(ns, out var functionTarget))
             {
+                context.WriteError($"No instance found with namespace: {ns}");
                 failCount++;
                 continue;
             }
 
             try
             {
-                var wildcardParams = new object[] { context, parsed.Arguments };
-                var result = command.Method!.Invoke(target, wildcardParams);
-                if (result is int exitCode && exitCode == 0)
+                // Create a per-invocation context for multi-target execution
+                if (expandedNamespaces.Count > 1)
                 {
-                    successCount++;
+                    using var perInvocationContext = new CommandContext(
+                        context.Registry,
+                        callerNamespace: ns,
+                        targetInstance: functionTarget,
+                        callerInstance: command.ExternalCaller,
+                        outputWriter: context.Output
+                    );
+
+                    int result = InvokeCommand(
+                        command,
+                        functionTarget!,
+                        command.ExternalCaller!,
+                        perInvocationContext,
+                        parsed
+                    );
+
+                    // Forward the output to the main context, prefixed with namespace
+                    var output = perInvocationContext.GetOutput();
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        context.WriteLine($"[color=cyan][{ns}][/color]");
+                        context.Write(output);
+                    }
+
+                    if (result == 0)
+                        successCount++;
+                    else
+                        failCount++;
                 }
                 else
                 {
-                    failCount++;
+                    CommandContext invocationContext = new CommandContext(
+                        context.Registry,
+                        callerNamespace: ns,
+                        targetInstance: functionTarget,
+                        callerInstance: command.ExternalCaller,
+                        outputWriter: context.Output
+                    );
+                    // Single namespace — use the provided context directly
+                    int result = InvokeCommand(
+                        command,
+                        functionTarget!,
+                        command.ExternalCaller!,
+                        invocationContext,
+                        parsed
+                    );
+                    if (result == 0)
+                        successCount++;
+                    else
+                        failCount++;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                context.WriteError($"Error executing on '{ns}': {ex.Message}\n{ex.StackTrace}");
                 failCount++;
             }
         }
 
-        context.WriteLine($"Executed on {successCount} instances ({failCount} failed)");
+        if (expandedNamespaces.Count > 1)
+        {
+            context.WriteLine($"Executed on {successCount} instance(s) ({failCount} failed)");
+        }
+
         return failCount > 0 ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Invokes a command method on a target instance.
+    /// Handles both instance methods and static methods (ExternalCaller pattern).
+    /// </summary>
+    private int InvokeCommand(
+        CommandInfo command,
+        object target,
+        object caller,
+        CommandContext context,
+        CommandParser.ParsedCommand parsed
+    )
+    {
+        var parameters = new object[] { context, parsed.Arguments };
+
+        if (command.IsStatic)
+        {
+            // Static method or ExternalCaller: populate context with target instance
+            // Create a context with the target instance set
+            using var targetContext = new CommandContext(
+                context.Registry,
+                callerNamespace: null,
+                targetInstance: target,
+                outputWriter: context.Output
+            );
+
+            var result = command.Method!.Invoke(
+                null,
+                new object[] { targetContext, parsed.Arguments }
+            );
+            return result is int exitCode ? exitCode : 0;
+        }
+        else if (caller is not null)
+        {
+            var result = command.Method!.Invoke(caller, parameters);
+            return result is int exitCode ? exitCode : 0;
+        }
+        else
+        {
+            // Instance method: invoke on the target directly
+            var result = command.Method!.Invoke(target, parameters);
+            return result is int exitCode ? exitCode : 0;
+        }
     }
 
     /// <summary>
@@ -400,16 +514,36 @@ public class CommandRegistry
     public IEnumerable<string> GetSuggestions(string input)
     {
         var parsed = _parser.Parse(input);
-
-        if (string.IsNullOrEmpty(parsed.CommandName))
-        {
-            return Enumerable.Empty<string>();
-        }
-
         var suggestions = new List<string>();
 
-        if (string.IsNullOrEmpty(parsed.Namespace))
+        if (parsed.HasNamespaces)
         {
+            // After a closing paren, suggest command names compatible with the namespace types
+            if (!string.IsNullOrEmpty(parsed.CommandName))
+            {
+                foreach (var cmd in _commands.Values)
+                {
+                    if (
+                        cmd.Name!.StartsWith(parsed.CommandName, StringComparison.OrdinalIgnoreCase)
+                        && cmd.RequiresTarget
+                    )
+                    {
+                        suggestions.Add(cmd.Name!);
+                    }
+                }
+            }
+            else
+            {
+                // No command name yet, suggest all target-requiring commands
+                foreach (var cmd in _commands.Values.Where(c => c.RequiresTarget))
+                {
+                    suggestions.Add(cmd.Name!);
+                }
+            }
+        }
+        else if (!string.IsNullOrEmpty(parsed.CommandName))
+        {
+            // Global command suggestions
             foreach (var cmd in _commands.Values)
             {
                 if (cmd.Name!.StartsWith(parsed.CommandName, StringComparison.OrdinalIgnoreCase))
@@ -425,12 +559,6 @@ public class CommandRegistry
                     suggestions.Add(alias);
                 }
             }
-        }
-
-        if (!string.IsNullOrEmpty(parsed.Namespace) && parsed.Namespace.Contains("."))
-        {
-            var namespaces = InstanceRegistry.GetNamespacesByPrefix(parsed.Namespace);
-            suggestions.AddRange(namespaces.Select(ns => $"{ns}.{parsed.CommandName}"));
         }
 
         return suggestions.Distinct().OrderBy(s => s);
@@ -459,7 +587,8 @@ public class CommandRegistry
         }
         if (command.RequiresTarget)
         {
-            help += "\n  Requires target instance (use namespace prefix)";
+            help +=
+                $"\n  Requires target instance. Use: ({command.DeclaringType?.Name ?? "namespace"}) {command.Name}";
         }
 
         return help;

@@ -7,7 +7,6 @@ using Godot;
 using UtilityLibrary;
 #if DEBUG
 using UI.Debug;
-using UI.Debug.DatabaseViewer;
 #endif
 
 namespace UtilityLibrary.TaskSystem
@@ -15,11 +14,7 @@ namespace UtilityLibrary.TaskSystem
 #if DEBUG
     [DebugData("Thread Pooler", Category = "System")]
 #endif
-    public partial class ThreadPooler : Node
-#if DEBUG
-            , IDebugDataProvider
-#endif
-        , IConfigurable
+    public partial class ThreadPooler : Node, IConfigurable
     {
         private static ThreadPooler? _instance;
         public static ThreadPooler? Instance => _instance;
@@ -43,29 +38,30 @@ namespace UtilityLibrary.TaskSystem
 
         public string SettingsCategory => "threading";
 
-        public IEnumerable<ConfigEntry> GetConfigEntries() => new[]
-        {
-            new ConfigEntry
+        public IEnumerable<ConfigEntry> GetConfigEntries() =>
+            new[]
             {
-                Key = "allocation_percentage",
-                ValueType = typeof(float),
-                DefaultValue = 0.75f,
-                MinValue = 0.1f,
-                MaxValue = 1.0f,
-                Description = "Percentage of CPU cores to allocate for thread pool",
-                RequiresRestart = true
-            },
-            new ConfigEntry
-            {
-                Key = "manual_thread_count",
-                ValueType = typeof(int),
-                DefaultValue = 0,
-                MinValue = 0,
-                MaxValue = 64,
-                Description = "Override thread count (0 = auto-calculated)",
-                RequiresRestart = true
-            }
-        };
+                new ConfigEntry
+                {
+                    Key = "allocation_percentage",
+                    ValueType = typeof(float),
+                    DefaultValue = 0.75f,
+                    MinValue = 0.1f,
+                    MaxValue = 1.0f,
+                    Description = "Percentage of CPU cores to allocate for thread pool",
+                    RequiresRestart = true,
+                },
+                new ConfigEntry
+                {
+                    Key = "manual_thread_count",
+                    ValueType = typeof(int),
+                    DefaultValue = 0,
+                    MinValue = 0,
+                    MaxValue = 64,
+                    Description = "Override thread count (0 = auto-calculated)",
+                    RequiresRestart = true,
+                },
+            };
 
         public void ApplySetting(string key, object value)
         {
@@ -81,12 +77,13 @@ namespace UtilityLibrary.TaskSystem
             }
         }
 
-        public object? GetSettingDefault(string key) => key switch
-        {
-            "allocation_percentage" => 0.75f,
-            "manual_thread_count" => 0,
-            _ => null
-        };
+        public object? GetSettingDefault(string key) =>
+            key switch
+            {
+                "allocation_percentage" => 0.75f,
+                "manual_thread_count" => 0,
+                _ => null,
+            };
 
         public override void _Ready()
         {
@@ -132,7 +129,7 @@ namespace UtilityLibrary.TaskSystem
                 {
                     TotalCores = totalCores,
                     AllocatedThreads = threadCount,
-                    AllocationPercentage = allocationPercentage
+                    AllocationPercentage = allocationPercentage,
                 };
 
                 GD.Print(
@@ -276,7 +273,11 @@ namespace UtilityLibrary.TaskSystem
 
         private void EmitBatchCompleteSignal(string batchId, int totalBodies, int successfulBodies)
         {
-            SignalBus.Instance?.EmitSystemGenerationComplete(batchId, totalBodies, successfulBodies);
+            SignalBus.Instance?.EmitSystemGenerationComplete(
+                batchId,
+                totalBodies,
+                successfulBodies
+            );
         }
 
         private void NotifyTimerStarted(WorkPackage package)
@@ -468,75 +469,6 @@ namespace UtilityLibrary.TaskSystem
             Shutdown();
             base._ExitTree();
         }
-
-#if DEBUG
-        string IDataProvider.Name => "Thread Pooler";
-        string IDataProvider.Category => "System";
-        bool IDataProvider.NeedsRefresh => true;
-        object IDebugDataProvider.SourceObject => this;
-        string IDebugDataProvider.InstanceNamespace => "ThreadPooler";
-        bool IDebugDataProvider.IsSourceValid => _isInitialized && IsInstanceValid(this);
-
-        DebugDataNode IDataProvider.GetData()
-        {
-            var node = new DebugDataNode("Thread Pooler")
-                .AddProperty("Worker Count", WorkerCount)
-                .AddProperty("Active Packages", ActivePackageCount)
-                .AddProperty("Pending Packages", PendingPackageCount)
-                .AddProperty("Total Cores", _allocationInfo?.TotalCores ?? 0)
-                .AddProperty(
-                    "Allocation %",
-                    _allocationInfo != null
-                        ? $"{_allocationInfo.AllocationPercentage * 100:F0}%"
-                        : "N/A"
-                );
-
-            var activeNode = node.AddChild("Active Packages");
-            foreach (var kvp in _activePackages!)
-            {
-                var pkg = kvp.Value;
-                activeNode
-                    .AddChild(pkg.Name)
-                    .AddProperty("Current Step", $"{pkg.CurrentStepIndex + 1}/{pkg.TotalSteps}")
-                    .AddProperty("Priority", pkg.Priority.ToString())
-                    .AddProperty("Progress", $"{pkg.Progress * 100:F1}%");
-            }
-
-            var queueNode = node.AddChild("Queues by Priority");
-            foreach (TaskPriority priority in Enum.GetValues(typeof(TaskPriority)))
-            {
-                int count = GetQueueLength(priority);
-                if (count > 0)
-                {
-                    queueNode.AddChild($"{priority}: {count} packages");
-                }
-            }
-
-            return node;
-        }
-
-        void IDataProvider.Refresh() { }
-
-        IEnumerable<string> IDataProvider.Search(string pattern)
-        {
-            var results = new List<string>();
-            foreach (var kvp in _activePackages!)
-            {
-                if (kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-                {
-                    results.Add($"Active/{kvp.Key}");
-                }
-            }
-            foreach (var kvp in _pendingPackages!)
-            {
-                if (kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-                {
-                    results.Add($"Pending/{kvp.Key}");
-                }
-            }
-            return results;
-        }
-#endif
     }
 
     internal class BatchStats

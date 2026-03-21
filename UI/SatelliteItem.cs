@@ -224,7 +224,7 @@ public partial class SatelliteItem : HBoxContainer
         numAbberations = (int)baseMesh["num_abberations"];
         numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
 
-        if (t.ContainsKey("tectonic"))
+        if (t.ContainsKey("tectonics"))
         {
             hasTectonics = true;
             var tectonics = (Godot.Collections.Dictionary)t["tectonics"];
@@ -306,7 +306,7 @@ public partial class SatelliteItem : HBoxContainer
         numAbberations = (int)baseMesh["num_abberations"];
         numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
 
-        if (t.ContainsKey("tectonic"))
+        if (t.ContainsKey("tectonics"))
         {
             hasTectonics = true;
             var tectonics = (Godot.Collections.Dictionary)t["tectonics"];

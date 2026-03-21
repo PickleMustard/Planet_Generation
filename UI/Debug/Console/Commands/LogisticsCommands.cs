@@ -4,10 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using UI.Debug;
-using ProceduralGeneration;
 using ProceduralGeneration.PlanetGeneration;
 using Constructables.ArtificialSatellites;
-using Structures.GameState;
 using UtilityLibrary;
 
 namespace UI.Debug.Console;
@@ -26,7 +24,7 @@ public static class LogisticsCommands
     /// <summary>
     /// Generates a random ship name from the satellites.yml name list.
     /// </summary>
-    private static string GenerateRandomShipName()
+    internal static string GenerateRandomShipName()
     {
         LoadShipNamesIfNeeded();
 
@@ -123,168 +121,10 @@ public static class LogisticsCommands
             _namesLoaded = true;
         }
     }
-    [DebugCommand(
-        "spawn_ship",
-        "Spawn a new logistics ship in an orbit band",
-        "spawn_ship [name] [band_index] [dry_mass]",
-        Category = "Logistics"
-    )]
-    public static int SpawnShip(CommandContext ctx, string[] args)
-    {
-        // Generate random name if not provided
-        string name = args.Length > 0 ? args[0] : GenerateRandomShipName();
-        int? bandIndex = null;
-        float? dryMass = null;
-
-        if (args.Length > 1)
-        {
-            if (int.TryParse(args[1], out var parsed))
-            {
-                bandIndex = parsed;
-            }
-            else
-            {
-                ctx.WriteError($"Invalid band index: '{args[1]}'. Must be an integer.");
-                return 1;
-            }
-        }
-
-        // Parse optional dry mass parameter
-        if (args.Length > 2)
-        {
-            if (float.TryParse(args[2], out var parsedDryMass))
-            {
-                dryMass = parsedDryMass;
-            }
-            else
-            {
-                ctx.WriteError($"Invalid dry mass: '{args[2]}'. Must be a number.");
-                return 1;
-            }
-        }
-
-        // Find a celestial body to spawn the ship on
-        var body = FindFirstCelestialBody();
-        if (body == null)
-        {
-            ctx.WriteError("No celestial body found. Please spawn a planet first.");
-            return 1;
-        }
-
-        try
-        {
-            // Create a LogisticsUnit directly (not a StationSatellite)
-            var ship = new LogisticsUnit { Name = name };
-
-            int targetBand = bandIndex ?? FindAvailableBand(body);
-            if (targetBand < 0)
-            {
-                ctx.WriteError($"Failed to create ship '{name}'. No available orbit bands.");
-                return 1;
-            }
-
-            // Set dry mass if provided
-            if (dryMass.HasValue)
-            {
-                ship.SetDryMass(dryMass.Value);
-            }
-
-            body.SatellitesContainer.AddChild(ship);
-            ship.Initialize(body, targetBand);
-            ship.InitializeCargo();
-            ship.SetFuelCapacity(1000f);
-
-            // Note: ship auto-registers via RegisterWithDebug() called in Initialize()
-            // Get the namespace after registration
-            string? ns = InstanceRegistry.GetNamespace(ship);
-
-            ctx.WriteLine($"[color=green]Ship '{ship.Name}' created in orbit around {body.Name}[/color]");
-            if (!string.IsNullOrEmpty(ns))
-            {
-                ctx.WriteLine($"Namespace: {ns}");
-            }
-            ctx.WriteLine($"Band: {targetBand}, Fuel capacity: {ship.MaxFuel}");
-
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            ctx.WriteError($"Failed to create ship: {ex.Message}");
-            return 1;
-        }
-    }
-
-    /// <summary>
-    /// Finds an available orbit band on a celestial body.
-    /// </summary>
-    private static int FindAvailableBand(CelestialBody body)
-    {
-        for (int i = 0; i < body.OrbitBands.Count; i++)
-        {
-            if (body.CanAddToBand(i))
-                return i;
-        }
-        return -1;
-    }
-
-    [DebugCommand(
-        "spawn_station",
-        "Spawn a station in a specific orbit band",
-        "spawn_station <band_index> [name]",
-        Category = "Logistics",
-        RequiresTarget = true
-    )]
-    public static int SpawnStationOnTarget(CommandContext ctx, string[] args)
-    {
-        if (ctx.TargetInstance == null)
-        {
-            ctx.WriteError("No target selected. Use 'CelestialBody.0 spawn_station 0 MyStation'");
-            return 1;
-        }
-
-        if (args.Length < 1)
-        {
-            ctx.WriteError("Usage: spawn_station <band_index> [name]");
-            return 1;
-        }
-
-        if (!int.TryParse(args[0], out var bandIndex))
-        {
-            ctx.WriteError($"Invalid band index: '{args[0]}'. Must be an integer.");
-            return 1;
-        }
-
-        string name = args.Length > 1 ? args[1] : $"Station_{DateTime.Now.Ticks % 10000}";
-
-        if (ctx.TargetInstance is not CelestialBody body)
-        {
-            ctx.WriteError($"Target '{ctx.TargetInstance.GetType().Name}' is not a CelestialBody.");
-            return 1;
-        }
-
-        try
-        {
-            var station = body.CreateStation(bandIndex, name);
-            if (station == null)
-            {
-                ctx.WriteError($"Failed to create station. Band {bandIndex} may be full or invalid.");
-                return 1;
-            }
-
-            // Register under Constructables.Stations namespace
-            string ns = InstanceRegistry.RegisterStation(station);
-
-            ctx.WriteLine($"[color=green]Station '{name}' created in band {bandIndex} around {body.Name}[/color]");
-            ctx.WriteLine($"Namespace: {ns}");
-
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            ctx.WriteError($"Failed to create station: {ex.Message}");
-            return 1;
-        }
-    }
+    // NOTE: spawn_station was removed from LogisticsCommands to resolve a duplicate
+    // command name conflict with ConstructionManagerDebug.SpawnStationCommand.
+    // The instance version on ConstructionManagerDebug is the canonical one.
+    // Use: (CelestialBody.Earth) spawn_station 0 MyStation
 
     [DebugCommand(
         "list_constructables",
@@ -363,7 +203,7 @@ public static class LogisticsCommands
     [DebugCommand(
         "list_bands",
         "List orbit bands for a celestial body",
-        "list_bands <body_namespace>",
+        "list_bands [body_namespace]",
         Category = "Logistics"
     )]
     public static int ListOrbitBands(CommandContext ctx, string[] args)
@@ -425,23 +265,5 @@ public static class LogisticsCommands
         }
     }
 
-    /// <summary>
-    /// Finds the first celestial body in the instance registry.
-    /// </summary>
-    private static CelestialBody? FindFirstCelestialBody()
-    {
-        var bodies = InstanceRegistry.GetNamespaces<CelestialBody>().ToList();
-
-        // Also search all instances for any CelestialBody
-        foreach (var instance in InstanceRegistry.GetAllInstances())
-        {
-            if (instance is CelestialBody body)
-            {
-                return body;
-            }
-        }
-
-        return null;
-    }
 }
 #endif

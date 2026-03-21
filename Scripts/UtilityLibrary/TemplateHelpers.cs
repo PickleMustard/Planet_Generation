@@ -1,7 +1,12 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 using Godot.Collections;
+using Structures;
 using Structures.Enums;
+
+// Alias to disambiguate from Godot.Collections.Dictionary when using generic Dictionary<K,V>
+using SysDict = System.Collections.Generic.Dictionary<string, object>;
 
 namespace UtilityLibrary;
 
@@ -58,80 +63,60 @@ public static class TemplateHelpers
         }
     }
 
-    public static Array<Dictionary> LoadSystemTemplate(string fileName)
+    /// <summary>
+    /// Loads a system template YAML file in the new 3-section format (dominant/belts/planetary).
+    /// Each section's entries are returned in a format directly compatible with the corresponding
+    /// GUI item's SetConfiguration()/SetTemplate() methods, matching the ToParams() output structure.
+    /// </summary>
+    public static SystemTemplateData LoadSystemTemplate(string fileName)
     {
-        var bodies = new Array<Dictionary>();
+        var dominant = new Array<Dictionary>();
+        var belts = new Array<Dictionary>();
+        var planetary = new Array<Dictionary>();
 
         try
         {
             var raw = TemplateLoader.Load(fileName, TemplateLoader.SystemTemplateValidator);
-            if (
-                raw.TryGetValue("bodies", out var bodiesVariant)
-                && bodiesVariant.As<Godot.Collections.Array>() is Godot.Collections.Array bodyList
-            )
+
+            // Parse "dominant" section
+            if (raw.TryGetValue("dominant", out var dominantVariant))
             {
-                int dominantBodyIndex = 0;
-
-                foreach (var bodyVariant in bodyList)
+                var dominantList = dominantVariant.As<Godot.Collections.Array>();
+                if (dominantList != null)
                 {
-                    var bodyRaw = bodyVariant.AsGodotDictionary();
-                    var typeStr = ReadString(bodyRaw, "type", "Star").Replace(" ", "");
-
-                    // Check if this top-level entry is a satellite belt type (new flat format)
-                    if (Enum.TryParse<SatelliteGroupTypes>(typeStr, out _))
+                    foreach (var bodyVariant in dominantList)
                     {
-                        // Top-level belt entry — transform as satellite belt
-                        var beltResult = TransformSystemTemplateSatellite(bodyRaw);
-                        beltResult["is_top_level_belt"] = true;
-                        // Preserve orbital_center_index if present
-                        if (!beltResult.ContainsKey("orbital_center_index"))
-                            beltResult["orbital_center_index"] = (int)ReadFloat(
-                                bodyRaw,
-                                "orbital_center_index",
-                                -1f
-                            );
-                        bodies.Add(beltResult);
-                        continue;
+                        var bodyRaw = bodyVariant.AsGodotDictionary();
+                        dominant.Add(LoadDominantBody(bodyRaw));
                     }
+                }
+            }
 
-                    var transformed = TransformSystemTemplateBody(bodyRaw);
-                    bool isDominant = IsDominantBodyTypeString(typeStr);
-
-                    // For the old YAML format: extract belt-type satellites from the body's
-                    // satellites array and promote them to top-level entries so the UI can
-                    // place them in the dedicated Satellite Belts section.
-                    if (isDominant && transformed.ContainsKey("satellites"))
+            // Parse "belts" section
+            if (raw.TryGetValue("belts", out var beltsVariant))
+            {
+                var beltsList = beltsVariant.As<Godot.Collections.Array>();
+                if (beltsList != null)
+                {
+                    foreach (var beltVariant in beltsList)
                     {
-                        var satellites = (Array<Dictionary>)transformed["satellites"];
-                        var individualSatellites = new Array<Dictionary>();
-
-                        foreach (var sat in satellites)
-                        {
-                            var satTypeStr = ReadString(sat, "type", "Moon");
-                            if (Enum.TryParse<SatelliteGroupTypes>(satTypeStr, out _))
-                            {
-                                // Belt-type satellite: promote to top-level entry
-                                sat["is_top_level_belt"] = true;
-                                sat["orbital_center_index"] = dominantBodyIndex;
-                                bodies.Add(sat);
-                            }
-                            else
-                            {
-                                // Individual satellite: keep as child of parent body
-                                individualSatellites.Add(sat);
-                            }
-                        }
-
-                        // Replace satellites array with only individual satellites
-                        if (individualSatellites.Count > 0)
-                            transformed["satellites"] = individualSatellites;
-                        else
-                            transformed.Remove("satellites");
+                        var beltRaw = beltVariant.AsGodotDictionary();
+                        belts.Add(LoadBeltEntry(beltRaw));
                     }
+                }
+            }
 
-                    bodies.Add(transformed);
-                    if (isDominant)
-                        dominantBodyIndex++;
+            // Parse "planetary" section
+            if (raw.TryGetValue("planetary", out var planetaryVariant))
+            {
+                var planetaryList = planetaryVariant.As<Godot.Collections.Array>();
+                if (planetaryList != null)
+                {
+                    foreach (var bodyVariant in planetaryList)
+                    {
+                        var bodyRaw = bodyVariant.AsGodotDictionary();
+                        planetary.Add(LoadPlanetaryBody(bodyRaw));
+                    }
                 }
             }
         }
@@ -140,7 +125,281 @@ public static class TemplateHelpers
             GD.PrintErr($"Error loading system template {fileName}: {e.Message}\n{e.StackTrace}");
         }
 
-        return bodies;
+        return new SystemTemplateData(dominant, belts, planetary);
+    }
+
+    /// <summary>
+    /// Loads a dominant body entry from YAML into a dict matching DominantBodyItem.ToParams() format.
+    /// </summary>
+    private static Dictionary LoadDominantBody(Dictionary raw)
+    {
+        var result = new Dictionary();
+        result["type"] = ReadString(raw, "type", "Star");
+        result["name"] = ReadString(raw, "name", "");
+
+        // template: { mass, size, position, velocity }
+        var template = new Dictionary();
+        if (raw.TryGetValue("template", out var templateVariant))
+        {
+            var templateRaw = templateVariant.AsGodotDictionary();
+            template["mass"] = ReadFloat(templateRaw, "mass", 500000f);
+            template["size"] = ReadFloat(templateRaw, "size", 500f);
+            template["position"] = ReadVector3(templateRaw, "position", Vector3.Zero);
+            template["velocity"] = ReadVector3(templateRaw, "velocity", Vector3.Zero);
+        }
+        result["template"] = template;
+
+        // central_parameters: { inclination, starting_angle }
+        var centralParams = new Dictionary();
+        if (raw.TryGetValue("central_parameters", out var cpVariant))
+        {
+            var cpRaw = cpVariant.AsGodotDictionary();
+            centralParams["inclination"] = ReadFloat(cpRaw, "inclination", 0f);
+            centralParams["starting_angle"] = ReadFloat(cpRaw, "starting_angle", 0f);
+        }
+        result["central_parameters"] = centralParams;
+
+        // base_mesh: { subdivisions, vertices_per_edge, num_abberations, num_deformation_cycles }
+        if (raw.TryGetValue("base_mesh", out var bmVariant))
+            result["base_mesh"] = LoadBaseMesh(bmVariant.AsGodotDictionary());
+
+        // spherical_harmonics_settings (optional)
+        if (raw.TryGetValue("spherical_harmonics_settings", out var shVariant))
+            result["spherical_harmonics_settings"] = LoadFloatRangeDict(
+                shVariant.AsGodotDictionary(),
+                "amplitude_range"
+            );
+
+        return result;
+    }
+
+    /// <summary>
+    /// Loads a belt entry from YAML into a dict matching SatelliteBeltItem.ToParams() flat format.
+    /// </summary>
+    private static Dictionary LoadBeltEntry(Dictionary raw)
+    {
+        var result = new Dictionary();
+        result["type"] = ReadString(raw, "type", "AsteroidBelt");
+        result["ring_apogee"] = ReadFloat(raw, "ring_apogee", 0f);
+        result["ring_perigee"] = ReadFloat(raw, "ring_perigee", 0f);
+        result["ring_velocity"] = ReadVector3(raw, "ring_velocity", Vector3.Zero);
+        result["size_min"] = ReadFloat(raw, "size_min", 1f);
+        result["size_max"] = ReadFloat(raw, "size_max", 5f);
+        result["mass_min"] = ReadFloat(raw, "mass_min", 1f);
+        result["mass_max"] = ReadFloat(raw, "mass_max", 10f);
+        result["lower_range"] = (int)ReadFloat(raw, "lower_range", 1f);
+        result["upper_range"] = (int)ReadFloat(raw, "upper_range", 4f);
+        result["grouping"] = ReadString(raw, "grouping", "Balanced");
+        result["orbital_center_index"] = (int)ReadFloat(raw, "orbital_center_index", -1f);
+        return result;
+    }
+
+    /// <summary>
+    /// Loads a planetary body entry from YAML into a dict matching PlanetaryBodyItem.ToParams() format.
+    /// </summary>
+    private static Dictionary LoadPlanetaryBody(Dictionary raw)
+    {
+        var result = new Dictionary();
+        result["type"] = ReadString(raw, "type", "RockyPlanet");
+        result["name"] = ReadString(raw, "name", "");
+
+        // template: { mass, size }
+        var template = new Dictionary();
+        if (raw.TryGetValue("template", out var templateVariant))
+        {
+            var templateRaw = templateVariant.AsGodotDictionary();
+            template["mass"] = ReadFloat(templateRaw, "mass", 1000f);
+            template["size"] = ReadFloat(templateRaw, "size", 150f);
+        }
+        result["template"] = template;
+
+        // orbital_parameters: { apogee, perigee, starting_angle, vertical_offset, orbital_center_index, parent_body }
+        var orbitalParams = new Dictionary();
+        if (raw.TryGetValue("orbital_parameters", out var opVariant))
+        {
+            var opRaw = opVariant.AsGodotDictionary();
+            orbitalParams["apogee"] = ReadFloat(opRaw, "apogee", 1000f);
+            orbitalParams["perigee"] = ReadFloat(opRaw, "perigee", 500f);
+            orbitalParams["starting_angle"] = ReadFloat(opRaw, "starting_angle", 0f);
+            orbitalParams["vertical_offset"] = ReadFloat(opRaw, "vertical_offset", 0f);
+            orbitalParams["orbital_center_index"] = (int)ReadFloat(
+                opRaw, "orbital_center_index", -1f
+            );
+            orbitalParams["parent_body"] = ReadString(opRaw, "parent_body", "barycenter");
+        }
+        result["orbital_parameters"] = orbitalParams;
+
+        // base_mesh
+        if (raw.TryGetValue("base_mesh", out var bmVariant))
+            result["base_mesh"] = LoadBaseMesh(bmVariant.AsGodotDictionary());
+
+        // tectonics
+        if (raw.TryGetValue("tectonics", out var tVariant))
+            result["tectonics"] = LoadTectonics(tVariant.AsGodotDictionary());
+
+        // spherical_harmonics_settings (optional)
+        if (raw.TryGetValue("spherical_harmonics_settings", out var shVariant))
+            result["spherical_harmonics_settings"] = LoadFloatRangeDict(
+                shVariant.AsGodotDictionary(),
+                "amplitude_range"
+            );
+
+        // satellites (optional, nested under planetary body)
+        if (raw.TryGetValue("satellites", out var satVariant))
+        {
+            var satList = satVariant.As<Godot.Collections.Array>();
+            if (satList != null && satList.Count > 0)
+            {
+                var satellites = new Array<Dictionary>();
+                foreach (var sv in satList)
+                {
+                    var satRaw = sv.AsGodotDictionary();
+                    satellites.Add(LoadSatelliteEntry(satRaw));
+                }
+                result["satellites"] = satellites;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Loads a satellite entry from YAML into a dict matching SatelliteItem.ToParams() format.
+    /// </summary>
+    private static Dictionary LoadSatelliteEntry(Dictionary raw)
+    {
+        var result = new Dictionary();
+        result["type"] = ReadString(raw, "type", "Moon");
+        result["name"] = ReadString(raw, "name", "");
+
+        // template: { apogee, perigee, starting_angle, vertical_offset, mass, size }
+        var template = new Dictionary();
+        if (raw.TryGetValue("template", out var templateVariant))
+        {
+            var templateRaw = templateVariant.AsGodotDictionary();
+            template["apogee"] = ReadFloat(templateRaw, "apogee", 500f);
+            template["perigee"] = ReadFloat(templateRaw, "perigee", 300f);
+            template["starting_angle"] = ReadFloat(templateRaw, "starting_angle", 0f);
+            template["vertical_offset"] = ReadFloat(templateRaw, "vertical_offset", 0f);
+            template["mass"] = ReadFloat(templateRaw, "mass", 1f);
+            template["size"] = ReadFloat(templateRaw, "size", 1f);
+        }
+        result["template"] = template;
+
+        // base_mesh
+        if (raw.TryGetValue("base_mesh", out var bmVariant))
+            result["base_mesh"] = LoadBaseMesh(bmVariant.AsGodotDictionary());
+
+        // tectonics
+        if (raw.TryGetValue("tectonics", out var tVariant))
+            result["tectonics"] = LoadTectonics(tVariant.AsGodotDictionary());
+
+        // spherical_harmonics_settings
+        if (raw.TryGetValue("spherical_harmonics_settings", out var shVariant))
+            result["spherical_harmonics_settings"] = LoadFloatRangeDict(
+                shVariant.AsGodotDictionary(),
+                "amplitude_range"
+            );
+
+        // scaling_settings
+        if (raw.TryGetValue("scaling_settings", out var scaleVariant))
+            result["scaling_settings"] = scaleVariant.AsGodotDictionary();
+
+        // noise_settings
+        if (raw.TryGetValue("noise_settings", out var noiseVariant))
+            result["noise_settings"] = noiseVariant.AsGodotDictionary();
+
+        return result;
+    }
+
+    /// <summary>
+    /// Loads a base_mesh section into a Dictionary with properly typed vertices_per_edge.
+    /// </summary>
+    private static Dictionary LoadBaseMesh(Dictionary raw)
+    {
+        var result = new Dictionary();
+        result["subdivisions"] = (int)ReadFloat(raw, "subdivisions", 1f);
+        result["num_abberations"] = (int)ReadFloat(raw, "num_abberations", 0f);
+        result["num_deformation_cycles"] = (int)ReadFloat(raw, "num_deformation_cycles", 0f);
+
+        // vertices_per_edge: convert from YAML array to Array<Array<int>>
+        if (raw.TryGetValue("vertices_per_edge", out var vpeVariant))
+        {
+            var vpeArray = new Array<Array<int>>();
+            var rawArray = vpeVariant.As<Godot.Collections.Array>();
+            if (rawArray != null)
+            {
+                foreach (var rowVariant in rawArray)
+                {
+                    var rowArray = rowVariant.As<Godot.Collections.Array>();
+                    if (rowArray != null && rowArray.Count >= 2)
+                    {
+                        var row = new Array<int>();
+                        row.Add(NodeToInt(rowArray[0], 2));
+                        row.Add(NodeToInt(rowArray[1], 3));
+                        vpeArray.Add(row);
+                    }
+                }
+            }
+            result["vertices_per_edge"] = vpeArray;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Loads a tectonics section from raw YAML, preserving array types.
+    /// </summary>
+    private static Dictionary LoadTectonics(Dictionary raw)
+    {
+        var result = new Dictionary();
+        string[] intRangeKeys = { "num_continents" };
+        string[] floatRangeKeys =
+        {
+            "stress_scale",
+            "shear_scale",
+            "max_propagation_distance",
+            "propagation_falloff",
+            "inactive_stress_threshold",
+            "general_height_scale",
+            "general_shear_scale",
+            "general_compression_scale",
+            "general_transform_scale",
+        };
+
+        foreach (var key in intRangeKeys)
+        {
+            if (raw.TryGetValue(key, out var v))
+            {
+                var range = ReadIntRange(raw, key, (0, 1));
+                result[key] = new int[] { range.Item1, range.Item2 };
+            }
+        }
+
+        foreach (var key in floatRangeKeys)
+        {
+            if (raw.TryGetValue(key, out var v))
+            {
+                var range = ReadFloatRange(raw, key, (0f, 1f));
+                result[key] = new float[] { range.Item1, range.Item2 };
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Loads a settings dict containing a single float range key (e.g. amplitude_range).
+    /// </summary>
+    private static Dictionary LoadFloatRangeDict(Dictionary raw, string key)
+    {
+        var result = new Dictionary();
+        if (raw.TryGetValue(key, out var v))
+        {
+            var range = ReadFloatRange(raw, key, (0f, 1f));
+            result[key] = new float[] { range.Item1, range.Item2 };
+        }
+        return result;
     }
 
     private static Dictionary TransformCelestialBodyTemplate(Dictionary raw, CelestialBodyType type)
@@ -290,6 +549,7 @@ public static class TemplateHelpers
     private static bool IsDominantBodyTypeString(string typeStr)
     {
         return typeStr.Equals("Star", StringComparison.OrdinalIgnoreCase)
+            || typeStr.Equals("NeutronStar", StringComparison.OrdinalIgnoreCase)
             || typeStr.Equals("BlackHole", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -362,184 +622,10 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static Dictionary TransformSystemTemplateBody(Dictionary raw)
-    {
-        var result = new Dictionary();
-
-        string typeStr = ReadString(raw, "type", "Star");
-        result["type"] = typeStr;
-
-        var template = new Dictionary();
-        template["mass"] = ReadFloat(raw, "mass", 1f);
-        template["size"] = ReadFloat(raw, "size", 1f);
-
-        if (IsDominantBodyTypeString(typeStr))
-        {
-            // Dominant bodies use position/velocity
-            template["position"] = ReadVector3(raw, "position", Vector3.Zero);
-            template["velocity"] = ReadVector3(raw, "velocity", Vector3.Zero);
-        }
-        else
-        {
-            // Planetary bodies use orbital parameters (at top level of result, not inside template)
-            var orbitalParams = new Dictionary();
-            orbitalParams["apogee"] = ReadFloat(raw, "apogee", 1000f);
-            orbitalParams["perigee"] = ReadFloat(raw, "perigee", 500f);
-            orbitalParams["starting_angle"] = ReadFloat(raw, "starting_angle", 0f);
-            orbitalParams["vertical_offset"] = ReadFloat(raw, "vertical_offset", 0f);
-            orbitalParams["orbital_center_index"] = (int)ReadFloat(
-                raw,
-                "orbital_center_index",
-                -1f
-            );
-            result["orbital_parameters"] = orbitalParams;
-        }
-
-        result["template"] = template;
-
-        if (raw.TryGetValue("mesh", out var meshVariant))
-        {
-            var mesh = meshVariant.AsGodotDictionary();
-
-            if (mesh.TryGetValue("base_mesh", out var baseMeshVariant))
-            {
-                result["base_mesh"] = baseMeshVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("tectonic", out var tectonicVariant))
-            {
-                result["tectonics"] = tectonicVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("scaling", out var scalingVariant))
-            {
-                result["scaling_settings"] = scalingVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("spherical_harmonics", out var shVariant))
-            {
-                result["spherical_harmonics_settings"] = shVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("noise_settings", out var noiseVariant))
-            {
-                result["noise_settings"] = noiseVariant.AsGodotDictionary();
-            }
-        }
-
-        if (raw.TryGetValue("satellites", out var satellitesVariant))
-        {
-            var satellites = new Array<Dictionary>();
-            var satelliteList = satellitesVariant.As<Godot.Collections.Array>();
-
-            foreach (var satVariant in satelliteList)
-            {
-                var satRaw = satVariant.AsGodotDictionary();
-                var satResult = TransformSystemTemplateSatellite(satRaw);
-                satellites.Add(satResult);
-            }
-
-            result["satellites"] = satellites;
-        }
-
-        // Load names based on the type string
-        var nameFileName = GetNameFileFromTypeString(typeStr);
-        result["possible_names"] = ExtractNameCategories(raw, nameFileName);
-
-        return result;
-    }
-
-    private static Dictionary TransformSystemTemplateSatellite(Dictionary raw)
-    {
-        var result = new Dictionary();
-
-        // Normalize type string: remove spaces so "Asteroid Belt" becomes "AsteroidBelt"
-        // to match enum names in SatelliteGroupTypes and SatelliteBodyType
-        result["type"] = ReadString(raw, "type", "Moon").Replace(" ", "");
-
-        // Check if this is a satellite group (has a "template" sub-key with group config)
-        bool isSatelliteGroup = raw.ContainsKey("template");
-
-        if (isSatelliteGroup)
-        {
-            // Satellite group (Asteroid Belt, etc.) — nest all belt params inside "template"
-            // so SatelliteBeltItem.SetTemplate() can find them at t["template"][key]
-            var template = new Dictionary();
-            template["mass"] = ReadFloat(raw, "mass", 1f);
-            template["size"] = ReadFloat(raw, "size", 1f);
-
-            var groupTemplate = raw["template"].AsGodotDictionary();
-            var numRange = ReadIntRange(groupTemplate, "number_asteroids", (1, 4));
-            template["lower_range"] = numRange.Item1;
-            template["upper_range"] = numRange.Item2;
-            template["ring_apogee"] = ReadFloat(
-                groupTemplate,
-                "apogee",
-                ReadFloat(groupTemplate, "ring_apogee", 0f)
-            );
-            template["ring_perigee"] = ReadFloat(
-                groupTemplate,
-                "perigee",
-                ReadFloat(groupTemplate, "ring_perigee", 0f)
-            );
-            template["ring_velocity"] = ReadVector3(groupTemplate, "ring_velocity", Vector3.Zero);
-            template["grouping"] = ReadString(groupTemplate, "grouping", "Balanced");
-
-            var sizeRange = ReadFloatRange(groupTemplate, "size_range", (1f, 5f));
-            template["size_min"] = sizeRange.Item1;
-            template["size_max"] = sizeRange.Item2;
-
-            var massRange = ReadFloatRange(groupTemplate, "mass_range", (1f, 10f));
-            template["mass_min"] = massRange.Item1;
-            template["mass_max"] = massRange.Item2;
-
-            result["template"] = template;
-        }
-        else
-        {
-            // Individual satellite (Moon, Asteroid, Comet) — use orbital parameters
-            var template = new Dictionary();
-            template["apogee"] = ReadFloat(raw, "apogee", 500f);
-            template["perigee"] = ReadFloat(raw, "perigee", 300f);
-            template["starting_angle"] = ReadFloat(raw, "starting_angle", 0f);
-            template["vertical_offset"] = ReadFloat(raw, "vertical_offset", 0f);
-            template["mass"] = ReadFloat(raw, "mass", 1f);
-            template["size"] = ReadFloat(raw, "size", 1f);
-            result["template"] = template;
-        }
-
-        if (raw.TryGetValue("mesh", out var meshVariant))
-        {
-            var mesh = meshVariant.AsGodotDictionary();
-
-            if (mesh.TryGetValue("base_mesh", out var baseMeshVariant))
-            {
-                result["base_mesh"] = baseMeshVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("tectonic", out var tectonicVariant))
-            {
-                result["tectonics"] = tectonicVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("scaling", out var scalingVariant))
-            {
-                result["scaling_settings"] = scalingVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("spherical_harmonics", out var shVariant))
-            {
-                result["spherical_harmonics_settings"] = shVariant.AsGodotDictionary();
-            }
-
-            if (mesh.TryGetValue("noise_settings", out var noiseVariant))
-            {
-                result["noise_settings"] = noiseVariant.AsGodotDictionary();
-            }
-        }
-
-        return result;
-    }
+    // TransformSystemTemplateBody and TransformSystemTemplateSatellite removed —
+    // The new YAML format matches ToParams() directly, so no transformation is needed.
+    // Loading is handled by LoadDominantBody(), LoadPlanetaryBody(), LoadBeltEntry(),
+    // and LoadSatelliteEntry() above.
 
     private static Dictionary ExtractNameCategories(Dictionary raw, string nameFileName)
     {
@@ -621,6 +707,7 @@ public static class TemplateHelpers
             CelestialBodyType.IceGiant => "IceGiant",
             CelestialBodyType.DwarfPlanet => "DwarfPlanet",
             CelestialBodyType.Star => "Star",
+            CelestialBodyType.NeutronStar => "NeutronStar",
             CelestialBodyType.BlackHole => "BlackHole",
             _ => type.ToString(),
         };
@@ -662,6 +749,7 @@ public static class TemplateHelpers
             CelestialBodyType.GasGiant => "nonrocky",
             CelestialBodyType.IceGiant => "nonrocky",
             CelestialBodyType.Star => "centralbodies",
+            CelestialBodyType.NeutronStar => "centralbodies",
             CelestialBodyType.BlackHole => "centralbodies",
             _ => "rockyplanets",
         };
@@ -696,6 +784,7 @@ public static class TemplateHelpers
         {
             "star" => "centralbodies",
             "blackhole" => "centralbodies",
+            "neutronstar" => "centralbodies",
             "rockyplanet" => "rockyplanets",
             "dwarfplanet" => "rockyplanets",
             "gasgiant" => "nonrocky",
@@ -902,7 +991,16 @@ public static class TemplateHelpers
         };
     }
 
-    public static string GenerateYamlContent(Array<Dictionary> bodies)
+    /// <summary>
+    /// Generates YAML content from three separate arrays of body dictionaries,
+    /// using the new 3-section format (dominant/belts/planetary).
+    /// Each array contains dictionaries in the ToParams() output format.
+    /// </summary>
+    public static string GenerateYamlContent(
+        Array<Dictionary> dominant,
+        Array<Dictionary> belts,
+        Array<Dictionary> planetary
+    )
     {
         var serializer = new YamlDotNet.Serialization.SerializerBuilder()
             .WithNamingConvention(
@@ -910,552 +1008,342 @@ public static class TemplateHelpers
             )
             .Build();
 
-        var data = new System.Collections.Generic.Dictionary<string, object>
-        {
-            ["bodies"] = ConvertBodiesToYamlStructure(bodies),
-        };
+        var data = new SysDict();
+
+        if (dominant.Count > 0)
+            data["dominant"] = ConvertDominantToYaml(dominant);
+        if (belts.Count > 0)
+            data["belts"] = ConvertBeltsToYaml(belts);
+        if (planetary.Count > 0)
+            data["planetary"] = ConvertPlanetaryToYaml(planetary);
 
         return serializer.Serialize(data);
     }
 
-    private static void ConvertBeltToYamlStructure(
-        Dictionary body,
-        System.Collections.Generic.Dictionary<string, object> bodyDict
+    private static List<SysDict> ConvertDominantToYaml(
+        Array<Dictionary> bodies
     )
     {
-        // Satellite belt entries from SatelliteBeltItem.ToParams() have a flat structure
-        // with keys like ring_apogee, ring_perigee, etc. at the top level.
-        // Serialize into the YAML template format.
-        var templateSection = new System.Collections.Generic.Dictionary<string, object>();
-
-        if (body.ContainsKey("lower_range") || body.ContainsKey("upper_range"))
-        {
-            int lower = body.ContainsKey("lower_range") ? (int)body["lower_range"] : 1;
-            int upper = body.ContainsKey("upper_range") ? (int)body["upper_range"] : lower;
-            templateSection["number_asteroids"] = new System.Collections.Generic.List<int>
-            {
-                lower,
-                upper,
-            };
-        }
-        if (body.ContainsKey("grouping"))
-            templateSection["grouping"] = (string)body["grouping"];
-        if (body.ContainsKey("ring_apogee"))
-            templateSection["apogee"] = (float)body["ring_apogee"];
-        if (body.ContainsKey("ring_perigee"))
-            templateSection["perigee"] = (float)body["ring_perigee"];
-        if (body.ContainsKey("ring_velocity"))
-        {
-            var rv = (Vector3)body["ring_velocity"];
-            templateSection["ring_velocity"] = new System.Collections.Generic.List<float>
-            {
-                rv.X,
-                rv.Y,
-                rv.Z,
-            };
-        }
-        if (body.ContainsKey("size_min"))
-        {
-            float sizeMin = (float)body["size_min"];
-            float sizeMax = body.ContainsKey("size_max") ? (float)body["size_max"] : sizeMin;
-            templateSection["size_range"] = new System.Collections.Generic.List<float>
-            {
-                sizeMin,
-                sizeMax,
-            };
-        }
-        if (body.ContainsKey("mass_min"))
-        {
-            float massMin = (float)body["mass_min"];
-            float massMax = body.ContainsKey("mass_max") ? (float)body["mass_max"] : massMin;
-            templateSection["mass_range"] = new System.Collections.Generic.List<float>
-            {
-                massMin,
-                massMax,
-            };
-        }
-
-        bodyDict["template"] = templateSection;
-
-        if (body.ContainsKey("orbital_center_index"))
-        {
-            int centerIdx = (int)body["orbital_center_index"];
-            if (centerIdx >= 0)
-                bodyDict["orbital_center_index"] = centerIdx;
-        }
-    }
-
-    private static System.Collections.Generic.List<System.Collections.Generic.Dictionary<
-        string,
-        object
-    >> ConvertBodiesToYamlStructure(Array<Dictionary> bodies)
-    {
-        var result = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<
-            string,
-            object
-        >>();
-
+        var result = new List<SysDict>();
         foreach (var body in bodies)
         {
-            var bodyDict = new System.Collections.Generic.Dictionary<string, object>();
-            string typeStr = (string)body["type"];
+            var dict = new SysDict();
+            dict["type"] = (string)body["type"];
+            if (body.ContainsKey("name"))
+                dict["name"] = (string)body["name"];
 
-            bodyDict["type"] = typeStr;
-
-            // Check if this is a top-level satellite belt entry (from the separate belt section)
-            if (Enum.TryParse<SatelliteGroupTypes>(typeStr, out _))
-            {
-                ConvertBeltToYamlStructure(body, bodyDict);
-                result.Add(bodyDict);
-                continue;
-            }
-
-            // Serialize orbital parameters for non-dominant bodies, position/velocity for dominant
-            if (body.ContainsKey("orbital_parameters"))
-            {
-                var orbitalParams = (Dictionary)body["orbital_parameters"];
-                if (orbitalParams.ContainsKey("apogee"))
-                    bodyDict["apogee"] = (float)orbitalParams["apogee"];
-                if (orbitalParams.ContainsKey("perigee"))
-                    bodyDict["perigee"] = (float)orbitalParams["perigee"];
-                if (orbitalParams.ContainsKey("starting_angle"))
-                    bodyDict["starting_angle"] = (float)orbitalParams["starting_angle"];
-                if (orbitalParams.ContainsKey("vertical_offset"))
-                    bodyDict["vertical_offset"] = (float)orbitalParams["vertical_offset"];
-                if (orbitalParams.ContainsKey("orbital_center_index"))
-                {
-                    int centerIdx = (int)orbitalParams["orbital_center_index"];
-                    if (centerIdx >= 0)
-                        bodyDict["orbital_center_index"] = centerIdx;
-                }
-            }
-
+            // template: { mass, size, position, velocity }
             if (body.ContainsKey("template"))
             {
                 var template = (Dictionary)body["template"];
+                var tDict = new SysDict();
+                if (template.ContainsKey("mass"))
+                    tDict["mass"] = (float)template["mass"];
+                if (template.ContainsKey("size"))
+                    tDict["size"] = (float)template["size"];
                 if (template.ContainsKey("position"))
                 {
-                    var pos = (Vector3)template["position"];
-                    bodyDict["position"] = new System.Collections.Generic.List<float>
-                    {
-                        pos.X,
-                        pos.Y,
-                        pos.Z,
-                    };
+                    var p = (Vector3)template["position"];
+                    tDict["position"] = new List<float> { p.X, p.Y, p.Z };
                 }
                 if (template.ContainsKey("velocity"))
                 {
-                    var vel = (Vector3)template["velocity"];
-                    bodyDict["velocity"] = new System.Collections.Generic.List<float>
-                    {
-                        vel.X,
-                        vel.Y,
-                        vel.Z,
-                    };
+                    var v = (Vector3)template["velocity"];
+                    tDict["velocity"] = new List<float> { v.X, v.Y, v.Z };
                 }
-                if (template.ContainsKey("mass"))
-                    bodyDict["mass"] = (float)template["mass"];
-                if (template.ContainsKey("size"))
-                    bodyDict["size"] = (int)template["size"];
+                dict["template"] = tDict;
             }
 
-            if (body.ContainsKey("base_mesh"))
+            // central_parameters
+            if (body.ContainsKey("central_parameters"))
             {
-                var baseMesh = (Dictionary)body["base_mesh"];
-                var meshSection = new System.Collections.Generic.Dictionary<string, object>();
-
-                var baseMeshSection = new System.Collections.Generic.Dictionary<string, object>();
-                if (baseMesh.ContainsKey("subdivisions"))
-                    baseMeshSection["subdivisions"] = (int)baseMesh["subdivisions"];
-                if (baseMesh.ContainsKey("vertices_per_edge"))
-                {
-                    var vpe = (Array<Array<int>>)baseMesh["vertices_per_edge"];
-                    var vpeList =
-                        new System.Collections.Generic.List<System.Collections.Generic.List<int>>();
-                    foreach (var row in vpe)
-                    {
-                        vpeList.Add(new System.Collections.Generic.List<int> { row[0], row[1] });
-                    }
-                    baseMeshSection["vertices_per_edge"] = vpeList;
-                }
-                if (baseMesh.ContainsKey("num_abberations"))
-                    baseMeshSection["num_abberations"] = (int)baseMesh["num_abberations"];
-                if (baseMesh.ContainsKey("num_deformation_cycles"))
-                    baseMeshSection["num_deformation_cycles"] = (int)
-                        baseMesh["num_deformation_cycles"];
-
-                meshSection["base_mesh"] = baseMeshSection;
-
-                if (body.ContainsKey("tectonics"))
-                {
-                    var tectonics = (Dictionary)body["tectonics"];
-                    var tectonicSection = new System.Collections.Generic.Dictionary<
-                        string,
-                        object
-                    >();
-
-                    if (tectonics.ContainsKey("num_continents"))
-                    {
-                        var nc = (Array<int>)tectonics["num_continents"];
-                        tectonicSection["num_continents"] = new System.Collections.Generic.List<int>
-                        {
-                            nc[0],
-                            nc[1],
-                        };
-                    }
-                    if (tectonics.ContainsKey("stress_scale"))
-                    {
-                        var ss = (Array<float>)tectonics["stress_scale"];
-                        tectonicSection["stress_scale"] = new System.Collections.Generic.List<float>
-                        {
-                            ss[0],
-                            ss[1],
-                        };
-                    }
-                    if (tectonics.ContainsKey("shear_scale"))
-                    {
-                        var shs = (Array<float>)tectonics["shear_scale"];
-                        tectonicSection["shear_scale"] = new System.Collections.Generic.List<float>
-                        {
-                            shs[0],
-                            shs[1],
-                        };
-                    }
-                    if (tectonics.ContainsKey("max_propagation_distance"))
-                    {
-                        var mpd = (Array<float>)tectonics["max_propagation_distance"];
-                        tectonicSection["max_propagation_distance"] =
-                            new System.Collections.Generic.List<float> { mpd[0], mpd[1] };
-                    }
-                    if (tectonics.ContainsKey("propagation_falloff"))
-                    {
-                        var pf = (Array<float>)tectonics["propagation_falloff"];
-                        tectonicSection["propagation_falloff"] =
-                            new System.Collections.Generic.List<float> { pf[0], pf[1] };
-                    }
-                    if (tectonics.ContainsKey("inactive_stress_threshold"))
-                    {
-                        var ist = (Array<float>)tectonics["inactive_stress_threshold"];
-                        tectonicSection["inactive_stress_threshold"] =
-                            new System.Collections.Generic.List<float> { ist[0], ist[1] };
-                    }
-                    if (tectonics.ContainsKey("general_height_scale"))
-                    {
-                        var ghs = (Array<float>)tectonics["general_height_scale"];
-                        tectonicSection["general_height_scale"] =
-                            new System.Collections.Generic.List<float> { ghs[0], ghs[1] };
-                    }
-                    if (tectonics.ContainsKey("general_shear_scale"))
-                    {
-                        var gss = (Array<float>)tectonics["general_shear_scale"];
-                        tectonicSection["general_shear_scale"] =
-                            new System.Collections.Generic.List<float> { gss[0], gss[1] };
-                    }
-                    if (tectonics.ContainsKey("general_compression_scale"))
-                    {
-                        var gcs = (Array<float>)tectonics["general_compression_scale"];
-                        tectonicSection["general_compression_scale"] =
-                            new System.Collections.Generic.List<float> { gcs[0], gcs[1] };
-                    }
-                    if (tectonics.ContainsKey("general_transform_scale"))
-                    {
-                        var gts = (Array<float>)tectonics["general_transform_scale"];
-                        tectonicSection["general_transform_scale"] =
-                            new System.Collections.Generic.List<float> { gts[0], gts[1] };
-                    }
-
-                    meshSection["tectonic"] = tectonicSection;
-                }
-
-                bodyDict["mesh"] = meshSection;
+                var cp = (Dictionary)body["central_parameters"];
+                var cpDict = new SysDict();
+                if (cp.ContainsKey("inclination"))
+                    cpDict["inclination"] = (float)cp["inclination"];
+                if (cp.ContainsKey("starting_angle"))
+                    cpDict["starting_angle"] = (float)cp["starting_angle"];
+                dict["central_parameters"] = cpDict;
             }
 
+            // base_mesh
+            if (body.ContainsKey("base_mesh"))
+                dict["base_mesh"] = ConvertBaseMeshToYaml((Dictionary)body["base_mesh"]);
+
+            // spherical_harmonics_settings
+            if (body.ContainsKey("spherical_harmonics_settings"))
+                dict["spherical_harmonics_settings"] = ConvertFloatRangeDictToYaml(
+                    (Dictionary)body["spherical_harmonics_settings"]
+                );
+
+            result.Add(dict);
+        }
+        return result;
+    }
+
+    private static List<SysDict> ConvertBeltsToYaml(
+        Array<Dictionary> belts
+    )
+    {
+        var result = new List<SysDict>();
+        foreach (var belt in belts)
+        {
+            var dict = new SysDict();
+            dict["type"] = (string)belt["type"];
+            if (belt.ContainsKey("ring_apogee"))
+                dict["ring_apogee"] = (float)belt["ring_apogee"];
+            if (belt.ContainsKey("ring_perigee"))
+                dict["ring_perigee"] = (float)belt["ring_perigee"];
+            if (belt.ContainsKey("ring_velocity"))
+            {
+                var rv = (Vector3)belt["ring_velocity"];
+                dict["ring_velocity"] = new List<float> { rv.X, rv.Y, rv.Z };
+            }
+            if (belt.ContainsKey("size_min"))
+                dict["size_min"] = (float)belt["size_min"];
+            if (belt.ContainsKey("size_max"))
+                dict["size_max"] = (float)belt["size_max"];
+            if (belt.ContainsKey("mass_min"))
+                dict["mass_min"] = (float)belt["mass_min"];
+            if (belt.ContainsKey("mass_max"))
+                dict["mass_max"] = (float)belt["mass_max"];
+            if (belt.ContainsKey("lower_range"))
+                dict["lower_range"] = (int)belt["lower_range"];
+            if (belt.ContainsKey("upper_range"))
+                dict["upper_range"] = (int)belt["upper_range"];
+            if (belt.ContainsKey("grouping"))
+                dict["grouping"] = (string)belt["grouping"];
+            if (belt.ContainsKey("orbital_center_index"))
+                dict["orbital_center_index"] = (int)belt["orbital_center_index"];
+            result.Add(dict);
+        }
+        return result;
+    }
+
+    private static List<SysDict> ConvertPlanetaryToYaml(
+        Array<Dictionary> bodies
+    )
+    {
+        var result = new List<SysDict>();
+        foreach (var body in bodies)
+        {
+            var dict = new SysDict();
+            dict["type"] = (string)body["type"];
+            if (body.ContainsKey("name"))
+                dict["name"] = (string)body["name"];
+
+            // template: { mass, size }
+            if (body.ContainsKey("template"))
+            {
+                var template = (Dictionary)body["template"];
+                var tDict = new SysDict();
+                if (template.ContainsKey("mass"))
+                    tDict["mass"] = (float)template["mass"];
+                if (template.ContainsKey("size"))
+                    tDict["size"] = (float)template["size"];
+                dict["template"] = tDict;
+            }
+
+            // orbital_parameters
+            if (body.ContainsKey("orbital_parameters"))
+            {
+                var op = (Dictionary)body["orbital_parameters"];
+                var opDict = new SysDict();
+                if (op.ContainsKey("apogee"))
+                    opDict["apogee"] = (float)op["apogee"];
+                if (op.ContainsKey("perigee"))
+                    opDict["perigee"] = (float)op["perigee"];
+                if (op.ContainsKey("starting_angle"))
+                    opDict["starting_angle"] = (float)op["starting_angle"];
+                if (op.ContainsKey("vertical_offset"))
+                    opDict["vertical_offset"] = (float)op["vertical_offset"];
+                if (op.ContainsKey("orbital_center_index"))
+                    opDict["orbital_center_index"] = (int)op["orbital_center_index"];
+                if (op.ContainsKey("parent_body"))
+                    opDict["parent_body"] = (string)op["parent_body"];
+                dict["orbital_parameters"] = opDict;
+            }
+
+            // base_mesh
+            if (body.ContainsKey("base_mesh"))
+                dict["base_mesh"] = ConvertBaseMeshToYaml((Dictionary)body["base_mesh"]);
+
+            // tectonics
+            if (body.ContainsKey("tectonics"))
+                dict["tectonics"] = ConvertTectonicsToYaml((Dictionary)body["tectonics"]);
+
+            // spherical_harmonics_settings
+            if (body.ContainsKey("spherical_harmonics_settings"))
+                dict["spherical_harmonics_settings"] = ConvertFloatRangeDictToYaml(
+                    (Dictionary)body["spherical_harmonics_settings"]
+                );
+
+            // satellites
             if (body.ContainsKey("satellites"))
             {
                 var satellites = (Godot.Collections.Array)body["satellites"];
-                var satellitesList =
-                    new System.Collections.Generic.List<System.Collections.Generic.Dictionary<
-                        string,
-                        object
-                    >>();
-
-                foreach (Dictionary satellite in satellites)
+                var satList = new List<SysDict>();
+                foreach (Dictionary sat in satellites)
                 {
-                    var satDict = new System.Collections.Generic.Dictionary<string, object>();
-                    string satTypeStr = (string)satellite["type"];
-                    satDict["type"] = satTypeStr;
-
-                    bool isSatelliteGroup =
-                        satTypeStr.Contains("Belt") || satTypeStr.Contains("Comet");
-
-                    if (satellite.ContainsKey("template"))
-                    {
-                        var satTemplate = (Dictionary)satellite["template"];
-
-                        if (isSatelliteGroup)
-                        {
-                            var groupTemplateSection = new System.Collections.Generic.Dictionary<
-                                string,
-                                object
-                            >();
-
-                            if (satTemplate.ContainsKey("lower_range"))
-                                groupTemplateSection["number_asteroids"] =
-                                    new System.Collections.Generic.List<int>
-                                    {
-                                        (int)satTemplate["lower_range"],
-                                        satTemplate.ContainsKey("upper_range")
-                                            ? (int)satTemplate["upper_range"]
-                                            : (int)satTemplate["lower_range"],
-                                    };
-                            if (satTemplate.ContainsKey("grouping"))
-                                groupTemplateSection["grouping"] = (string)satTemplate["grouping"];
-                            if (satTemplate.ContainsKey("ring_apogee"))
-                                groupTemplateSection["apogee"] = (float)satTemplate["ring_apogee"];
-                            if (satTemplate.ContainsKey("ring_perigee"))
-                                groupTemplateSection["perigee"] = (float)
-                                    satTemplate["ring_perigee"];
-                            if (satTemplate.ContainsKey("ring_velocity"))
-                            {
-                                var rv = (Vector3)satTemplate["ring_velocity"];
-                                groupTemplateSection["ring_velocity"] =
-                                    new System.Collections.Generic.List<float> { rv.X, rv.Y, rv.Z };
-                            }
-                            if (satTemplate.ContainsKey("size_min"))
-                            {
-                                groupTemplateSection["size_range"] =
-                                    new System.Collections.Generic.List<float>
-                                    {
-                                        (float)satTemplate["size_min"],
-                                        satTemplate.ContainsKey("size_max")
-                                            ? (float)satTemplate["size_max"]
-                                            : (float)satTemplate["size_min"],
-                                    };
-                            }
-                            if (satTemplate.ContainsKey("mass_min"))
-                            {
-                                groupTemplateSection["mass_range"] =
-                                    new System.Collections.Generic.List<float>
-                                    {
-                                        (float)satTemplate["mass_min"],
-                                        satTemplate.ContainsKey("mass_max")
-                                            ? (float)satTemplate["mass_max"]
-                                            : (float)satTemplate["mass_min"],
-                                    };
-                            }
-
-                            satDict["template"] = groupTemplateSection;
-                        }
-                        else
-                        {
-                            // Individual satellite — serialize orbital parameters
-                            if (satTemplate.ContainsKey("apogee"))
-                                satDict["apogee"] = (float)satTemplate["apogee"];
-                            if (satTemplate.ContainsKey("perigee"))
-                                satDict["perigee"] = (float)satTemplate["perigee"];
-                            if (satTemplate.ContainsKey("starting_angle"))
-                                satDict["starting_angle"] = (float)satTemplate["starting_angle"];
-                            if (satTemplate.ContainsKey("vertical_offset"))
-                                satDict["vertical_offset"] = (float)satTemplate["vertical_offset"];
-                            if (satTemplate.ContainsKey("mass"))
-                                satDict["mass"] = (float)satTemplate["mass"];
-                            if (satTemplate.ContainsKey("size"))
-                                satDict["size"] = (int)satTemplate["size"];
-                        }
-                    }
-
-                    var satMeshSection = new System.Collections.Generic.Dictionary<
-                        string,
-                        object
-                    >();
-                    bool hasMeshContent = false;
-
-                    if (satellite.ContainsKey("base_mesh"))
-                    {
-                        var satBaseMesh = (Dictionary)satellite["base_mesh"];
-                        var baseMeshSection = new System.Collections.Generic.Dictionary<
-                            string,
-                            object
-                        >();
-
-                        if (satBaseMesh.ContainsKey("subdivisions"))
-                            baseMeshSection["subdivisions"] = (int)satBaseMesh["subdivisions"];
-                        if (satBaseMesh.ContainsKey("vertices_per_edge"))
-                        {
-                            var vpe = (Array<Array<int>>)satBaseMesh["vertices_per_edge"];
-                            var vpeList =
-                                new System.Collections.Generic.List<System.Collections.Generic.List<int>>();
-                            foreach (var row in vpe)
-                            {
-                                vpeList.Add(
-                                    new System.Collections.Generic.List<int> { row[0], row[1] }
-                                );
-                            }
-                            baseMeshSection["vertices_per_edge"] = vpeList;
-                        }
-                        if (satBaseMesh.ContainsKey("num_abberations"))
-                            baseMeshSection["num_abberations"] = (int)
-                                satBaseMesh["num_abberations"];
-                        if (satBaseMesh.ContainsKey("num_deformation_cycles"))
-                            baseMeshSection["num_deformation_cycles"] = (int)
-                                satBaseMesh["num_deformation_cycles"];
-
-                        satMeshSection["base_mesh"] = baseMeshSection;
-                        hasMeshContent = true;
-                    }
-
-                    if (satellite.ContainsKey("tectonics"))
-                    {
-                        var satTectonics = (Dictionary)satellite["tectonics"];
-                        var tectonicSection = new System.Collections.Generic.Dictionary<
-                            string,
-                            object
-                        >();
-
-                        if (satTectonics.ContainsKey("num_continents"))
-                        {
-                            var nc = (Array<int>)satTectonics["num_continents"];
-                            tectonicSection["num_continents"] =
-                                new System.Collections.Generic.List<int> { nc[0], nc[1] };
-                        }
-                        if (satTectonics.ContainsKey("stress_scale"))
-                        {
-                            var ss = (Array<float>)satTectonics["stress_scale"];
-                            tectonicSection["stress_scale"] =
-                                new System.Collections.Generic.List<float> { ss[0], ss[1] };
-                        }
-                        if (satTectonics.ContainsKey("shear_scale"))
-                        {
-                            var shs = (Array<float>)satTectonics["shear_scale"];
-                            tectonicSection["shear_scale"] =
-                                new System.Collections.Generic.List<float> { shs[0], shs[1] };
-                        }
-                        if (satTectonics.ContainsKey("max_propagation_distance"))
-                        {
-                            var mpd = (Array<float>)satTectonics["max_propagation_distance"];
-                            tectonicSection["max_propagation_distance"] =
-                                new System.Collections.Generic.List<float> { mpd[0], mpd[1] };
-                        }
-                        if (satTectonics.ContainsKey("propagation_falloff"))
-                        {
-                            var pf = (Array<float>)satTectonics["propagation_falloff"];
-                            tectonicSection["propagation_falloff"] =
-                                new System.Collections.Generic.List<float> { pf[0], pf[1] };
-                        }
-                        if (satTectonics.ContainsKey("inactive_stress_threshold"))
-                        {
-                            var ist = (Array<float>)satTectonics["inactive_stress_threshold"];
-                            tectonicSection["inactive_stress_threshold"] =
-                                new System.Collections.Generic.List<float> { ist[0], ist[1] };
-                        }
-                        if (satTectonics.ContainsKey("general_height_scale"))
-                        {
-                            var ghs = (Array<float>)satTectonics["general_height_scale"];
-                            tectonicSection["general_height_scale"] =
-                                new System.Collections.Generic.List<float> { ghs[0], ghs[1] };
-                        }
-                        if (satTectonics.ContainsKey("general_shear_scale"))
-                        {
-                            var gss = (Array<float>)satTectonics["general_shear_scale"];
-                            tectonicSection["general_shear_scale"] =
-                                new System.Collections.Generic.List<float> { gss[0], gss[1] };
-                        }
-                        if (satTectonics.ContainsKey("general_compression_scale"))
-                        {
-                            var gcs = (Array<float>)satTectonics["general_compression_scale"];
-                            tectonicSection["general_compression_scale"] =
-                                new System.Collections.Generic.List<float> { gcs[0], gcs[1] };
-                        }
-                        if (satTectonics.ContainsKey("general_transform_scale"))
-                        {
-                            var gts = (Array<float>)satTectonics["general_transform_scale"];
-                            tectonicSection["general_transform_scale"] =
-                                new System.Collections.Generic.List<float> { gts[0], gts[1] };
-                        }
-
-                        satMeshSection["tectonic"] = tectonicSection;
-                        hasMeshContent = true;
-                    }
-
-                    if (satellite.ContainsKey("scaling_settings"))
-                    {
-                        var satScaling = (Dictionary)satellite["scaling_settings"];
-                        var scalingSection = new System.Collections.Generic.Dictionary<
-                            string,
-                            object
-                        >();
-
-                        if (satScaling.ContainsKey("scaling_range_x"))
-                        {
-                            var srx = (Array<float>)satScaling["scaling_range_x"];
-                            scalingSection["scaling_range_x"] =
-                                new System.Collections.Generic.List<float> { srx[0], srx[1] };
-                        }
-                        if (satScaling.ContainsKey("scaling_range_y"))
-                        {
-                            var sry = (Array<float>)satScaling["scaling_range_y"];
-                            scalingSection["scaling_range_y"] =
-                                new System.Collections.Generic.List<float> { sry[0], sry[1] };
-                        }
-                        if (satScaling.ContainsKey("scaling_range_z"))
-                        {
-                            var srz = (Array<float>)satScaling["scaling_range_z"];
-                            scalingSection["scaling_range_z"] =
-                                new System.Collections.Generic.List<float> { srz[0], srz[1] };
-                        }
-
-                        satMeshSection["scaling"] = scalingSection;
-                        hasMeshContent = true;
-                    }
-
-                    if (satellite.ContainsKey("noise_settings"))
-                    {
-                        var satNoise = (Dictionary)satellite["noise_settings"];
-                        var noiseSection = new System.Collections.Generic.Dictionary<
-                            string,
-                            object
-                        >();
-
-                        if (satNoise.ContainsKey("amplitude_range"))
-                        {
-                            var ar = (Array<float>)satNoise["amplitude_range"];
-                            noiseSection["amplitude_range"] =
-                                new System.Collections.Generic.List<float> { ar[0], ar[1] };
-                        }
-                        if (satNoise.ContainsKey("scaling_range"))
-                        {
-                            var sr = (Array<float>)satNoise["scaling_range"];
-                            noiseSection["scaling_range"] =
-                                new System.Collections.Generic.List<float> { sr[0], sr[1] };
-                        }
-                        if (satNoise.ContainsKey("octave_range"))
-                        {
-                            var or = (Array<int>)satNoise["octave_range"];
-                            noiseSection["octave_range"] = new System.Collections.Generic.List<int>
-                            {
-                                or[0],
-                                or[1],
-                            };
-                        }
-
-                        satMeshSection["noise_settings"] = noiseSection;
-                        hasMeshContent = true;
-                    }
-
-                    if (hasMeshContent)
-                    {
-                        satDict["mesh"] = satMeshSection;
-                    }
-
-                    satellitesList.Add(satDict);
+                    satList.Add(ConvertSatelliteToYaml(sat));
                 }
-
-                bodyDict["satellites"] = satellitesList;
+                dict["satellites"] = satList;
             }
 
-            result.Add(bodyDict);
+            result.Add(dict);
         }
-
         return result;
     }
+
+    private static SysDict ConvertSatelliteToYaml(Dictionary sat)
+    {
+        var dict = new SysDict();
+        dict["type"] = (string)sat["type"];
+        if (sat.ContainsKey("name"))
+            dict["name"] = (string)sat["name"];
+
+        // template: { apogee, perigee, starting_angle, vertical_offset, mass, size }
+        if (sat.ContainsKey("template"))
+        {
+            var template = (Dictionary)sat["template"];
+            var tDict = new SysDict();
+            foreach (string key in new[]
+                     {
+                         "apogee", "perigee", "starting_angle", "vertical_offset",
+                     })
+            {
+                if (template.ContainsKey(key))
+                    tDict[key] = (float)template[key];
+            }
+            if (template.ContainsKey("mass"))
+                tDict["mass"] = (float)template["mass"];
+            if (template.ContainsKey("size"))
+                tDict["size"] = (float)template["size"];
+            dict["template"] = tDict;
+        }
+
+        // base_mesh
+        if (sat.ContainsKey("base_mesh"))
+            dict["base_mesh"] = ConvertBaseMeshToYaml((Dictionary)sat["base_mesh"]);
+
+        // tectonics
+        if (sat.ContainsKey("tectonics"))
+            dict["tectonics"] = ConvertTectonicsToYaml((Dictionary)sat["tectonics"]);
+
+        // spherical_harmonics_settings
+        if (sat.ContainsKey("spherical_harmonics_settings"))
+            dict["spherical_harmonics_settings"] = ConvertFloatRangeDictToYaml(
+                (Dictionary)sat["spherical_harmonics_settings"]
+            );
+
+        // scaling_settings
+        if (sat.ContainsKey("scaling_settings"))
+            dict["scaling_settings"] = ConvertFloatRangeDictToYaml(
+                (Dictionary)sat["scaling_settings"]
+            );
+
+        // noise_settings
+        if (sat.ContainsKey("noise_settings"))
+            dict["noise_settings"] = ConvertFloatRangeDictToYaml(
+                (Dictionary)sat["noise_settings"]
+            );
+
+        return dict;
+    }
+
+    private static SysDict ConvertBaseMeshToYaml(Dictionary baseMesh)
+    {
+        var dict = new SysDict();
+        if (baseMesh.ContainsKey("subdivisions"))
+            dict["subdivisions"] = (int)baseMesh["subdivisions"];
+        if (baseMesh.ContainsKey("vertices_per_edge"))
+        {
+            var vpe = (Array<Array<int>>)baseMesh["vertices_per_edge"];
+            var vpeList = new List<List<int>>();
+            foreach (var row in vpe)
+                vpeList.Add(new List<int> { row[0], row[1] });
+            dict["vertices_per_edge"] = vpeList;
+        }
+        if (baseMesh.ContainsKey("num_abberations"))
+            dict["num_abberations"] = (int)baseMesh["num_abberations"];
+        if (baseMesh.ContainsKey("num_deformation_cycles"))
+            dict["num_deformation_cycles"] = (int)baseMesh["num_deformation_cycles"];
+        return dict;
+    }
+
+    private static SysDict ConvertTectonicsToYaml(Dictionary tectonics)
+    {
+        var dict = new SysDict();
+        foreach (var key in tectonics.Keys)
+        {
+            string keyStr = key.AsString();
+            var value = tectonics[key];
+
+            // Try int[] first (for num_continents), then float[]
+            if (value.VariantType == Variant.Type.PackedInt32Array
+                || value.Obj is int[])
+            {
+                var arr = (int[])value;
+                dict[keyStr] = new List<int> { arr[0], arr[1] };
+            }
+            else if (value.VariantType == Variant.Type.PackedFloat32Array
+                     || value.Obj is float[])
+            {
+                var arr = (float[])value;
+                dict[keyStr] = new List<float> { arr[0], arr[1] };
+            }
+            else
+            {
+                // Fallback: try to read as Godot Array
+                var arr = value.As<Godot.Collections.Array>();
+                if (arr != null && arr.Count >= 2)
+                {
+                    dict[keyStr] = new List<float>
+                    {
+                        NodeToFloat(arr[0], 0f),
+                        NodeToFloat(arr[1], 0f),
+                    };
+                }
+            }
+        }
+        return dict;
+    }
+
+    private static SysDict ConvertFloatRangeDictToYaml(
+        Dictionary settings
+    )
+    {
+        var dict = new SysDict();
+        foreach (var key in settings.Keys)
+        {
+            string keyStr = key.AsString();
+            var value = settings[key];
+
+            if (value.VariantType == Variant.Type.PackedFloat32Array || value.Obj is float[])
+            {
+                var arr = (float[])value;
+                dict[keyStr] = new List<float>(arr);
+            }
+            else if (value.VariantType == Variant.Type.PackedInt32Array || value.Obj is int[])
+            {
+                var arr = (int[])value;
+                dict[keyStr] = new List<int>(arr);
+            }
+            else
+            {
+                var arr = value.As<Godot.Collections.Array>();
+                if (arr != null && arr.Count >= 2)
+                {
+                    dict[keyStr] = new List<float>
+                    {
+                        NodeToFloat(arr[0], 0f),
+                        NodeToFloat(arr[1], 0f),
+                    };
+                }
+            }
+        }
+        return dict;
+    }
+
+    // Old ConvertBodiesToYamlStructure removed — replaced by section-specific converters above.
 }

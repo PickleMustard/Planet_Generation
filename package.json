@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "opencode-claude-auth": "^0.5.2"
+  }
+}

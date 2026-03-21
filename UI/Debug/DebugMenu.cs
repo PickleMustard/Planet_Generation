@@ -43,7 +43,6 @@ public partial class DebugMenu : CanvasLayer
     {
         Layer = 100;
 
-        AutoRegistrationManager.Initialize(GetTree());
 
         _controller = new DebugMenuController();
         AddChild(_controller);
@@ -75,6 +74,7 @@ public partial class DebugMenu : CanvasLayer
         _controller.RegisterModule(new VisibilityToggleModule(_debugPanel));
 
         InitializeDefaultModules();
+        AutoRegistrationManager.Initialize(GetTree());
     }
 
     private void InitializeDefaultModules()

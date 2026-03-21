@@ -213,62 +213,98 @@ namespace UtilityLibrary
 
         private static void ValidateSystemTemplateStructure(YamlMappingNode root, ValidationResult result)
         {
-            if (!root.Children.ContainsKey("bodies"))
+            bool hasAnySection = root.Children.ContainsKey("dominant")
+                || root.Children.ContainsKey("belts")
+                || root.Children.ContainsKey("planetary");
+
+            if (!hasAnySection)
             {
-                result.AddError("Missing required key: 'bodies'");
+                result.AddError("System template must have at least one of: 'dominant', 'belts', 'planetary'");
                 return;
             }
 
-            var bodies = root.Children["bodies"] as YamlSequenceNode;
-            if (bodies == null)
+            // Validate dominant section
+            if (root.Children.ContainsKey("dominant"))
             {
-                result.AddError("'bodies' must be a sequence");
-                return;
-            }
-
-            int bodyIndex = 0;
-            foreach (var bodyNode in bodies.Children)
-            {
-                var body = bodyNode as YamlMappingNode;
-                if (body == null)
+                var dominant = root.Children["dominant"] as YamlSequenceNode;
+                if (dominant == null)
                 {
-                    result.AddError($"Body at index {bodyIndex} must be a mapping");
-                    bodyIndex++;
-                    continue;
-                }
-
-                if (!body.Children.ContainsKey("type"))
-                {
-                    result.AddWarning($"Body at index {bodyIndex} missing 'type' field");
+                    result.AddError("'dominant' must be a sequence");
                 }
                 else
                 {
-                    var typeNode = body.Children["type"] as YamlScalarNode;
-                    string typeStr = typeNode?.Value ?? "";
-                    bool isDominant = typeStr.Equals("Star", StringComparison.OrdinalIgnoreCase)
-                        || typeStr.Equals("BlackHole", StringComparison.OrdinalIgnoreCase);
-
-                    if (isDominant)
+                    int idx = 0;
+                    foreach (var bodyNode in dominant.Children)
                     {
-                        if (!body.Children.ContainsKey("position"))
+                        var body = bodyNode as YamlMappingNode;
+                        if (body == null)
                         {
-                            result.AddWarning($"Dominant body at index {bodyIndex} ({typeStr}) missing 'position'");
+                            result.AddError($"Dominant body at index {idx} must be a mapping");
                         }
-                    }
-                    else
-                    {
-                        if (!body.Children.ContainsKey("apogee"))
+                        else if (!body.Children.ContainsKey("type"))
                         {
-                            result.AddWarning($"Non-dominant body at index {bodyIndex} ({typeStr}) missing orbital parameters (apogee/perigee)");
+                            result.AddWarning($"Dominant body at index {idx} missing 'type' field");
+                        }
+                        idx++;
+                    }
+                }
+            }
+
+            // Validate belts section
+            if (root.Children.ContainsKey("belts"))
+            {
+                var belts = root.Children["belts"] as YamlSequenceNode;
+                if (belts == null)
+                {
+                    result.AddError("'belts' must be a sequence");
+                }
+                else
+                {
+                    int idx = 0;
+                    foreach (var beltNode in belts.Children)
+                    {
+                        var belt = beltNode as YamlMappingNode;
+                        if (belt == null)
+                        {
+                            result.AddError($"Belt at index {idx} must be a mapping");
+                        }
+                        else if (!belt.Children.ContainsKey("type"))
+                        {
+                            result.AddWarning($"Belt at index {idx} missing 'type' field");
+                        }
+                        idx++;
+                    }
+                }
+            }
+
+            // Validate planetary section
+            if (root.Children.ContainsKey("planetary"))
+            {
+                var planetary = root.Children["planetary"] as YamlSequenceNode;
+                if (planetary == null)
+                {
+                    result.AddError("'planetary' must be a sequence");
+                }
+                else
+                {
+                    int idx = 0;
+                    foreach (var bodyNode in planetary.Children)
+                    {
+                        var body = bodyNode as YamlMappingNode;
+                        if (body == null)
+                        {
+                            result.AddError($"Planetary body at index {idx} must be a mapping");
                         }
                         else
                         {
-                            ValidateOrbitalParameters(body, $"bodies[{bodyIndex}]", result);
+                            if (!body.Children.ContainsKey("type"))
+                                result.AddWarning($"Planetary body at index {idx} missing 'type' field");
+                            if (!body.Children.ContainsKey("orbital_parameters"))
+                                result.AddWarning($"Planetary body at index {idx} missing 'orbital_parameters'");
                         }
+                        idx++;
                     }
                 }
-
-                bodyIndex++;
             }
         }
 
