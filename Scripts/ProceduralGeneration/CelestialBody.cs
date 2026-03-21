@@ -11,8 +11,6 @@ using Structures.MeshGeneration;
 using UtilityLibrary;
 #if DEBUG
 using UI.Debug;
-using UI.Debug.Console;
-using UI.Debug.DatabaseViewer;
 #endif
 
 namespace ProceduralGeneration.PlanetGeneration;
@@ -26,9 +24,6 @@ namespace ProceduralGeneration.PlanetGeneration;
 #endif
 [GlobalClass]
 public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
-#if DEBUG
-        , IDebugDataProvider
-#endif
 {
     private float _mass;
     private float _radius;
@@ -87,7 +82,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         var type = (String)bodyDict["type"];
         var mass = (float)baseTemplates["mass"];
         var velocity = (Vector3)baseTemplates["velocity"];
-        var size = (int)baseTemplates["size"];
+        var size = Mathf.RoundToInt((float)baseTemplates["size"]);
         Vector3 aabbSize = new Vector3(size, size, size) * 1.2f;
         Vector3 aabbBegin = Vector3.Zero - aabbSize;
         var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
@@ -205,7 +200,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     /// <param name="bandIndex">Index of the orbit band (0-based)</param>
     /// <param name="name">Name for the station</param>
     /// <returns>The created station satellite, or null if invalid band</returns>
-    public StationSatellite? CreateStation(int bandIndex, string name)
+    public StationSatellite? CreateStation(int bandIndex, string? name = null)
     {
         if (!CanAddToBand(bandIndex))
         {
@@ -213,6 +208,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             return null;
         }
 
+        name ??= $"Station_{Guid.NewGuid().ToString()[..8]}";
         var station = new StationSatellite { Name = name };
 
         SatellitesContainer.AddChild(station);
@@ -244,116 +240,33 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         return null;
     }
 
-#if DEBUG
     /// <summary>
-    /// Debug command to spawn a station satellite in an orbit band.
+    /// Creates a logistics unit (ship) in the specified orbit band.
     /// </summary>
-    /// <param name="ctx">Command context for console output</param>
-    /// <param name="args">Arguments: [0] = band index, [1] = optional station name</param>
-    /// <returns>0 on success, 1 on failure</returns>
-    [DebugCommand(
-        "spawn_station",
-        "Spawn a station satellite in an orbit band",
-        "spawn_station <band_index> [name]",
-        Category = "Modification",
-        RequiresTarget = true
-    )]
-    public int SpawnStationCommand(CommandContext ctx, string[] args)
+    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
+    /// <param name="name">Name for the ship</param>
+    /// <returns>The created logistics unit, or null if invalid band</returns>
+    public LogisticsUnit? CreateLogisticsUnit(int bandIndex, string? name = null)
     {
-        if (args.Length < 1)
-        {
-            ctx.WriteError("Usage: spawn_station <band_index> [name]");
-            return 1;
-        }
-
-        if (!int.TryParse(args[0], out var bandIndex))
-        {
-            ctx.WriteError($"Invalid band index: '{args[0]}'. Must be an integer.");
-            return 1;
-        }
-
-        var bandCount = GetBandCount();
-        if (bandCount == 0)
-        {
-            ctx.WriteError("This body has no orbit bands configured.");
-            return 1;
-        }
-
-        if (bandIndex < 0)
-        {
-            ctx.WriteError($"Invalid band index: {bandIndex}. Valid range: 0-{bandCount - 1}");
-            return 1;
-        }
-
-        if (bandIndex >= bandCount)
-        {
-            ctx.WriteError(
-                $"Band index {bandIndex} out of range. Available bands: {bandCount} (0-{bandCount - 1})"
-            );
-            return 1;
-        }
-
         if (!CanAddToBand(bandIndex))
         {
-            var capacity = OrbitBands[bandIndex].Capacity;
-            var current = GetBandSatelliteCount(bandIndex);
-            ctx.WriteError($"Band {bandIndex} is at capacity ({current}/{capacity})");
-            return 1;
+            GameLogger.Warning($"Cannot add ship to band {bandIndex}: band is full or invalid");
+            return null;
         }
 
-        var name = args.Length > 1 ? args[1] : $"Station_{DateTime.Now.Ticks % 10000}";
-        var station = CreateStation(bandIndex, name);
+        name ??= $"Ship_{Guid.NewGuid().ToString()[..8]}";
+        var unit = new LogisticsUnit { Name = name };
 
-        if (station == null)
-        {
-            ctx.WriteError($"Failed to create station in band {bandIndex}");
-            return 1;
-        }
+        SatellitesContainer.AddChild(unit);
+        unit.Initialize(this, bandIndex);
+        unit.InitializeCargo();
+        unit.SetFuelCapacity(1000f);
 
-        ctx.WriteLine($"[color=green]Station '{name}' created in band {bandIndex}[/color]");
-        return 0;
+        _bandSatelliteCounts[bandIndex]++;
+
+        GameLogger.Debug($"Created logistics unit '{name}' in band {bandIndex}");
+        return unit;
     }
-
-    /// <summary>
-    /// Debug command to show orbit band information.
-    /// </summary>
-    /// <param name="ctx">Command context for console output</param>
-    /// <param name="args">Arguments (unused)</param>
-    /// <returns>0 on success</returns>
-    [DebugCommand(
-        "orbit_bands",
-        "Show orbit band information",
-        "orbit_bands",
-        Category = "Query",
-        RequiresTarget = true
-    )]
-    public int GetOrbitBands(CommandContext ctx, string[] args)
-    {
-        var bandCount = GetBandCount();
-
-        if (bandCount == 0)
-        {
-            ctx.WriteLine("No orbit bands configured.");
-            return 0;
-        }
-
-        ctx.WriteLine($"[color=cyan]Orbit Bands for {Name}:[/color]");
-
-        for (int i = 0; i < bandCount; i++)
-        {
-            var band = OrbitBands[i];
-            var current = GetBandSatelliteCount(i);
-            var canAdd = CanAddToBand(i);
-            var status = canAdd ? "[color=green]available[/color]" : "[color=red]full[/color]";
-
-            ctx.WriteLine(
-                $"  Band {i}: radius={band.Radius:F1}, {current}/{band.Capacity} {status}"
-            );
-        }
-
-        return 0;
-    }
-#endif
 
     /// <summary>
     /// Returns the number of available orbit bands.
@@ -396,6 +309,88 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         }
 
         return _bandSatelliteCounts.ContainsKey(bandIndex) ? _bandSatelliteCounts[bandIndex] : 0;
+    }
+
+    /// <summary>
+    /// Gets the orbital radius for a specific orbit band index.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band (0-based).</param>
+    /// <returns>Orbital radius in the same units as the body radius, or -1 if invalid.</returns>
+    public float GetOrbitBandRadius(int bandIndex)
+    {
+        if (OrbitBands == null || bandIndex < 0 || bandIndex >= OrbitBands.Count)
+        {
+            GameLogger.Warning(
+                $"CelestialBody.GetOrbitBandRadius: Invalid band index {bandIndex} " +
+                $"(available: {OrbitBands?.Count ?? 0})"
+            );
+            return -1f;
+        }
+
+        return OrbitBands[bandIndex].Radius;
+    }
+
+    /// <summary>
+    /// Gets the angular orbital speed for a specific orbit band.
+    /// Inner bands orbit faster than outer bands.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band (0-based).</param>
+    /// <returns>Angular speed in rad/s, or -1 if invalid.</returns>
+    public float GetOrbitalSpeedForBand(int bandIndex)
+    {
+        if (OrbitConfig == null || bandIndex < 0 || bandIndex >= (OrbitBands?.Count ?? 0))
+        {
+            GameLogger.Warning(
+                $"CelestialBody.GetOrbitalSpeedForBand: Invalid band index {bandIndex} " +
+                $"(available: {OrbitBands?.Count ?? 0})"
+            );
+            return -1f;
+        }
+
+        float baseOrbitalSpeed = OrbitConfig.BaseOrbitalSpeed;
+        int clampedBand = Mathf.Clamp(bandIndex, 0, 3);
+        return baseOrbitalSpeed / (1f + clampedBand * 0.5f);
+    }
+
+    /// <summary>
+    /// Finds the closest orbit band index to a ship arriving from interplanetary space.
+    /// Selects the band that minimizes the difference between the ship's approach velocity
+    /// and the band's orbital velocity, reducing insertion delta-v.
+    /// </summary>
+    /// <param name="approachSpeed">The ship's speed relative to this body at arrival.</param>
+    /// <returns>The optimal band index, or 0 if no bands available.</returns>
+    public int GetClosestBandForApproach(float approachSpeed)
+    {
+        if (OrbitBands == null || OrbitBands.Count == 0)
+        {
+            return 0;
+        }
+
+        int bestBand = 0;
+        float bestDifference = float.MaxValue;
+
+        for (int i = 0; i < OrbitBands.Count; i++)
+        {
+            float bandRadius = OrbitBands[i].Radius;
+            float bandAngularSpeed = GetOrbitalSpeedForBand(i);
+            if (bandAngularSpeed < 0f) continue;
+
+            float bandLinearSpeed = bandRadius * bandAngularSpeed;
+            float difference = Mathf.Abs(approachSpeed - bandLinearSpeed);
+
+            if (difference < bestDifference)
+            {
+                bestDifference = difference;
+                bestBand = i;
+            }
+        }
+
+        GameLogger.Debug(
+            $"CelestialBody.GetClosestBandForApproach: approach={approachSpeed:F2} m/s, " +
+            $"best band={bestBand}"
+        );
+
+        return bestBand;
     }
 
     public override void _PhysicsProcess(double delta)
@@ -927,7 +922,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
                 if (mesh != null)
                 {
-                    var size = (int)baseTemplates["size"];
+                    var size = Mathf.RoundToInt((float)baseTemplates["size"]);
                     mesh.size = size;
                 }
             }
@@ -961,64 +956,4 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             return new Builder().FromBodyDict(bodyDict, mesh).Build();
         }
     }
-
-#if DEBUG
-    string IDataProvider.Name => Name;
-    string IDataProvider.Category => "Celestial";
-    bool IDataProvider.NeedsRefresh => true;
-
-    object IDebugDataProvider.SourceObject => this;
-
-    string IDebugDataProvider.InstanceNamespace
-    {
-        get
-        {
-            // Sanitize name: remove all non-alphanumeric characters
-            string nameStr = Name.ToString();
-            var sanitized = new string(nameStr.Where(c => char.IsLetterOrDigit(c)).ToArray());
-            return string.IsNullOrEmpty(sanitized)
-                ? $"CelestialBody._{nameStr.GetHashCode()}"
-                : $"CelestialBody.{sanitized}";
-        }
-    }
-
-    bool IDebugDataProvider.IsSourceValid => IsInstanceValid(this);
-
-    DebugDataNode IDataProvider.GetData()
-    {
-        var node = new DebugDataNode(Name.ToString())
-            .AddProperty("Type", Type.ToString())
-            .AddProperty("Mass", Mass)
-            .AddProperty("Velocity", Velocity)
-            .AddProperty("Position", GlobalPosition);
-
-        if (Mesh != null)
-        {
-            node.AddProperty("Mesh Size", Mesh.size);
-        }
-
-        return node;
-    }
-
-    void IDataProvider.Refresh() { }
-
-    IEnumerable<string> IDataProvider.Search(string pattern)
-    {
-        var results = new List<string>();
-
-        // Search by name
-        if (Name.ToString().Contains(pattern, StringComparison.OrdinalIgnoreCase))
-        {
-            results.Add(Name.ToString());
-        }
-
-        // Search by type
-        if (Type.ToString().Contains(pattern, StringComparison.OrdinalIgnoreCase))
-        {
-            results.Add($"Type:{Type}");
-        }
-
-        return results;
-    }
-#endif
 }

@@ -46,8 +46,23 @@ public class TrajectorySolution
     /// <summary>
     /// Total delta-v required to execute this trajectory in m/s.
     /// Calculated as the magnitude of the velocity change needed.
+    /// Equal to DepartureDeltaV + ArrivalDeltaV.
     /// </summary>
     public float DeltaVRequired { get; set; }
+
+    /// <summary>
+    /// Delta-v for the departure burn in m/s.
+    /// This is the velocity change needed to leave the origin orbit and enter the transfer arc.
+    /// Calculated as |v_lambert_departure - v_orbital_origin|.
+    /// </summary>
+    public float DepartureDeltaV { get; set; }
+
+    /// <summary>
+    /// Delta-v for the arrival burn in m/s.
+    /// This is the velocity change needed to leave the transfer arc and enter the destination orbit.
+    /// Calculated as |v_lambert_arrival - v_orbital_destination|.
+    /// </summary>
+    public float ArrivalDeltaV { get; set; }
 
     /// <summary>
     /// Semi-major axis of the transfer orbit in meters.
@@ -126,16 +141,27 @@ public class TrajectorySolution
     public Vector3 PredictedDestinationPosition { get; set; }
 
     /// <summary>
-    /// Orbital velocity of the origin body at departure time (m/s).
+    /// Orbital velocity of the origin (ship in its orbit band) at departure time (m/s).
     /// Used to compute correct delta-v: |v_lambert - v_orbital| at each endpoint.
     /// </summary>
     public Vector3 OriginOrbitalVelocity { get; set; }
 
     /// <summary>
-    /// Orbital velocity of the destination body at arrival time (m/s).
+    /// Orbital velocity of the destination orbit band at arrival time (m/s).
     /// Used to compute correct delta-v: |v_lambert - v_orbital| at each endpoint.
     /// </summary>
     public Vector3 DestinationOrbitalVelocity { get; set; }
+
+    /// <summary>
+    /// The orbit band index at the origin body where the ship departs from.
+    /// </summary>
+    public int OriginBandIndex { get; set; } = -1;
+
+    /// <summary>
+    /// The target orbit band index at the destination body.
+    /// -1 means no specific band was targeted (legacy behavior).
+    /// </summary>
+    public int DestinationBandIndex { get; set; } = -1;
 
     /// <summary>
     /// Creates a new TrajectorySolution with default values.
@@ -183,7 +209,9 @@ public class TrajectorySolution
         // Default delta-v: sum of velocity magnitudes (fallback when orbital velocities are unknown).
         // For accurate delta-v, call RecalculateDeltaV() after setting OriginOrbitalVelocity
         // and DestinationOrbitalVelocity.
-        DeltaVRequired = initialVelocity.Length() + finalVelocity.Length();
+        DepartureDeltaV = initialVelocity.Length();
+        ArrivalDeltaV = finalVelocity.Length();
+        DeltaVRequired = DepartureDeltaV + ArrivalDeltaV;
     }
 
     /// <summary>
@@ -200,22 +228,24 @@ public class TrajectorySolution
 
         if (!hasOriginVelocity && !hasDestVelocity)
         {
-            // No orbital velocities available — keep the fallback
-            DeltaVRequired = InitialVelocity.Length() + FinalVelocity.Length();
+            // No orbital velocities available — split using raw Lambert velocity magnitudes
+            DepartureDeltaV = InitialVelocity.Length();
+            ArrivalDeltaV = FinalVelocity.Length();
+            DeltaVRequired = DepartureDeltaV + ArrivalDeltaV;
             return;
         }
 
         // Departure burn: difference between required Lambert velocity and current orbital velocity
-        float departureDv = hasOriginVelocity
+        DepartureDeltaV = hasOriginVelocity
             ? (InitialVelocity - OriginOrbitalVelocity).Length()
             : InitialVelocity.Length();
 
         // Arrival burn: difference between Lambert arrival velocity and destination orbital velocity
-        float arrivalDv = hasDestVelocity
+        ArrivalDeltaV = hasDestVelocity
             ? (FinalVelocity - DestinationOrbitalVelocity).Length()
             : FinalVelocity.Length();
 
-        DeltaVRequired = departureDv + arrivalDv;
+        DeltaVRequired = DepartureDeltaV + ArrivalDeltaV;
     }
 
     /// <summary>
@@ -225,8 +255,8 @@ public class TrajectorySolution
     public string GetDescription()
     {
         return $"Transfer: {TransferType}, TOF: {TimeOfFlight:F1}s, " +
-               $"ΔV: {DeltaVRequired:F2} m/s, Revolutions: {Revolutions}, " +
-               $"a: {SemiMajorAxis:F0}m, e: {Eccentricity:F3}";
+               $"ΔV: {DeltaVRequired:F2} m/s (depart: {DepartureDeltaV:F2}, arrive: {ArrivalDeltaV:F2}), " +
+               $"Revolutions: {Revolutions}, a: {SemiMajorAxis:F0}m, e: {Eccentricity:F3}";
     }
 
     // ============ Static Filtering and Ranking Methods ============

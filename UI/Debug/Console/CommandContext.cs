@@ -17,7 +17,7 @@ public class CommandContext : IDisposable
     /// <summary>
     /// The TextWriter for command output.
     /// </summary>
-    public TextWriter Output => _outputWriter;
+    public StringWriter Output => _outputWriter;
 
     /// <summary>
     /// The namespace of the caller (if targeting an instance).
@@ -28,6 +28,11 @@ public class CommandContext : IDisposable
     /// The target object instance (if command requires a target).
     /// </summary>
     public object? TargetInstance { get; }
+
+    /// <summary>
+    /// The calling object instance (if command is called from an instance).
+    /// </summary>
+    public object? CallerInstance { get; }
 
     /// <summary>
     /// Reference to the CommandRegistry for command lookups.
@@ -45,13 +50,20 @@ public class CommandContext : IDisposable
     /// <param name="registry">The command registry.</param>
     /// <param name="callerNamespace">The caller's namespace (optional).</param>
     /// <param name="targetInstance">The target instance (optional).</param>
-    public CommandContext(CommandRegistry registry, string? callerNamespace = null, object? targetInstance = null)
+    public CommandContext(
+        CommandRegistry registry,
+        string? callerNamespace = null,
+        object? targetInstance = null,
+        object? callerInstance = null,
+        StringWriter? outputWriter = null
+    )
     {
         Registry = registry ?? throw new ArgumentNullException(nameof(registry));
         CallerNamespace = callerNamespace;
+        CallerInstance = callerInstance;
         TargetInstance = targetInstance;
         _outputBuilder = new StringBuilder();
-        _outputWriter = new StringWriter(_outputBuilder);
+        _outputWriter = outputWriter ?? new StringWriter(_outputBuilder);
     }
 
     /// <summary>

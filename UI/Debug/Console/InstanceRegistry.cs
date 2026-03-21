@@ -90,6 +90,8 @@ public static class InstanceRegistry
             _instances[@namespace] = instance;
             _reverseLookup[instance] = @namespace;
 
+            
+
             return @namespace;
         }
     }

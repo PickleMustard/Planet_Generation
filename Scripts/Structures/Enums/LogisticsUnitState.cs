@@ -28,5 +28,11 @@ public enum LogisticsUnitState
     /// <summary>
     /// Cannot move - the unit is disabled and unable to move.
     /// </summary>
-    Disabled
+    Disabled,
+
+    /// <summary>
+    /// Ran out of fuel mid-transit - the unit is adrift at its current position
+    /// and cannot complete its arrival burn. Requires rescue or refueling.
+    /// </summary>
+    Stranded
 }

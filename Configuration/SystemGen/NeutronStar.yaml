@@ -1,0 +1,23 @@
+categories:
+  potential:
+    - mythology
+    - scientists
+    - explorers
+    - adjectives
+
+celestial:
+  template:
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 750000
+    size: 30
+
+  mesh:
+    base_mesh:
+      subdivisions: 1
+      vertices_per_edge: [[8, 12]]
+      num_abberations: 0
+      num_deformation_cycles: 0
+
+    spherical_harmonics:
+      amplitude_range: [0.05, 0.15]

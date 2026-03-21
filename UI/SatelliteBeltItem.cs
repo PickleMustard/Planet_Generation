@@ -234,17 +234,16 @@ public partial class SatelliteBeltItem : VBoxContainer
 
     public void SetTemplate(Godot.Collections.Dictionary t)
     {
-        var template = (Godot.Collections.Dictionary)t["template"];
-
-        // Read belt parameters from the template sub-dictionary with safe fallbacks
-        var apogee = template.ContainsKey("ring_apogee") ? (float)template["ring_apogee"] : 0f;
-        var perigee = template.ContainsKey("ring_perigee") ? (float)template["ring_perigee"] : 0f;
-        var velocity = template.ContainsKey("ring_velocity")
-            ? (Vector3)template["ring_velocity"]
+        // Accept flat format matching SatelliteBeltItem.ToParams() output.
+        // Keys like ring_apogee, ring_perigee, etc. are at the top level of t.
+        var apogee = t.ContainsKey("ring_apogee") ? (float)t["ring_apogee"] : 0f;
+        var perigee = t.ContainsKey("ring_perigee") ? (float)t["ring_perigee"] : 0f;
+        var velocity = t.ContainsKey("ring_velocity")
+            ? (Vector3)t["ring_velocity"]
             : Vector3.Zero;
-        var lowerRange = template.ContainsKey("lower_range") ? (int)template["lower_range"] : 1;
-        var upperRange = template.ContainsKey("upper_range") ? (int)template["upper_range"] : 4;
-        var grouping = template.ContainsKey("grouping") ? (String)template["grouping"] : "Balanced";
+        var lowerRange = t.ContainsKey("lower_range") ? (int)t["lower_range"] : 1;
+        var upperRange = t.ContainsKey("upper_range") ? (int)t["upper_range"] : 4;
+        var grouping = t.ContainsKey("grouping") ? (String)t["grouping"] : "Balanced";
 
         if (Apogee != null)
         {
@@ -266,14 +265,14 @@ public partial class SatelliteBeltItem : VBoxContainer
         {
             RingVelocityZ.Value = Mathf.Clamp(velocity.Z, 0f, Limit);
         }
-        if (MinMass != null && template.ContainsKey("mass_min"))
-            MinMass.Value = Mathf.Clamp((float)template["mass_min"], 0f, MassLimit);
-        if (MaxMass != null && template.ContainsKey("mass_max"))
-            MaxMass.Value = Mathf.Clamp((float)template["mass_max"], 0f, MassLimit);
-        if (MinSize != null && template.ContainsKey("size_min"))
-            MinSize.Value = Mathf.Clamp((float)template["size_min"], 0f, SizeLimit);
-        if (MaxSize != null && template.ContainsKey("size_max"))
-            MaxSize.Value = Mathf.Clamp((float)template["size_max"], 0f, SizeLimit);
+        if (MinMass != null && t.ContainsKey("mass_min"))
+            MinMass.Value = Mathf.Clamp((float)t["mass_min"], 0f, MassLimit);
+        if (MaxMass != null && t.ContainsKey("mass_max"))
+            MaxMass.Value = Mathf.Clamp((float)t["mass_max"], 0f, MassLimit);
+        if (MinSize != null && t.ContainsKey("size_min"))
+            MinSize.Value = Mathf.Clamp((float)t["size_min"], 0f, SizeLimit);
+        if (MaxSize != null && t.ContainsKey("size_max"))
+            MaxSize.Value = Mathf.Clamp((float)t["size_max"], 0f, SizeLimit);
         if (NumInBeltLower != null)
         {
             NumInBeltLower.Value = lowerRange;
@@ -307,7 +306,11 @@ public partial class SatelliteBeltItem : VBoxContainer
                 BeltGrouping.Select((int)group);
         }
 
-        templateDict = template;
+        // Set orbital center index if present
+        if (t.ContainsKey("orbital_center_index"))
+            _orbitalCenterIndex = (int)t["orbital_center_index"];
+
+        templateDict = t;
     }
 
     private void ApplyConstraints()

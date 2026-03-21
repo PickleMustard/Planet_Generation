@@ -3,7 +3,6 @@ using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using Structures.Logistics;
-using Structures.Resources;
 using UtilityLibrary;
 
 namespace Constructables.ArtificialSatellites;
@@ -79,6 +78,11 @@ public partial class LogisticsMovementController : Node
     private float _gravitationalParameter;
     private float _orbitEpoch;
 
+    // Burn profile state (fuel consumption during transfer)
+    private BurnProfile? _burnProfile;
+    private TransitPhase _currentTransitPhase = TransitPhase.Coasting;
+    private float _fuelConsumedThisTransfer;
+
     // Cached camera for visibility checks
     private Camera3D? _activeCamera;
 
@@ -129,6 +133,22 @@ public partial class LogisticsMovementController : Node
         set => _timeInTransfer = value * _activeTrajectory!.TimeOfFlight;
     }
 
+    /// <summary>
+    /// The current burn phase during an active transfer (Accelerating, Coasting, or Decelerating).
+    /// Only meaningful when <see cref="IsTransferring"/> is true.
+    /// </summary>
+    public TransitPhase CurrentTransitPhase => _currentTransitPhase;
+
+    /// <summary>
+    /// The active burn profile for the current transfer, or null if not transferring.
+    /// </summary>
+    public BurnProfile? ActiveBurnProfile => _burnProfile;
+
+    /// <summary>
+    /// Total fuel consumed during the current transfer so far, in kg.
+    /// </summary>
+    public float FuelConsumedThisTransfer => _fuelConsumedThisTransfer;
+
     // ========================================================================
     // GODOT LIFECYCLE
     // ========================================================================
@@ -158,10 +178,12 @@ public partial class LogisticsMovementController : Node
 
         float deltaFloat = (float)delta;
 
-        ProcessKeplerPropagation(deltaFloat);
-
-        // Process transfer if active
-        if (_isTransferring)
+        var state = _logisticsUnit.State;
+        if (state == LogisticsUnitState.Idle || state == LogisticsUnitState.Planning)
+        {
+            ProcessOrbit(deltaFloat);
+        }
+        else if (_isTransferring)
         {
             ProcessTransfer(deltaFloat);
         }
@@ -236,13 +258,44 @@ public partial class LogisticsMovementController : Node
         _orbitEpoch = 0f;
         _gravitationalParameter = trajectory.GravitationalParameter;
 
+        _currentSimulationMode = SimulationMode.FullKepler;
         _isTransferring = true;
         _logisticsUnit.State = LogisticsUnitState.InTransit;
 
+        // Build the burn profile from the trajectory's ΔV split and the ship's engine
+        _fuelConsumedThisTransfer = 0f;
+        _currentTransitPhase = TransitPhase.Accelerating;
+
+        var engine = _logisticsUnit.CurrentEngine;
+        float totalMass = _logisticsUnit.GetTotalMass();
+
+        if (engine != null)
+        {
+            _burnProfile = BurnProfile.Calculate(trajectory, engine, totalMass);
+            if (_burnProfile == null)
+            {
+                GameLogger.Warning(
+                    "LogisticsMovementController: Failed to calculate burn profile — "
+                        + "fuel will not be consumed during this transfer"
+                );
+            }
+        }
+        else
+        {
+            GameLogger.Warning(
+                "LogisticsMovementController: No engine installed — "
+                    + "fuel will not be consumed during this transfer"
+            );
+            _burnProfile = null;
+        }
+
         GameLogger.Info(
             $"LogisticsMovementController: Transfer initiated - "
-                + $"TOF: {_transferTime:F1}s, ΔV: {trajectory.DeltaVRequired:F2} m/s, "
-                + $"Central body: {_centralBody?.Name ?? "origin"}"
+                + $"TOF: {_transferTime:F1}s, ΔV: {trajectory.DeltaVRequired:F2} m/s "
+                + $"(depart: {trajectory.DepartureDeltaV:F2}, arrive: {trajectory.ArrivalDeltaV:F2}), "
+                + $"Central body: {_centralBody?.Name ?? "origin"}, "
+                + $"Origin band: {trajectory.OriginBandIndex}, Target band: {trajectory.DestinationBandIndex}"
+                + (_burnProfile != null ? $", Burn profile: {_burnProfile.GetDescription()}" : "")
         );
 
         return true;
@@ -256,22 +309,27 @@ public partial class LogisticsMovementController : Node
         if (!_isTransferring)
             return;
 
+        GameLogger.Info(
+            $"LogisticsMovementController: Transfer cancelled at T+{_timeInTransfer:F1}s — "
+                + $"fuel consumed: {_fuelConsumedThisTransfer:F2}kg (not refunded)"
+        );
+
         _isTransferring = false;
         _activeTrajectory = null;
         _timeInTransfer = 0f;
+
+        // Reset burn profile state — fuel already consumed is NOT refunded
+        _burnProfile = null;
+        _currentTransitPhase = TransitPhase.Coasting;
+        _fuelConsumedThisTransfer = 0f;
 
         if (_logisticsUnit != null)
         {
             _logisticsUnit.State = LogisticsUnitState.Idle;
         }
 
-        // Reset to orbital simulation
-        _currentSimulationMode =
-            _enableHybridSimulation && _isObserved
-                ? SimulationMode.FullKepler
-                : SimulationMode.Simplified;
-
-        GameLogger.Info("LogisticsMovementController: Transfer cancelled");
+        // Default to FullKepler — visibility-based LOD can be layered on later
+        _currentSimulationMode = SimulationMode.FullKepler;
     }
 
     /// <summary>
@@ -356,36 +414,31 @@ public partial class LogisticsMovementController : Node
     }
 
     /// <summary>
-    /// Processes Kepler propagation for the current frame.
+    /// Processes sinusoidal circular orbit for Idle/Planning states.
     /// </summary>
-    private void ProcessKeplerPropagation(float delta)
+    private void ProcessOrbit(float delta)
     {
         if (_logisticsUnit == null)
             return;
 
-        // During transfer, use trajectory-based propagation
-        if (_isTransferring && _activeTrajectory != null)
-        {
-            // Propagation handled in ProcessTransfer
+        Node3D? parentBody = _logisticsUnit.GetParent<Node3D>();
+        if (parentBody == null)
             return;
-        }
 
-        // Use OrbitalMath for Kepler propagation
-        if (_gravitationalParameter > 0f)
-        {
-            float timeStep = delta;
-            _orbitEpoch += timeStep;
+        float orbitalSpeed = _logisticsUnit.GetOrbitalSpeed();
+        float orbitalRadius = _logisticsUnit.GetOrbitalRadius();
 
-            Vector3 newPosition = OrbitalMath.GetPositionOnOrbit(
-                _orbitalPosition,
-                _orbitalVelocity,
-                _gravitationalParameter,
-                _orbitEpoch
-            );
+        // Advance angle
+        float newAngle = _logisticsUnit.GetOrbitalAngle() + orbitalSpeed * delta;
+        if (newAngle > Mathf.Tau)
+            newAngle -= Mathf.Tau;
+        _logisticsUnit.SetOrbitalAngle(newAngle);
 
-            _logisticsUnit.GlobalPosition = newPosition;
-            //_orbitalPosition = newPosition;
-        }
+        // Calculate sinusoidal offset in XZ plane
+        float offsetX = Mathf.Cos(newAngle) * orbitalRadius;
+        float offsetZ = Mathf.Sin(newAngle) * orbitalRadius;
+
+        _logisticsUnit.GlobalPosition = parentBody.GlobalPosition + new Vector3(offsetX, 0, offsetZ);
     }
 
     /// <summary>
@@ -436,6 +489,40 @@ public partial class LogisticsMovementController : Node
         // Update time in transfer
         _timeInTransfer += delta;
 
+        // ---- Fuel consumption based on burn profile ----
+        if (_burnProfile != null)
+        {
+            TransitPhase previousPhase = _currentTransitPhase;
+            _currentTransitPhase = _burnProfile.GetPhaseAtTime(_timeInTransfer);
+
+            if (_currentTransitPhase != previousPhase)
+            {
+                GameLogger.Info(
+                    $"LogisticsMovementController: Transit phase changed — "
+                        + $"{previousPhase} → {_currentTransitPhase} "
+                        + $"at T+{_timeInTransfer:F1}s, fuel consumed so far: {_fuelConsumedThisTransfer:F2}kg"
+                );
+            }
+
+            float fuelRate = _burnProfile.GetFuelRateAtTime(_timeInTransfer);
+            if (fuelRate > 0f)
+            {
+                if (_logisticsUnit.HasFuel())
+                {
+                    float frameFuel = fuelRate * delta;
+                    _logisticsUnit.ConsumeFuel(frameFuel);
+                    _fuelConsumedThisTransfer += frameFuel;
+                }
+                else
+                {
+                    // Ship ran out of fuel mid-burn — strand it
+                    HandleStranded();
+                    return;
+                }
+            }
+        }
+
+        // ---- Position update ----
         // The central body may have moved since transfer started (it orbits too).
         // Get its current global position for the reference frame offset.
         Vector3 centralBodyPos = _centralBody?.GlobalPosition ?? Vector3.Zero;
@@ -475,6 +562,8 @@ public partial class LogisticsMovementController : Node
 
     /// <summary>
     /// Handles arrival at the destination.
+    /// Uses the target orbit band from the trajectory solution to place the ship
+    /// into the correct orbit band at the destination body.
     /// </summary>
     private void HandleArrival()
     {
@@ -484,19 +573,70 @@ public partial class LogisticsMovementController : Node
             return;
         }
 
-        GameLogger.Info($"LogisticsMovementController: Arriving at {_destinationBody.Name}");
+        int targetBand = _activeTrajectory?.DestinationBandIndex ?? -1;
+        GameLogger.Info(
+            $"LogisticsMovementController: Arriving at {_destinationBody.Name}" +
+            (targetBand >= 0 ? $", target band: {targetBand}" : "")
+        );
 
         SetHostBody(_destinationBody);
-        CompleteTransfer(_destinationBody);
+        CompleteTransfer(_destinationBody, targetBand);
+    }
+
+    /// <summary>
+    /// Handles the ship running out of fuel mid-transit. The ship is left at its current
+    /// position in the system container (adrift in space) and transitions to Stranded state.
+    /// Fuel already consumed is NOT refunded — the burns already happened.
+    /// </summary>
+    private void HandleStranded()
+    {
+        if (_logisticsUnit == null)
+            return;
+
+        string phaseName = _currentTransitPhase.ToString();
+        float budgeted = _burnProfile?.TotalFuelBudget ?? 0f;
+
+        GameLogger.Warning(
+            $"LogisticsMovementController: Ship stranded — fuel exhausted during {phaseName} phase "
+                + $"at T+{_timeInTransfer:F1}s/{_transferTime:F1}s. "
+                + $"Fuel consumed: {_fuelConsumedThisTransfer:F2}kg of {budgeted:F2}kg budgeted."
+        );
+
+        // Stop the transfer but leave the ship at its current global position.
+        // It stays parented to the system container (set by UnsetHostBody during InitiateTransfer).
+        _isTransferring = false;
+        _activeTrajectory = null;
+        _burnProfile = null;
+        _currentTransitPhase = TransitPhase.Coasting;
+
+        _logisticsUnit.TransitionTo(LogisticsUnitState.Stranded);
+
+        // Reset simulation mode — ship is adrift, no orbital motion
+        _currentSimulationMode = SimulationMode.Simplified;
+
+        // Reset origin/destination but keep central body for potential rescue calculations
+        _originBody = null;
+        _destinationBody = null;
     }
 
     /// <summary>
     /// Completes the transfer and resets state.
     /// </summary>
-    private void CompleteTransfer(CelestialBody finalBody)
+    /// <param name="finalBody">The celestial body the ship is arriving at.</param>
+    /// <param name="targetBandIndex">Target orbit band index (-1 = use default/band 0).</param>
+    private void CompleteTransfer(CelestialBody finalBody, int targetBandIndex = -1)
     {
         if (_logisticsUnit == null)
             return;
+
+        // Log fuel consumption summary before resetting state
+        float budgeted = _burnProfile?.TotalFuelBudget ?? 0f;
+        float drift = budgeted > 0f ? _fuelConsumedThisTransfer - budgeted : 0f;
+        GameLogger.Info(
+            $"LogisticsMovementController: Transfer complete — "
+                + $"fuel consumed: {_fuelConsumedThisTransfer:F2}kg of {budgeted:F2}kg budgeted "
+                + $"(drift: {drift:+0.00;-0.00;0}kg)"
+        );
 
         // Reset controller's own transfer state
         _isTransferring = false;
@@ -505,6 +645,29 @@ public partial class LogisticsMovementController : Node
         _originBody = null;
         _destinationBody = null;
         _centralBody = null;
+
+        // Reset burn profile state
+        _burnProfile = null;
+        _currentTransitPhase = TransitPhase.Coasting;
+        _fuelConsumedThisTransfer = 0f;
+
+        // Set the unit's band index to the target band before reinitializing orbit
+        if (targetBandIndex >= 0 && targetBandIndex < finalBody.GetBandCount())
+        {
+            _logisticsUnit.BandIndex = targetBandIndex;
+            GameLogger.Info(
+                $"LogisticsMovementController: Ship entering band {targetBandIndex} " +
+                $"at {finalBody.Name}"
+            );
+        }
+        else if (finalBody.GetBandCount() > 0)
+        {
+            // Default to band 0 if target band is invalid
+            _logisticsUnit.BandIndex = 0;
+            GameLogger.Debug(
+                $"LogisticsMovementController: Defaulting to band 0 at {finalBody.Name}"
+            );
+        }
 
         // Transition the unit to Idle
         _logisticsUnit.State = LogisticsUnitState.Idle;
@@ -521,13 +684,8 @@ public partial class LogisticsMovementController : Node
             _orbitEpoch = 0f;
         }
 
-        // Reset simulation mode
-        _currentSimulationMode =
-            _enableHybridSimulation && _isObserved
-                ? SimulationMode.FullKepler
-                : SimulationMode.Simplified;
-
-        GameLogger.Info("LogisticsMovementController: Transfer complete");
+        // Default to FullKepler — visibility-based LOD can be layered on later
+        _currentSimulationMode = SimulationMode.FullKepler;
     }
 
     // ========================================================================

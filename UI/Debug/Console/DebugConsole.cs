@@ -48,13 +48,13 @@ public partial class DebugConsole : BaseDebugModule
             OffsetRight = 0,
             OffsetBottom = 0,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill
+            SizeFlagsVertical = SizeFlags.ExpandFill,
         };
 
         var outputPanel = new PanelContainer
         {
             Name = "OutputPanel",
-            SizeFlagsVertical = SizeFlags.ExpandFill
+            SizeFlagsVertical = SizeFlags.ExpandFill,
         };
 
         _outputDisplay = new RichTextLabel
@@ -67,16 +67,13 @@ public partial class DebugConsole : BaseDebugModule
         };
         outputPanel.AddChild(_outputDisplay);
 
-        var inputContainer = new HBoxContainer
-        {
-            Name = "InputContainer"
-        };
+        var inputContainer = new HBoxContainer { Name = "InputContainer" };
 
         var promptLabel = new Label
         {
             Name = "PromptLabel",
             Text = ">",
-            HorizontalAlignment = HorizontalAlignment.Center
+            HorizontalAlignment = HorizontalAlignment.Center,
         };
 
         _inputField = new LineEdit
@@ -85,7 +82,7 @@ public partial class DebugConsole : BaseDebugModule
             PlaceholderText = "Enter command...",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             ContextMenuEnabled = true,
-            ClearButtonEnabled = false
+            ClearButtonEnabled = false,
         };
         _inputField.TextSubmitted += OnTextSubmitted;
         _inputField.TextChanged += OnTextChanged;
@@ -107,7 +104,7 @@ public partial class DebugConsole : BaseDebugModule
             Name = "AutocompletePanel",
             Visible = false,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            ZIndex = 100
+            ZIndex = 100,
         };
 
         var styleBox = new StyleBoxFlat
@@ -121,7 +118,7 @@ public partial class DebugConsole : BaseDebugModule
             CornerRadiusTopLeft = 4,
             CornerRadiusTopRight = 4,
             CornerRadiusBottomLeft = 4,
-            CornerRadiusBottomRight = 4
+            CornerRadiusBottomRight = 4,
         };
         _autocompletePanel.AddThemeStyleboxOverride("panel", styleBox);
 
@@ -130,7 +127,7 @@ public partial class DebugConsole : BaseDebugModule
             Name = "AutocompleteScroll",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = Control.MouseFilterEnum.Ignore
+            MouseFilter = Control.MouseFilterEnum.Ignore,
         };
 
         _autocompleteList = new VBoxContainer
@@ -138,7 +135,7 @@ public partial class DebugConsole : BaseDebugModule
             Name = "AutocompleteList",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = Control.MouseFilterEnum.Ignore
+            MouseFilter = Control.MouseFilterEnum.Ignore,
         };
 
         _autocompleteScroll.AddChild(_autocompleteList);
@@ -148,9 +145,11 @@ public partial class DebugConsole : BaseDebugModule
 
     private void InitializeRegistry()
     {
+        GD.Print("Initializing registry");
         _registry = new CommandRegistry();
         _registry.Initialize();
         _autocompleteEngine = new AutocompleteEngine(_registry);
+        AutoRegistrationManager.SetRegistry(_registry);
 
         PrintWelcome();
     }
@@ -159,7 +158,15 @@ public partial class DebugConsole : BaseDebugModule
     {
         AppendOutput("[color=green]Debug Console initialized.[/color]");
         AppendOutput("Type [color=cyan]help[/color] for available commands.");
-        AppendOutput("Use [color=cyan]Tab[/color] to accept suggestions, [color=cyan]Up/Down[/color] to navigate.");
+        AppendOutput("Instance commands: [color=cyan](Namespace) command [args][/color]");
+        AppendOutput("  Example: [color=cyan](CelestialBody.Earth) orbit_bands[/color]");
+        AppendOutput(
+            "  Multi:   [color=cyan](CelestialBody.Earth, CelestialBody.Mars) orbit_bands[/color]"
+        );
+        AppendOutput("  Wildcard:[color=cyan](CelestialBody.*) orbit_bands[/color]");
+        AppendOutput(
+            "Use [color=cyan]Tab[/color] to accept suggestions, [color=cyan]Up/Down[/color] to navigate."
+        );
         AppendOutput("");
     }
 
@@ -246,7 +253,7 @@ public partial class DebugConsole : BaseDebugModule
     {
         AppendOutput($"[color=gray]> {input}[/color]");
 
-        using var context = new CommandContext(_registry!, targetInstance: this!);
+        using var context = new CommandContext(_registry!);
         var exitCode = _registry!.Execute(input, context);
 
         var output = context.GetOutput();
@@ -346,13 +353,10 @@ public partial class DebugConsole : BaseDebugModule
             {
                 Text = GetSuggestionDisplayText(suggestion),
                 MouseFilter = Control.MouseFilterEnum.Pass,
-                CustomMinimumSize = new Vector2(0, SuggestionItemHeight)
+                CustomMinimumSize = new Vector2(0, SuggestionItemHeight),
             };
 
-            var styleBox = new StyleBoxFlat
-            {
-                BgColor = new Color(0.15f, 0.15f, 0.15f, 1f)
-            };
+            var styleBox = new StyleBoxFlat { BgColor = new Color(0.15f, 0.15f, 0.15f, 1f) };
             label.AddThemeStyleboxOverride("normal", styleBox);
 
             _autocompleteList!.AddChild(label);
@@ -364,7 +368,10 @@ public partial class DebugConsole : BaseDebugModule
         var inputRect = _inputField!.GetGlobalRect();
         var popupHeight = Math.Min(maxDisplay * SuggestionItemHeight, 250);
         var popupSize = new Vector2I((int)inputRect.Size.X, popupHeight);
-        var popupPos = new Vector2I((int)inputRect.Position.X, (int)(inputRect.Position.Y - popupHeight));
+        var popupPos = new Vector2I(
+            (int)inputRect.Position.X,
+            (int)(inputRect.Position.Y - popupHeight)
+        );
 
         _autocompleteScroll!.CustomMinimumSize = new Vector2(popupSize.X, popupSize.Y);
         _autocompleteScroll!.Size = new Vector2(popupSize.X, popupSize.Y);
@@ -451,7 +458,46 @@ public partial class DebugConsole : BaseDebugModule
         var index = _selectedSuggestionIndex >= 0 ? _selectedSuggestionIndex : 0;
         if (index < _currentSuggestions.Count)
         {
-            _inputField!.Text = _currentSuggestions[index].Text;
+            var suggestion = _currentSuggestions[index];
+            var currentInput = _inputField!.Text ?? "";
+
+            if (suggestion.Source == SuggestionSource.Namespace)
+            {
+                // Namespace suggestion: insert within parens context
+                // Check if we're inside parens already
+                int openParen = currentInput.IndexOf('(');
+                int closeParen = currentInput.IndexOf(')');
+
+                if (openParen >= 0 && closeParen < 0)
+                {
+                    // Inside open parens, replace from the last comma or open paren
+                    int lastComma = currentInput.LastIndexOf(',');
+                    int insertFrom = lastComma >= 0 ? lastComma + 1 : openParen + 1;
+                    string prefix = currentInput.Substring(0, insertFrom);
+                    // Add space after comma if needed
+                    if (lastComma >= 0)
+                        prefix += " ";
+                    _inputField!.Text = prefix + suggestion.Text;
+                }
+                else
+                {
+                    // No parens yet: wrap in parens with trailing space
+                    _inputField!.Text = $"({suggestion.Text}) ";
+                }
+            }
+            else if (suggestion.Source == SuggestionSource.Command && currentInput.Contains(')'))
+            {
+                // Command suggestion after closing paren: replace just the command part
+                int closeParenIdx = currentInput.IndexOf(')');
+                string prefix = currentInput.Substring(0, closeParenIdx + 1) + " ";
+                _inputField!.Text = prefix + suggestion.Text;
+            }
+            else
+            {
+                // Default: replace entire input
+                _inputField!.Text = suggestion.Text;
+            }
+
             _inputField!.CaretColumn = _inputField!.Text.Length;
         }
 

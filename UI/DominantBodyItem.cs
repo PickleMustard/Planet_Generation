@@ -202,22 +202,27 @@ public partial class DominantBodyItem : HBoxContainer
     {
         if (!t.ContainsKey("template"))
         {
-            GD.PrintErr("PlanetaryBodyItem.SetTemplate(): missing 'template' key in dictionary");
+            GD.PrintErr("DominantBodyItem.SetConfiguration(): missing 'template' key in dictionary");
             return;
         }
         var template = (Godot.Collections.Dictionary)t["template"];
-        var meshSettings = (Godot.Collections.Dictionary)t["mesh"];
 
-        if (template.ContainsKey("starting_angle"))
-            SetStartingAngle((float)template["starting_angle"]);
-        if (template.ContainsKey("vertical_offset"))
-            SetInclination((float)template["vertical_offset"]);
-        if (Mass != null)
+        // Read central_parameters for inclination/starting_angle (matches ToParams() output)
+        if (t.ContainsKey("central_parameters"))
+        {
+            var centralParams = (Godot.Collections.Dictionary)t["central_parameters"];
+            if (centralParams.ContainsKey("starting_angle"))
+                SetStartingAngle((float)centralParams["starting_angle"]);
+            if (centralParams.ContainsKey("inclination"))
+                SetInclination((float)centralParams["inclination"]);
+        }
+
+        if (Mass != null && template.ContainsKey("mass"))
             Mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
-        if (BodySize != null)
+        if (BodySize != null && template.ContainsKey("size"))
             BodySize.Value = Mathf.Clamp((float)template["size"], 0f, SizeLimit);
 
-        if (meshSettings.ContainsKey("base_mesh"))
+        if (t.ContainsKey("base_mesh"))
         {
             var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
             subdivisions = (int)baseMesh["subdivisions"];
@@ -232,6 +237,14 @@ public partial class DominantBodyItem : HBoxContainer
             }
             numAbberations = (int)baseMesh["num_abberations"];
             numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
+        }
+
+        if (t.ContainsKey("spherical_harmonics_settings"))
+        {
+            var sphSettings = (Godot.Collections.Dictionary)t["spherical_harmonics_settings"];
+            hasSphericalHarmonics = true;
+            if (sphSettings.ContainsKey("amplitude_range"))
+                shAmplitudeRange = (float[])sphSettings["amplitude_range"];
         }
     }
 

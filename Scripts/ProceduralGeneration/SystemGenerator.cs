@@ -106,6 +106,7 @@ public partial class SystemGenerator : Node
         Barycenter barycenter
     )
     {
+        GD.Print($"Generating {body["name"]}: {body}");
         // Get orbital parameters
         float apogee = 1000f;
         float perigee = 500f;
@@ -206,19 +207,37 @@ public partial class SystemGenerator : Node
         Barycenter barycenter
     )
     {
-        // Get orbital center
+        // Get orbital center index (-1 = barycenter, 0+ = dominant body index)
         int orbitalCenterIndex = belt.ContainsKey("orbital_center_index")
             ? (int)belt["orbital_center_index"]
             : -1;
 
-        // For now, satellite belts in the standalone section need a parent celestial body
-        // We'll need to handle this by either:
-        // 1. Finding an existing dominant body as parent
-        // 2. Creating a placeholder body
+        // Resolve the parent body by index from _parentBodies
+        CelestialBody? parentBody = null;
 
-        // Try to find a parent body from the system container
-        String parentName = belt.ContainsKey("parent_body") ? (String)belt["parent_body"] : "";
-        CelestialBody? parentBody = _parentBodies[parentName];
+        if (orbitalCenterIndex >= 0)
+        {
+            // Find the N-th dominant body added to _parentBodies
+            int idx = 0;
+            foreach (var kvp in _parentBodies)
+            {
+                if (idx == orbitalCenterIndex)
+                {
+                    parentBody = kvp.Value;
+                    break;
+                }
+                idx++;
+            }
+        }
+        else
+        {
+            // Barycenter: use the first parent body if available
+            foreach (var kvp in _parentBodies)
+            {
+                parentBody = kvp.Value;
+                break;
+            }
+        }
 
         // If we found a parent, generate the belt
         if (parentBody != null)
@@ -482,10 +501,8 @@ public partial class SystemGenerator : Node
         );
 
         var mesh = new UnifiedCelestialMesh();
-        var parentPlanetaryType = (PlanetaryBodyType)Enum.Parse(
-            typeof(PlanetaryBodyType),
-            parentBody.Type.ToString()
-        );
+        var parentPlanetaryType = (PlanetaryBodyType)
+            Enum.Parse(typeof(PlanetaryBodyType), parentBody.Type.ToString());
         SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(
             parentPlanetaryType,
             sat,
@@ -517,10 +534,8 @@ public partial class SystemGenerator : Node
         CelestialBody parentBody
     )
     {
-        var parentDominantType = (DominantBodyType)Enum.Parse(
-            typeof(DominantBodyType),
-            parentBody.Type.ToString()
-        );
+        var parentDominantType = (DominantBodyType)
+            Enum.Parse(typeof(DominantBodyType), parentBody.Type.ToString());
         SatelliteBeltBody beltBody = SatelliteBeltBody.Builder.BuildFromBodyDict(
             parentDominantType,
             satBelt

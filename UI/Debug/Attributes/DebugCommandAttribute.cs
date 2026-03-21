@@ -46,6 +46,19 @@ public class DebugCommandAttribute : Attribute
     public string Category { get; set; } = "General";
 
     /// <summary>
+    /// When set, this command can be invoked against instances of the specified Type,
+    /// even though the command method is not defined on that Type.
+    /// The target instance is available via CommandContext.TargetInstance.
+    /// </summary>
+    /// <remarks>
+    /// When ExternalCaller is set, the command is treated as requiring a target
+    /// (like RequiresTarget = true), but the type-check during dispatch uses
+    /// ExternalCaller instead of DeclaringType. The method itself can be static
+    /// (defined in a helper class) — it accesses the target via ctx.TargetInstance.
+    /// </remarks>
+    public object? ExternalCaller { get; set; }
+
+    /// <summary>
     /// Creates a new DebugCommandAttribute.
     /// </summary>
     /// <param name="name">The command name.</param>

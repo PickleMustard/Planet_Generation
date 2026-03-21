@@ -1,6 +1,7 @@
 using System;
 using Godot;
 using Godot.Collections;
+using Structures;
 using Structures.Enums;
 using UtilityLibrary;
 using FileAccess = Godot.FileAccess;
@@ -661,10 +662,8 @@ public partial class PlanetSystemGenerator : Control
         );
 
         bi1.SetBodyPosition(posA);
-        //bi1.SetBodyVelocity(velA.Cross(posA));
         bi1.SetBodyVelocity(velA);
         bi2.SetBodyPosition(posB);
-        //bi2.SetBodyVelocity(velB.Cross(posB));
         bi2.SetBodyVelocity(velB);
         dominantBodies.Add(bi1!.ToParams());
         dominantBodies.Add(bi2!.ToParams());
@@ -698,33 +697,22 @@ public partial class PlanetSystemGenerator : Control
         // Clear existing bodies from all lists
         ClearAllLists();
 
-        // Load bodies from utility library
-        // LoadSystemTemplate now extracts belt-type satellites from dominant body
-        // children and promotes them to top-level entries with is_top_level_belt=true
-        var bodies = TemplateHelpers.LoadSystemTemplate(fileName);
-        GD.Print($"Table: {bodies}");
+        // Load the 3-section template (dominant/belts/planetary)
+        var templateData = TemplateHelpers.LoadSystemTemplate(fileName);
+        GD.Print($"Loaded template: {templateData.Dominant.Count} dominant, {templateData.Belts.Count} belts, {templateData.Planetary.Count} planetary");
 
         // Set loading flag to prevent auto-balance during template load
         _isLoadingTemplate = true;
 
-        // First pass: create dominant bodies so orbital center options are available
-        // Second pass: create satellite belts and planetary bodies that reference them
-
         // Pass 1: Dominant bodies
-        foreach (var bodyDict in bodies)
+        foreach (var bodyDict in templateData.Dominant)
         {
             var typeStr = (string)bodyDict["type"];
-
-            // Skip belt entries in first pass
-            if (bodyDict.ContainsKey("is_top_level_belt") && (bool)bodyDict["is_top_level_belt"])
-                continue;
-
-            if (!Enum.TryParse<DominantBodyType>(typeStr, out var type))
+            if (!Enum.TryParse<DominantBodyType>(typeStr, out _))
                 continue;
 
             var template = (Godot.Collections.Dictionary)bodyDict["template"];
             var mass = (float)template["mass"];
-            var size = Mathf.RoundToInt((float)template["size"]);
 
             var bodyItem = AddDominantBodyFromTemplate(typeStr, bodyDict);
             if (bodyItem != null)
@@ -739,47 +727,22 @@ public partial class PlanetSystemGenerator : Control
         UpdateDominantBodyOptions();
         UpdateSharedOrbitalParamsVisibility();
 
-        // Set shared apogee/perigee from the first dominant body template (if multi-body)
-        if (_dominantBodiesList!.GetChildCount() >= 2)
+        // Pass 2: Satellite belts
+        foreach (var beltDict in templateData.Belts)
         {
-            // Look for apogee/perigee in the first dominant body's template data
-            foreach (var bodyDict in bodies)
-            {
-                var bTypeStr = (string)bodyDict["type"];
-                if (
-                    bodyDict.ContainsKey("is_top_level_belt") && (bool)bodyDict["is_top_level_belt"]
-                )
-                    continue;
-                if (!Enum.TryParse<DominantBodyType>(bTypeStr, out var bType))
-                    continue;
-                var bTemplate = (Godot.Collections.Dictionary)bodyDict["template"];
-                if (bTemplate.ContainsKey("apogee") && _sharedApogee != null)
-                    _sharedApogee.Value = (float)bTemplate["apogee"];
-                if (bTemplate.ContainsKey("perigee") && _sharedPerigee != null)
-                    _sharedPerigee.Value = (float)bTemplate["perigee"];
-                break; // Only need the first one
-            }
+            int orbitalCenterIndex = beltDict.ContainsKey("orbital_center_index")
+                ? (int)beltDict["orbital_center_index"]
+                : -1;
+            AddSatelliteBeltFromTemplate(beltDict, orbitalCenterIndex);
         }
 
-        // Pass 2: Satellite belts and planetary bodies
-        foreach (var bodyDict in bodies)
+        // Pass 3: Planetary bodies
+        foreach (var bodyDict in templateData.Planetary)
         {
             var typeStr = (string)bodyDict["type"];
-
-            // Handle top-level belt entries (extracted from old-format YAML or from new flat format)
-            if (bodyDict.ContainsKey("is_top_level_belt") && (bool)bodyDict["is_top_level_belt"])
-            {
-                int orbitalCenterIndex = bodyDict.ContainsKey("orbital_center_index")
-                    ? (int)bodyDict["orbital_center_index"]
-                    : -1;
-                AddSatelliteBeltFromTemplate(bodyDict, orbitalCenterIndex);
-                continue;
-            }
-
-            if (!Enum.TryParse<PlanetaryBodyType>(typeStr, out var type))
+            if (!Enum.TryParse<PlanetaryBodyType>(typeStr, out _))
                 continue;
 
-            // Planetary bodies
             var pTemplate = (Godot.Collections.Dictionary)bodyDict["template"];
             var pMass = (float)pTemplate["mass"];
             var pSize = Mathf.RoundToInt((float)pTemplate["size"]);
@@ -1025,30 +988,32 @@ public partial class PlanetSystemGenerator : Control
     {
         try
         {
-            var bodies = new Array<Dictionary>();
+            var dominant = new Array<Dictionary>();
+            var belts = new Array<Dictionary>();
+            var planetary = new Array<Dictionary>();
 
-            // Add dominant bodies
+            // Collect dominant bodies
             foreach (Node child in _dominantBodiesList!.GetChildren())
             {
                 if (child is DominantBodyItem bi)
-                    bodies.Add(bi.ToParams());
+                    dominant.Add(bi.ToParams());
             }
 
-            // Add planetary bodies
+            // Collect planetary bodies
             foreach (Node child in _planetaryBodiesList!.GetChildren())
             {
                 if (child is PlanetaryBodyItem bi)
-                    bodies.Add(bi.ToParams());
+                    planetary.Add(bi.ToParams());
             }
 
-            // Add satellite belts (as children of their orbital centers)
+            // Collect satellite belts
             foreach (Node child in _satelliteBeltsList!.GetChildren())
             {
                 if (child is SatelliteBeltItem sbi)
-                    bodies.Add(sbi.ToParams());
+                    belts.Add(sbi.ToParams());
             }
 
-            string yamlContent = TemplateHelpers.GenerateYamlContent(bodies);
+            string yamlContent = TemplateHelpers.GenerateYamlContent(dominant, belts, planetary);
 
             string filePath = $"res://Configuration/SystemTemplate/{fileName}";
 

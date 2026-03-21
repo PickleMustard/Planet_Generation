@@ -5,7 +5,6 @@ using Structures.Resources;
 using UtilityLibrary;
 #if DEBUG
 using UI.Debug;
-using UI.Debug.DatabaseViewer;
 #endif
 
 namespace Structures.Resources
@@ -14,9 +13,6 @@ namespace Structures.Resources
     [DebugData("IngameResources", Category = "Game")]
 #endif
     public partial class ResourceDatabase : Node
-#if DEBUG
-            , IDebugDataProvider
-#endif
     {
         private static ResourceDatabase? _instance;
         public static ResourceDatabase Instance
@@ -125,56 +121,5 @@ namespace Structures.Resources
             }
             base._ExitTree();
         }
-
-#if DEBUG
-        string IDataProvider.Name => "IngameResources";
-        string IDataProvider.Category => "Game";
-        bool IDataProvider.NeedsRefresh => true;
-        object IDebugDataProvider.SourceObject => this;
-        string IDebugDataProvider.InstanceNamespace => "ResourceDatabase";
-        bool IDebugDataProvider.IsSourceValid => _isInitialized && IsInstanceValid(this);
-
-        DebugDataNode IDataProvider.GetData()
-        {
-            var node = new DebugDataNode("Resources").AddProperty(
-                "Total Definitions",
-                _resources.Count
-            );
-
-            var definitionsNode = node.AddChild("Definitions");
-            foreach (var kvp in _resources)
-            {
-                var def = kvp.Value;
-                definitionsNode
-                    .AddChild(def.IdName ?? "Unknown")
-                    .AddProperty("Resource Type", def.ResourceType ?? "Unknown")
-                    .AddProperty("Resource Tier", def.ResourceTier)
-                    .AddProperty("Color", def.DisplayColor.ToString())
-                    .AddProperty("Min Elevation", def.MinElevation)
-                    .AddProperty("Max Elevation", def.MaxElevation)
-                    .AddProperty("Biome Affinities", def.BiomeAffinity.Count);
-            }
-
-            return node;
-        }
-
-        void IDataProvider.Refresh() { }
-
-        IEnumerable<string> IDataProvider.Search(string pattern)
-        {
-            var results = new List<string>();
-            foreach (var kvp in _resources)
-            {
-                if (
-                    kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase)
-                    || (kvp.Value.ResourceType?.Contains(pattern, StringComparison.OrdinalIgnoreCase) ?? false)
-                )
-                {
-                    results.Add($"Definitions/{kvp.Key}");
-                }
-            }
-            return results;
-        }
-#endif
     }
 }

@@ -39,6 +39,7 @@ public static class BuiltInCommands
             }
 
             ctx.WriteLine("\nType [color=cyan]help <command>[/color] for detailed usage.");
+            ctx.WriteLine("Instance commands: [color=cyan](namespace) command [args][/color]");
         }
         return 0;
     }
