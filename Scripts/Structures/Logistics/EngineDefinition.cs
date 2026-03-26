@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 
 namespace Structures.Logistics;
 
@@ -38,7 +38,7 @@ public class EngineDefinition
     /// Exhaust velocity in m/s calculated from effective Isp.
     /// Calculated as: EffectiveSpecificImpulse × g₀
     /// </summary>
-    public float ExhaustVelocity => EffectiveSpecificImpulse * OrbitalMath.GRAVITATIONAL_CONSTANT;
+    public float ExhaustVelocity => EffectiveSpecificImpulse * OrbitalMath.STANDARD_GRAVITY;
 
     /// <summary>
     /// Dictionary of currently active modifiers, keyed by source identifier.

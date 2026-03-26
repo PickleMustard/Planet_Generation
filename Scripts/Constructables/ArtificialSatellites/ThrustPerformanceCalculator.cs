@@ -3,6 +3,7 @@ using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Logistics;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 using EngineDef = Structures.Logistics.EngineDefinition;
 
 namespace Constructables.ArtificialSatellites;
@@ -490,6 +491,7 @@ public static class ThrustPerformanceCalculator
 
     // ============ Advanced: Full Trajectory-Based Range ============
 
+    /*
     /// <summary>
     /// Calculates range using actual Lambert solver for precise trajectory calculations.
     /// Requires origin and destination celestial bodies.
@@ -507,16 +509,10 @@ public static class ThrustPerformanceCalculator
         float dryMass,
         float fuelMass,
         float cargoMass,
-        CelestialBody? originBody,
-        CelestialBody? destinationBody,
+        TrajectorySolution route,
         float reserveFuelFraction = DefaultReserveFuelFraction
     )
     {
-        if (engine == null || originBody == null || fuelMass <= 0f)
-        {
-            return 0f;
-        }
-
         float usableFuel = fuelMass * (1f - reserveFuelFraction);
         float totalMass = dryMass + fuelMass + cargoMass;
         float exhaustVelocity = engine.ExhaustVelocity;
@@ -527,29 +523,11 @@ public static class ThrustPerformanceCalculator
         }
 
         // Get gravitational parameter from origin body
-        float mu = OrbitalMath.GRAVITATIONAL_CONSTANT * originBody.Mass;
 
-        if (mu <= 0f)
-        {
-            return CalculateRangeSimple(engine, totalMass, usableFuel, cargoMass);
-        }
-
-        // If destination provided, use Lambert solver to find range
-        if (destinationBody != null)
-        {
-            Vector3 r1 = originBody.GlobalPosition;
-            Vector3 r2 = destinationBody.GlobalPosition;
-            float distance = (r2 - r1).Length();
 
             // Calculate fuel required for this trajectory
-            var solution = LambertSolver.Solve(r1, r2, 3600f, mu); // 1 hour default TOF
-            float fuelRequired = solution.CalculateFuelRequired(totalMass, exhaustVelocity);
+        float fuelRequired = route.CalculateFuelRequired(totalMass, exhaustVelocity);
 
-            if (fuelRequired <= usableFuel)
-            {
-                return distance;
-            }
-        }
 
         // Otherwise, binary search with Lambert solver
         float maxDistance = 1e9f; // 1 million km default
@@ -593,4 +571,5 @@ public static class ThrustPerformanceCalculator
 
         return bestRange;
     }
+*/
 }

@@ -16,10 +16,211 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     public string Id { get; private set; } = string.Empty;
 
     [Export]
+    public Vector3 UnitPosition
+    {
+        get => Position;
+        set => Position = value;
+    }
+
+    [Export]
+    public Vector3 Velocity
+    {
+        get => _velocity;
+        set => _velocity = value;
+    }
+
+    [Export]
     public int BandIndex { get; set; }
 
     [Export]
     public bool IsActive { get; set; } = true;
+
+    [Export]
+    public bool IsStationary { get; set; } = false;
+
+    #region OrbitalParameters
+
+    /// <summary>Current orbital angle in radians.</summary>
+    public float OrbitalAngle
+    {
+        get => _orbitalAngle;
+        set => _orbitalAngle = value;
+    }
+
+    /// <summary>Current orbital radius in meters.</summary>
+    public float OrbitalRadius
+    {
+        get => _orbitalRadius;
+        set => _orbitalRadius = value;
+    }
+
+    /// <summary>Current orbital angular speed in rad/s.</summary>
+    public float OrbitalSpeed
+    {
+        get => _orbitalSpeed;
+        set => _orbitalSpeed = value;
+    }
+
+    // Orbital state fields
+    private float _orbitalAngle;
+    private float _orbitalRadius;
+    private float _orbitalSpeed;
+    private float _hostMass;
+    private bool _isInitialized;
+    private Vector3 _velocity;
+
+    /// <summary>
+    /// Initializes the logistics unit's orbit using the host body's orbital parameters.
+    /// Uses band-based or continuous placement based on the host body's configuration.
+    /// </summary>
+    /// <param name="hostBody">The orbital body to orbit around.</param>
+    /// <param name="bandIndex">Index of the orbit band (for band-based bodies).</param>
+    public void InitializeOrbit(IOrbitalBody hostBody, int bandIndex)
+    {
+        if (hostBody == null)
+        {
+            GameLogger.Warning("LogisticsUnit: Cannot initialize orbit - host body is null");
+            return;
+        }
+
+        // Get random starting angle
+        var rand = Randomizer.GetRandomNumberGenerator();
+        float startingAngle = rand.RandfRange(0f, Mathf.Tau);
+
+        OrbitalParameters parameters;
+
+        if (hostBody.UsesBandPlacement)
+        {
+            // Band-based placement
+            parameters = hostBody.GetOrbitalParametersForBand(bandIndex, startingAngle);
+            this.BandIndex = bandIndex;
+        }
+        else
+        {
+            // Continuous placement - calculate radius from band index as a fallback
+            float radius = CalculateRadiusForBand(hostBody, bandIndex);
+            parameters = hostBody.GetOrbitalParametersAtRadius(radius, startingAngle);
+            this.BandIndex = -1;
+        }
+
+        // Store orbital parameters
+        _orbitalRadius = parameters.Radius;
+        _orbitalSpeed = parameters.AngularSpeed;
+        _orbitalAngle = startingAngle;
+        _hostMass = parameters.HostMass;
+        _velocity = parameters.InitialVelocity;
+
+        // Set initial position
+        Node3D? parentNode = GetParent<Node3D>();
+        if (parentNode != null)
+        {
+            GlobalPosition = parentNode.GlobalPosition + parameters.InitialPosition;
+        }
+
+        _isInitialized = true;
+        _isTraveling = false;
+        _state = LogisticsUnitState.Idle;
+
+        // Initialize engine with default values if not set
+        if (_currentEngine == null)
+        {
+            _currentEngine = new Structures.Logistics.EngineDefinition(300f, 1000f);
+        }
+
+        GameLogger.Debug(
+            $"LogisticsUnit initialized: {Name}, Band {BandIndex}, Radius {_orbitalRadius:F2}, Speed {_orbitalSpeed:F6}"
+        );
+    }
+
+    /// <summary>
+    /// Initializes the logistics unit's orbit at a specific radius (for continuous placement).
+    /// </summary>
+    /// <param name="hostBody">The orbital body to orbit around.</param>
+    /// <param name="radius">Desired orbital radius in meters.</param>
+    public void InitializeOrbitAtRadius(IOrbitalBody hostBody, float radius)
+    {
+        if (hostBody == null)
+        {
+            GameLogger.Warning("LogisticsUnit: Cannot initialize orbit - host body is null");
+            return;
+        }
+
+        // Get random starting angle
+        var rand = Randomizer.GetRandomNumberGenerator();
+        float startingAngle = rand.RandfRange(0f, Mathf.Tau);
+
+        OrbitalParameters parameters = hostBody.GetOrbitalParametersAtRadius(radius, startingAngle);
+
+        // Store orbital parameters
+        _orbitalRadius = parameters.Radius;
+        _orbitalSpeed = parameters.AngularSpeed;
+        _orbitalAngle = startingAngle;
+        _hostMass = parameters.HostMass;
+        _velocity = parameters.InitialVelocity;
+        this.BandIndex = -1;
+
+        // Set initial position
+        Node3D? parentNode = GetParent<Node3D>();
+        if (parentNode != null)
+        {
+            GlobalPosition = parentNode.GlobalPosition + parameters.InitialPosition;
+        }
+
+        _isInitialized = true;
+        _isTraveling = false;
+        _state = LogisticsUnitState.Idle;
+
+        // Initialize engine with default values if not set
+        if (_currentEngine == null)
+        {
+            _currentEngine = new Structures.Logistics.EngineDefinition(300f, 1000f);
+        }
+
+        GameLogger.Debug(
+            $"LogisticsUnit initialized at radius: {Name}, Radius {_orbitalRadius:F2}, Speed {_orbitalSpeed:F6}"
+        );
+    }
+
+    /// <summary>
+    /// Backward-compatible wrapper that casts Node3D to IOrbitalBody and calls InitializeOrbit.
+    /// </summary>
+    /// <param name="parentBody">The parent body to orbit around.</param>
+    /// <param name="bandIndex">Index of the orbit band.</param>
+    public void Initialize(Node3D parentBody, int bandIndex)
+    {
+        if (parentBody is not IOrbitalBody orbitalBody)
+        {
+            GameLogger.Warning(
+                $"LogisticsUnit: Parent body {parentBody?.Name} does not implement IOrbitalBody"
+            );
+            return;
+        }
+
+        // Ensure we're parented to the body
+        if (GetParent() != parentBody)
+        {
+            GetParent()?.RemoveChild(this);
+            parentBody.AddChild(this);
+        }
+
+        InitializeOrbit(orbitalBody, bandIndex);
+#if DEBUG
+        RegisterWithDebug();
+#endif
+    }
+
+    /// <summary>
+    /// Calculates a fallback radius for band index on continuous-placement bodies.
+    /// </summary>
+    private float CalculateRadiusForBand(IOrbitalBody hostBody, int bandIndex)
+    {
+        float bodyRadius = hostBody.Radius;
+        float[] multipliers = Structures.GameState.OrbitConfiguration.GetDefaultBandMultipliers(4);
+        int clampedBand = Mathf.Clamp(bandIndex, 0, multipliers.Length - 1);
+        return bodyRadius * multipliers[clampedBand];
+    }
+
+    #endregion
 
     // Logistics-specific properties
     [Export]
@@ -43,7 +244,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
 
     // Travel state
     private bool _isTraveling;
-    private Node3D? _destinationBody;
+    private IOrbitalBody? _destinationBody;
     private float _travelSpeed = 10.0f;
 
     // Trajectory planning fields (Task #463)
@@ -60,15 +261,6 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
 
     // Movement controller for hybrid simulation (Task #435)
     private LogisticsMovementController? _movementController;
-
-    // Orbital state
-    private float _orbitalAngle;
-    private float _orbitalRadius;
-    private float _orbitalSpeed;
-    private float _bodyRadius;
-    private bool _isInitialized;
-
-    private const float DefaultOrbitalSpeed = 0.5f;
 
     // Visual components
     private MeshInstance3D? _meshInstance;
@@ -108,6 +300,39 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// The movement controller handling hybrid simulation, Kepler propagation, and warp.
     /// </summary>
     public LogisticsMovementController? MovementController => _movementController;
+
+    public override void _ExitTree()
+    {
+        GameLogger.Debug($"LogisticsUnit destroying: {Name}");
+        _isInitialized = false;
+        _isTraveling = false;
+        _destinationBody = null;
+        base._ExitTree();
+    }
+
+    public override void _EnterTree()
+    {
+        this.Id = Guid.NewGuid().ToString();
+    }
+
+    public override void _Ready()
+    {
+        base._Ready();
+
+        // Create visual representation
+        CreateVisualRepresentation();
+
+        // Initialize movement controller for hybrid simulation
+        InitializeMovementController();
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        if (!_isInitialized || !IsActive)
+            return;
+
+        CheckFuelState();
+    }
 
     /// <summary>
     /// Dry mass of the ship in kg (empty weight without fuel or cargo).
@@ -205,6 +430,12 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// <returns>Remaining delta-v in m/s, or 0 if no engine is installed.</returns>
     public float CalculateRemainingDeltaV()
     {
+        GameLogger.Info(
+            $"LogisticsUnit.CalculateRemainingDeltaV: Starting calculation - "
+                + $"dryMass={_dryMass:F2} kg, fuel={_fuel:F2} kg, cargoMass={GetCargoMass():F2} kg, "
+                + $"unit={Name}"
+        );
+
         if (_currentEngine == null)
         {
             GameLogger.Warning(
@@ -213,6 +444,16 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
             return 0f;
         }
 
+        float exhaustVelocity = _currentEngine.ExhaustVelocity;
+        float totalMass = _dryMass + _fuel + GetCargoMass();
+        float dryMass = _dryMass + GetCargoMass();
+
+        GameLogger.Info(
+            $"LogisticsUnit.CalculateRemainingDeltaV: Engine parameters - "
+                + $"exhaustVelocity={exhaustVelocity:F2} m/s, totalMass={totalMass:F2} kg, "
+                + $"dryMassNoFuel={dryMass:F2} kg, unit={Name}"
+        );
+
         float deltaV = ThrustPerformanceCalculator.CalculateMaxDeltaV(
             _currentEngine,
             _dryMass,
@@ -220,7 +461,14 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
             GetCargoMass()
         );
 
-        GameLogger.Debug($"LogisticsUnit {Name}: Remaining Δv = {deltaV:F2} m/s");
+        // Calculate mass ratio for logging
+        float massRatio = totalMass / dryMass;
+
+        GameLogger.Info(
+            $"LogisticsUnit.CalculateRemainingDeltaV: Result - "
+                + $"Δv={deltaV:F2} m/s, massRatio={massRatio:F4}, "
+                + $"ln(massRatio)={Mathf.Log(massRatio):F4}, unit={Name}"
+        );
 
         return deltaV;
     }
@@ -234,6 +482,12 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// <returns>Fuel mass required in the same units as fuel (mass units).</returns>
     public float CalculateFuelForDeltaV(float deltaV)
     {
+        GameLogger.Info(
+            $"LogisticsUnit.CalculateFuelForDeltaV: Starting calculation - "
+                + $"requestedDeltaV={deltaV:F2} m/s, dryMass={_dryMass:F2} kg, "
+                + $"cargoMass={GetCargoMass():F2} kg, unit={Name}"
+        );
+
         if (_currentEngine == null)
         {
             GameLogger.Warning(
@@ -244,6 +498,9 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
 
         if (deltaV <= 0f)
         {
+            GameLogger.Info(
+                $"LogisticsUnit.CalculateFuelForDeltaV: Zero or negative deltaV requested, returning 0 fuel"
+            );
             return 0f;
         }
 
@@ -257,12 +514,17 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         }
 
         float dryMass = _dryMass + GetCargoMass();
-        float massRatio = (float)System.Math.Exp(deltaV / exhaustVelocity);
+        float deltaVOverVe = deltaV / exhaustVelocity;
+        float massRatio = (float)System.Math.Exp(deltaVOverVe);
         float initialMass = dryMass * massRatio;
         float fuelRequired = initialMass - dryMass;
 
-        GameLogger.Debug(
-            $"LogisticsUnit {Name}: Fuel required for {deltaV:F2} Δv = {fuelRequired:F2} (mass ratio: {massRatio:F2})"
+        GameLogger.Info(
+            $"LogisticsUnit.CalculateFuelForDeltaV: Result - "
+                + $"exhaustVelocity={exhaustVelocity:F2} m/s, dryMassNoFuel={dryMass:F2} kg, "
+                + $"deltaV/ve={deltaVOverVe:F4}, massRatio=e^{deltaVOverVe:F4}={massRatio:F4}, "
+                + $"initialMass={initialMass:F2} kg, fuelRequired={fuelRequired:F2} kg, "
+                + $"unit={Name}"
         );
 
         return fuelRequired;
@@ -369,47 +631,6 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
             GameLogger.Info($"LogisticsUnit {Name}: Fuel available - can transition to Idle state");
         }
     }
-
-    public void Initialize(Node3D parentBody, int bandIndex)
-    {
-        // Reparent to the specified body if needed
-        if (GetParent() != parentBody)
-        {
-            GetParent()?.RemoveChild(this);
-            parentBody.CallDeferred("add_child", this);
-        }
-
-        this.BandIndex = bandIndex;
-        this.Id = Guid.NewGuid().ToString();
-
-        // Calculate orbital parameters based on band index
-        CalculateOrbitalParameters();
-
-        // Random starting angle for variety
-        var rand = Randomizer.GetRandomNumberGenerator();
-        _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
-
-        _isInitialized = true;
-        _isTraveling = false;
-        _state = LogisticsUnitState.Idle;
-
-        // Initialize engine with default values if not set
-        if (_currentEngine == null)
-        {
-            _currentEngine = new Structures.Logistics.EngineDefinition(300f, 1000f);
-        }
-
-        GameLogger.Debug(
-            $"LogisticsUnit initialized: {Name}, Band {BandIndex}, Radius {_orbitalRadius}"
-        );
-
-#if DEBUG
-        // Auto-register with debug console
-        RegisterWithDebug();
-#endif
-    }
-
-
 
     // Engine management methods
     public void SetEngine(Structures.Logistics.EngineDefinition engine)
@@ -618,51 +839,6 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         GameLogger.Debug($"LogisticsUnit {Name}: Cargo cleared");
     }
 
-    private void CalculateOrbitalParameters()
-    {
-        IOrbitalBody? parentBody = GetParent<IOrbitalBody>();
-        if (parentBody == null)
-        {
-            GameLogger.Warning(
-                "LogisticsUnit: Cannot calculate orbital parameters without parent body"
-            );
-            return;
-        }
-
-        // Get body radius from parent's scale (assuming sphere)
-        _bodyRadius = parentBody.Radius;
-
-        // Try to get the actual band radius from parent's OrbitBands
-        var orbitBands = parentBody.OrbitBands;
-
-        if (orbitBands != null && BandIndex >= 0 && BandIndex < orbitBands.Count)
-        {
-            // Use the actual band radius that was pre-calculated
-            _orbitalRadius = orbitBands[BandIndex].Radius;
-        }
-        else
-        {
-            // Fallback to default behavior
-            float[] bandMultipliers = OrbitConfiguration.GetDefaultBandMultipliers(4);
-            int clampedBand = Mathf.Clamp(BandIndex, 0, bandMultipliers.Length - 1);
-            _orbitalRadius = _bodyRadius * bandMultipliers[clampedBand];
-            GameLogger.Warning(
-                $"LogisticsUnit: Could not access orbit bands, using fallback calculation"
-            );
-        }
-
-        // Calculate orbital speed based on band
-        float baseOrbitalSpeed = DefaultOrbitalSpeed;
-
-        // Inner bands orbit faster than outer bands
-        int clampedBandForSpeed = Mathf.Clamp(BandIndex, 0, 3);
-        _orbitalSpeed = baseOrbitalSpeed / (1f + clampedBandForSpeed * 0.5f);
-
-        GameLogger.Debug(
-            $"LogisticsUnit orbital params: Radius={_orbitalRadius}, Speed={_orbitalSpeed}"
-        );
-    }
-
     // ============ Orbital Velocity Calculations (Ticket #1) ============
 
     /// <summary>
@@ -675,15 +851,36 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// <returns>Orbital velocity vector in m/s, or Vector3.Zero if calculation fails.</returns>
     public Vector3 GetOrbitalVelocity()
     {
+        // Velocity is now maintained by _PhysicsProcess each frame
+        // Return the current velocity value
+        if (_velocity.LengthSquared() > 1e-10f)
+        {
+            GameLogger.Info(
+                $"LogisticsUnit.GetOrbitalVelocity: Using cached velocity - "
+                    + $"v={_velocity.Length():F2} m/s, "
+                    + $"components=({_velocity.X:F2}, {_velocity.Y:F2}, {_velocity.Z:F2}), "
+                    + $"unit={Name}"
+            );
+            return _velocity;
+        }
+
+        // Fallback calculation if velocity hasn't been set yet
         // Validate orbital parameters
         if (_orbitalRadius <= 0f || _orbitalSpeed <= 0f)
         {
             GameLogger.Warning(
-                $"LogisticsUnit.GetOrbitalVelocity: Invalid orbital parameters - " +
-                $"radius: {_orbitalRadius}, speed: {_orbitalSpeed}"
+                $"LogisticsUnit.GetOrbitalVelocity: Invalid orbital parameters - "
+                    + $"radius: {_orbitalRadius}, speed: {_orbitalSpeed}"
             );
             return Vector3.Zero;
         }
+
+        // Log input parameters
+        GameLogger.Info(
+            $"LogisticsUnit.GetOrbitalVelocity: Calculating orbital velocity - "
+                + $"inputs: r={_orbitalRadius:F2}m, ω={_orbitalSpeed:F6} rad/s, θ={_orbitalAngle:F4} rad, "
+                + $"hostMass={_hostMass:E2} kg, unit={Name}"
+        );
 
         // Calculate linear speed: v = r × ω
         float linearSpeed = _orbitalRadius * _orbitalSpeed;
@@ -694,14 +891,18 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         float cosTheta = Mathf.Cos(_orbitalAngle);
 
         Vector3 velocity = new Vector3(
-            -linearSpeed * sinTheta,  // X component
-            0f,                       // Y component (XZ plane)
-            linearSpeed * cosTheta    // Z component
+            -linearSpeed * sinTheta, // X component
+            0f, // Y component (XZ plane)
+            linearSpeed * cosTheta // Z component
         );
+        Velocity = velocity;
 
-        GameLogger.Debug(
-            $"LogisticsUnit.GetOrbitalVelocity: v={velocity.Length():F2} m/s " +
-            $"(r={_orbitalRadius:F0}m, ω={_orbitalSpeed:F3} rad/s, θ={_orbitalAngle:F3} rad)"
+        GameLogger.Info(
+            $"LogisticsUnit.GetOrbitalVelocity: Calculated result - "
+                + $"v={velocity.Length():F2} m/s, "
+                + $"components=({velocity.X:F2}, {velocity.Y:F2}, {velocity.Z:F2}), "
+                + $"linearSpeed={linearSpeed:F2} m/s, sinθ={sinTheta:F4}, cosθ={cosTheta:F4}, "
+                + $"unit={Name}"
         );
 
         return velocity;
@@ -714,19 +915,34 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// </summary>
     /// <param name="referenceBody">The reference body to compute velocity relative to.</param>
     /// <returns>Total velocity vector relative to the reference body, or Vector3.Zero if calculation fails.</returns>
-    public Vector3 GetOrbitalVelocityRelativeTo(CelestialBody? referenceBody)
+    public Vector3 GetOrbitalVelocityRelativeTo(IOrbitalBody referenceBody)
     {
+        GameLogger.Info(
+            $"LogisticsUnit.GetOrbitalVelocityRelativeTo: Starting calculation - "
+                + $"referenceBody={referenceBody}, unit={Name}"
+        );
+
         if (referenceBody == null)
         {
-            GameLogger.Warning("LogisticsUnit.GetOrbitalVelocityRelativeTo: Reference body is null");
+            GameLogger.Warning(
+                "LogisticsUnit.GetOrbitalVelocityRelativeTo: Reference body is null"
+            );
             return Vector3.Zero;
         }
 
         // Get the ship's orbital velocity around its parent body
         Vector3 shipOrbitalVelocity = GetOrbitalVelocity();
+        GameLogger.Info(
+            $"LogisticsUnit.GetOrbitalVelocityRelativeTo: Ship orbital velocity - "
+                + $"v_ship={shipOrbitalVelocity.Length():F2} m/s, "
+                + $"components=({shipOrbitalVelocity.X:F2}, {shipOrbitalVelocity.Y:F2}, {shipOrbitalVelocity.Z:F2})"
+        );
+
         if (shipOrbitalVelocity.LengthSquared() <= 1e-10f)
         {
-            GameLogger.Warning("LogisticsUnit.GetOrbitalVelocityRelativeTo: Could not calculate ship orbital velocity");
+            GameLogger.Warning(
+                "LogisticsUnit.GetOrbitalVelocityRelativeTo: Could not calculate ship orbital velocity"
+            );
             return Vector3.Zero;
         }
 
@@ -743,56 +959,35 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         // If the reference body is the same as the parent body, just return ship's orbital velocity
         if (referenceBody == parentCelestialBody)
         {
+            GameLogger.Info(
+                $"LogisticsUnit.GetOrbitalVelocityRelativeTo: Reference body is parent - "
+                    + $"returning ship velocity only, v={shipOrbitalVelocity.Length():F2} m/s"
+            );
             return shipOrbitalVelocity;
         }
+
+        // Log parent body velocity
+        GameLogger.Info(
+            $"LogisticsUnit.GetOrbitalVelocityRelativeTo: Parent body velocity - "
+                + $"v_parent={parentCelestialBody.Velocity.Length():F2} m/s, "
+                + $"components=({parentCelestialBody.Velocity.X:F2}, {parentCelestialBody.Velocity.Y:F2}, {parentCelestialBody.Velocity.Z:F2}), "
+                + $"parent={parentCelestialBody.Name}"
+        );
 
         // Calculate total velocity: ship's orbital velocity + parent body's orbital velocity
         // Both velocities are in global coordinates, so we can add them directly
         Vector3 totalVelocity = shipOrbitalVelocity + parentCelestialBody.Velocity;
 
-        GameLogger.Debug(
-            $"LogisticsUnit.GetOrbitalVelocityRelativeTo: " +
-            $"v_ship={shipOrbitalVelocity.Length():F2} m/s, " +
-            $"v_parent={parentCelestialBody.Velocity.Length():F2} m/s, " +
-            $"v_total={totalVelocity.Length():F2} m/s " +
-            $"(relative to {referenceBody.Name})"
+        GameLogger.Info(
+            $"LogisticsUnit.GetOrbitalVelocityRelativeTo: Final result - "
+                + $"v_ship={shipOrbitalVelocity.Length():F2} m/s, "
+                + $"v_parent={parentCelestialBody.Velocity.Length():F2} m/s, "
+                + $"v_total={totalVelocity.Length():F2} m/s, "
+                + $"totalComponents=({totalVelocity.X:F2}, {totalVelocity.Y:F2}, {totalVelocity.Z:F2}), "
+                + $"relativeTo={referenceBody}"
         );
 
         return totalVelocity;
-    }
-
-    /// <summary>
-    /// Gets the orbital radius for the current band index.
-    /// </summary>
-    /// <returns>Orbital radius in meters, or 0 if calculation fails.</returns>
-    public float GetOrbitalRadius()
-    {
-        return _orbitalRadius;
-    }
-
-    /// <summary>
-    /// Gets the current orbital angle (radians).
-    /// </summary>
-    /// <returns>Current orbital angle in radians [0, 2π).</returns>
-    public float GetOrbitalAngle()
-    {
-        return _orbitalAngle;
-    }
-
-    /// <summary>
-    /// Gets the orbital speed (radians per second).
-    /// </summary>
-    public float GetOrbitalSpeed()
-    {
-        return _orbitalSpeed;
-    }
-
-    /// <summary>
-    /// Sets the current orbital angle (radians).
-    /// </summary>
-    public void SetOrbitalAngle(float angle)
-    {
-        _orbitalAngle = angle;
     }
 
     /// <summary>
@@ -814,30 +1009,45 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         if (_orbitalRadius <= 0f || _orbitalSpeed <= 0f)
         {
             GameLogger.Warning(
-                $"LogisticsUnit.PredictShipPositionAtTime: Invalid orbital parameters - " +
-                $"radius: {_orbitalRadius}, speed: {_orbitalSpeed}"
+                $"LogisticsUnit.PredictShipPositionAtTime: Invalid orbital parameters - "
+                    + $"radius: {_orbitalRadius}, speed: {_orbitalSpeed}"
             );
             return GlobalPosition;
         }
 
+        // Log input parameters
+        GameLogger.Info(
+            $"LogisticsUnit.PredictShipPositionAtTime: Inputs - "
+                + $"timeDelta={timeDelta:F2}s, currentAngle={_orbitalAngle:F4} rad, "
+                + $"orbitalSpeed={_orbitalSpeed:F6} rad/s, orbitalRadius={_orbitalRadius:F2}m, "
+                + $"currentGlobalPos={GlobalPosition}, unit={Name}"
+        );
+
         // Calculate new orbital angle: θ_new = θ_current + ω × Δt
-        float newOrbitalAngle = _orbitalAngle + (_orbitalSpeed * timeDelta);
-        
+        float angleIncrement = _orbitalSpeed * timeDelta;
+        float newOrbitalAngle = _orbitalAngle + angleIncrement;
+
         // Normalize angle to [0, 2π)
-        newOrbitalAngle = NormalizeAngle(newOrbitalAngle);
+        float normalizedAngle = NormalizeAngle(newOrbitalAngle);
 
         // Calculate position relative to parent body
-        float offsetX = Mathf.Cos(newOrbitalAngle) * _orbitalRadius;
-        float offsetZ = Mathf.Sin(newOrbitalAngle) * _orbitalRadius;
+        float cosAngle = Mathf.Cos(newOrbitalAngle);
+        float sinAngle = Mathf.Sin(newOrbitalAngle);
+        float offsetX = cosAngle * _orbitalRadius;
+        float offsetZ = sinAngle * _orbitalRadius;
         Vector3 relativePosition = new Vector3(offsetX, 0, offsetZ);
 
         // Return global position (assuming parent body doesn't move significantly in this time)
         Vector3 predictedPosition = parentBody.GlobalPosition + relativePosition;
 
-        GameLogger.Debug(
-            $"LogisticsUnit.PredictShipPositionAtTime: Δt={timeDelta:F1}s, " +
-            $"θ={_orbitalAngle:F3}→{newOrbitalAngle:F3} rad, " +
-            $"pos={GlobalPosition}→{predictedPosition}"
+        GameLogger.Info(
+            $"LogisticsUnit.PredictShipPositionAtTime: Result - "
+                + $"angleIncrement={angleIncrement:F4} rad, "
+                + $"newAngle={newOrbitalAngle:F4} rad (normalized={normalizedAngle:F4}), "
+                + $"cos={cosAngle:F4}, sin={sinAngle:F4}, "
+                + $"relativePos=({relativePosition.X:F2}, {relativePosition.Y:F2}, {relativePosition.Z:F2}), "
+                + $"parentPos={parentBody.GlobalPosition}, "
+                + $"predictedPos={predictedPosition}, unit={Name}"
         );
 
         return predictedPosition;
@@ -856,9 +1066,38 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         return angle;
     }
 
+    /// <summary>
+    /// Processes orbital motion during Idle/Planning states.
+    /// </summary>
+    private void ProcessOrbit(double delta)
+    {
+        Node3D? parentBody = GetParent<Node3D>();
+        if (parentBody == null)
+            return;
+
+        // Update orbital angle
+        _orbitalAngle += _orbitalSpeed * (float)delta;
+
+        // Keep angle in valid range [0, 2*PI]
+        if (_orbitalAngle > Mathf.Tau)
+            _orbitalAngle -= Mathf.Tau;
+
+        // Calculate position: parent position + orbital offset
+        float cos = Mathf.Cos(_orbitalAngle);
+        float sin = Mathf.Sin(_orbitalAngle);
+
+        // Position in XZ plane
+        GlobalPosition =
+            parentBody.GlobalPosition + new Vector3(cos * _orbitalRadius, 0, sin * _orbitalRadius);
+
+        // Calculate and store velocity (tangent to orbit)
+        float linearSpeed = _orbitalRadius * _orbitalSpeed;
+        _velocity = new Vector3(-sin * linearSpeed, 0f, cos * linearSpeed);
+    }
+
     // ============ End of Ticket #1 Methods ============
 
-    public void InitiateTravel(Node3D destinationBody, float speed)
+    public void InitiateTravel(IOrbitalBody destinationBody, float speed)
     {
         if (destinationBody == null)
         {
@@ -872,23 +1111,8 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         _state = LogisticsUnitState.Planning;
 
         GameLogger.Info(
-            $"LogisticsUnit {Name} initiating travel to {destinationBody.Name} at speed {speed}"
+            $"LogisticsUnit {Name} initiating travel to {destinationBody} at speed {speed}"
         );
-    }
-
-    public override void _PhysicsProcess(double delta)
-    {
-        if (!_isInitialized || !IsActive)
-            return;
-
-        CheckFuelState();
-
-        // Check if movement controller is handling a transfer
-        if (_movementController != null && _movementController.IsTransferring)
-        {
-            // Controller handles the transfer - don't run old travel/orbit logic
-            return;
-        }
     }
 
     public void HandleTravel(double delta)
@@ -908,18 +1132,18 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         }
 
         // Calculate direction to destination
-        Vector3 direction = (_destinationBody.GlobalPosition - GlobalPosition).Normalized();
+        Vector3 direction = (_destinationBody.BodyPosition - GlobalPosition).Normalized();
 
         // Move toward destination
         GlobalPosition += direction * _travelSpeed * (float)delta;
 
         // Check if we've arrived (close enough to destination)
-        float distanceToDestination = GlobalPosition.DistanceTo(_destinationBody.GlobalPosition);
+        float distanceToDestination = GlobalPosition.DistanceTo(_destinationBody.BodyPosition);
 
         // If we're close enough, re-enter orbit around the destination
-        if (distanceToDestination <= _destinationBody.Scale.X * 1.5f)
+        if (distanceToDestination <= _destinationBody.Radius * 1.5f)
         {
-            GameLogger.Info($"LogisticsUnit {Name} arrived at {_destinationBody.Name}");
+            GameLogger.Info($"LogisticsUnit {Name} arrived at {_destinationBody}");
 
             // Reparent to the destination body
             Node3D? currentParent = GetParent<Node3D>();
@@ -927,25 +1151,27 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
             {
                 currentParent.RemoveChild(this);
             }
-            _destinationBody.CallDeferred("add_child", this);
+            Node3D destinationBodyNode = _destinationBody as Node3D;
+            destinationBodyNode!.CallDeferred("add_child", this);
 
-            // Recalculate orbital parameters for the new parent
-            CalculateOrbitalParameters();
-
-            // Random starting angle at new location
-            var rand = Randomizer.GetRandomNumberGenerator();
-            _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
+            // Recalculate orbital parameters for the new parent using IOrbitalBody
+            if (_destinationBody is IOrbitalBody orbitalBody)
+            {
+                InitializeOrbit(orbitalBody, 0);
+            }
+            else
+            {
+                GameLogger.Warning(
+                    $"LogisticsUnit: Destination body does not implement IOrbitalBody"
+                );
+            }
 
             _isTraveling = false;
             _destinationBody = null;
-            _state = LogisticsUnitState.Idle;
 
-            GameLogger.Debug(
-                $"LogisticsUnit {Name} entered orbit around {_destinationBody?.Name ?? "unknown"}"
-            );
+            GameLogger.Debug($"LogisticsUnit {Name} entered orbit around destination");
         }
     }
-
 
     // Lambert-based trajectory execution methods (Task #463)
     /// <summary>
@@ -1016,9 +1242,16 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         float fuelNeeded = CalculateFuelForDeltaV(_plannedTrajectory.DeltaVRequired);
 
         GameLogger.Info(
-            $"LogisticsUnit {Name}: Route planned to {destination.Name}, "
-                + $"TOF: {_transferTime:F1}s, Δv: {_plannedTrajectory.DeltaVRequired:F2} m/s, "
-                + $"Fuel required: {fuelNeeded:F2}"
+            $"LogisticsUnit.PlanRoute: Route planned with detailed inputs - "
+                + $"departurePos={_departurePosition}, targetPos={_targetPosition}, "
+                + $"transferVector=({transferVector.X:F2}, {transferVector.Y:F2}, {transferVector.Z:F2}), "
+                + $"transferDistance={transferDistance:F2}m, averageSpeed={averageSpeed:F2}m/s, "
+                + $"engineThrust={_currentEngine?.EffectiveThrust ?? 0:F2}N, totalMass={GetTotalMass():F2}kg, "
+                + $"direction=({direction.X:F4}, {direction.Y:F4}, {direction.Z:F4}), "
+                + $"Results: TOF={_transferTime:F1}s, Δv={_plannedTrajectory.DeltaVRequired:F2}m/s, "
+                + $"initialVelocity=({_initialVelocity.X:F2}, {_initialVelocity.Y:F2}, {_initialVelocity.Z:F2}), "
+                + $"semiMajorAxis={_plannedTrajectory.SemiMajorAxis:F2}m, ecc={_plannedTrajectory.Eccentricity:F4}, "
+                + $"fuelNeeded={fuelNeeded:F2}kg, unit={Name}, destination={destination.Name}"
         );
 
         // Transition to Planning state
@@ -1041,7 +1274,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// <param name="targetBandIndex">Target orbit band at destination (-1 = auto-select closest).</param>
     /// <returns>List of trajectory options ranked by most efficient (lowest delta-v).</returns>
     public List<TrajectorySolution> GetRouteOptions(
-        ProceduralGeneration.PlanetGeneration.CelestialBody destination,
+        IOrbitalBody destination,
         float departureTime = 0f,
         int numOptions = 20,
         int targetBandIndex = -1
@@ -1071,8 +1304,8 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         }
 
         GameLogger.Info(
-            $"LogisticsUnit {Name}: Getting route options from {origin.Name} (band {BandIndex}) " +
-            $"to {destination.Name} (target band: {(targetBandIndex >= 0 ? targetBandIndex.ToString() : "auto")})"
+            $"LogisticsUnit {Name}: Getting route options from {origin.Name} (band {BandIndex}) "
+                + $"to {destination} (target band: {(targetBandIndex >= 0 ? targetBandIndex.ToString() : "auto")})"
         );
 
         return TrajectoryPlanner.Instance.GetOptions(
@@ -1154,7 +1387,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         _destinationBody = selectedTrajectory.DestinationBody;
 
         GameLogger.Info(
-            $"LogisticsUnit {Name}: Route planned to {selectedTrajectory.DestinationBody?.Name ?? "unknown"}, "
+            $"LogisticsUnit {Name}: Route planned to {selectedTrajectory.DestinationBody.ToString()}, "
                 + $"TOF: {_transferTime:F1}s, Δv: {selectedTrajectory.DeltaVRequired:F2} m/s, "
                 + $"Fuel required: {fuelNeeded:F2}"
         );
@@ -1398,12 +1631,15 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
                 targetBody.CallDeferred("add_child", this);
             }
 
-            // Recalculate orbital parameters for the new parent
-            CalculateOrbitalParameters();
-
-            // Random starting angle at new location
-            var rand = Randomizer.GetRandomNumberGenerator();
-            _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
+            // Recalculate orbital parameters for the new parent using IOrbitalBody
+            if (targetBody is IOrbitalBody orbitalBody)
+            {
+                InitializeOrbit(orbitalBody, 0);
+            }
+            else
+            {
+                GameLogger.Warning($"LogisticsUnit: Target body does not implement IOrbitalBody");
+            }
 
             GameLogger.Info($"LogisticsUnit {Name}: Successfully arrived and entered orbit");
         }
@@ -1430,7 +1666,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// fields in sync with the controller-managed lifecycle.
     /// </summary>
     /// <param name="newParentBody">The celestial body the unit is now orbiting.</param>
-    public void OnTransferComplete(CelestialBody? newParentBody)
+    public void OnTransferComplete(IOrbitalBody? newParentBody)
     {
         // Clear trajectory planning state
         _plannedTrajectory = null;
@@ -1449,10 +1685,16 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         // Recalculate orbital parameters for the new parent
         if (newParentBody != null)
         {
-            CalculateOrbitalParameters();
-
-            var rand = Randomizer.GetRandomNumberGenerator();
-            _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
+            if (newParentBody is IOrbitalBody orbitalBody)
+            {
+                InitializeOrbit(orbitalBody, 0);
+            }
+            else
+            {
+                GameLogger.Warning(
+                    $"LogisticsUnit: New parent body does not implement IOrbitalBody"
+                );
+            }
         }
 
         GameLogger.Debug(
@@ -1478,45 +1720,6 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         }
 
         return nearest;
-    }
-
-    public void OnDestroy()
-    {
-        GameLogger.Debug($"LogisticsUnit destroying: {Name}");
-
-        _isInitialized = false;
-        _isTraveling = false;
-        _destinationBody = null;
-    }
-
-    public override void _ExitTree()
-    {
-        OnDestroy();
-        base._ExitTree();
-    }
-
-    public override void _Ready()
-    {
-        base._Ready();
-
-        // Create visual representation
-        CreateVisualRepresentation();
-
-        // Initialize movement controller for hybrid simulation
-        InitializeMovementController();
-
-        // If initialized before _Ready (via scene instantiation), recalculate
-        GD.Print($"Parent body: {GetParent()}");
-        IOrbitalBody? parentBody = GetParent() as IOrbitalBody;
-        if (parentBody != null && !_isInitialized && BandIndex >= 0)
-        {
-            CalculateOrbitalParameters();
-
-            var rand = Randomizer.GetRandomNumberGenerator();
-            _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
-
-            _isInitialized = true;
-        }
     }
 
     /// <summary>

@@ -1,9 +1,9 @@
 using System;
 using Godot;
 using Godot.Collections;
-using Structures;
 using Structures.Enums;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 using FileAccess = Godot.FileAccess;
 
 namespace UI;
@@ -471,7 +471,7 @@ public partial class PlanetSystemGenerator : Control
         if (positions.Count == 1)
         {
             _barycenter.Position = Vector3.Zero;
-            _barycenter.Weight = 0f;
+            _barycenter.Mass = 0f;
             return;
         }
 
@@ -487,12 +487,12 @@ public partial class PlanetSystemGenerator : Control
         if (totalMass > 0f)
         {
             _barycenter.Position = totalPosition / totalMass;
-            _barycenter.Weight = totalMass;
+            _barycenter.Mass = totalMass;
         }
         else
         {
             _barycenter.Position = Vector3.Zero;
-            _barycenter.Weight = 0f;
+            _barycenter.Mass = 0f;
         }
 
         // Recalculate velocities for all bodies
@@ -699,7 +699,9 @@ public partial class PlanetSystemGenerator : Control
 
         // Load the 3-section template (dominant/belts/planetary)
         var templateData = TemplateHelpers.LoadSystemTemplate(fileName);
-        GD.Print($"Loaded template: {templateData.Dominant.Count} dominant, {templateData.Belts.Count} belts, {templateData.Planetary.Count} planetary");
+        GD.Print(
+            $"Loaded template: {templateData.Dominant.Count} dominant, {templateData.Belts.Count} belts, {templateData.Planetary.Count} planetary"
+        );
 
         // Set loading flag to prevent auto-balance during template load
         _isLoadingTemplate = true;

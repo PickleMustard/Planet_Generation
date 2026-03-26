@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Constructables.ArtificialSatellites;
 using ProceduralGeneration.PlanetGeneration;
 using UI.Debug;
 using UI.Debug.Console;
@@ -73,11 +74,14 @@ public partial class ConstructionManager : IDebugDataProvider
         }
 
         var name = args.Length > 1 ? args[1] : null;
-        var station = body.CreateStation(bandIndex, name);
-
-        if (station == null)
+        StationSatellite station;
+        try
         {
-            ctx.WriteError($"Failed to create station in band {bandIndex}");
+            station = CreateStation(body, bandIndex, name);
+        }
+        catch (Exception ex)
+        {
+            ctx.WriteError($"Failed to create station: {ex.Message}");
             return 1;
         }
 
@@ -166,7 +170,7 @@ public partial class ConstructionManager : IDebugDataProvider
         }
 
         // Validate band index range
-        if (bandIndex.Value < 0 || bandIndex.Value >= bandCount)
+        if (bandIndex < 0 || bandIndex >= bandCount)
         {
             ctx.WriteError(
                 $"Band index {bandIndex.Value} out of range. Available bands: {bandCount} (0-{bandCount - 1})"
@@ -185,10 +189,14 @@ public partial class ConstructionManager : IDebugDataProvider
         // Generate name if not provided
         name ??= LogisticsCommands.GenerateRandomShipName();
 
-        var ship = body.CreateLogisticsUnit(bandIndex.Value, name);
-        if (ship == null)
+        LogisticsUnit ship;
+        try
         {
-            ctx.WriteError($"Failed to create ship in band {bandIndex.Value}");
+            ship = CreateLogisticsUnit(body, bandIndex.Value, name);
+        }
+        catch (Exception ex)
+        {
+            ctx.WriteError($"Failed to create ship: {ex.Message}");
             return 1;
         }
 

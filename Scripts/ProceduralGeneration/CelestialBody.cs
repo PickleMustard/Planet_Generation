@@ -1,14 +1,12 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using Constructables.ArtificialSatellites;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 #if DEBUG
 using UI.Debug;
 #endif
@@ -27,8 +25,15 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 {
     private float _mass;
     private float _radius;
+    private Vector3 _velocity;
 
     public static Barycenter barycenter = new Barycenter(Vector3.Zero, Vector3.Zero, 0f);
+
+    /// <summary>
+    /// When true, an NBodyCoordinator handles physics integration.
+    /// Per-body _PhysicsProcess becomes a no-op.
+    /// </summary>
+    public static bool CoordinatorActive { get; set; } = false;
 
     public Builder builder()
     {
@@ -36,7 +41,18 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     }
 
     [Export]
-    public Vector3 Velocity;
+    public Vector3 BodyPosition
+    {
+        get => Position;
+        set => Position = value;
+    }
+
+    [Export]
+    public Vector3 Velocity
+    {
+        get => _velocity;
+        set => _velocity = value;
+    }
 
     [Export]
     public float Mass
@@ -53,9 +69,17 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     }
 
     [Export]
+    public string BodyName
+    {
+        get => Name;
+        set => Name = value;
+    }
+
+    [Export]
     public Vector3 TotalForce;
     private Vector3 _savedForce;
     public CelestialBodyType Type;
+
     // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
     // public RockyPlanetType? RockyType;
     public UnifiedCelestialMesh? Mesh { get; set; }
@@ -73,6 +97,72 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     [Export]
     public Node3D SatellitesContainer { get; private set; } = null!;
     private Godot.Collections.Dictionary<int, int> _bandSatelliteCounts = new();
+
+    #region OrbitalParameters
+
+    /// <summary>
+    /// Indicates whether this body uses discrete band-based placement.
+    /// Stars, Black Holes, and Neutron Stars use continuous placement.
+    /// All other body types use band-based placement.
+    /// </summary>
+    public bool UsesBandPlacement =>
+        Type switch
+        {
+            CelestialBodyType.Star => false,
+            CelestialBodyType.BlackHole => false,
+            CelestialBodyType.NeutronStar => false,
+            _ => true,
+        };
+
+    /// <summary>
+    /// Gets orbital parameters for a satellite placed in the specified band.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band.</param>
+    /// <param name="startingAngle">Starting orbital angle in radians.</param>
+    /// <returns>Complete orbital parameters including position and velocity.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when band index is invalid.</exception>
+    public OrbitalParameters GetOrbitalParametersForBand(int bandIndex, float startingAngle)
+    {
+        if (bandIndex < 0 || bandIndex >= OrbitBands.Count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {OrbitBands.Count}"
+            );
+        }
+
+        OrbitBand band = OrbitBands[bandIndex];
+
+        return OrbitalParameters.CreateCircular(
+            radius: band.Radius,
+            angularSpeed: band.AngularSpeed,
+            startingAngle: startingAngle,
+            hostMass: Mass,
+            bandIndex: bandIndex
+        );
+    }
+
+    /// <summary>
+    /// Gets orbital parameters for a satellite placed at an arbitrary radius (continuous placement).
+    /// </summary>
+    /// <param name="radius">Desired orbital radius in meters.</param>
+    /// <param name="startingAngle">Starting orbital angle in radians.</param>
+    /// <returns>Complete orbital parameters including position and velocity.</returns>
+    public OrbitalParameters GetOrbitalParametersAtRadius(float radius, float startingAngle)
+    {
+        // Calculate physics-based angular speed: ω = sqrt(G*M/r^3)
+        float angularSpeed = OrbitalParameters.CalculateAngularSpeed(Mass, radius);
+
+        return OrbitalParameters.CreateCircular(
+            radius: radius,
+            angularSpeed: angularSpeed,
+            startingAngle: startingAngle,
+            hostMass: Mass,
+            bandIndex: -1 // Continuous placement
+        );
+    }
+
+    #endregion
 
     public CelestialBody(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
     {
@@ -167,7 +257,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
     /// <summary>
     /// Initializes the orbit system based on the body's mass.
-    /// Creates orbit bands and sets up the satellites container.
+    /// Creates orbit bands for band-based bodies, or empty bands for continuous placement bodies.
+    /// Sets up the satellites container for all body types.
     /// </summary>
     public void InitializeOrbitSystem()
     {
@@ -177,95 +268,76 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         // Create orbit configuration from mass
         OrbitConfig = OrbitConfiguration.CreateFromMass(Mass, bodyRadius);
 
-        // Create all orbit bands
-        OrbitBands = OrbitConfig.CreateAllOrbitBands(bodyRadius);
-
-        // Initialize satellite counts for each band
-        _bandSatelliteCounts.Clear();
-        for (int i = 0; i < OrbitBands.Count; i++)
+        // Create orbit bands based on placement type
+        if (UsesBandPlacement)
         {
-            _bandSatelliteCounts[i] = 0;
+            // Band-based: create actual bands with physics-derived velocities
+            OrbitBands = OrbitConfig.CreateAllOrbitBands(bodyRadius, Mass);
+
+            // Initialize satellite counts for each band
+            _bandSatelliteCounts.Clear();
+            for (int i = 0; i < OrbitBands.Count; i++)
+            {
+                _bandSatelliteCounts[i] = 0;
+            }
+        }
+        else
+        {
+            // Continuous placement: empty bands, no discrete slots
+            OrbitBands = new Godot.Collections.Array<OrbitBand>();
+            _bandSatelliteCounts.Clear();
         }
 
-        // Create the satellites container
+        // Create the satellites container (always needed)
         SatellitesContainer = new Node3D { Name = "SatellitesContainer" };
         CallDeferred("add_child", SatellitesContainer);
 
-        GameLogger.Debug($"OrbitSystem initialized: {OrbitBands.Count} bands for mass {Mass}");
+        GameLogger.Debug(
+            $"OrbitSystem initialized: {OrbitBands.Count} bands for mass {Mass}, UsesBandPlacement={UsesBandPlacement}"
+        );
     }
 
     /// <summary>
-    /// Creates a station satellite in the specified orbit band.
+    /// Increments the satellite count for the specified band.
     /// </summary>
-    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
-    /// <param name="name">Name for the station</param>
-    /// <returns>The created station satellite, or null if invalid band</returns>
-    public StationSatellite? CreateStation(int bandIndex, string? name = null)
+    /// <param name="bandIndex">Index of the orbit band</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when band index is invalid</exception>
+    public void IncrementBandCount(int bandIndex)
     {
-        if (!CanAddToBand(bandIndex))
+        if (bandIndex < 0 || bandIndex >= OrbitBands.Count)
         {
-            GameLogger.Warning($"Cannot add station to band {bandIndex}: band is full or invalid");
-            return null;
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {OrbitBands.Count}"
+            );
         }
 
-        name ??= $"Station_{Guid.NewGuid().ToString()[..8]}";
-        var station = new StationSatellite { Name = name };
-
-        SatellitesContainer.AddChild(station);
-        station.Initialize(this, bandIndex);
-
+        if (!_bandSatelliteCounts.ContainsKey(bandIndex))
+        {
+            _bandSatelliteCounts[bandIndex] = 0;
+        }
         _bandSatelliteCounts[bandIndex]++;
-
-        GameLogger.Debug($"Created station '{name}' in band {bandIndex}");
-        return station;
     }
 
     /// <summary>
-    /// Creates a ship in a random valid orbit band.
+    /// Decrements the satellite count for the specified band.
     /// </summary>
-    /// <param name="name">Name for the ship</param>
-    /// <returns>The created ship satellite, or null if no valid band available</returns>
-    public StationSatellite? CreateShip(string name)
+    /// <param name="bandIndex">Index of the orbit band</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when band index is invalid</exception>
+    public void DecrementBandCount(int bandIndex)
     {
-        // Find a band with available capacity
-        for (int i = 0; i < OrbitBands.Count; i++)
+        if (bandIndex < 0 || bandIndex >= OrbitBands.Count)
         {
-            if (CanAddToBand(i))
-            {
-                return CreateStation(i, name);
-            }
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {OrbitBands.Count}"
+            );
         }
 
-        GameLogger.Warning($"Cannot create ship '{name}': no available bands");
-        return null;
-    }
-
-    /// <summary>
-    /// Creates a logistics unit (ship) in the specified orbit band.
-    /// </summary>
-    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
-    /// <param name="name">Name for the ship</param>
-    /// <returns>The created logistics unit, or null if invalid band</returns>
-    public LogisticsUnit? CreateLogisticsUnit(int bandIndex, string? name = null)
-    {
-        if (!CanAddToBand(bandIndex))
+        if (_bandSatelliteCounts.ContainsKey(bandIndex) && _bandSatelliteCounts[bandIndex] > 0)
         {
-            GameLogger.Warning($"Cannot add ship to band {bandIndex}: band is full or invalid");
-            return null;
+            _bandSatelliteCounts[bandIndex]--;
         }
-
-        name ??= $"Ship_{Guid.NewGuid().ToString()[..8]}";
-        var unit = new LogisticsUnit { Name = name };
-
-        SatellitesContainer.AddChild(unit);
-        unit.Initialize(this, bandIndex);
-        unit.InitializeCargo();
-        unit.SetFuelCapacity(1000f);
-
-        _bandSatelliteCounts[bandIndex]++;
-
-        GameLogger.Debug($"Created logistics unit '{name}' in band {bandIndex}");
-        return unit;
     }
 
     /// <summary>
@@ -321,8 +393,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         if (OrbitBands == null || bandIndex < 0 || bandIndex >= OrbitBands.Count)
         {
             GameLogger.Warning(
-                $"CelestialBody.GetOrbitBandRadius: Invalid band index {bandIndex} " +
-                $"(available: {OrbitBands?.Count ?? 0})"
+                $"CelestialBody.GetOrbitBandRadius: Invalid band index {bandIndex} "
+                    + $"(available: {OrbitBands?.Count ?? 0})"
             );
             return -1f;
         }
@@ -335,21 +407,20 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     /// Inner bands orbit faster than outer bands.
     /// </summary>
     /// <param name="bandIndex">Index of the orbit band (0-based).</param>
-    /// <returns>Angular speed in rad/s, or -1 if invalid.</returns>
+    /// <returns>Angular speed in rad/s from physics calculation, or -1 if invalid.</returns>
     public float GetOrbitalSpeedForBand(int bandIndex)
     {
-        if (OrbitConfig == null || bandIndex < 0 || bandIndex >= (OrbitBands?.Count ?? 0))
+        if (OrbitBands == null || bandIndex < 0 || bandIndex >= OrbitBands.Count)
         {
             GameLogger.Warning(
-                $"CelestialBody.GetOrbitalSpeedForBand: Invalid band index {bandIndex} " +
-                $"(available: {OrbitBands?.Count ?? 0})"
+                $"CelestialBody.GetOrbitalSpeedForBand: Invalid band index {bandIndex} "
+                    + $"(available: {OrbitBands?.Count ?? 0})"
             );
             return -1f;
         }
 
-        float baseOrbitalSpeed = OrbitConfig.BaseOrbitalSpeed;
-        int clampedBand = Mathf.Clamp(bandIndex, 0, 3);
-        return baseOrbitalSpeed / (1f + clampedBand * 0.5f);
+        // Return the physics-derived angular speed from the band
+        return OrbitBands[bandIndex].AngularSpeed;
     }
 
     /// <summary>
@@ -373,7 +444,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         {
             float bandRadius = OrbitBands[i].Radius;
             float bandAngularSpeed = GetOrbitalSpeedForBand(i);
-            if (bandAngularSpeed < 0f) continue;
+            if (bandAngularSpeed < 0f)
+                continue;
 
             float bandLinearSpeed = bandRadius * bandAngularSpeed;
             float difference = Mathf.Abs(approachSpeed - bandLinearSpeed);
@@ -386,8 +458,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         }
 
         GameLogger.Debug(
-            $"CelestialBody.GetClosestBandForApproach: approach={approachSpeed:F2} m/s, " +
-            $"best band={bestBand}"
+            $"CelestialBody.GetClosestBandForApproach: approach={approachSpeed:F2} m/s, "
+                + $"best band={bestBand}"
         );
 
         return bestBand;
@@ -395,6 +467,11 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
     public override void _PhysicsProcess(double delta)
     {
+        // When NBodyCoordinator is active, it handles synchronized integration
+        // for all CelestialBodies. Skip per-body physics to avoid double-updating.
+        if (CoordinatorActive)
+            return;
+
         TotalForce = new Vector3(0.0f, 0.0f, 0.0f);
         float totalMass = 0f;
         var bodies = GetTree().GetNodesInGroup("CelestialBody");
@@ -504,63 +581,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
                 }
             }
         }
-        //else
-        //{
-        //    var t = TemplateHelpers.GetCelestialBodyDefaults(Type);
-        //    var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
-        //    meshParams.Add("name", name);
-        //    meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), Type)!);
-        //    var template = (Godot.Collections.Dictionary)t["template"];
-
-        //    // Handle both position/velocity (dominant bodies) and orbital params (planetary bodies)
-        //    if (template.ContainsKey("position"))
-        //    {
-        //        meshParams.Add("position", (Vector3)template["position"]);
-        //        meshParams.Add("velocity", (Vector3)template["velocity"]);
-        //    }
-        //    else
-        //    {
-        //        // Orbital params present — no parent context in this fallback path,
-        //        // so use default position; actual position is calculated by SystemGenerator
-        //        meshParams.Add("position", Vector3.Zero);
-        //        meshParams.Add("velocity", Vector3.Zero);
-        //    }
-
-        //    var size = (int)template["size"];
-        //    var mass = (float)template["mass"];
-        //    meshParams.Add("size", size);
-        //    meshParams.Add("mass", mass);
-        //    if (
-        //        t.ContainsKey("base_mesh")
-        //        && t["base_mesh"].Obj is Godot.Collections.Dictionary customMesh
-        //    )
-        //    {
-        //        CalculateBaseMeshFromParams(customMesh, meshParams);
-        //    }
-        //    if (
-        //        t.ContainsKey("tectonics")
-        //        && t["tectonics"].Obj is Godot.Collections.Dictionary tectonics
-        //    )
-        //    {
-        //        CalculateTectonicMeshFromParams(tectonics, meshParams);
-        //    }
-        //    if (
-        //        t.ContainsKey("resources")
-        //        && t["resources"].Obj is Godot.Collections.Dictionary resources
-        //    )
-        //    {
-        //        meshParams.Add("resources", resources);
-        //        GD.Print(
-        //            $"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in template, keys: {string.Join(", ", resources.Keys)}"
-        //        );
-        //    }
-        //    else
-        //    {
-        //        GD.Print(
-        //            $"[ResourceDebug] CelestialBody.GenerateMesh: No resources in template (containsKey: {t.ContainsKey("resources")})"
-        //        );
-        //    }
-        //}
         GD.Print($"Mesh Params: {meshParams}");
         Mesh!.ConfigureFrom(StrDb, meshParams);
 
@@ -569,6 +589,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             onCompleted: (mesh) =>
             {
                 StrDb.FinalizeDB();
+                Radius = mesh.size;
                 GD.Print($"Generated mesh for {meshParams["name"]}");
                 onCompleted?.Invoke(this);
             },
@@ -851,6 +872,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         internal Vector3? _velocity;
         internal float? _mass;
         internal CelestialBodyType? _type;
+
         // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
         // internal RockyPlanetType? _rockyType;
         internal UnifiedCelestialMesh? _mesh;

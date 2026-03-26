@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Logistics;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 
 namespace Constructables.ArtificialSatellites;
 
@@ -21,6 +21,11 @@ public class TrajectoryPlanner
     /// Default number of trajectory options to generate.
     /// </summary>
     public int DefaultNumOptions { get; set; } = 5;
+
+    /// <summary>
+    /// Maximum delta V available after escaping host body's gravity well.
+    /// </summary>
+    public float MaxAvailableDeltaV { get; set; } = 1000f;
 
     /// <summary>
     /// Minimum time of flight in seconds.
@@ -85,11 +90,12 @@ public class TrajectoryPlanner
     /// <returns>List of trajectory options ranked by the specified criteria.</returns>
     public List<TrajectorySolution> GetOptions(
         LogisticsUnit unit,
-        CelestialBody origin,
-        CelestialBody destination,
+        IOrbitalBody origin,
+        IOrbitalBody destination,
         float departureTime = 0f,
         int numOptions = 0,
-        TrajectorySolution.RankingCriteria rankingCriteria = TrajectorySolution.RankingCriteria.MostEfficient,
+        TrajectorySolution.RankingCriteria rankingCriteria =
+            TrajectorySolution.RankingCriteria.MostEfficient,
         int targetBandIndex = -1
     )
     {
@@ -117,56 +123,60 @@ public class TrajectoryPlanner
         }
 
         GameLogger.Info(
-            $"TrajectoryPlanner.GetOptions: Planning route from {origin.Name} to {destination.Name}, " +
-            $"departure in {departureTime:F1}s, generating {numOptions} options, " +
-            $"target band: {(targetBandIndex >= 0 ? targetBandIndex.ToString() : "auto")}"
+            $"TrajectoryPlanner.GetOptions: Planning route from {origin} to {destination}, "
+                + $"departure in {departureTime:F1}s, generating {numOptions} options, "
+                + $"target band: {(targetBandIndex >= 0 ? targetBandIndex.ToString() : "auto")}"
         );
 
         // Find the central body for gravitational parameter
-        CelestialBody centralBody = FindCentralBody(origin);
-        float mu = GetGravitationalParameter(centralBody);
+        IOrbitalBody centralBody = OrbitalMath.FindCentralBody(origin);
+        float mu = OrbitalMath.GetGravitationalParameter(centralBody);
+        float chordLength = (destination.BodyPosition - origin.BodyPosition).Length();
+        float semiPerimeter =
+            (origin.BodyPosition.Length() + destination.BodyPosition.Length() + chordLength) / 2f;
+        float semiMajorAxis = semiPerimeter / 2f;
+        float lambda = Mathf.Sqrt(1f - (chordLength / semiPerimeter));
 
         if (mu <= 0f)
         {
             GameLogger.Error(
-                $"TrajectoryPlanner.GetOptions: Invalid gravitational parameter {mu} " +
-                $"for central body {centralBody?.Name}"
+                $"TrajectoryPlanner.GetOptions: Invalid gravitational parameter {mu} "
+                    + $"for central body {centralBody}"
             );
             return new List<TrajectorySolution>();
         }
 
-        // Central body position/velocity for reference frame conversion.
-        // The Lambert solver expects positions relative to the gravitational focus (central body).
-        Vector3 centralBodyPos = centralBody.GlobalPosition;
-        Vector3 centralBodyVel = centralBody.Velocity;
-
-        // ---- Origin: use ship's actual position and velocity ----
-
-        // Ship's actual global position (in orbit band around origin planet)
-        Vector3 shipPosGlobal = unit.GlobalPosition;
-        Vector3 shipPosRelative = shipPosGlobal - centralBodyPos;
+        GameLogger.Info(
+            $"TrajectoryPlanner.GetOptions: Geometric inputs - "
+                + $"originPos={origin.BodyPosition}, destinationPos={destination.BodyPosition}, "
+                + $"chordLength={chordLength:F2}m, semiPerimeter={semiPerimeter:F2}m, "
+                + $"semiMajorAxis={semiMajorAxis:F2}m, lambda={lambda:F6}, mu={mu:E2}"
+        );
 
         // Ship's total velocity relative to central body:
         // ship orbital velocity around parent + parent orbital velocity around central body
-        Vector3 shipVelocityRelative = unit.GetOrbitalVelocityRelativeTo(centralBody);
+        //Vector3 shipVelocityRelative = unit.GetOrbitalVelocityRelativeTo(centralBody);
+        Vector3 shipVelocity = unit.Velocity + origin.Velocity;
 
-        // If ship velocity calculation failed, fall back to planet's orbital velocity
-        if (shipVelocityRelative.LengthSquared() <= 1e-10f)
-        {
-            GameLogger.Warning(
-                "TrajectoryPlanner.GetOptions: Ship velocity calculation failed, " +
-                "falling back to origin body velocity"
-            );
-            shipVelocityRelative = origin.Velocity - centralBodyVel;
-        }
+        GameLogger.Info(
+            $"TrajectoryPlanner.GetOptions: Velocity inputs - "
+                + $"unitVelocity={unit.Velocity}, originVelocity={origin.Velocity}, "
+                + $"combinedShipVelocity={shipVelocity}, speed={shipVelocity.Length():F2}m/s"
+        );
+
+        //MaxAvailableDeltaV = Mathf.Sqrt(
+        //    Mathf.Pow(shipVelocity.Length() + unit.GetAvailableDeltaV(), 2f)
+        //        - (2f * mu) / shipPosRelative.Length()
+        //);
+        MaxAvailableDeltaV = shipVelocity.Length() + unit.GetAvailableDeltaV();
+
+        GameLogger.Info(
+            $"TrajectoryPlanner.GetOptions: DeltaV budget - "
+                + $"shipSpeed={shipVelocity.Length():F2}m/s, availableDeltaV={unit.GetAvailableDeltaV():F2}m/s, "
+                + $"maxAvailableDeltaV={MaxAvailableDeltaV:F2}m/s"
+        );
 
         int originBandIndex = unit.BandIndex;
-
-        GameLogger.Debug(
-            $"TrajectoryPlanner.GetOptions: Ship position (global): {shipPosGlobal}, " +
-            $"velocity (relative to {centralBody.Name}): {shipVelocityRelative} " +
-            $"({shipVelocityRelative.Length():F2} m/s), origin band: {originBandIndex}"
-        );
 
         // ---- Destination: determine target orbit band ----
 
@@ -175,17 +185,15 @@ public class TrajectoryPlanner
         if (resolvedTargetBand < 0)
         {
             // Default to closest band (band 0 if no bands available)
-            resolvedTargetBand = destination.GetClosestBandForApproach(
-                shipVelocityRelative.Length()
-            );
+            resolvedTargetBand = destination.GetClosestBandForApproach(shipVelocity.Length());
         }
 
         // Validate target band exists
         if (resolvedTargetBand >= destination.GetBandCount())
         {
             GameLogger.Warning(
-                $"TrajectoryPlanner.GetOptions: Target band {resolvedTargetBand} exceeds " +
-                $"available bands ({destination.GetBandCount()}), defaulting to 0"
+                $"TrajectoryPlanner.GetOptions: Target band {resolvedTargetBand} exceeds "
+                    + $"available bands ({destination.GetBandCount()}), defaulting to 0"
             );
             resolvedTargetBand = 0;
         }
@@ -195,8 +203,14 @@ public class TrajectoryPlanner
         float exhaustVelocity = unit.CurrentEngine?.ExhaustVelocity ?? 300f * 9.81f;
 
         // Generate ToF values across the range
-        float minTof = MinTOF;
-        float maxTof = MaxTOF;
+        var (minTof, maxTof) = CalculateTOFBounds(
+            origin.BodyPosition,
+            destination.BodyPosition,
+            shipVelocity.Length(),
+            MaxAvailableDeltaV,
+            mu
+        );
+
         float tofStep;
         if (numOptions == 1)
         {
@@ -208,6 +222,11 @@ public class TrajectoryPlanner
             tofStep = (maxTof - minTof) / (numOptions - 1);
         }
 
+        GameLogger.Info(
+            $"TrajectoryPlanner.GetOptions: TOF bounds calculation - "
+                + $"minTof={minTof:F2}s, maxTof={maxTof:F2}s, tofStep={tofStep:F2}s, numOptions={numOptions}"
+        );
+
         // Generate Lambert solutions with per-ToF destination position prediction
         var options = new List<TrajectorySolution>();
 
@@ -215,71 +234,118 @@ public class TrajectoryPlanner
         {
             float tof = minTof + (tofStep * i);
 
-            // ---- Calculate destination orbit band position and velocity at arrival ----
+            Vector3 centralBodyPos = centralBody.BodyPosition;
+            Vector3 centralBodyVel = centralBody.Velocity;
+
+            Vector3 originPos = origin.BodyPosition;
+            Vector3 originVel = origin.Velocity;
+
+            (Vector3 destinationPos, Vector3 destinationVel) = KeplerianMechanics.PropagateKepler(
+                destination.BodyPosition,
+                destination.Velocity,
+                mu,
+                tof
+            );
+
+            Vector3 shipPosGlobal = unit.GlobalPosition;
             float arrivalTime = departureTime + tof;
             var (destPosGlobal, destVelocityRelative) = CalculateTargetOrbitBandState(
-                destination, centralBody, resolvedTargetBand, arrivalTime
+                destination,
+                centralBody,
+                resolvedTargetBand,
+                mu,
+                tof
             );
             Vector3 destPosRelative = destPosGlobal - centralBodyPos;
 
-            // Solve Lambert's problem in central-body-centered frame
-            var solutions = OrbitalMath.SolveLambert(
-                shipPosRelative, destPosRelative, tof, mu, MaxRevolutions, IncludeRetrograde);
-
-            foreach (var solution in solutions)
+            try
             {
-                // Set the actual time of flight on the solution
-                solution.TimeOfFlight = tof;
+                var solutions = LambertSolver.Solve(
+                    shipPosGlobal,
+                    destinationPos,
+                    tof,
+                    mu,
+                    revolutions: 2
+                );
 
-                // Set extended properties
-                solution.OriginBody = origin;
-                solution.DestinationBody = destination;
-                solution.DepartureTime = departureTime;
-                solution.GravitationalParameter = mu;
-                // Store global positions — ship's actual position, not planet center
-                solution.PredictedOriginPosition = shipPosGlobal;
-                solution.PredictedDestinationPosition = destPosGlobal;
+                GameLogger.Info(
+                    $"TrajectoryPlanner.GetOptions: Lambert solver found {solutions.Count} solution(s)"
+                );
 
-                // Store orbit band metadata
-                solution.OriginBandIndex = originBandIndex;
-                solution.DestinationBandIndex = resolvedTargetBand;
+                foreach (var solution in solutions)
+                {
+                    // Set the actual time of flight on the solution
+                    solution.TimeOfFlight = tof;
 
-                // Set orbital velocities and recalculate delta-v correctly:
-                // ΔV = |v_lambert_depart - v_ship| + |v_lambert_arrive - v_dest_band|
-                solution.OriginOrbitalVelocity = shipVelocityRelative;
-                solution.DestinationOrbitalVelocity = destVelocityRelative;
-                solution.RecalculateDeltaV();
+                    // Set extended properties
+                    solution.OriginBody = origin;
+                    solution.DestinationBody = destination;
+                    solution.DepartureTime = departureTime;
+                    solution.GravitationalParameter = mu;
+                    // Store global positions — ship's actual position, not planet center
+                    solution.PredictedOriginPosition = shipPosGlobal;
+                    solution.PredictedDestinationPosition = destinationPos;
 
-                // Calculate fuel required (using corrected delta-v)
-                solution.CalculateFuelRequired(totalMass, exhaustVelocity);
+                    // Store orbit band metadata
+                    solution.OriginBandIndex = originBandIndex;
+                    solution.DestinationBandIndex = resolvedTargetBand;
 
-                options.Add(solution);
+                    // Set orbital velocities and recalculate delta-v correctly:
+                    // ΔV = |v_lambert_depart - v_ship| + |v_lambert_arrive - v_dest_band|
+                    solution.OriginOrbitalVelocity = shipVelocity;
+                    solution.DestinationOrbitalVelocity = destVelocityRelative;
+                    solution.RecalculateDeltaV();
+
+                    // Calculate fuel required (using corrected delta-v)
+                    solution.CalculateFuelRequired(totalMass, exhaustVelocity);
+
+                    // Derive the remaining classical orbital elements for the transfer orbit
+                    var elements = KeplerianMechanics.DeriveClassicalElements(
+                        shipPosGlobal,
+                        solution.InitialVelocity,
+                        mu
+                    );
+                    solution.Inclination = elements.InclinationDeg;
+                    solution.AscendingNodeLongitude = elements.AscendingNodeLongitudeDeg;
+                    solution.ArgumentOfPeriapsis = elements.ArgumentOfPeriapsisDeg;
+                    solution.MeanAnomaly = elements.MeanAnomalyDeg;
+
+                    options.Add(solution);
+                    GameLogger.Info(
+                        $"TrajectorySolution generated: TimeOfFlight {tof}, Origin {origin} Destination {destination}; PredictedOriginPosition {shipPosGlobal}"
+                    );
+                }
+            }
+            catch (Exception e)
+            {
+                GD.PrintErr($"Error in generating solutions: {e.Message}\n{e.StackTrace}");
+                GameLogger.Error($"Error in generating solutions: {e.Message}\n{e.StackTrace}");
             }
         }
 
         // Sort by delta-v (lowest first) before filtering
-        options.Sort((a, b) => a.DeltaVRequired.CompareTo(b.DeltaVRequired));
+        //options.Sort((a, b) => a.DeltaVRequired.CompareTo(b.DeltaVRequired));
 
-        // Filter by available delta-v
+        //// Filter by available delta-v
         float availableDeltaV = GetAvailableDeltaV(unit) * SafetyMargin;
-        options = FilterByAvailableDeltaV(options, availableDeltaV);
+        //options = FilterByAvailableDeltaV(options, availableDeltaV);
 
         if (options.Count == 0)
         {
             GameLogger.Warning(
-                $"TrajectoryPlanner.GetOptions: No viable trajectory options within delta-v budget " +
-                $"of {availableDeltaV:F2} m/s"
+                $"TrajectoryPlanner.GetOptions: No viable trajectory options within delta-v budget "
+                    + $"of {availableDeltaV:F2} m/s"
             );
             return options;
         }
 
         // Calculate scores and rank
-        TrajectorySolution.CalculateScores(options);
-        options = TrajectorySolution.RankBy(options, rankingCriteria);
+        //TrajectorySolution.CalculateScores(options);
+        //options = TrajectorySolution.RankBy(options, rankingCriteria);
 
         GameLogger.Info(
-            $"TrajectoryPlanner.GetOptions: Generated {options.Count} viable trajectory options, " +
-            $"ranked by {rankingCriteria}"
+            $"TrajectoryPlanner.GetOptions: Generated {options.Count} viable trajectory options, "
+                + $"ranked by {rankingCriteria}"
         );
 
         return options;
@@ -308,95 +374,6 @@ public class TrajectoryPlanner
     // ============ Private Helper Methods ============
 
     /// <summary>
-    /// Finds the most gravitationally dominant body in the system relative to the given body.
-    /// Uses gravitational influence calculation similar to FindDominantBody in PlanetSystemGenerator.
-    /// </summary>
-    /// <param name="origin">The body to find the central body for.</param>
-    /// <returns>The most gravitationally dominant body.</returns>
-    private CelestialBody FindCentralBody(CelestialBody origin)
-    {
-        if (origin == null)
-        {
-            GameLogger.Warning("TrajectoryPlanner.FindCentralBody: Origin body is null");
-            return origin;
-        }
-
-        // Get all celestial bodies in the system via the "CelestialBody" group
-        var bodies = origin.GetTree().GetNodesInGroup("CelestialBody");
-
-        if (bodies == null || bodies.Count == 0)
-        {
-            GameLogger.Warning("TrajectoryPlanner.FindCentralBody: No bodies found in system");
-            return origin;
-        }
-
-        float maxInfluence = 0f;
-        CelestialBody? dominantBody = null;
-        Vector3 testPosition = origin.GlobalPosition;
-
-        foreach (Node node in bodies)
-        {
-            if (node is CelestialBody body && body != origin)
-            {
-                float distanceSq = testPosition.DistanceSquaredTo(body.GlobalPosition);
-
-                // Avoid division by zero for very close or overlapping bodies
-                if (distanceSq > 0.001f)
-                {
-                    // Calculate gravitational influence (acceleration) at origin's position
-                    // Similar to FindDominantBody in PlanetSystemGenerator:
-                    // influence = G × mass / distance²
-                    float influence = OrbitalMath.GRAVITATIONAL_CONSTANT * body.Mass / distanceSq;
-
-                    if (influence > maxInfluence)
-                    {
-                        maxInfluence = influence;
-                        dominantBody = body;
-                    }
-                }
-            }
-        }
-
-        // If no other body has significant gravitational influence, 
-        // use the origin itself (it's either isolated or is the central body)
-        if (dominantBody == null)
-        {
-            GameLogger.Debug($"TrajectoryPlanner.FindCentralBody: Using {origin.Name} as central body (no dominant body found)");
-            return origin;
-        }
-
-        GameLogger.Debug($"TrajectoryPlanner.FindCentralBody: Found dominant body {dominantBody.Name} for {origin.Name}");
-        return dominantBody;
-    }
-
-    /// <summary>
-    /// Calculates the gravitational parameter (μ = GM) for a celestial body.
-    /// </summary>
-    /// <param name="centralBody">The central body.</param>
-    /// <returns>Gravitational parameter in m³/s².</returns>
-    private float GetGravitationalParameter(CelestialBody centralBody)
-    {
-        if (centralBody == null || centralBody.Mass <= 0f)
-        {
-            GameLogger.Warning(
-                $"TrajectoryPlanner.GetGravitationalParameter: Invalid body or mass - " +
-                $"body: {centralBody?.Name}, mass: {centralBody?.Mass}"
-            );
-            return 0f;
-        }
-
-        // μ = G × M (using OrbitalMath's gravitational constant)
-        float mu = OrbitalMath.GRAVITATIONAL_CONSTANT * centralBody.Mass;
-
-        GameLogger.Debug(
-            $"TrajectoryPlanner.GetGravitationalParameter: μ = {mu:E2} m³/s² for {centralBody.Name} " +
-            $"(mass: {centralBody.Mass:E2} kg)"
-        );
-
-        return mu;
-    }
-
-    /// <summary>
     /// Calculates the position and velocity of a point in a destination body's orbit band
     /// at a given arrival time. This accounts for:
     /// 1. The planet's predicted position at arrival
@@ -409,16 +386,23 @@ public class TrajectoryPlanner
     /// <param name="arrivalTime">Time from now when the ship arrives.</param>
     /// <returns>Tuple of (global position, velocity relative to central body).</returns>
     private (Vector3 position, Vector3 velocity) CalculateTargetOrbitBandState(
-        CelestialBody destinationBody,
-        CelestialBody centralBody,
+        IOrbitalBody destinationBody,
+        IOrbitalBody centralBody,
         int targetBandIndex,
-        float arrivalTime
+        float mu,
+        float tof
     )
     {
         Vector3 centralBodyVel = centralBody.Velocity;
 
         // 1. Get planet's predicted position at arrival
-        Vector3 planetPosGlobal = PredictBodyPosition(destinationBody, arrivalTime);
+        //Vector3 planetPosGlobal = PredictBodyPosition(destinationBody, arrivalTime);
+        (Vector3 planetPosGlobal, Vector3 planetVelGlobal) = KeplerianMechanics.PropagateKepler(
+            destinationBody.BodyPosition,
+            destinationBody.Velocity,
+            mu,
+            tof
+        );
         Vector3 planetVelRelative = destinationBody.Velocity - centralBodyVel;
 
         // 2. Get orbit band radius and speed
@@ -429,9 +413,9 @@ public class TrajectoryPlanner
         if (bandRadius <= 0f || bandAngularSpeed <= 0f)
         {
             GameLogger.Warning(
-                $"TrajectoryPlanner.CalculateTargetOrbitBandState: " +
-                $"Could not get band {targetBandIndex} data for {destinationBody.Name}, " +
-                $"falling back to planet center"
+                $"TrajectoryPlanner.CalculateTargetOrbitBandState: "
+                    + $"Could not get band {targetBandIndex} data for {destinationBody}, "
+                    + $"falling back to planet center"
             );
             return (planetPosGlobal, planetVelRelative);
         }
@@ -441,7 +425,9 @@ public class TrajectoryPlanner
         // We approximate this by choosing the angle on the destination side
         // of the orbit band that faces the origin (the central body approach direction).
         float arrivalAngle = CalculateOptimalArrivalAngle(
-            planetPosGlobal, centralBody.GlobalPosition, bandRadius
+            planetPosGlobal,
+            centralBody.BodyPosition,
+            bandRadius
         );
 
         // 4. Calculate position in orbit band (circular orbit in XZ plane around planet)
@@ -464,11 +450,11 @@ public class TrajectoryPlanner
         Vector3 totalVelocityRelative = bandOrbitalVelocity + planetVelRelative;
 
         GameLogger.Debug(
-            $"TrajectoryPlanner.CalculateTargetOrbitBandState: " +
-            $"band {targetBandIndex} r={bandRadius:F0}, ω={bandAngularSpeed:F3} rad/s, " +
-            $"angle={arrivalAngle:F3} rad, " +
-            $"band v={bandOrbitalVelocity.Length():F2} m/s, " +
-            $"total v={totalVelocityRelative.Length():F2} m/s"
+            $"TrajectoryPlanner.CalculateTargetOrbitBandState: "
+                + $"band {targetBandIndex} r={bandRadius:F0}, ω={bandAngularSpeed:F3} rad/s, "
+                + $"angle={arrivalAngle:F3} rad, "
+                + $"band v={bandOrbitalVelocity.Length():F2} m/s, "
+                + $"total v={totalVelocityRelative.Length():F2} m/s"
         );
 
         return (bandPosGlobal, totalVelocityRelative);
@@ -484,7 +470,9 @@ public class TrajectoryPlanner
     /// <param name="bandRadius">Orbit band radius.</param>
     /// <returns>Optimal arrival angle in radians.</returns>
     private float CalculateOptimalArrivalAngle(
-        Vector3 planetPos, Vector3 centralBodyPos, float bandRadius
+        Vector3 planetPos,
+        Vector3 centralBodyPos,
+        float bandRadius
     )
     {
         // The approach direction from central body to destination planet (in XZ plane)
@@ -529,7 +517,7 @@ public class TrajectoryPlanner
     /// <param name="body">The celestial body.</param>
     /// <param name="timeFromNow">Time in seconds from now.</param>
     /// <returns>Predicted position vector.</returns>
-    private Vector3 PredictBodyPosition(CelestialBody body, float timeFromNow)
+    private Vector3 PredictBodyPosition(IOrbitalBody body, float timeFromNow)
     {
         if (body == null)
         {
@@ -537,7 +525,7 @@ public class TrajectoryPlanner
         }
 
         // Get current position
-        Vector3 currentPos = body.GlobalPosition;
+        Vector3 currentPos = body.BodyPosition;
 
         // If body has velocity, estimate future position
         // This is a simplified prediction - for accurate results, we'd use full orbital mechanics
@@ -550,8 +538,8 @@ public class TrajectoryPlanner
             Vector3 predictedPos = currentPos + velocity * timeFromNow;
 
             GameLogger.Debug(
-                $"TrajectoryPlanner.PredictBodyPosition: {body.Name} at t+{timeFromNow:F1}s: " +
-                $"{currentPos} -> {predictedPos}"
+                $"TrajectoryPlanner.PredictBodyPosition: {body} at t+{timeFromNow:F1}s: "
+                    + $"{currentPos} -> {predictedPos}"
             );
 
             return predictedPos;
@@ -591,6 +579,69 @@ public class TrajectoryPlanner
         return Mathf.Clamp(estimatedTOF, MinTOF, MaxTOF);
     }
 
+    private (float, float) CalculateTOFBounds(
+        Vector3 originPosition,
+        Vector3 destinationPosition,
+        float currentVelocity,
+        float deltaV,
+        float mu
+    )
+    {
+        GameLogger.Info(
+            $"TrajectoryPlanner.CalculateTOFBounds: Inputs - "
+                + $"originPosition={originPosition}, destinationPosition={destinationPosition}, "
+                + $"currentVelocity={currentVelocity:F2}m/s, deltaV={deltaV:F2}m/s, mu={mu:E2}"
+        );
+
+        float minTOF = Single.MaxValue;
+        float maxTOF = Single.MinValue;
+        Vector3 r1 = originPosition;
+        Vector3 r2 = destinationPosition;
+        float distance = r1.DistanceTo(r2);
+
+        GameLogger.Info(
+            $"TrajectoryPlanner.CalculateTOFBounds: Distance calculation - "
+                + $"r1={r1}, r2={r2}, distance={distance:F2}m, |r1|={r1.Length():F2}m, |r2|={r2.Length():F2}m"
+        );
+
+        float vMax = currentVelocity + deltaV;
+        if (vMax >= 1e-10f)
+            minTOF = .5f * distance / vMax;
+
+        GameLogger.Info(
+            $"TrajectoryPlanner.CalculateTOFBounds: Minimum TOF calculation - "
+                + $"vMax={vMax:F2}m/s, minTOF={minTOF:F2}s"
+        );
+
+        float r1Mag = originPosition.Length();
+        float r2Mag = destinationPosition.Length();
+        float aTransfer = (r1Mag + r2Mag) / 2f;
+        float hohmannTOF = Mathf.Pi * Mathf.Sqrt(Mathf.Pow(aTransfer, 3) / (mu));
+        maxTOF = 2f * hohmannTOF;
+
+        GameLogger.Info(
+            $"TrajectoryPlanner.CalculateTOFBounds: Maximum TOF (Hohmann-based) - "
+                + $"r1Sun={r1Mag}, r2Sun={r2Mag}, aTransfer={aTransfer}, |aTransfer|={aTransfer:F2}m, "
+                + $"hohmannTOF={hohmannTOF:F2}s, maxTOF={maxTOF:F2}s"
+        );
+
+        if (minTOF > maxTOF)
+        {
+            float originalMinTOF = minTOF;
+            minTOF = maxTOF * .1f;
+            GameLogger.Info(
+                $"TrajectoryPlanner.CalculateTOFBounds: Adjusted minTOF - "
+                    + $"originalMinTOF={originalMinTOF:F2}s > maxTOF, new minTOF={minTOF:F2}s"
+            );
+        }
+
+        GameLogger.Info(
+            $"TrajectoryPlanner.CalculateTOFBounds: Final bounds - minTOF={minTOF:F2}s, maxTOF={maxTOF:F2}s"
+        );
+
+        return (minTOF, maxTOF);
+    }
+
     /// <summary>
     /// Filters trajectory options by available delta-v budget.
     /// </summary>
@@ -607,8 +658,8 @@ public class TrajectoryPlanner
         var filtered = TrajectorySolution.FilterByDeltaV(options, availableDeltaV);
 
         GameLogger.Debug(
-            $"TrajectoryPlanner.FilterByAvailableDeltaV: Filtered to {filtered.Count} options " +
-            $"within budget of {availableDeltaV:F2} m/s"
+            $"TrajectoryPlanner.FilterByAvailableDeltaV: Filtered to {filtered.Count} options "
+                + $"within budget of {availableDeltaV:F2} m/s"
         );
 
         return filtered;
@@ -655,9 +706,9 @@ public class TrajectoryPlanner
         float deltaV = exhaustVelocity * Mathf.Log(totalMass / dryMass);
 
         GameLogger.Debug(
-            $"TrajectoryPlanner.GetAvailableDeltaV: {deltaV:F2} m/s available " +
-            $"(mass: {totalMass:F2}kg, fuel: {fuelMass:F2}kg, dry: {dryMass:F2}kg, " +
-            $"exhaust: {exhaustVelocity:F2}m/s)"
+            $"TrajectoryPlanner.GetAvailableDeltaV: {deltaV:F2} m/s available "
+                + $"(mass: {totalMass:F2}kg, fuel: {fuelMass:F2}kg, dry: {dryMass:F2}kg, "
+                + $"exhaust: {exhaustVelocity:F2}m/s)"
         );
 
         return deltaV;

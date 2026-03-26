@@ -232,7 +232,7 @@ public class LogisticsUnitOrbitalVelocityTest
         var unit = CreateTestUnit(expectedRadius);
 
         // Act
-        float actualRadius = unit.GetOrbitalRadius();
+        float actualRadius = unit.OrbitalRadius;
 
         // Assert
         AssertThat(actualRadius).IsEqual(expectedRadius);
@@ -250,7 +250,7 @@ public class LogisticsUnitOrbitalVelocityTest
         var unit = CreateTestUnit(1000f, 0.1f, expectedAngle);
 
         // Act
-        float actualAngle = unit.GetOrbitalAngle();
+        float actualAngle = unit.OrbitalAngle;
 
         // Assert
         AssertThat(actualAngle).IsEqual(expectedAngle);

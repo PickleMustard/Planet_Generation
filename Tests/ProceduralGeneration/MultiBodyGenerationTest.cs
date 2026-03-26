@@ -1,7 +1,7 @@
 using System;
 using GdUnit4;
 using Godot;
-using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 using static GdUnit4.Assertions;
 
 namespace Tests;
@@ -34,7 +34,7 @@ public class MultiBodyGenerationTest
         // Arrange: a system barycenter shared across all body calculations
         var systemBarycenter = new Barycenter(Vector3.Zero, Vector3.Zero, 5000f);
         Vector3 originalPosition = systemBarycenter.Position;
-        float originalWeight = systemBarycenter.Weight;
+        float originalWeight = systemBarycenter.Mass;
 
         // Act: simulate what the OLD buggy code did — mutate the shared barycenter
         // for a body that orbits a specific parent star instead of the barycenter
@@ -48,11 +48,11 @@ public class MultiBodyGenerationTest
 
         // Demonstrate the problem: mutating a Resource mutates the reference
         systemBarycenter.Position = starPosition;
-        systemBarycenter.Weight = starMass;
+        systemBarycenter.Mass = starMass;
 
         // Assert: the original values are gone — this IS the bug
         AssertThat(systemBarycenter.Position).IsNotEqual(originalPosition);
-        AssertThat(systemBarycenter.Weight).IsNotEqual(originalWeight);
+        AssertThat(systemBarycenter.Mass).IsNotEqual(originalWeight);
     }
 
     /// <summary>
@@ -64,7 +64,7 @@ public class MultiBodyGenerationTest
         // Arrange: a system barycenter shared across all body calculations
         var systemBarycenter = new Barycenter(Vector3.Zero, Vector3.Zero, 5000f);
         Vector3 originalPosition = systemBarycenter.Position;
-        float originalWeight = systemBarycenter.Weight;
+        float originalWeight = systemBarycenter.Mass;
 
         // Act: the FIX — create a local copy instead of mutating the shared instance
         Vector3 starPosition = new Vector3(1000f, 0f, 500f);
@@ -73,11 +73,11 @@ public class MultiBodyGenerationTest
 
         // Assert: the original system barycenter is untouched
         AssertThat(systemBarycenter.Position).IsEqual(originalPosition);
-        AssertThat(systemBarycenter.Weight).IsEqual(originalWeight);
+        AssertThat(systemBarycenter.Mass).IsEqual(originalWeight);
 
         // And the local copy has the star values
         AssertThat(localBarycenter.Position).IsEqual(starPosition);
-        AssertThat(localBarycenter.Weight).IsEqual(starMass);
+        AssertThat(localBarycenter.Mass).IsEqual(starMass);
     }
 
     /// <summary>
@@ -116,7 +116,7 @@ public class MultiBodyGenerationTest
 
         // Assert: system barycenter was NOT corrupted by body 1's calculation
         AssertThat(systemBarycenter.Position).IsEqual(Vector3.Zero);
-        AssertThat(systemBarycenter.Weight).IsEqual(8000f);
+        AssertThat(systemBarycenter.Mass).IsEqual(8000f);
 
         // Assert: body 1 orbits near the star (position offset by star's position)
         float dist1ToStar = (pos1 - starPosition).Length();
@@ -603,9 +603,7 @@ public class MultiBodyGenerationTest
             massB
         );
 
-        foreach (
-            var vec in new[] { posA, velA, posB, velB }
-        )
+        foreach (var vec in new[] { posA, velA, posB, velB })
         {
             AssertThat(Single.IsNaN(vec.X)).IsFalse();
             AssertThat(Single.IsNaN(vec.Y)).IsFalse();

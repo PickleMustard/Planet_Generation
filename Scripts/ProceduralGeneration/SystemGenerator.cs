@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 #if DEBUG
 using UI.Debug.Console;
 #endif
@@ -36,6 +36,7 @@ public partial class SystemGenerator : Node
     private int bodiesCompleted = 0;
     private float _totalMass = 0f;
     private Dictionary<String, CelestialBody> _parentBodies = new();
+    private NBodyCoordinator? _coordinator;
 
     public override void _Ready()
     {
@@ -56,6 +57,13 @@ public partial class SystemGenerator : Node
         Barycenter barycenter
     )
     {
+        // Clean up previous coordinator
+        if (_coordinator != null)
+        {
+            _coordinator.QueueFree();
+            _coordinator = null;
+        }
+
         // Clear existing bodies
         if (SystemContainer!.GetChildCount() > 0)
         {
@@ -66,6 +74,8 @@ public partial class SystemGenerator : Node
                 child.QueueFree();
             }
         }
+
+        SystemContainer!.AddChild(barycenter);
 
         // Reset all tracking state for a fresh generation
         int totalBodies = dominantBodies.Count + satelliteBelts.Count + planetaryBodies.Count;
@@ -97,6 +107,10 @@ public partial class SystemGenerator : Node
         {
             CreateAndQueuePlanetaryBody(body, barycenter);
         }
+
+        // Create the N-body physics coordinator for synchronized integration
+        _coordinator = new NBodyCoordinator();
+        SystemContainer.AddChild(_coordinator);
 
         GD.Print($"System generation started: {totalBodiesToGenerate} bodies queued");
     }
