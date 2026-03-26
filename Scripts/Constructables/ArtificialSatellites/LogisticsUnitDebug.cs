@@ -1,7 +1,5 @@
 #if DEBUG
 using System;
-using System.Collections.Generic;
-using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using UI.Debug;
 using UI.Debug.Console;
@@ -277,7 +275,7 @@ public partial class LogisticsUnit
         string destNs = args[0];
         string mode = "--auto"; // default mode
         float departureTime = 0f;
-        int numOptions = 5;
+        int numOptions = 25;
 
         // Parse arguments
         for (int i = 1; i < args.Length; i++)
@@ -361,7 +359,9 @@ public partial class LogisticsUnit
                 ctx.WriteLine($"");
             }
 
-            ctx.WriteLine($"[color=yellow]Use '(Ships.N) select_route <index>' to choose an option[/color]");
+            ctx.WriteLine(
+                $"[color=yellow]Use '(Ships.N) select_route <index>' to choose an option[/color]"
+            );
             return 0;
         }
 
@@ -433,7 +433,7 @@ public partial class LogisticsUnit
 
         string destNs = args[0];
         float departureTime = 0f;
-        int numOptions = 5;
+        int numOptions = 25;
 
         if (args.Length > 1)
         {
@@ -496,7 +496,9 @@ public partial class LogisticsUnit
             ctx.WriteLine($"");
         }
 
-        ctx.WriteLine($"[color=yellow]Use '(Ships.N) select_route <index>' to choose an option[/color]");
+        ctx.WriteLine(
+            $"[color=yellow]Use '(Ships.N) select_route <index>' to choose an option[/color]"
+        );
         return 0;
     }
 
@@ -512,7 +514,9 @@ public partial class LogisticsUnit
         if (args.Length < 1)
         {
             ctx.WriteError("Usage: select_route <index>");
-            ctx.WriteLine("Use '(Ships.N) list_routes' or '(Ships.N) plan_route --list' first to see options.");
+            ctx.WriteLine(
+                "Use '(Ships.N) list_routes' or '(Ships.N) plan_route --list' first to see options."
+            );
             return 1;
         }
 
@@ -592,8 +596,7 @@ public partial class LogisticsUnit
 
         if (ExecuteTrajectory())
         {
-            string destName =
-                _plannedTrajectory?.DestinationBody?.Name ?? _destinationBody?.Name ?? "Unknown";
+            string destName = _plannedTrajectory?.DestinationBody.ToString() ?? "Unknown";
             ctx.WriteLine($"[color=green]Transfer initiated![/color]");
             ctx.WriteLine($"Destination: {destName}");
             return 0;
@@ -653,7 +656,7 @@ public partial class LogisticsUnit
         ctx.WriteLine($"\n[color=cyan]Transfer:[/color]");
         if (_state == LogisticsUnitState.Planning && _plannedTrajectory != null)
         {
-            ctx.WriteLine($"  Planned Destination: {_destinationBody?.Name ?? "Unknown"}");
+            ctx.WriteLine($"  Planned Destination: {_destinationBody!.ToString() ?? "Unknown"}");
             ctx.WriteLine($"  Time of Flight: {_plannedTrajectory.TimeOfFlight:F1}s");
             ctx.WriteLine($"  Delta-V: {_plannedTrajectory.DeltaVRequired:F2} m/s");
         }
@@ -673,8 +676,11 @@ public partial class LogisticsUnit
                         $"  Fuel Consumed: {_movementController.FuelConsumedThisTransfer:F2}kg "
                             + $"/ {bp.TotalFuelBudget:F2}kg budgeted"
                     );
-                    float estRemaining = _fuel - (bp.TotalFuelBudget - _movementController.FuelConsumedThisTransfer);
-                    ctx.WriteLine($"  Est. Fuel at Arrival: {Godot.Mathf.Max(0f, estRemaining):F2}");
+                    float estRemaining =
+                        _fuel - (bp.TotalFuelBudget - _movementController.FuelConsumedThisTransfer);
+                    ctx.WriteLine(
+                        $"  Est. Fuel at Arrival: {Godot.Mathf.Max(0f, estRemaining):F2}"
+                    );
                 }
             }
             else
@@ -717,10 +723,7 @@ public partial class LogisticsUnit
     )]
     public int TransferInfo(CommandContext ctx, string[] args)
     {
-        if (
-            _state == LogisticsUnitState.Idle
-            || _state == LogisticsUnitState.Disabled
-        )
+        if (_state == LogisticsUnitState.Idle || _state == LogisticsUnitState.Disabled)
         {
             ctx.WriteLine("[color=yellow]No active or planned transfer.[/color]");
             return 0;
@@ -747,9 +750,9 @@ public partial class LogisticsUnit
         if (_destinationBody != null)
         {
             ctx.WriteLine($"\n[color=cyan]Destination:[/color]");
-            ctx.WriteLine($"  Body: {_destinationBody.Name}");
+            ctx.WriteLine($"  Body: {_destinationBody.ToString()}");
             ctx.WriteLine(
-                $"  Distance: {GlobalPosition.DistanceTo(_destinationBody.GlobalPosition):F2}"
+                $"  Distance: {GlobalPosition.DistanceTo(_destinationBody.BodyPosition):F2}"
             );
         }
 
@@ -757,7 +760,10 @@ public partial class LogisticsUnit
         {
             ctx.WriteLine($"\n[color=cyan]Progress:[/color]");
 
-            if (_movementController != null && (_movementController.IsTransferring || _state == LogisticsUnitState.Stranded))
+            if (
+                _movementController != null
+                && (_movementController.IsTransferring || _state == LogisticsUnitState.Stranded)
+            )
             {
                 float progress = _movementController.TransferProgress;
                 ctx.WriteLine($"  Progress: {progress * 100:F1}%");
@@ -767,22 +773,31 @@ public partial class LogisticsUnit
                 if (bp != null)
                 {
                     ctx.WriteLine($"\n[color=cyan]Burn Profile:[/color]");
-                    ctx.WriteLine($"  Accelerating: {bp.AccelBurnDuration:F1}s ({bp.AccelFuelBudget:F2}kg @ {bp.AccelFuelRate:F3}kg/s)");
+                    ctx.WriteLine(
+                        $"  Accelerating: {bp.AccelBurnDuration:F1}s ({bp.AccelFuelBudget:F2}kg @ {bp.AccelFuelRate:F3}kg/s)"
+                    );
                     ctx.WriteLine($"  Coasting:     {bp.CoastDuration:F1}s (no fuel)");
-                    ctx.WriteLine($"  Decelerating: {bp.DecelBurnDuration:F1}s ({bp.DecelFuelBudget:F2}kg @ {bp.DecelFuelRate:F3}kg/s)");
+                    ctx.WriteLine(
+                        $"  Decelerating: {bp.DecelBurnDuration:F1}s ({bp.DecelFuelBudget:F2}kg @ {bp.DecelFuelRate:F3}kg/s)"
+                    );
                     ctx.WriteLine($"  Total Fuel Budget: {bp.TotalFuelBudget:F2}kg");
                 }
 
                 ctx.WriteLine($"\n[color=cyan]Fuel Consumption:[/color]");
-                ctx.WriteLine($"  Consumed This Transfer: {_movementController.FuelConsumedThisTransfer:F2}kg");
+                ctx.WriteLine(
+                    $"  Consumed This Transfer: {_movementController.FuelConsumedThisTransfer:F2}kg"
+                );
                 ctx.WriteLine($"  Current Fuel: {_fuel:F2} / {_maxFuel:F2}");
 
                 if (bp != null)
                 {
-                    float remaining = bp.TotalFuelBudget - _movementController.FuelConsumedThisTransfer;
+                    float remaining =
+                        bp.TotalFuelBudget - _movementController.FuelConsumedThisTransfer;
                     ctx.WriteLine($"  Remaining Budget: {Godot.Mathf.Max(0f, remaining):F2}kg");
                     float estArrival = _fuel - Godot.Mathf.Max(0f, remaining);
-                    ctx.WriteLine($"  Est. Fuel at Arrival: {Godot.Mathf.Max(0f, estArrival):F2}kg");
+                    ctx.WriteLine(
+                        $"  Est. Fuel at Arrival: {Godot.Mathf.Max(0f, estArrival):F2}kg"
+                    );
                 }
             }
             else
@@ -794,8 +809,12 @@ public partial class LogisticsUnit
 
             if (_state == LogisticsUnitState.Stranded)
             {
-                ctx.WriteLine($"\n[color=red]*** STRANDED — fuel exhausted mid-transit ***[/color]");
-                ctx.WriteLine($"[color=red]Ship is adrift and cannot complete arrival burn.[/color]");
+                ctx.WriteLine(
+                    $"\n[color=red]*** STRANDED — fuel exhausted mid-transit ***[/color]"
+                );
+                ctx.WriteLine(
+                    $"[color=red]Ship is adrift and cannot complete arrival burn.[/color]"
+                );
             }
         }
 

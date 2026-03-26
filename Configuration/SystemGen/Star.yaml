@@ -9,7 +9,7 @@ celestial:
   template:
     starting_angle: 0
     vertical_offset: 0
-    mass: 500000
+    mass: 5000000
     size: 500
 
   mesh:

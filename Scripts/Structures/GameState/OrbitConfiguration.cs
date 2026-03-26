@@ -1,4 +1,3 @@
-using System;
 using Godot;
 using UtilityLibrary;
 
@@ -15,10 +14,6 @@ public partial class OrbitConfiguration : Resource
     [Export]
     public int[] BandCapacities { get; private set; }
 
-    [Export]
-    public float BaseOrbitalSpeed { get; private set; }
-
-    private const float DefaultBaseOrbitalSpeed = 0.5f;
     private const float MinMass = 100f;
 
     public OrbitConfiguration()
@@ -26,7 +21,6 @@ public partial class OrbitConfiguration : Resource
         MaxBands = 0;
         BandMultipliers = [];
         BandCapacities = [];
-        BaseOrbitalSpeed = DefaultBaseOrbitalSpeed;
     }
 
     public OrbitConfiguration(float bodyMass, float bodyRadius)
@@ -38,37 +32,24 @@ public partial class OrbitConfiguration : Resource
         {
             BandCapacities[i] = GetDefaultBandCapacities(i);
         }
-        BaseOrbitalSpeed = DefaultBaseOrbitalSpeed;
-    }
-
-    public OrbitConfiguration(float bodyMass, float bodyRadius, float baseOrbitalSpeed)
-    {
-        MaxBands = CalculateMaxBands(bodyMass);
-        BandMultipliers = GetDefaultBandMultipliers(MaxBands);
-        BandCapacities = new int[MaxBands];
-        for (int i = 0; i < MaxBands; i++)
-        {
-            BandCapacities[i] = GetDefaultBandCapacities(i);
-        }
-        BaseOrbitalSpeed = baseOrbitalSpeed;
     }
 
     public OrbitConfiguration(
         float bodyMass,
         float bodyRadius,
         float[] customMultipliers,
-        int[] customCapacities,
-        float baseOrbitalSpeed
+        int[] customCapacities
     )
     {
         MaxBands = CalculateMaxBands(bodyMass);
-        BandMultipliers = GetDefaultBandMultipliers(MaxBands);
+        BandMultipliers = customMultipliers ?? GetDefaultBandMultipliers(MaxBands);
         BandCapacities = new int[MaxBands];
         for (int i = 0; i < MaxBands; i++)
         {
-            BandCapacities[i] = GetDefaultBandCapacities(i);
+            BandCapacities[i] = customCapacities != null && i < customCapacities.Length
+                ? customCapacities[i]
+                : GetDefaultBandCapacities(i);
         }
-        BaseOrbitalSpeed = baseOrbitalSpeed;
     }
 
     public static int CalculateMaxBands(float bodyMass)
@@ -103,30 +84,56 @@ public partial class OrbitConfiguration : Resource
         return 5 * (int)Mathf.Pow(2, currentBandN);
     }
 
-    public OrbitBand CreateOrbitBand(int index, float bodyRadius)
+    /// <summary>
+    /// Creates an orbit band with physics-based velocity calculations.
+    /// </summary>
+    /// <param name="index">Band index.</param>
+    /// <param name="bodyRadius">Radius of the body.</param>
+    /// <param name="hostMass">Mass of the host body for velocity calculation.</param>
+    /// <returns>Configured OrbitBand with physics-derived speeds.</returns>
+    public OrbitBand CreateOrbitBand(int index, float bodyRadius, float hostMass)
     {
         if (index < 0 || index >= BandMultipliers.Length)
         {
             GameLogger.Warning(
                 $"OrbitConfiguration: Invalid band index {index}. Max bands: {MaxBands}"
             );
-            return new OrbitBand(index, 1.0f, bodyRadius, 0);
+            return new OrbitBand(index, 1.0f, bodyRadius, 0, 0f, 0f);
         }
 
         float radius = bodyRadius * BandMultipliers[index];
-        return new OrbitBand(index, BandMultipliers[index], radius, BandCapacities[index]);
+
+        // Calculate physics-based angular speed: ω = sqrt(G*M/r^3)
+        float angularSpeed = OrbitalParameters.CalculateAngularSpeed(hostMass, radius);
+
+        // Calculate linear speed: v = r * ω
+        float linearSpeed = radius * angularSpeed;
+
+        return new OrbitBand(index, BandMultipliers[index], radius, BandCapacities[index], angularSpeed, linearSpeed);
     }
 
-    public Godot.Collections.Array<OrbitBand> CreateAllOrbitBands(float bodyRadius)
+    /// <summary>
+    /// Creates all orbit bands with physics-based velocity calculations.
+    /// </summary>
+    /// <param name="bodyRadius">Radius of the body.</param>
+    /// <param name="hostMass">Mass of the host body for velocity calculation.</param>
+    /// <returns>Array of configured OrbitBands.</returns>
+    public Godot.Collections.Array<OrbitBand> CreateAllOrbitBands(float bodyRadius, float hostMass)
     {
         var bands = new Godot.Collections.Array<OrbitBand>();
         for (int i = 0; i < MaxBands; i++)
         {
-            bands.Add(CreateOrbitBand(i, bodyRadius));
+            bands.Add(CreateOrbitBand(i, bodyRadius, hostMass));
         }
         return bands;
     }
 
+    /// <summary>
+    /// Creates an orbit configuration from mass, calculating physics-based orbital parameters.
+    /// </summary>
+    /// <param name="bodyMass">Mass of the body.</param>
+    /// <param name="bodyRadius">Radius of the body.</param>
+    /// <returns>Configured OrbitConfiguration.</returns>
     public static OrbitConfiguration CreateFromMass(float bodyMass, float bodyRadius = 1.0f)
     {
         return new OrbitConfiguration(bodyMass, bodyRadius);
@@ -134,6 +141,6 @@ public partial class OrbitConfiguration : Resource
 
     public override string ToString()
     {
-        return $"OrbitConfiguration: MaxBands={MaxBands}, BandMultipliers={BandMultipliers}, BandCapacities={BandCapacities}, BaseOrbitalSpeed={BaseOrbitalSpeed}";
+        return $"OrbitConfiguration: MaxBands={MaxBands}, BandMultipliers={BandMultipliers}, BandCapacities={BandCapacities}";
     }
 }

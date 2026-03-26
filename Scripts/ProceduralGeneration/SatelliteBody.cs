@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Constructables.ArtificialSatellites;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using ProceduralGeneration.MeshGeneration.ResourceGeneration;
@@ -10,6 +9,7 @@ using Structures.GameState;
 using Structures.MeshGeneration;
 using Structures.Resources;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
@@ -18,9 +18,21 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
 {
     private float _mass;
     private float _radius;
+    private Vector3 _velocity;
 
     [Export]
-    public Vector3 Velocity;
+    public Vector3 Velocity
+    {
+        get => _velocity;
+        set => _velocity = value;
+    }
+
+    [Export]
+    public Vector3 BodyPosition
+    {
+        get => Position;
+        set => Position = value;
+    }
 
     [Export]
     public float Mass
@@ -37,9 +49,22 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
     }
 
     [Export]
+    public string BodyName
+    {
+        get => Name;
+        set => Name = value;
+    }
+
+    [Export]
     public Vector3 accelerationVector;
     bool isSatelliteGroup = false;
     SatelliteBodyType SatelliteType;
+
+    // Analytical orbit fields (derived from initial position/velocity on first frame)
+    private float _orbitalRadius;
+    private float _orbitalAngle;
+    private float _orbitalSpeed;
+    private bool _orbitalInitialized;
     public UnifiedCelestialMesh? Mesh { get; set; }
     Octree<Point>? Oct;
     public Godot.Collections.Dictionary? bodyDict;
@@ -61,6 +86,147 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
     [Export]
     public Node3D SatellitesContainer { get; private set; } = null!;
     private Dictionary<int, int> _bandSatelliteCounts = new();
+
+    #region OrbitalParameters
+
+    /// <summary>
+    /// Satellite bodies always use band-based placement.
+    /// </summary>
+    public bool UsesBandPlacement => true;
+
+    /// <summary>
+    /// Gets orbital parameters for a satellite placed in the specified band.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band.</param>
+    /// <param name="startingAngle">Starting orbital angle in radians.</param>
+    /// <returns>Complete orbital parameters including position and velocity.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when band index is invalid.</exception>
+    public OrbitalParameters GetOrbitalParametersForBand(int bandIndex, float startingAngle)
+    {
+        if (bandIndex < 0 || bandIndex >= OrbitBands.Count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {OrbitBands.Count}"
+            );
+        }
+
+        OrbitBand band = OrbitBands[bandIndex];
+
+        return OrbitalParameters.CreateCircular(
+            radius: band.Radius,
+            angularSpeed: band.AngularSpeed,
+            startingAngle: startingAngle,
+            hostMass: Mass,
+            bandIndex: bandIndex
+        );
+    }
+
+    /// <summary>
+    /// Gets orbital parameters for a satellite placed at an arbitrary radius (continuous placement).
+    /// Satellite bodies always use bands, so this creates a virtual band at the specified radius.
+    /// </summary>
+    /// <param name="radius">Desired orbital radius in meters.</param>
+    /// <param name="startingAngle">Starting orbital angle in radians.</param>
+    /// <returns>Complete orbital parameters including position and velocity.</returns>
+    public OrbitalParameters GetOrbitalParametersAtRadius(float radius, float startingAngle)
+    {
+        // Satellite bodies use band-based placement, but we support continuous for flexibility
+        // Calculate physics-based angular speed: ω = sqrt(G*M/r^3)
+        float angularSpeed = OrbitalParameters.CalculateAngularSpeed(Mass, radius);
+
+        return OrbitalParameters.CreateCircular(
+            radius: radius,
+            angularSpeed: angularSpeed,
+            startingAngle: startingAngle,
+            hostMass: Mass,
+            bandIndex: -1 // Continuous placement
+        );
+    }
+
+    /// <summary>
+    /// Gets the orbital radius for a specific orbit band index.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band (0-based).</param>
+    /// <returns>Orbital radius in the same units as the body radius, or -1 if invalid.</returns>
+    public float GetOrbitBandRadius(int bandIndex)
+    {
+        if (OrbitBands == null || bandIndex < 0 || bandIndex >= OrbitBands.Count)
+        {
+            GameLogger.Warning(
+                $"CelestialBody.GetOrbitBandRadius: Invalid band index {bandIndex} "
+                    + $"(available: {OrbitBands?.Count ?? 0})"
+            );
+            return -1f;
+        }
+
+        return OrbitBands[bandIndex].Radius;
+    }
+
+    /// <summary>
+    /// Gets the angular orbital speed for a specific orbit band.
+    /// Inner bands orbit faster than outer bands.
+    /// </summary>
+    /// <param name="bandIndex">Index of the orbit band (0-based).</param>
+    /// <returns>Angular speed in rad/s from physics calculation, or -1 if invalid.</returns>
+    public float GetOrbitalSpeedForBand(int bandIndex)
+    {
+        if (OrbitBands == null || bandIndex < 0 || bandIndex >= OrbitBands.Count)
+        {
+            GameLogger.Warning(
+                $"CelestialBody.GetOrbitalSpeedForBand: Invalid band index {bandIndex} "
+                    + $"(available: {OrbitBands?.Count ?? 0})"
+            );
+            return -1f;
+        }
+
+        // Return the physics-derived angular speed from the band
+        return OrbitBands[bandIndex].AngularSpeed;
+    }
+
+    /// <summary>
+    /// Finds the closest orbit band index to a ship arriving from interplanetary space.
+    /// Selects the band that minimizes the difference between the ship's approach velocity
+    /// and the band's orbital velocity, reducing insertion delta-v.
+    /// </summary>
+    /// <param name="approachSpeed">The ship's speed relative to this body at arrival.</param>
+    /// <returns>The optimal band index, or 0 if no bands available.</returns>
+    public int GetClosestBandForApproach(float approachSpeed)
+    {
+        if (OrbitBands == null || OrbitBands.Count == 0)
+        {
+            return 0;
+        }
+
+        int bestBand = 0;
+        float bestDifference = float.MaxValue;
+
+        for (int i = 0; i < OrbitBands.Count; i++)
+        {
+            float bandRadius = OrbitBands[i].Radius;
+            float bandAngularSpeed = GetOrbitalSpeedForBand(i);
+            if (bandAngularSpeed < 0f)
+                continue;
+
+            float bandLinearSpeed = bandRadius * bandAngularSpeed;
+            float difference = Mathf.Abs(approachSpeed - bandLinearSpeed);
+
+            if (difference < bestDifference)
+            {
+                bestDifference = difference;
+                bestBand = i;
+            }
+        }
+
+        GameLogger.Debug(
+            $"CelestialBody.GetClosestBandForApproach: approach={approachSpeed:F2} m/s, "
+                + $"best band={bestBand}"
+        );
+
+        return bestBand;
+    }
+
+    #endregion
 
     public class Builder
     {
@@ -224,36 +390,6 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         }
     }
 
-    //public SatelliteBody(
-    //    CelestialBodyType parentType,
-    //    Godot.Collections.Dictionary bodyDict,
-    //    UnifiedCelestialMesh mesh
-    //)
-    //{
-    //    this.bodyDict = bodyDict;
-    //    var type = (String)bodyDict["type"];
-    //    var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
-    //    var mass = (float)baseTemplates["mass"];
-    //    var velocity = (Vector3)baseTemplates["satellite_velocity"];
-    //    var size = (int)baseTemplates["size"];
-    //    var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-    //    StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
-    //    Oct = new Octree<Point>(new Aabb(Vector3.Zero, new Vector3(size, size, size)));
-
-    //    this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
-    //    this.Mass = mass;
-    //    this.Velocity = velocity;
-    //    this.Mesh = mesh;
-    //    mesh.size = size;
-    //    this.AddChild(mesh);
-
-    //    switch (SatelliteType)
-    //    {
-    //        case SatelliteBodyType.Asteroid:
-    //            break;
-    //    }
-    //}
-
     public SatelliteBody(
         PlanetaryBodyType parentType,
         String satType,
@@ -350,8 +486,8 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         // Create orbit configuration from mass
         OrbitConfig = OrbitConfiguration.CreateFromMass(Mass, bodyRadius);
 
-        // Create all orbit bands
-        OrbitBands = OrbitConfig.CreateAllOrbitBands(bodyRadius);
+        // Create all orbit bands with physics-based velocities
+        OrbitBands = OrbitConfig.CreateAllOrbitBands(bodyRadius, Mass);
 
         // Initialize satellite counts for each band
         _bandSatelliteCounts.Clear();
@@ -370,48 +506,46 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
     }
 
     /// <summary>
-    /// Creates a station satellite in the specified orbit band.
+    /// Increments the satellite count for the specified band.
     /// </summary>
-    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
-    /// <param name="name">Name for the station</param>
-    /// <returns>The created station satellite, or null if invalid band</returns>
-    public StationSatellite? CreateStation(int bandIndex, string name)
+    /// <param name="bandIndex">Index of the orbit band</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when band index is invalid</exception>
+    public void IncrementBandCount(int bandIndex)
     {
-        if (!CanAddToBand(bandIndex))
+        if (bandIndex < 0 || bandIndex >= OrbitBands.Count)
         {
-            GameLogger.Warning($"Cannot add station to band {bandIndex}: band is full or invalid");
-            return null;
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {OrbitBands.Count}"
+            );
         }
 
-        var station = new StationSatellite { Name = name };
-
-        SatellitesContainer.AddChild(station);
-        station.Initialize(this, bandIndex);
-
+        if (!_bandSatelliteCounts.ContainsKey(bandIndex))
+        {
+            _bandSatelliteCounts[bandIndex] = 0;
+        }
         _bandSatelliteCounts[bandIndex]++;
-
-        GameLogger.Debug($"Created station '{name}' in band {bandIndex}");
-        return station;
     }
 
     /// <summary>
-    /// Creates a ship in a random valid orbit band.
+    /// Decrements the satellite count for the specified band.
     /// </summary>
-    /// <param name="name">Name for the ship</param>
-    /// <returns>The created ship satellite, or null if no valid band available</returns>
-    public StationSatellite? CreateShip(string name)
+    /// <param name="bandIndex">Index of the orbit band</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when band index is invalid</exception>
+    public void DecrementBandCount(int bandIndex)
     {
-        // Find a band with available capacity
-        for (int i = 0; i < OrbitBands.Count; i++)
+        if (bandIndex < 0 || bandIndex >= OrbitBands.Count)
         {
-            if (CanAddToBand(i))
-            {
-                return CreateStation(i, name);
-            }
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {OrbitBands.Count}"
+            );
         }
 
-        GameLogger.Warning($"Cannot create ship '{name}': no available bands");
-        return null;
+        if (_bandSatelliteCounts.ContainsKey(bandIndex) && _bandSatelliteCounts[bandIndex] > 0)
+        {
+            _bandSatelliteCounts[bandIndex]--;
+        }
     }
 
     /// <summary>
@@ -516,22 +650,54 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
 
     public override void _PhysicsProcess(double delta)
     {
-        accelerationVector = new Vector3(0.0f, 0.0f, 0.0f);
         var parent = GetParent() as CelestialBody;
         if (parent == null)
         {
             GD.PrintErr("SatelliteBody._PhysicsProcess: Parent body is null");
             return;
         }
-        float distance = this.GlobalPosition.DistanceTo(parent.GlobalPosition);
-        Vector3 direction = (parent.GlobalPosition - this.GlobalPosition);
 
-        float acceleration =
-            OrbitalMath.GRAVITATIONAL_CONSTANT * parent.Mass / (distance * distance);
-        accelerationVector += direction.Normalized() * acceleration;
+        if (!_orbitalInitialized)
+        {
+            InitializeAnalyticalOrbit(parent);
+            _orbitalInitialized = true;
+        }
 
-        Velocity += accelerationVector * (float)delta;
-        GlobalPosition += Velocity * (float)delta;
+        // Analytical circular orbit — drift-free by construction
+        _orbitalAngle += _orbitalSpeed * (float)delta;
+        if (_orbitalAngle > Mathf.Tau)
+            _orbitalAngle -= Mathf.Tau;
+
+        float cos = Mathf.Cos(_orbitalAngle);
+        float sin = Mathf.Sin(_orbitalAngle);
+
+        GlobalPosition =
+            parent.GlobalPosition
+            + new Vector3(cos * _orbitalRadius, 0f, sin * _orbitalRadius);
+
+        float linearSpeed = _orbitalRadius * _orbitalSpeed;
+        Velocity = new Vector3(-sin * linearSpeed, 0f, cos * linearSpeed);
+    }
+
+    /// <summary>
+    /// Derives analytical orbit parameters from the initial position relative to parent.
+    /// </summary>
+    private void InitializeAnalyticalOrbit(CelestialBody parent)
+    {
+        Vector3 relativePos = GlobalPosition - parent.GlobalPosition;
+        _orbitalRadius = new Vector2(relativePos.X, relativePos.Z).Length();
+
+        if (_orbitalRadius < 1e-6f)
+        {
+            _orbitalRadius = Radius * 1.5f;
+            _orbitalAngle = 0f;
+        }
+        else
+        {
+            _orbitalAngle = Mathf.Atan2(relativePos.Z, relativePos.X);
+        }
+
+        _orbitalSpeed = OrbitalParameters.CalculateAngularSpeed(parent.Mass, _orbitalRadius);
     }
 
     public async Task GenerateMesh()

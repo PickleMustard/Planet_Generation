@@ -1,11 +1,9 @@
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Godot;
-using PlanetGeneration;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 
 namespace ProceduralGeneration.PlanetGeneration;
 

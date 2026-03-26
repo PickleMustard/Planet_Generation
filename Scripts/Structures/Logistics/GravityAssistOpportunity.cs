@@ -1,5 +1,5 @@
 using Godot;
-using CelestialBody = ProceduralGeneration.PlanetGeneration.CelestialBody;
+using ProceduralGeneration.PlanetGeneration;
 
 namespace Structures.Logistics;
 
@@ -7,7 +7,7 @@ namespace Structures.Logistics;
 /// Represents a gravity assist opportunity where a spacecraft can use a celestial body's
 /// gravity to change direction and gain/lose velocity.
 /// </summary>
-public struct GravityAssistOpportunity
+public partial class GravityAssistOpportunity : Resource
 {
     /// <summary>
     /// The celestial body used for the gravity assist.
@@ -65,7 +65,7 @@ public struct GravityAssistOpportunity
     public string GetDescription()
     {
         string bodyName = AssistBody != null ? AssistBody.Name : "Unknown";
-        return $"Gravity Assist: {bodyName}, Time: {ApproachTime:F1}s, " +
-               $"ΔV Savings: {DeltaVSavings:F2} m/s, Deflection: {Mathf.RadToDeg(DeflectionAngle):F1}°";
+        return $"Gravity Assist: {bodyName}, Time: {ApproachTime:F1}s, "
+            + $"ΔV Savings: {DeltaVSavings:F2} m/s, Deflection: {Mathf.RadToDeg(DeflectionAngle):F1}°";
     }
 }

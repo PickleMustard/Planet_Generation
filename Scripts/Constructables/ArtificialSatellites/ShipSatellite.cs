@@ -1,4 +1,3 @@
-using System;
 using Godot;
 using Structures.GameState;
 using UtilityLibrary;
@@ -16,26 +15,155 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
     [Export]
     public bool IsActive { get; set; } = true;
 
-    // Travel state
-    private bool _isTraveling;
-    private Node3D? _destinationBody;
-    private float _travelSpeed = 10.0f;
+    [Export]
+    public bool IsStationary { get; set; } = false;
 
-    // Orbital state
+    [Export]
+    public Vector3 Velocity
+    {
+        get => _velocity;
+        set => _velocity = value;
+    }
+
+    [Export]
+    public Vector3 UnitPosition
+    {
+        get => Position;
+        set => Position = value;
+    }
+
+    #region OrbitalParameters
+
+    /// <summary>Current orbital angle in radians.</summary>
+    public float OrbitalAngle => _orbitalAngle;
+
+    /// <summary>Current orbital radius in meters.</summary>
+    public float OrbitalRadius => _orbitalRadius;
+
+    /// <summary>Current orbital angular speed in rad/s.</summary>
+    public float OrbitalSpeed => _orbitalSpeed;
+
+    // Orbital state fields
     private float _orbitalAngle;
     private float _orbitalRadius;
     private float _orbitalSpeed;
-    private float _bodyRadius;
+    private float _hostMass;
     private bool _isInitialized;
+    private Vector3 _velocity;
 
-    private const float DefaultOrbitalSpeed = 0.5f;
+    /// <summary>
+    /// Initializes the ship's orbit using the host body's orbital parameters.
+    /// Uses band-based or continuous placement based on the host body's configuration.
+    /// </summary>
+    /// <param name="hostBody">The orbital body to orbit around.</param>
+    /// <param name="bandIndex">Index of the orbit band (for band-based bodies).</param>
+    public void InitializeOrbit(IOrbitalBody hostBody, int bandIndex)
+    {
+        if (hostBody == null)
+        {
+            GameLogger.Warning("ShipSatellite: Cannot initialize orbit - host body is null");
+            return;
+        }
 
-    // Visual components
-    private MeshInstance3D? _meshInstance;
-    private float _rotationSpeed = 1.0f;
+        // Get random starting angle
+        var rand = Randomizer.GetRandomNumberGenerator();
+        float startingAngle = rand.RandfRange(0f, Mathf.Tau);
 
+        OrbitalParameters parameters;
+
+        if (hostBody.UsesBandPlacement)
+        {
+            // Band-based placement
+            parameters = hostBody.GetOrbitalParametersForBand(bandIndex, startingAngle);
+            this.BandIndex = bandIndex;
+        }
+        else
+        {
+            // Continuous placement - calculate radius from band index as a fallback
+            float radius = CalculateRadiusForBand(hostBody, bandIndex);
+            parameters = hostBody.GetOrbitalParametersAtRadius(radius, startingAngle);
+            this.BandIndex = -1;
+        }
+
+        // Store orbital parameters
+        _orbitalRadius = parameters.Radius;
+        _orbitalSpeed = parameters.AngularSpeed;
+        _orbitalAngle = startingAngle;
+        _hostMass = parameters.HostMass;
+        _velocity = parameters.InitialVelocity;
+
+        // Set initial position
+        Node3D? parentNode = GetParent<Node3D>();
+        if (parentNode != null)
+        {
+            GlobalPosition = parentNode.GlobalPosition + parameters.InitialPosition;
+        }
+
+        _isInitialized = true;
+        _isTraveling = false;
+
+        GameLogger.Debug(
+            $"ShipSatellite initialized: {Name}, Band {BandIndex}, Radius {_orbitalRadius:F2}, Speed {_orbitalSpeed:F6}"
+        );
+    }
+
+    /// <summary>
+    /// Initializes the ship's orbit at a specific radius (for continuous placement).
+    /// </summary>
+    /// <param name="hostBody">The orbital body to orbit around.</param>
+    /// <param name="radius">Desired orbital radius in meters.</param>
+    public void InitializeOrbitAtRadius(IOrbitalBody hostBody, float radius)
+    {
+        if (hostBody == null)
+        {
+            GameLogger.Warning("ShipSatellite: Cannot initialize orbit - host body is null");
+            return;
+        }
+
+        // Get random starting angle
+        var rand = Randomizer.GetRandomNumberGenerator();
+        float startingAngle = rand.RandfRange(0f, Mathf.Tau);
+
+        OrbitalParameters parameters = hostBody.GetOrbitalParametersAtRadius(radius, startingAngle);
+
+        // Store orbital parameters
+        _orbitalRadius = parameters.Radius;
+        _orbitalSpeed = parameters.AngularSpeed;
+        _orbitalAngle = startingAngle;
+        _hostMass = parameters.HostMass;
+        _velocity = parameters.InitialVelocity;
+        this.BandIndex = -1;
+
+        // Set initial position
+        Node3D? parentNode = GetParent<Node3D>();
+        if (parentNode != null)
+        {
+            GlobalPosition = parentNode.GlobalPosition + parameters.InitialPosition;
+        }
+
+        _isInitialized = true;
+        _isTraveling = false;
+
+        GameLogger.Debug(
+            $"ShipSatellite initialized at radius: {Name}, Radius {_orbitalRadius:F2}, Speed {_orbitalSpeed:F6}"
+        );
+    }
+
+    /// <summary>
+    /// Backward-compatible wrapper that casts Node3D to IOrbitalBody and calls InitializeOrbit.
+    /// </summary>
+    /// <param name="parentBody">The parent body to orbit around.</param>
+    /// <param name="bandIndex">Index of the orbit band.</param>
     public void Initialize(Node3D parentBody, int bandIndex)
     {
+        if (parentBody is not IOrbitalBody orbitalBody)
+        {
+            GameLogger.Warning(
+                $"ShipSatellite: Parent body {parentBody?.Name} does not implement IOrbitalBody"
+            );
+            return;
+        }
+
         // Reparent to the specified body if needed
         if (GetParent() != parentBody)
         {
@@ -43,83 +171,32 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
             parentBody.AddChild(this);
         }
 
-        this.BandIndex = bandIndex;
-        this.Id = Guid.NewGuid().ToString();
-
-        // Calculate orbital parameters based on band index
-        CalculateOrbitalParameters();
-
-        // Random starting angle for variety
-        var rand = Randomizer.GetRandomNumberGenerator();
-        _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
-
-        _isInitialized = true;
-        _isTraveling = false;
-
-        GameLogger.Debug(
-            $"ShipSatellite initialized: {Name}, Band {BandIndex}, Radius {_orbitalRadius}"
-        );
-    }
-
-    private void CalculateOrbitalParameters()
-    {
-        Node3D? parentBody = GetParent<Node3D>();
-        if (parentBody == null)
-        {
-            GameLogger.Warning(
-                "ShipSatellite: Cannot calculate orbital parameters without parent body"
-            );
-            return;
-        }
-
-        // Get body radius from parent's scale (assuming sphere)
-        _bodyRadius = parentBody.Scale.X;
-
-        // Try to get the actual band radius from parent's OrbitBands
-        var orbitBands = GetOrbitBandsFromParent(parentBody);
-
-        if (orbitBands != null && BandIndex >= 0 && BandIndex < orbitBands.Count)
-        {
-            // Use the actual band radius that was pre-calculated
-            _orbitalRadius = orbitBands[BandIndex].Radius;
-        }
-        else
-        {
-            // Fallback to default behavior
-            float[] bandMultipliers = OrbitConfiguration.GetDefaultBandMultipliers(4);
-            int clampedBand = Mathf.Clamp(BandIndex, 0, bandMultipliers.Length - 1);
-            _orbitalRadius = _bodyRadius * bandMultipliers[clampedBand];
-            GameLogger.Warning($"ShipSatellite: Could not access orbit bands, using fallback calculation");
-        }
-
-        // Calculate orbital speed based on band
-        float baseOrbitalSpeed = DefaultOrbitalSpeed;
-
-        // Inner bands orbit faster than outer bands
-        int clampedBandForSpeed = Mathf.Clamp(BandIndex, 0, 3);
-        _orbitalSpeed = baseOrbitalSpeed / (1f + clampedBandForSpeed * 0.5f);
-
-        GameLogger.Debug($"ShipSatellite orbital params: Radius={_orbitalRadius}, Speed={_orbitalSpeed}");
+        InitializeOrbit(orbitalBody, bandIndex);
     }
 
     /// <summary>
-    /// Helper method to get OrbitBands from either CelestialBody or SatelliteBody.
+    /// Calculates a fallback radius for band index on continuous-placement bodies.
     /// </summary>
-    private Godot.Collections.Array<OrbitBand>? GetOrbitBandsFromParent(Node3D parent)
+    private float CalculateRadiusForBand(IOrbitalBody hostBody, int bandIndex)
     {
-        try
-        {
-            dynamic parentDynamic = parent;
-            return parentDynamic.OrbitBands;
-        }
-        catch (Exception e)
-        {
-            GameLogger.Warning($"ShipSatellite: Could not access orbit bands from parent: {e.Message}");
-            return null;
-        }
+        float bodyRadius = hostBody.Radius;
+        float[] multipliers = Structures.GameState.OrbitConfiguration.GetDefaultBandMultipliers(4);
+        int clampedBand = Mathf.Clamp(bandIndex, 0, multipliers.Length - 1);
+        return bodyRadius * multipliers[clampedBand];
     }
 
-    public void InitiateTravel(Node3D destinationBody, float speed)
+    #endregion
+
+    // Travel state
+    private bool _isTraveling;
+    private IOrbitalBody? _destinationBody;
+    private float _travelSpeed = 10.0f;
+
+    // Visual components
+    private MeshInstance3D? _meshInstance;
+    private float _rotationSpeed = 1.0f;
+
+    public void InitiateTravel(IOrbitalBody destinationBody, float speed)
     {
         if (destinationBody == null)
         {
@@ -131,7 +208,9 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
         _travelSpeed = speed;
         _isTraveling = true;
 
-        GameLogger.Info($"ShipSatellite {Name} initiating travel to {destinationBody.Name} at speed {speed}");
+        GameLogger.Info(
+            $"ShipSatellite {Name} initiating travel to {destinationBody} at speed {speed}"
+        );
     }
 
     public override void _PhysicsProcess(double delta)
@@ -159,18 +238,18 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
         }
 
         // Calculate direction to destination
-        Vector3 direction = (_destinationBody.GlobalPosition - GlobalPosition).Normalized();
+        Vector3 direction = (_destinationBody.BodyPosition - GlobalPosition).Normalized();
 
         // Move toward destination
         GlobalPosition += direction * _travelSpeed * (float)delta;
 
         // Check if we've arrived (close enough to destination)
-        float distanceToDestination = GlobalPosition.DistanceTo(_destinationBody.GlobalPosition);
+        float distanceToDestination = GlobalPosition.DistanceTo(_destinationBody.BodyPosition);
 
         // If we're close enough, re-enter orbit around the destination
-        if (distanceToDestination <= _destinationBody.Scale.X * 1.5f)
+        if (distanceToDestination <= _destinationBody.Radius * 1.5f)
         {
-            GameLogger.Info($"ShipSatellite {Name} arrived at {_destinationBody.Name}");
+            GameLogger.Info($"ShipSatellite {Name} arrived at {_destinationBody}");
 
             // Reparent to the destination body
             Node3D? currentParent = GetParent<Node3D>();
@@ -178,19 +257,23 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
             {
                 currentParent.RemoveChild(this);
             }
-            _destinationBody.AddChild(this);
+            Node3D destinationBodyNode = _destinationBody as Node3D;
+            destinationBodyNode!.CallDeferred("add_child", this);
 
-            // Recalculate orbital parameters for the new parent
-            CalculateOrbitalParameters();
-
-            // Random starting angle at new location
-            var rand = Randomizer.GetRandomNumberGenerator();
-            _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
+            // Recalculate orbital parameters for the new parent using IOrbitalBody
+            if (_destinationBody is IOrbitalBody orbitalBody)
+            {
+                InitializeOrbit(orbitalBody, 0);
+            }
+            else
+            {
+                GameLogger.Warning(
+                    $"ShipSatellite: Destination body does not implement IOrbitalBody"
+                );
+            }
 
             _isTraveling = false;
             _destinationBody = null;
-
-            GameLogger.Debug($"ShipSatellite {Name} entered orbit around {_destinationBody?.Name ?? "unknown"}");
         }
     }
 
@@ -208,18 +291,21 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
             _orbitalAngle -= Mathf.Tau;
 
         // Calculate position: parent position + orbital offset
-        // Using simple circular orbit in XZ plane
-        float offsetX = Mathf.Cos(_orbitalAngle) * _orbitalRadius;
-        float offsetZ = Mathf.Sin(_orbitalAngle) * _orbitalRadius;
+        float cos = Mathf.Cos(_orbitalAngle);
+        float sin = Mathf.Sin(_orbitalAngle);
 
-        // Set position relative to parent
-        GlobalPosition = parentBody.GlobalPosition + new Vector3(offsetX, 0, offsetZ);
+        // Position in XZ plane
+        GlobalPosition =
+            parentBody.GlobalPosition + new Vector3(cos * _orbitalRadius, 0, sin * _orbitalRadius);
+
+        // Calculate and store velocity (tangent to orbit)
+        float linearSpeed = _orbitalRadius * _orbitalSpeed;
+        _velocity = new Vector3(-sin * linearSpeed, 0f, cos * linearSpeed);
     }
 
     public void OnDestroy()
     {
         GameLogger.Debug($"ShipSatellite destroying: {Name}");
-
         _isInitialized = false;
         _isTraveling = false;
         _destinationBody = null;
@@ -234,30 +320,13 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
     public override void _Ready()
     {
         base._Ready();
-
-        // Create visual representation
         CreateVisualRepresentation();
-
-        // If initialized before _Ready (via scene instantiation), recalculate
-        Node3D? parentBody = GetParent<Node3D>();
-        if (parentBody != null && !_isInitialized && BandIndex >= 0)
-        {
-            CalculateOrbitalParameters();
-
-            var rand = Randomizer.GetRandomNumberGenerator();
-            _orbitalAngle = rand.RandfRange(0f, Mathf.Tau);
-
-            _isInitialized = true;
-        }
     }
 
     private void CreateVisualRepresentation()
     {
         // Create MeshInstance3D for visual representation
-        _meshInstance = new MeshInstance3D
-        {
-            Name = "ShipMesh"
-        };
+        _meshInstance = new MeshInstance3D { Name = "ShipMesh" };
 
         // Create a box mesh (ships look like elongated boxes)
         var boxMesh = new BoxMesh
@@ -265,7 +334,7 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
             Size = new Vector3(0.5f, 0.2f, 1.0f),
             SubdivideWidth = 2,
             SubdivideHeight = 1,
-            SubdivideDepth = 3
+            SubdivideDepth = 3,
         };
         _meshInstance.Mesh = boxMesh;
 
@@ -274,7 +343,7 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
         {
             AlbedoColor = new Color(0.6f, 0.7f, 0.8f), // Silver/light gray
             Metallic = 0.8f,
-            Roughness = 0.2f
+            Roughness = 0.2f,
         };
         _meshInstance.MaterialOverride = material;
 
@@ -282,17 +351,14 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
         AddChild(_meshInstance);
 
         // Add a small cone at the front for a pointed nose
-        var noseMesh = new MeshInstance3D
-        {
-            Name = "ShipNose"
-        };
+        var noseMesh = new MeshInstance3D { Name = "ShipNose" };
         var coneMesh = new CylinderMesh
         {
             TopRadius = 0f,
             BottomRadius = 0.15f,
             Height = 0.3f,
             RadialSegments = 8,
-            Rings = 2
+            Rings = 2,
         };
         noseMesh.Mesh = coneMesh;
         noseMesh.MaterialOverride = material;

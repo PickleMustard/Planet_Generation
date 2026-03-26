@@ -2,7 +2,6 @@ using System;
 using Constructables.ArtificialSatellites;
 using Godot;
 using Godot.Collections;
-using Structures.GameState;
 using UtilityLibrary;
 
 /* Construction Manager is responsible for managing the communication of construction requests and events
@@ -254,8 +253,6 @@ public partial class ConstructionManager : Node
     {
         GameLogger.Info($"[ConstructionManager] Station construction cancelled: {cancelled.Name}");
 
-        cancelled.OnDestroy();
-
         if (cancelled.GetParent() is Node parent)
             parent.RemoveChild(cancelled);
 
@@ -267,8 +264,6 @@ public partial class ConstructionManager : Node
     private void CancelShip(LogisticsUnit cancelled, Dictionary details)
     {
         GameLogger.Info($"[ConstructionManager] Ship construction cancelled: {cancelled.Name}");
-
-        cancelled.OnDestroy();
 
         if (cancelled.GetParent() is Node parent)
             parent.RemoveChild(cancelled);
@@ -321,5 +316,107 @@ public partial class ConstructionManager : Node
 
             SetChildrenVisible(child, visible);
         }
+    }
+
+    /// <summary>
+    /// Creates a station satellite in orbit around the specified body.
+    /// Position and velocity are calculated based on the orbital band properties.
+    /// </summary>
+    /// <param name="targetBody">The orbital body to orbit around</param>
+    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
+    /// <param name="name">Optional name for the station (auto-generated if null)</param>
+    /// <returns>The created station satellite</returns>
+    /// <exception cref="ArgumentNullException">Thrown when targetBody is null</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when bandIndex is invalid</exception>
+    /// <exception cref="InvalidOperationException">Thrown when band is at capacity</exception>
+    public StationSatellite CreateStation(IOrbitalBody targetBody, int bandIndex, string? name = null)
+    {
+        if (targetBody == null)
+        {
+            throw new ArgumentNullException(nameof(targetBody), "Target body cannot be null");
+        }
+
+        if (bandIndex < 0 || bandIndex >= targetBody.GetBandCount())
+        {
+            throw new ArgumentOutOfRangeException(nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {targetBody.GetBandCount()}");
+        }
+
+        if (!targetBody.CanAddToBand(bandIndex))
+        {
+            int currentCount = targetBody.GetBandSatelliteCount(bandIndex);
+            throw new InvalidOperationException(
+                $"Cannot add station to band {bandIndex}: band is at capacity ({currentCount})");
+        }
+
+        // Generate name if not provided
+        name ??= $"Station_{Guid.NewGuid().ToString()[..8]}";
+
+        // Create station
+        var station = new StationSatellite { Name = name };
+
+        // Add to body's satellites container
+        targetBody.SatellitesContainer.AddChild(station);
+
+        // Initialize with orbital parameters - this sets up position/velocity based on band
+        station.Initialize(targetBody as Node3D, bandIndex);
+
+        // Increment band count
+        targetBody.IncrementBandCount(bandIndex);
+
+        GameLogger.Debug($"Created station '{name}' in band {bandIndex} around {targetBody}");
+        return station;
+    }
+
+    /// <summary>
+    /// Creates a logistics unit (ship) in orbit around the specified body.
+    /// Position and velocity are calculated based on the orbital band properties.
+    /// </summary>
+    /// <param name="targetBody">The orbital body to orbit around</param>
+    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
+    /// <param name="name">Optional name for the ship (auto-generated if null)</param>
+    /// <returns>The created logistics unit</returns>
+    /// <exception cref="ArgumentNullException">Thrown when targetBody is null</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when bandIndex is invalid</exception>
+    /// <exception cref="InvalidOperationException">Thrown when band is at capacity</exception>
+    public LogisticsUnit CreateLogisticsUnit(IOrbitalBody targetBody, int bandIndex, string? name = null)
+    {
+        if (targetBody == null)
+        {
+            throw new ArgumentNullException(nameof(targetBody), "Target body cannot be null");
+        }
+
+        if (bandIndex < 0 || bandIndex >= targetBody.GetBandCount())
+        {
+            throw new ArgumentOutOfRangeException(nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {targetBody.GetBandCount()}");
+        }
+
+        if (!targetBody.CanAddToBand(bandIndex))
+        {
+            int currentCount = targetBody.GetBandSatelliteCount(bandIndex);
+            throw new InvalidOperationException(
+                $"Cannot add ship to band {bandIndex}: band is at capacity ({currentCount})");
+        }
+
+        // Generate name if not provided
+        name ??= $"Ship_{Guid.NewGuid().ToString()[..8]}";
+
+        // Create unit
+        var unit = new LogisticsUnit { Name = name };
+
+        // Add to body's satellites container
+        targetBody.SatellitesContainer.AddChild(unit);
+
+        // Initialize with orbital parameters - this sets up position/velocity based on band
+        unit.Initialize(targetBody as Node3D, bandIndex);
+        unit.InitializeCargo();
+        unit.SetFuelCapacity(1000f);
+
+        // Increment band count
+        targetBody.IncrementBandCount(bandIndex);
+
+        GameLogger.Debug($"Created logistics unit '{name}' in band {bandIndex} around {targetBody}");
+        return unit;
     }
 }

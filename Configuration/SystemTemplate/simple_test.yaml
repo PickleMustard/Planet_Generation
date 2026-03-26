@@ -1,0 +1,133 @@
+dominant:
+- type: Star
+  name: edwardwitten
+  template:
+    mass: 500000
+    size: 500
+    position:
+    - 0
+    - 0
+    - 0
+    velocity:
+    - 0
+    - 0
+    - 0
+  central_parameters:
+    inclination: 0
+    starting_angle: 0
+  base_mesh:
+    subdivisions: 1
+    vertices_per_edge:
+    - - 12
+      - 17
+    num_abberations: 0
+    num_deformation_cycles: 0
+  spherical_harmonics_settings:
+    amplitude_range:
+    - 0.3
+    - 0.7
+planetary:
+- type: RockyPlanet
+  name: Yuri Gagarin
+  template:
+    mass: 1000
+    size: 150
+  orbital_parameters:
+    apogee: 3000
+    perigee: 3000
+    starting_angle: 0
+    vertical_offset: 0
+    orbital_center_index: -1
+    parent_body: barycenter
+  base_mesh:
+    subdivisions: 2
+    vertices_per_edge:
+    - - 4
+      - 6
+    - - 2
+      - 3
+    num_abberations: 3
+    num_deformation_cycles: 3
+  tectonics:
+    num_continents:
+    - 13
+    - 25
+    stress_scale:
+    - 1.1
+    - 1.1
+    shear_scale:
+    - 1.1
+    - 1.1
+    max_propagation_distance:
+    - 0.01
+    - 0.01
+    propagation_falloff:
+    - 0.2
+    - 0.2
+    inactive_stress_threshold:
+    - 0.01
+    - 0.01
+    general_height_scale:
+    - 0.6
+    - 0.6
+    general_shear_scale:
+    - 1.1
+    - 1.1
+    general_compression_scale:
+    - 1.2
+    - 1.2
+    general_transform_scale:
+    - 1
+    - 1.2
+- type: RockyPlanet
+  name: Tlaltecuhtli
+  template:
+    mass: 1000
+    size: 150
+  orbital_parameters:
+    apogee: 5000
+    perigee: 5000
+    starting_angle: 0
+    vertical_offset: 0
+    orbital_center_index: -1
+    parent_body: barycenter
+  base_mesh:
+    subdivisions: 2
+    vertices_per_edge:
+    - - 4
+      - 6
+    - - 2
+      - 3
+    num_abberations: 3
+    num_deformation_cycles: 3
+  tectonics:
+    num_continents:
+    - 13
+    - 25
+    stress_scale:
+    - 1.1
+    - 1.1
+    shear_scale:
+    - 1.1
+    - 1.1
+    max_propagation_distance:
+    - 0.01
+    - 0.01
+    propagation_falloff:
+    - 0.2
+    - 0.2
+    inactive_stress_threshold:
+    - 0.01
+    - 0.01
+    general_height_scale:
+    - 0.6
+    - 0.6
+    general_shear_scale:
+    - 1.1
+    - 1.1
+    general_compression_scale:
+    - 1.2
+    - 1.2
+    general_transform_scale:
+    - 1
+    - 1.2

@@ -4,6 +4,7 @@ using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using Structures.Logistics;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 
 namespace Constructables.ArtificialSatellites;
 
@@ -57,17 +58,13 @@ public partial class LogisticsMovementController : Node
     private float _timeInTransfer;
     private Vector3 _departurePosition;
     private Vector3 _targetPosition;
-    private Vector3 _initialVelocity;
-    private CelestialBody? _originBody;
-    private CelestialBody? _destinationBody;
+    private IOrbitalBody? _originBody;
+    private IOrbitalBody? _destinationBody;
 
     // Central body reference frame offset.
     // Lambert positions/velocities are relative to the central body.
     // We store the central body so we can translate between reference frames.
-    private CelestialBody? _centralBody;
-
-    // The ship's departure position relative to the central body (for Kepler propagation)
-    private Vector3 _departurePositionRelative;
+    private IOrbitalBody? _centralBody;
 
     // The ship's actual global departure position (for Lerp fallback)
     private Vector3 _departurePositionGlobal;
@@ -149,10 +146,6 @@ public partial class LogisticsMovementController : Node
     /// </summary>
     public float FuelConsumedThisTransfer => _fuelConsumedThisTransfer;
 
-    // ========================================================================
-    // GODOT LIFECYCLE
-    // ========================================================================
-
     public override void _Ready()
     {
         GameLogger.Info("LogisticsMovementController: Initializing");
@@ -202,10 +195,16 @@ public partial class LogisticsMovementController : Node
     /// <returns>True if transfer initiated successfully.</returns>
     public bool InitiateTransfer(
         TrajectorySolution trajectory,
-        CelestialBody originBody,
-        CelestialBody destinationBody
+        IOrbitalBody originBody,
+        IOrbitalBody destinationBody
     )
     {
+        GameLogger.Info(
+            $"LogisticsMovementController.InitiateTransfer: Starting transfer initiation - "
+                + $"trajectoryOrigin={trajectory?.OriginBody}, trajectoryDestination={trajectory?.DestinationBody}, "
+                + $"originBody={originBody}, destinationBody={destinationBody}, unit={_logisticsUnit?.Name}"
+        );
+
         if (trajectory == null)
         {
             GameLogger.Warning(
@@ -229,12 +228,26 @@ public partial class LogisticsMovementController : Node
         _transferTime = trajectory.TimeOfFlight;
         _timeInTransfer = 0f;
 
+        GameLogger.Info(
+            $"LogisticsMovementController.InitiateTransfer: Stored trajectory data - "
+                + $"transferTime={_transferTime:F2}s, departureDeltaV={trajectory.DepartureDeltaV:F2}m/s, "
+                + $"arrivalDeltaV={trajectory.ArrivalDeltaV:F2}m/s, totalDeltaV={trajectory.DeltaVRequired:F2}m/s, "
+                + $"semiMajorAxis={trajectory.SemiMajorAxis:F2}m, eccentricity={trajectory.Eccentricity:F4}, "
+                + $"originBand={trajectory.OriginBandIndex}, destinationBand={trajectory.DestinationBandIndex}"
+        );
+
         UnsetHostBody();
 
         // Find the central body (the gravitational center that the Lambert solution is relative to).
         // This is the body whose mu was used for the solve — typically the parent star.
         _centralBody = FindCentralBody(originBody);
-        Vector3 centralBodyPos = _centralBody?.GlobalPosition ?? Vector3.Zero;
+        Vector3 centralBodyPos = _centralBody?.BodyPosition ?? Vector3.Zero;
+        Vector3 centralBodyVel = _centralBody?.Velocity ?? Vector3.Zero;
+
+        GameLogger.Info(
+            $"LogisticsMovementController.InitiateTransfer: Central body determined - "
+                + $"centralBody={_centralBody}, centralBodyPos={centralBodyPos}, centralBodyVel={centralBodyVel}"
+        );
 
         // The Lambert solver computed positions/velocities relative to the central body.
         // PredictedOriginPosition and PredictedDestinationPosition are in GLOBAL coordinates
@@ -244,19 +257,31 @@ public partial class LogisticsMovementController : Node
         // The Lambert initial velocity is already in the central-body-centered frame.
         _departurePosition = trajectory.PredictedOriginPosition;
         _targetPosition = trajectory.PredictedDestinationPosition;
-        _initialVelocity = trajectory.InitialVelocity;
 
-        // Departure position relative to central body (for Kepler propagation)
-        _departurePositionRelative = _departurePosition - centralBodyPos;
+        GameLogger.Info(
+            $"LogisticsMovementController.InitiateTransfer: Trajectory positions - "
+                + $"departurePositionGlobal={_departurePosition}, targetPositionGlobal={_targetPosition}, "
+                + $"initialVelocity={trajectory.InitialVelocity}, initialSpeed={trajectory.InitialVelocity.Length():F2}m/s"
+        );
 
         // Store the ship's actual global position as the Lerp start point
         _departurePositionGlobal = _logisticsUnit!.GlobalPosition;
 
-        // Initialize orbital state for Kepler propagation during transfer
-        _orbitalPosition = _departurePositionRelative;
-        _orbitalVelocity = _initialVelocity;
-        _orbitEpoch = 0f;
+        GameLogger.Info(
+            $"LogisticsMovementController.InitiateTransfer: Reference frame positions - "
+                + $"departurePositionGlobalActual={_departurePositionGlobal}, "
+                + $"shipCurrentGlobalPos={_logisticsUnit.GlobalPosition}"
+        );
+
         _gravitationalParameter = trajectory.GravitationalParameter;
+
+        GameLogger.Info(
+            $"LogisticsMovementController.InitiateTransfer: Element-based propagation - "
+                + $"a={trajectory.SemiMajorAxis:F2}m, e={trajectory.Eccentricity:F4}, "
+                + $"i={trajectory.Inclination:F2}°, Ω={trajectory.AscendingNodeLongitude:F2}°, "
+                + $"ω={trajectory.ArgumentOfPeriapsis:F2}°, M₀={trajectory.MeanAnomaly:F2}°, "
+                + $"μ={_gravitationalParameter:E2} m³/s²"
+        );
 
         _currentSimulationMode = SimulationMode.FullKepler;
         _isTransferring = true;
@@ -269,6 +294,12 @@ public partial class LogisticsMovementController : Node
         var engine = _logisticsUnit.CurrentEngine;
         float totalMass = _logisticsUnit.GetTotalMass();
 
+        GameLogger.Info(
+            $"LogisticsMovementController.InitiateTransfer: Burn profile setup - "
+                + $"engineIsp={engine?.BaseSpecificImpulse ?? 0:F2}s, engineThrust={engine?.BaseThrust ?? 0:F2}N, "
+                + $"exhaustVelocity={engine?.ExhaustVelocity ?? 0:F2}m/s, totalMass={totalMass:F2}kg"
+        );
+
         if (engine != null)
         {
             _burnProfile = BurnProfile.Calculate(trajectory, engine, totalMass);
@@ -277,6 +308,20 @@ public partial class LogisticsMovementController : Node
                 GameLogger.Warning(
                     "LogisticsMovementController: Failed to calculate burn profile — "
                         + "fuel will not be consumed during this transfer"
+                );
+            }
+            else
+            {
+                GameLogger.Info(
+                    $"LogisticsMovementController.InitiateTransfer: Burn profile calculated - "
+                        + $"accelBurnDuration={_burnProfile.AccelBurnDuration:F2}s, "
+                        + $"coastDuration={_burnProfile.CoastDuration:F2}s, "
+                        + $"decelBurnDuration={_burnProfile.DecelBurnDuration:F2}s, "
+                        + $"totalFuelBudget={_burnProfile.TotalFuelBudget:F2}kg, "
+                        + $"accelFuelRate={_burnProfile.AccelFuelRate:F4}kg/s, "
+                        + $"decelFuelRate={_burnProfile.DecelFuelRate:F4}kg/s, "
+                        + $"accelFuelBudget={_burnProfile.AccelFuelBudget:F2}kg, "
+                        + $"decelFuelBudget={_burnProfile.DecelFuelBudget:F2}kg"
                 );
             }
         }
@@ -293,7 +338,7 @@ public partial class LogisticsMovementController : Node
             $"LogisticsMovementController: Transfer initiated - "
                 + $"TOF: {_transferTime:F1}s, ΔV: {trajectory.DeltaVRequired:F2} m/s "
                 + $"(depart: {trajectory.DepartureDeltaV:F2}, arrive: {trajectory.ArrivalDeltaV:F2}), "
-                + $"Central body: {_centralBody?.Name ?? "origin"}, "
+                + $"Central body: {_centralBody!.ToString() ?? "origin"}, "
                 + $"Origin band: {trajectory.OriginBandIndex}, Target band: {trajectory.DestinationBandIndex}"
                 + (_burnProfile != null ? $", Burn profile: {_burnProfile.GetDescription()}" : "")
         );
@@ -333,68 +378,6 @@ public partial class LogisticsMovementController : Node
     }
 
     /// <summary>
-    /// Gets the current position of the unit based on the active simulation mode.
-    /// </summary>
-    public Vector3 GetCurrentPosition()
-    {
-        return _logisticsUnit?.GlobalPosition ?? Vector3.Zero;
-    }
-
-    // ========================================================================
-    // PRIVATE METHODS - VISIBILITY DETECTION
-    // ========================================================================
-
-    /// <summary>
-    /// Finds the active camera in the scene.
-    /// </summary>
-    private Camera3D? FindActiveCamera()
-    {
-        // Try to get camera from viewport
-        var viewport = GetViewport();
-        if (viewport == null)
-            return null;
-
-        var camera3D = viewport.GetCamera3D();
-        if (camera3D != null && camera3D.IsCurrent())
-            return camera3D;
-
-        // Fallback: search for any Camera3D in the scene
-        return GetTree()?.GetFirstNodeInGroup("MainCamera") as Camera3D;
-    }
-
-    /// <summary>
-    /// Checks if a position is within the camera's frustum.
-    /// </summary>
-    private bool IsInCameraFrustum(Camera3D camera, Vector3 position)
-    {
-        if (camera == null)
-            return true; // Assume visible if no camera
-
-        // Transform position to camera space
-        // In Godot, cameras look along -Z, so objects in front have negative localPos.Z
-        Vector3 localPos = camera.GlobalTransform.Inverse() * position;
-
-        // Check if behind the camera (positive Z in camera space = behind)
-        if (localPos.Z > 0.1f)
-            return false;
-
-        // Get camera projection data
-        float fov = camera.Fov;
-        float aspectRatio =
-            camera.GetViewport().GetVisibleRect().Size.X
-            / camera.GetViewport().GetVisibleRect().Size.Y;
-
-        // Calculate frustum boundaries at the distance of the position
-        // Use positive distance (negate Z since camera looks along -Z)
-        float distance = -localPos.Z;
-        float halfHeight = distance * Mathf.Tan(Mathf.DegToRad(fov * 0.5f));
-        float halfWidth = halfHeight * aspectRatio;
-
-        // Check if within frustum bounds
-        return Mathf.Abs(localPos.X) <= halfWidth && Mathf.Abs(localPos.Y) <= halfHeight;
-    }
-
-    /// <summary>
     /// Initializes orbital state from the parent logistics unit.
     /// </summary>
     private void InitializeOrbitalState()
@@ -418,60 +401,33 @@ public partial class LogisticsMovementController : Node
     /// </summary>
     private void ProcessOrbit(float delta)
     {
-        if (_logisticsUnit == null)
-            return;
-
-        Node3D? parentBody = _logisticsUnit.GetParent<Node3D>();
+        Node3D? parentBody = _logisticsUnit!.GetParent<Node3D>();
         if (parentBody == null)
             return;
 
-        float orbitalSpeed = _logisticsUnit.GetOrbitalSpeed();
-        float orbitalRadius = _logisticsUnit.GetOrbitalRadius();
+        // Update orbital angle
+        _logisticsUnit.OrbitalAngle += _logisticsUnit.OrbitalSpeed * (float)delta;
 
-        // Advance angle
-        float newAngle = _logisticsUnit.GetOrbitalAngle() + orbitalSpeed * delta;
-        if (newAngle > Mathf.Tau)
-            newAngle -= Mathf.Tau;
-        _logisticsUnit.SetOrbitalAngle(newAngle);
+        // Keep angle in valid range [0, 2*PI]
+        if (_logisticsUnit!.OrbitalAngle > Mathf.Tau)
+            _logisticsUnit.OrbitalAngle -= Mathf.Tau;
 
-        // Calculate sinusoidal offset in XZ plane
-        float offsetX = Mathf.Cos(newAngle) * orbitalRadius;
-        float offsetZ = Mathf.Sin(newAngle) * orbitalRadius;
+        // Calculate position: parent position + orbital offset
+        float cos = Mathf.Cos(_logisticsUnit!.OrbitalAngle);
+        float sin = Mathf.Sin(_logisticsUnit!.OrbitalAngle);
 
-        _logisticsUnit.GlobalPosition = parentBody.GlobalPosition + new Vector3(offsetX, 0, offsetZ);
-    }
+        // Position in XZ plane
+        _logisticsUnit.GlobalPosition =
+            parentBody.GlobalPosition
+            + new Vector3(
+                cos * _logisticsUnit.OrbitalRadius,
+                0,
+                sin * _logisticsUnit.OrbitalRadius
+            );
 
-    /// <summary>
-    /// Processes simplified update for off-screen units.
-    /// </summary>
-    private void ProcessSimplifiedUpdate(float delta)
-    {
-        if (_logisticsUnit == null)
-            return;
-
-        // Update timer
-        _offScreenTimer += delta;
-
-        // Only update position periodically
-        if (_offScreenTimer >= _offScreenCalculationInterval)
-        {
-            _offScreenTimer = 0f;
-
-            // During transfer, propagate along trajectory
-            if (_isTransferring && _activeTrajectory != null)
-            {
-                // Simplified: interpolate from ship's actual departure to destination body
-                float progress = Mathf.Clamp(_timeInTransfer / _transferTime, 0f, 1f);
-                Vector3 destPos = _destinationBody?.GlobalPosition ?? _targetPosition;
-                Vector3 newPos = _departurePositionGlobal.Lerp(destPos, progress);
-                _logisticsUnit.GlobalPosition = newPos;
-            }
-            else
-            {
-                // For orbital motion, could use simplified circular orbit calculation
-                // For now, maintain current position (units don't move much while off-screen)
-            }
-        }
+        // Calculate and store velocity (tangent to orbit)
+        float linearSpeed = _logisticsUnit.OrbitalRadius * _logisticsUnit.OrbitalSpeed;
+        _logisticsUnit.Velocity = new Vector3(-sin * linearSpeed, 0f, cos * linearSpeed);
     }
 
     // ========================================================================
@@ -489,6 +445,13 @@ public partial class LogisticsMovementController : Node
         // Update time in transfer
         _timeInTransfer += delta;
 
+        //GameLogger.Info(
+        //    $"LogisticsMovementController.ProcessTransfer: Frame update - "
+        //        + $"delta={delta:F4}s, timeInTransfer={_timeInTransfer:F2}s, "
+        //        + $"transferTime={_transferTime:F2}s, progress={(_timeInTransfer / _transferTime * 100f):F1}%, "
+        //        + $"currentGlobalPos={_logisticsUnit.GlobalPosition}"
+        //);
+
         // ---- Fuel consumption based on burn profile ----
         if (_burnProfile != null)
         {
@@ -505,6 +468,12 @@ public partial class LogisticsMovementController : Node
             }
 
             float fuelRate = _burnProfile.GetFuelRateAtTime(_timeInTransfer);
+            //GameLogger.Info(
+            //    $"LogisticsMovementController.ProcessTransfer: Fuel status - "
+            //        + $"phase={_currentTransitPhase}, fuelRate={fuelRate:F4}kg/s, "
+            //        + $"currentFuel={_logisticsUnit.Fuel:F2}kg, fuelConsumedSoFar={_fuelConsumedThisTransfer:F2}kg"
+            //);
+
             if (fuelRate > 0f)
             {
                 if (_logisticsUnit.HasFuel())
@@ -512,6 +481,12 @@ public partial class LogisticsMovementController : Node
                     float frameFuel = fuelRate * delta;
                     _logisticsUnit.ConsumeFuel(frameFuel);
                     _fuelConsumedThisTransfer += frameFuel;
+
+                    //GameLogger.Info(
+                    //    $"LogisticsMovementController.ProcessTransfer: Fuel consumed - "
+                    //        + $"frameFuel={frameFuel:F4}kg, totalConsumed={_fuelConsumedThisTransfer:F2}kg, "
+                    //        + $"remainingFuel={_logisticsUnit.Fuel:F2}kg"
+                    //);
                 }
                 else
                 {
@@ -525,33 +500,46 @@ public partial class LogisticsMovementController : Node
         // ---- Position update ----
         // The central body may have moved since transfer started (it orbits too).
         // Get its current global position for the reference frame offset.
-        Vector3 centralBodyPos = _centralBody?.GlobalPosition ?? Vector3.Zero;
+        Vector3 centralBodyPos = _centralBody?.BodyPosition ?? Vector3.Zero;
+        Vector3 centralBodyVel = _centralBody?.Velocity ?? Vector3.Zero;
 
-        // Calculate current position using Kepler propagation along transfer orbit
-        if (_currentSimulationMode == SimulationMode.FullKepler)
-        {
-            // Kepler propagation in central-body-centered frame.
-            // _departurePositionRelative and _initialVelocity are both relative to the
-            // central body, so GetPositionOnOrbit gives us a position relative to it.
-            Vector3 positionRelative = OrbitalMath.GetPositionOnOrbit(
-                _departurePositionRelative,
-                _initialVelocity,
-                _gravitationalParameter,
-                _timeInTransfer
-            );
+        //GameLogger.Info(
+        //    $"LogisticsMovementController.ProcessTransfer: Central body state - "
+        //        + $"centralBodyPos={centralBodyPos}, centralBodyVel={centralBodyVel}, "
+        //        + $"gravitationalParameter={_gravitationalParameter:E2}"
+        //);
 
-            // Translate back to global coordinates
-            _logisticsUnit.GlobalPosition = positionRelative + centralBodyPos;
-        }
-        else
-        {
-            // Simplified: linear interpolation from ship's actual departure to the
-            // destination body's current position (it may have moved since planning).
-            float progress = Mathf.Clamp(_timeInTransfer / _transferTime, 0f, 1f);
-            Vector3 destPos = _destinationBody?.GlobalPosition ?? _targetPosition;
-            Vector3 currentPosition = _departurePositionGlobal.Lerp(destPos, progress);
-            _logisticsUnit.GlobalPosition = currentPosition;
-        }
+        //GameLogger.Info(
+        //    $"LogisticsMovementController.ProcessTransfer: Element propagation inputs - "
+        //        + $"a={_activeTrajectory.SemiMajorAxis:F2}, e={_activeTrajectory.Eccentricity:F4}, "
+        //        + $"timeInTransfer={_timeInTransfer:F2}s, mu={_gravitationalParameter:E2}"
+        //);
+
+        // Propagate position from the transfer orbit's classical elements.
+        // The elements on _activeTrajectory describe the exact conic (ellipse or hyperbola)
+        // of the transfer arc. We advance the mean anomaly by elapsed time to find the
+        // current position on that conic.
+        Vector3 positionRelative = KeplerianMechanics.PropagateFromElements(
+            _activeTrajectory.SemiMajorAxis,
+            _activeTrajectory.Eccentricity,
+            _activeTrajectory.Inclination,
+            _activeTrajectory.AscendingNodeLongitude,
+            _activeTrajectory.ArgumentOfPeriapsis,
+            _activeTrajectory.MeanAnomaly,
+            _gravitationalParameter,
+            _timeInTransfer
+        );
+
+        // Translate back to global coordinates
+        Vector3 newGlobalPosition = positionRelative;
+
+        //GameLogger.Info(
+        //    $"LogisticsMovementController.ProcessTransfer: Kepler propagation result - "
+        //        + $"positionRelative={positionRelative}, newGlobalPosition={newGlobalPosition}, "
+        //        + $"displacementFromDeparture={(newGlobalPosition - _departurePositionGlobal).Length():F2}m"
+        //);
+
+        _logisticsUnit.GlobalPosition = newGlobalPosition;
 
         // Check for arrival
         if (_timeInTransfer >= _transferTime)
@@ -575,11 +563,12 @@ public partial class LogisticsMovementController : Node
 
         int targetBand = _activeTrajectory?.DestinationBandIndex ?? -1;
         GameLogger.Info(
-            $"LogisticsMovementController: Arriving at {_destinationBody.Name}" +
-            (targetBand >= 0 ? $", target band: {targetBand}" : "")
+            $"LogisticsMovementController: Arriving at {_destinationBody}"
+                + (targetBand >= 0 ? $", target band: {targetBand}" : "")
         );
 
-        SetHostBody(_destinationBody);
+        if (_destinationBody is Node dest)
+            SetHostBody(dest);
         CompleteTransfer(_destinationBody, targetBand);
     }
 
@@ -624,7 +613,7 @@ public partial class LogisticsMovementController : Node
     /// </summary>
     /// <param name="finalBody">The celestial body the ship is arriving at.</param>
     /// <param name="targetBandIndex">Target orbit band index (-1 = use default/band 0).</param>
-    private void CompleteTransfer(CelestialBody finalBody, int targetBandIndex = -1)
+    private void CompleteTransfer(IOrbitalBody finalBody, int targetBandIndex = -1)
     {
         if (_logisticsUnit == null)
             return;
@@ -656,17 +645,15 @@ public partial class LogisticsMovementController : Node
         {
             _logisticsUnit.BandIndex = targetBandIndex;
             GameLogger.Info(
-                $"LogisticsMovementController: Ship entering band {targetBandIndex} " +
-                $"at {finalBody.Name}"
+                $"LogisticsMovementController: Ship entering band {targetBandIndex} "
+                    + $"at {finalBody}"
             );
         }
         else if (finalBody.GetBandCount() > 0)
         {
             // Default to band 0 if target band is invalid
             _logisticsUnit.BandIndex = 0;
-            GameLogger.Debug(
-                $"LogisticsMovementController: Defaulting to band 0 at {finalBody.Name}"
-            );
+            GameLogger.Debug($"LogisticsMovementController: Defaulting to band 0 at {finalBody}");
         }
 
         // Transition the unit to Idle
@@ -697,18 +684,19 @@ public partial class LogisticsMovementController : Node
     /// This is the body whose gravitational parameter was used by the Lambert solver.
     /// Uses the same logic as TrajectoryPlanner.FindCentralBody().
     /// </summary>
-    private CelestialBody? FindCentralBody(CelestialBody origin)
+    private IOrbitalBody? FindCentralBody(IOrbitalBody origin)
     {
         if (origin == null)
             return null;
 
-        var bodies = origin.GetTree()?.GetNodesInGroup("CelestialBody");
+        SceneTree tree = (SceneTree)Engine.GetMainLoop();
+        var bodies = tree.GetNodesInGroup("CelestialBody");
         if (bodies == null || bodies.Count == 0)
             return null;
 
         float maxInfluence = 0f;
         CelestialBody? dominantBody = null;
-        Vector3 testPosition = origin.GlobalPosition;
+        Vector3 testPosition = origin.BodyPosition;
 
         foreach (Node node in bodies)
         {

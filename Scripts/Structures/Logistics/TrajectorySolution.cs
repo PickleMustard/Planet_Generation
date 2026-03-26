@@ -1,8 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using UtilityLibrary;
 
@@ -12,7 +10,7 @@ namespace Structures.Logistics;
 /// Wraps the output from a Lambert solver, containing all parameters
 /// required to execute an orbital transfer between two positions.
 /// </summary>
-public class TrajectorySolution
+public partial class TrajectorySolution : Resource
 {
     /// <summary>
     /// Criteria for ranking trajectory options.
@@ -21,10 +19,12 @@ public class TrajectorySolution
     {
         /// <summary>Lowest delta-v (most fuel efficient)</summary>
         MostEfficient = 0,
+
         /// <summary>Balanced trade-off between efficiency and time</summary>
         Balanced = 1,
+
         /// <summary>Lowest time-of-flight (quickest transfer)</summary>
-        Quickest = 2
+        Quickest = 2,
     }
 
     /// <summary>
@@ -75,6 +75,26 @@ public class TrajectorySolution
     public float Eccentricity { get; set; }
 
     /// <summary>
+    /// Inclination of the transfer orbit in degrees.
+    /// </summary>
+    public float Inclination { get; set; }
+
+    /// <summary>
+    /// Longitude of the ascending node of the transfer orbit in degrees.
+    /// </summary>
+    public float AscendingNodeLongitude { get; set; }
+
+    /// <summary>
+    /// Argument of periapsis of the transfer orbit in degrees.
+    /// </summary>
+    public float ArgumentOfPeriapsis { get; set; }
+
+    /// <summary>
+    /// Mean anomaly of the transfer orbit in degrees.
+    /// </summary>
+    public float MeanAnomaly { get; set; }
+
+    /// <summary>
     /// Number of complete revolutions in the transfer orbit.
     /// 0 for direct transfers, 1 or more for multi-revolution transfers.
     /// </summary>
@@ -90,12 +110,12 @@ public class TrajectorySolution
     /// <summary>
     /// Origin celestial body for this trajectory.
     /// </summary>
-    public CelestialBody? OriginBody { get; set; }
+    public IOrbitalBody OriginBody { get; set; }
 
     /// <summary>
     /// Destination celestial body for this trajectory.
     /// </summary>
-    public CelestialBody? DestinationBody { get; set; }
+    public IOrbitalBody DestinationBody { get; set; }
 
     /// <summary>
     /// Departure time in seconds from the current time when this trajectory should begin.
@@ -254,9 +274,9 @@ public class TrajectorySolution
     /// <returns>A string describing the key parameters of this solution.</returns>
     public string GetDescription()
     {
-        return $"Transfer: {TransferType}, TOF: {TimeOfFlight:F1}s, " +
-               $"ΔV: {DeltaVRequired:F2} m/s (depart: {DepartureDeltaV:F2}, arrive: {ArrivalDeltaV:F2}), " +
-               $"Revolutions: {Revolutions}, a: {SemiMajorAxis:F0}m, e: {Eccentricity:F3}";
+        return $"Transfer: {TransferType}, TOF: {TimeOfFlight:F1}s, "
+            + $"ΔV: {DeltaVRequired:F2} m/s (depart: {DepartureDeltaV:F2}, arrive: {ArrivalDeltaV:F2}), "
+            + $"Revolutions: {Revolutions}, a: {SemiMajorAxis:F0}m, e: {Eccentricity:F3}";
     }
 
     // ============ Static Filtering and Ranking Methods ============
@@ -275,21 +295,25 @@ public class TrajectorySolution
     {
         if (options == null || options.Count == 0)
         {
-            GameLogger.Debug("TrajectorySolution.FilterByDeltaV: No options provided, returning empty list");
+            GameLogger.Debug(
+                "TrajectorySolution.FilterByDeltaV: No options provided, returning empty list"
+            );
             return new List<TrajectorySolution>();
         }
 
         if (availableDeltaV <= 0f)
         {
-            GameLogger.Warning($"TrajectorySolution.FilterByDeltaV: Invalid availableDeltaV {availableDeltaV}, returning empty list");
+            GameLogger.Warning(
+                $"TrajectorySolution.FilterByDeltaV: Invalid availableDeltaV {availableDeltaV}, returning empty list"
+            );
             return new List<TrajectorySolution>();
         }
 
         var filtered = options.FindAll(o => o.DeltaVRequired <= availableDeltaV);
 
         GameLogger.Debug(
-            $"TrajectorySolution.FilterByDeltaV: Filtered {options.Count} options to {filtered.Count} " +
-            $"within budget of {availableDeltaV:F2} m/s"
+            $"TrajectorySolution.FilterByDeltaV: Filtered {options.Count} options to {filtered.Count} "
+                + $"within budget of {availableDeltaV:F2} m/s"
         );
 
         return filtered;
@@ -320,7 +344,9 @@ public class TrajectorySolution
             // Efficiency: higher delta-v = lower score (1 = best, 0 = worst)
             if (deltaVRange > 0f)
             {
-                option.EfficiencyScore = 1f - ((option.DeltaVRequired - options.Min(o => o.DeltaVRequired)) / deltaVRange);
+                option.EfficiencyScore =
+                    1f
+                    - ((option.DeltaVRequired - options.Min(o => o.DeltaVRequired)) / deltaVRange);
             }
             else
             {
@@ -330,7 +356,8 @@ public class TrajectorySolution
             // Time: higher TOF = lower score (1 = best, 0 = worst)
             if (tofRange > 0f)
             {
-                option.TimeScore = 1f - ((option.TimeOfFlight - options.Min(o => o.TimeOfFlight)) / tofRange);
+                option.TimeScore =
+                    1f - ((option.TimeOfFlight - options.Min(o => o.TimeOfFlight)) / tofRange);
             }
             else
             {
@@ -386,14 +413,14 @@ public class TrajectorySolution
                 break;
 
             default:
-                GameLogger.Warning($"TrajectorySolution.RankBy: Unknown criteria {criteria}, using MostEfficient");
+                GameLogger.Warning(
+                    $"TrajectorySolution.RankBy: Unknown criteria {criteria}, using MostEfficient"
+                );
                 ranked.Sort((a, b) => a.DeltaVRequired.CompareTo(b.DeltaVRequired));
                 break;
         }
 
-        GameLogger.Debug(
-            $"TrajectorySolution.RankBy: Ranked {ranked.Count} options by {criteria}"
-        );
+        GameLogger.Debug($"TrajectorySolution.RankBy: Ranked {ranked.Count} options by {criteria}");
 
         return ranked;
     }
@@ -430,8 +457,8 @@ public class TrajectorySolution
         if (totalMass <= 0f || exhaustVelocity <= 0f)
         {
             GameLogger.Warning(
-                $"TrajectorySolution.CalculateFuelRequired: Invalid parameters - " +
-                $"mass: {totalMass}, exhaustVelocity: {exhaustVelocity}"
+                $"TrajectorySolution.CalculateFuelRequired: Invalid parameters - "
+                    + $"mass: {totalMass}, exhaustVelocity: {exhaustVelocity}"
             );
             return float.MaxValue;
         }
@@ -452,8 +479,8 @@ public class TrajectorySolution
 
         if (EfficiencyScore > 0f || TimeScore > 0f || FuelRequired > 0f)
         {
-            return $"{baseDesc}, Efficiency: {EfficiencyScore:P0}, Time: {TimeScore:P0}, " +
-                   $"Fuel: {FuelRequired:F2}kg";
+            return $"{baseDesc}, Efficiency: {EfficiencyScore:P0}, Time: {TimeScore:P0}, "
+                + $"Fuel: {FuelRequired:F2}kg";
         }
 
         return baseDesc;
