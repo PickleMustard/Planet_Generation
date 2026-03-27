@@ -262,6 +262,9 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     // Movement controller for hybrid simulation (Task #435)
     private LogisticsMovementController? _movementController;
 
+    // Trajectory preview manager for visualizing planned routes
+    private TrajectoryPreviewManager? _trajectoryPreviewManager;
+
     // Visual components
     private MeshInstance3D? _meshInstance;
     private float _rotationSpeed = 1.0f;
@@ -301,6 +304,11 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// </summary>
     public LogisticsMovementController? MovementController => _movementController;
 
+    /// <summary>
+    /// The trajectory preview manager for visualizing planned routes before execution.
+    /// </summary>
+    public TrajectoryPreviewManager? PreviewManager => _trajectoryPreviewManager;
+
     public override void _ExitTree()
     {
         GameLogger.Debug($"LogisticsUnit destroying: {Name}");
@@ -324,6 +332,9 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
 
         // Initialize movement controller for hybrid simulation
         InitializeMovementController();
+
+        // Initialize trajectory preview manager
+        InitializePreviewManager();
     }
 
     public override void _PhysicsProcess(double delta)
@@ -1387,8 +1398,8 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         _destinationBody = selectedTrajectory.DestinationBody;
 
         GameLogger.Info(
-            $"LogisticsUnit {Name}: Route planned to {selectedTrajectory.DestinationBody.ToString()}, "
-                + $"TOF: {_transferTime:F1}s, Δv: {selectedTrajectory.DeltaVRequired:F2} m/s, "
+            $"LogisticsUnit {Name}: Route planned from {selectedTrajectory.OriginBody.BodyName} to {selectedTrajectory.DestinationBody.BodyName}, "
+                + $"TOF: {_transferTime:F1}s, Δv: {selectedTrajectory.DeltaVRequired:F2} m/s, v Initial {selectedTrajectory.InitialVelocity} m/s, v Final {selectedTrajectory.FinalVelocity} m/s"
                 + $"Fuel required: {fuelNeeded:F2}"
         );
 
@@ -1730,6 +1741,13 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         _movementController = new LogisticsMovementController { Name = "MovementController" };
         CallDeferred("add_child", _movementController);
         GameLogger.Debug($"LogisticsUnit {Name}: Movement controller initialized");
+    }
+
+    private void InitializePreviewManager()
+    {
+        _trajectoryPreviewManager = new TrajectoryPreviewManager { Name = "PreviewManager" };
+        CallDeferred("add_child", _trajectoryPreviewManager);
+        GameLogger.Debug($"LogisticsUnit {Name}: Preview manager initialized");
     }
 
     private void CreateVisualRepresentation()

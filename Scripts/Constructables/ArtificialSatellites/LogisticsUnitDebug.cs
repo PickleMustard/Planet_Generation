@@ -386,6 +386,12 @@ public partial class LogisticsUnit
                 ctx.WriteLine($"Time of Flight: {selected.TimeOfFlight:F1}s");
                 ctx.WriteLine($"Delta-V Required: {selected.DeltaVRequired:F2} m/s");
                 ctx.WriteLine($"Fuel Required: {fuelNeeded:F2}");
+
+                // Show trajectory preview (pauses simulation)
+                PreviewManager?.ShowPreview(selected, this);
+                ctx.WriteLine(
+                    $"[color=yellow]Preview active. Use 'execute_transfer' to accept or 'cancel_preview' to cancel.[/color]"
+                );
                 return 0;
             }
 
@@ -406,6 +412,12 @@ public partial class LogisticsUnit
             ctx.WriteLine($"Time of Flight: {best.TimeOfFlight:F1}s");
             ctx.WriteLine($"Delta-V Required: {best.DeltaVRequired:F2} m/s");
             ctx.WriteLine($"Fuel Required: {bestFuelNeeded:F2}");
+
+            // Show trajectory preview (pauses simulation)
+            PreviewManager?.ShowPreview(best, this);
+            ctx.WriteLine(
+                $"[color=yellow]Preview active. Use 'execute_transfer' to accept or 'cancel_preview' to cancel.[/color]"
+            );
             return 0;
         }
 
@@ -561,6 +573,12 @@ public partial class LogisticsUnit
             ctx.WriteLine($"Delta-V Required: {selected.DeltaVRequired:F2} m/s");
             ctx.WriteLine($"Fuel Required: {fuelNeeded:F2}");
 
+            // Show trajectory preview (pauses simulation)
+            PreviewManager?.ShowPreview(selected, this);
+            ctx.WriteLine(
+                $"[color=yellow]Preview active. Use 'execute_transfer' to accept or 'cancel_preview' to cancel.[/color]"
+            );
+
             // Clear stored options after selection
             _availableRouteOptions = null;
             _routeOptionsDestination = null;
@@ -594,6 +612,9 @@ public partial class LogisticsUnit
             return 1;
         }
 
+        // Clear trajectory preview if active (resumes simulation)
+        PreviewManager?.ClearPreview();
+
         if (ExecuteTrajectory())
         {
             string destName = _plannedTrajectory?.DestinationBody.ToString() ?? "Unknown";
@@ -604,6 +625,39 @@ public partial class LogisticsUnit
 
         ctx.WriteError("Failed to execute transfer.");
         return 1;
+    }
+
+    [DebugCommand(
+        "cancel_preview",
+        "Cancel the trajectory preview and return to idle orbit",
+        "cancel_preview",
+        Category = "Logistics",
+        RequiresTarget = true
+    )]
+    public int CancelPreview(CommandContext ctx, string[] args)
+    {
+        if (PreviewManager == null || !PreviewManager.IsPreviewActive)
+        {
+            ctx.WriteError("No active preview to cancel.");
+            return 1;
+        }
+
+        // Clear the preview (resumes simulation)
+        PreviewManager.ClearPreview();
+
+        // Reset route planning state
+        _plannedTrajectory = null;
+        _availableRouteOptions = null;
+        _routeOptionsDestination = null;
+
+        // Transition back to Idle
+        if (_state == LogisticsUnitState.Planning)
+        {
+            TransitionTo(LogisticsUnitState.Idle);
+        }
+
+        ctx.WriteLine("[color=green]Preview cancelled, returning to orbit.[/color]");
+        return 0;
     }
 
     [DebugCommand(

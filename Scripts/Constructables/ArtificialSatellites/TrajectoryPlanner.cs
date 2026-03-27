@@ -305,6 +305,8 @@ public class TrajectoryPlanner
                         solution.InitialVelocity,
                         mu
                     );
+                    solution.SemiMajorAxis = elements.SemiMajorAxis;
+                    solution.Eccentricity = elements.Eccentricity;
                     solution.Inclination = elements.InclinationDeg;
                     solution.AscendingNodeLongitude = elements.AscendingNodeLongitudeDeg;
                     solution.ArgumentOfPeriapsis = elements.ArgumentOfPeriapsisDeg;
