@@ -2,7 +2,7 @@ using System;
 using System.Text.RegularExpressions;
 using Godot;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 
 namespace UI;
 
@@ -202,7 +202,9 @@ public partial class DominantBodyItem : HBoxContainer
     {
         if (!t.ContainsKey("template"))
         {
-            GD.PrintErr("DominantBodyItem.SetConfiguration(): missing 'template' key in dictionary");
+            GD.PrintErr(
+                "DominantBodyItem.SetConfiguration(): missing 'template' key in dictionary"
+            );
             return;
         }
         var template = (Godot.Collections.Dictionary)t["template"];

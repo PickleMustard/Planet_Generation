@@ -257,7 +257,11 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
             {
                 currentParent.RemoveChild(this);
             }
-            Node3D destinationBodyNode = _destinationBody as Node3D;
+            if (_destinationBody is null)
+            {
+                throw new System.NullReferenceException();
+            }
+            Node3D destinationBodyNode = (Node3D)_destinationBody;
             destinationBodyNode!.CallDeferred("add_child", this);
 
             // Recalculate orbital parameters for the new parent using IOrbitalBody

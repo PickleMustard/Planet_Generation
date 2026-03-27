@@ -9,6 +9,7 @@ using Structures.GameState;
 using Structures.MeshGeneration;
 using Structures.Resources;
 using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
 
 namespace ProceduralGeneration.PlanetGeneration;
@@ -672,8 +673,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         float sin = Mathf.Sin(_orbitalAngle);
 
         GlobalPosition =
-            parent.GlobalPosition
-            + new Vector3(cos * _orbitalRadius, 0f, sin * _orbitalRadius);
+            parent.GlobalPosition + new Vector3(cos * _orbitalRadius, 0f, sin * _orbitalRadius);
 
         float linearSpeed = _orbitalRadius * _orbitalSpeed;
         Velocity = new Vector3(-sin * linearSpeed, 0f, cos * linearSpeed);

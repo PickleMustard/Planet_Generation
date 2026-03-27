@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Delaunay Triangulation Map Generation"
-run/main_scene="uid://dt8sw4jlumdml"
+run/main_scene="res://Scenes/DataLoading.tscn"
 config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -27,7 +27,6 @@ ThreadPooler="*uid://db2n014kjjmur"
 TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
 DebugMenu="*res://UI/Debug/DebugMenu.tscn"
 CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
-ResourceDatabase="*res://Scripts/Structures/Resources/ResourceDatabase.cs"
 ConstructionManager="*res://Scripts/Constructables/ConstructionManager.cs"
 
 [display]

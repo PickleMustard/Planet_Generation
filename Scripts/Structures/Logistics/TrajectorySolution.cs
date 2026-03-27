@@ -110,12 +110,12 @@ public partial class TrajectorySolution : Resource
     /// <summary>
     /// Origin celestial body for this trajectory.
     /// </summary>
-    public IOrbitalBody OriginBody { get; set; }
+    public IOrbitalBody? OriginBody { get; set; }
 
     /// <summary>
     /// Destination celestial body for this trajectory.
     /// </summary>
-    public IOrbitalBody DestinationBody { get; set; }
+    public IOrbitalBody? DestinationBody { get; set; }
 
     /// <summary>
     /// Departure time in seconds from the current time when this trajectory should begin.

@@ -80,7 +80,7 @@ namespace PlayerInteraction.CellSelection
             // Set the highlight on the new body's shader
             ApplyShaderHighlight(cell, body);
 
-            EmitSignal(SignalName.CellSelected, cell, body, continent);
+            EmitSignal(SignalName.CellSelected, cell, body, continent!);
         }
 
         /// <summary>

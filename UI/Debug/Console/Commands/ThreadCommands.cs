@@ -1,9 +1,6 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
-using Godot;
-using UI.Debug;
-using UtilityLibrary;
 using UtilityLibrary.TaskSystem;
 
 namespace UI.Debug.Console;

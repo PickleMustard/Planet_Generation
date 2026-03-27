@@ -1,5 +1,4 @@
 #if DEBUG
-using Godot;
 
 namespace UI.Debug;
 

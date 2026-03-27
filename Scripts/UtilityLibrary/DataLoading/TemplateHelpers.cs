@@ -4,11 +4,10 @@ using Godot;
 using Godot.Collections;
 using Structures;
 using Structures.Enums;
-
 // Alias to disambiguate from Godot.Collections.Dictionary when using generic Dictionary<K,V>
 using SysDict = System.Collections.Generic.Dictionary<string, object>;
 
-namespace UtilityLibrary;
+namespace UtilityLibrary.DataLoading;
 
 public static class TemplateHelpers
 {
@@ -223,7 +222,9 @@ public static class TemplateHelpers
             orbitalParams["starting_angle"] = ReadFloat(opRaw, "starting_angle", 0f);
             orbitalParams["vertical_offset"] = ReadFloat(opRaw, "vertical_offset", 0f);
             orbitalParams["orbital_center_index"] = (int)ReadFloat(
-                opRaw, "orbital_center_index", -1f
+                opRaw,
+                "orbital_center_index",
+                -1f
             );
             orbitalParams["parent_body"] = ReadString(opRaw, "parent_body", "barycenter");
         }
@@ -1020,9 +1021,7 @@ public static class TemplateHelpers
         return serializer.Serialize(data);
     }
 
-    private static List<SysDict> ConvertDominantToYaml(
-        Array<Dictionary> bodies
-    )
+    private static List<SysDict> ConvertDominantToYaml(Array<Dictionary> bodies)
     {
         var result = new List<SysDict>();
         foreach (var body in bodies)
@@ -1081,9 +1080,7 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static List<SysDict> ConvertBeltsToYaml(
-        Array<Dictionary> belts
-    )
+    private static List<SysDict> ConvertBeltsToYaml(Array<Dictionary> belts)
     {
         var result = new List<SysDict>();
         foreach (var belt in belts)
@@ -1120,9 +1117,7 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static List<SysDict> ConvertPlanetaryToYaml(
-        Array<Dictionary> bodies
-    )
+    private static List<SysDict> ConvertPlanetaryToYaml(Array<Dictionary> bodies)
     {
         var result = new List<SysDict>();
         foreach (var body in bodies)
@@ -1207,10 +1202,9 @@ public static class TemplateHelpers
         {
             var template = (Dictionary)sat["template"];
             var tDict = new SysDict();
-            foreach (string key in new[]
-                     {
-                         "apogee", "perigee", "starting_angle", "vertical_offset",
-                     })
+            foreach (
+                string key in new[] { "apogee", "perigee", "starting_angle", "vertical_offset" }
+            )
             {
                 if (template.ContainsKey(key))
                     tDict[key] = (float)template[key];
@@ -1244,9 +1238,7 @@ public static class TemplateHelpers
 
         // noise_settings
         if (sat.ContainsKey("noise_settings"))
-            dict["noise_settings"] = ConvertFloatRangeDictToYaml(
-                (Dictionary)sat["noise_settings"]
-            );
+            dict["noise_settings"] = ConvertFloatRangeDictToYaml((Dictionary)sat["noise_settings"]);
 
         return dict;
     }
@@ -1280,14 +1272,12 @@ public static class TemplateHelpers
             var value = tectonics[key];
 
             // Try int[] first (for num_continents), then float[]
-            if (value.VariantType == Variant.Type.PackedInt32Array
-                || value.Obj is int[])
+            if (value.VariantType == Variant.Type.PackedInt32Array || value.Obj is int[])
             {
                 var arr = (int[])value;
                 dict[keyStr] = new List<int> { arr[0], arr[1] };
             }
-            else if (value.VariantType == Variant.Type.PackedFloat32Array
-                     || value.Obj is float[])
+            else if (value.VariantType == Variant.Type.PackedFloat32Array || value.Obj is float[])
             {
                 var arr = (float[])value;
                 dict[keyStr] = new List<float> { arr[0], arr[1] };
@@ -1309,9 +1299,7 @@ public static class TemplateHelpers
         return dict;
     }
 
-    private static SysDict ConvertFloatRangeDictToYaml(
-        Dictionary settings
-    )
+    private static SysDict ConvertFloatRangeDictToYaml(Dictionary settings)
     {
         var dict = new SysDict();
         foreach (var key in settings.Keys)

@@ -1,11 +1,9 @@
 #if DEBUG
-using System;
 using System.Text;
 using Godot;
 using PlayerInteraction.CellSelection;
 using Structures.GameState;
 using Structures.Resources;
-using UI.Debug;
 
 namespace UI.Debug.CellInfo
 {

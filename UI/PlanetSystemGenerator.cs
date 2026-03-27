@@ -2,7 +2,7 @@ using System;
 using Godot;
 using Godot.Collections;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
 using FileAccess = Godot.FileAccess;
 

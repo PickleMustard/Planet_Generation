@@ -1,9 +1,9 @@
-using System;
+using System.Threading.Tasks;
 using Godot;
 using GdUnit4;
 using static GdUnit4.Assertions;
-using ProceduralGeneration.MeshGeneration.ResourceGeneration;
 using Structures.Resources;
+using UtilityLibrary.DataLoading;
 
 namespace Tests.ResourceGeneration;
 
@@ -16,6 +16,13 @@ public class ResourceDatabaseTest
     {
         var db = ResourceDatabase.Instance;
         AssertThat(db).IsNotNull();
+        
+        // Database should not be loaded initially
+        AssertThat(db.IsLoaded).IsFalse();
+        
+        // Load the database
+        db.LoadData();
+        AssertThat(db.IsLoaded).IsTrue();
 
         var resources = db.GetAllResources();
         AssertThat(resources).IsNotNull();
@@ -31,6 +38,13 @@ public class ResourceDatabaseTest
     public void DefinitionParsing()
     {
         var db = ResourceDatabase.Instance;
+        
+        // Database should not be loaded initially
+        AssertThat(db.IsLoaded).IsFalse();
+        
+        // Load the database
+        db.LoadData();
+        AssertThat(db.IsLoaded).IsTrue();
 
         AssertThat(db.TryGetResource("iron_ore", out var ironOre)).IsTrue();
         AssertThat(ironOre!.IdName).IsEqual("iron_ore");
@@ -43,6 +57,30 @@ public class ResourceDatabaseTest
 
         AssertThat(db.TryGetResource("water", out var water)).IsTrue();
         AssertThat(water!.ResourceType).IsEqual("fuel");
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void UninitializedAccessThrows()
+    {
+        var db = ResourceDatabase.Instance;
+        AssertThat(db).IsNotNull();
+        
+        // Database should not be loaded initially
+        AssertThat(db.IsLoaded).IsFalse();
+        
+        // Attempting to access data should throw DatabaseNotLoadedException
+        AssertThat(() => db.GetAllResources())
+            .Throws<DatabaseNotLoadedException>();
+            
+        AssertThat(() => db.TryGetResource("iron_ore", out _))
+            .Throws<DatabaseNotLoadedException>();
+            
+        AssertThat(() => db.ValidateResourceExists("iron_ore"))
+            .Throws<DatabaseNotLoadedException>();
+            
+        AssertThat(() => db.GetResourceColor("iron_ore"))
+            .Throws<DatabaseNotLoadedException>();
     }
 
     [TestCase]
@@ -79,5 +117,18 @@ public class ResourceDatabaseTest
 
         var invalidError = ResourceValidationError.InvalidResourceDefinition("test", "missing field");
         AssertThat(invalidError.Message).Contains("Invalid resource definition");
+    }
+    
+    [TestCase]
+    [RequireGodotRuntime]
+    public void WorkPackageCreation()
+    {
+        var db = ResourceDatabase.Instance;
+        AssertThat(db).IsNotNull();
+        
+        var workPackage = db.CreateLoadPackage();
+        AssertThat(workPackage).IsNotNull();
+        AssertThat(workPackage.Name).Contains("Load_ResourceDatabase");
+        AssertThat(workPackage.Steps).Count().IsEqual(1);
     }
 }

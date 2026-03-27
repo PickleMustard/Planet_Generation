@@ -4,9 +4,6 @@ using Godot;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
 using UtilityLibrary.GameMath.Orbital;
-#if DEBUG
-using UI.Debug.Console;
-#endif
 
 namespace ProceduralGeneration.PlanetGeneration;
 

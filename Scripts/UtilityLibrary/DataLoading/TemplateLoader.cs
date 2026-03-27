@@ -6,7 +6,7 @@ using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 using YamlDotNet.Serialization;
 
-namespace UtilityLibrary;
+namespace UtilityLibrary.DataLoading;
 
 public delegate bool ValidationCallback(
     string filePath,
@@ -121,7 +121,10 @@ public static class TemplateLoader
     {
         if (string.IsNullOrWhiteSpace(nameFileName))
         {
-            throw new ArgumentException("Name file name cannot be null or empty", nameof(nameFileName));
+            throw new ArgumentException(
+                "Name file name cannot be null or empty",
+                nameof(nameFileName)
+            );
         }
 
         string basePath = "res://Configuration/names/";

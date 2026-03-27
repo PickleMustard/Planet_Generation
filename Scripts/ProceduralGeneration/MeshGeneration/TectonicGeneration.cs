@@ -4,8 +4,6 @@ using Structures.GameState;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UtilityLibrary;
-using MeshGeneration;
 
 namespace ProceduralGeneration.MeshGeneration;
 /// <summary>

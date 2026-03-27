@@ -1,7 +1,6 @@
 #if DEBUG
 using System;
 using System.Linq;
-using UI.Debug;
 
 namespace UI.Debug.Console;
 

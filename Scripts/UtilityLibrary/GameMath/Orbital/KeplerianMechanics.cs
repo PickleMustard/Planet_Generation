@@ -1,7 +1,6 @@
 using System;
 using Godot;
 using Structures.Logistics;
-using UtilityLibrary;
 
 namespace UtilityLibrary.GameMath.Orbital;
 
@@ -409,6 +408,5 @@ public static class KeplerianMechanics
             x = xNew;
         }
         throw new Exception("Failed to find root");
-        return x;
     }
 }

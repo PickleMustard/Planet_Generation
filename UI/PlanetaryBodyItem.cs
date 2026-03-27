@@ -1,7 +1,7 @@
 using System;
 using Godot;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 
 namespace UI;
 
@@ -506,13 +506,13 @@ public partial class PlanetaryBodyItem : HBoxContainer
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
         var ob = GetNode<OptionButton>("MainContent/Content/BodyTypeContent/OptionButton");
 
-        float cm = Mathf.Clamp((float)Mass.Value, 0f, MassLimit);
-        float cs = Mathf.Clamp((float)BodySize.Value, 0f, SizeLimit);
+        float cm = Mathf.Clamp((float)Mass!.Value, 0f, MassLimit);
+        float cs = Mathf.Clamp((float)BodySize!.Value, 0f, SizeLimit);
 
-        _apogee = Mathf.Clamp((float)Apogee.Value, 0f, Limit);
-        _perigee = Mathf.Clamp((float)Perigee.Value, 0f, Limit);
-        _startingAngle = Mathf.Clamp((float)StartingAngle.Value, 0f, Limit);
-        _verticalOffset = Mathf.Clamp((float)VerticalOffset.Value, 0f, Limit);
+        _apogee = Mathf.Clamp((float)Apogee!.Value, 0f, Limit);
+        _perigee = Mathf.Clamp((float)Perigee!.Value, 0f, Limit);
+        _startingAngle = Mathf.Clamp((float)StartingAngle!.Value, 0f, Limit);
+        _verticalOffset = Mathf.Clamp((float)VerticalOffset!.Value, 0f, Limit);
 
         dict["type"] = PlanetaryTypeLoader.GetSelectedInternalName(ob) ?? "RockyPlanet";
         dict.Add("name", bodyName!);

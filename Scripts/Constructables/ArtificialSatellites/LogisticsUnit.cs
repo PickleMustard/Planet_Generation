@@ -1162,7 +1162,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
             {
                 currentParent.RemoveChild(this);
             }
-            Node3D destinationBodyNode = _destinationBody as Node3D;
+            Node3D destinationBodyNode = (Node3D)_destinationBody;
             destinationBodyNode!.CallDeferred("add_child", this);
 
             // Recalculate orbital parameters for the new parent using IOrbitalBody
@@ -1398,7 +1398,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
         _destinationBody = selectedTrajectory.DestinationBody;
 
         GameLogger.Info(
-            $"LogisticsUnit {Name}: Route planned from {selectedTrajectory.OriginBody.BodyName} to {selectedTrajectory.DestinationBody.BodyName}, "
+            $"LogisticsUnit {Name}: Route planned from {selectedTrajectory.OriginBody!.BodyName} to {selectedTrajectory.DestinationBody!.BodyName}, "
                 + $"TOF: {_transferTime:F1}s, Δv: {selectedTrajectory.DeltaVRequired:F2} m/s, v Initial {selectedTrajectory.InitialVelocity} m/s, v Final {selectedTrajectory.FinalVelocity} m/s"
                 + $"Fuel required: {fuelNeeded:F2}"
         );

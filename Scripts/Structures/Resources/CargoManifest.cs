@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Godot;
-using Structures.Resources;
 
 namespace Structures.Resources;
 

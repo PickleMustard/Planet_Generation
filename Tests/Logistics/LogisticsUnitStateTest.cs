@@ -1,5 +1,4 @@
 using GdUnit4;
-using Godot;
 using Constructables.ArtificialSatellites;
 using Structures.Enums;
 using static GdUnit4.Assertions;

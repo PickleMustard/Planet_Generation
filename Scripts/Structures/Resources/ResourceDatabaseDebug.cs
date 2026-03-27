@@ -1,7 +1,6 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
-using UI.Debug;
 using UI.Debug.DatabaseViewer;
 
 namespace Structures.Resources
@@ -13,7 +12,7 @@ namespace Structures.Resources
         bool IDataProvider.NeedsRefresh => true;
         object IDebugDataProvider.SourceObject => this;
         string IDebugDataProvider.InstanceNamespace => "ResourceDatabase";
-        bool IDebugDataProvider.IsSourceValid => _isInitialized && IsInstanceValid(this);
+        bool IDebugDataProvider.IsSourceValid => IsLoaded;
 
         DebugDataNode IDataProvider.GetData()
         {

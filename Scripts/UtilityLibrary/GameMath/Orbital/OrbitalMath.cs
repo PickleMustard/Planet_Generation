@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
-using Structures.Logistics;
 
 namespace UtilityLibrary.GameMath.Orbital;
 
@@ -325,8 +324,6 @@ public static class OrbitalMath
         }
         return angle;
     }
-
-
 
     // ============================================================================
     // Phase 1: Most Influential Body Logic
@@ -1076,7 +1073,7 @@ public static class OrbitalMath
     /// </summary>
     /// <param name="origin">The body to find the central body for.</param>
     /// <returns>The most gravitationally dominant body.</returns>
-    public static IOrbitalBody FindCentralBody(IOrbitalBody origin)
+    public static IOrbitalBody? FindCentralBody(IOrbitalBody origin)
     {
         SceneTree tree = (SceneTree)Engine.GetMainLoop();
         //var barycenter = tree.Root.FindChild("Barycenter", true);

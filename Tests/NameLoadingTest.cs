@@ -1,8 +1,8 @@
 using GdUnit4;
-using static GdUnit4.Assertions;
-using UtilityLibrary;
 using Godot;
 using Godot.Collections;
+using UtilityLibrary.DataLoading;
+using static GdUnit4.Assertions;
 
 namespace Tests;
 

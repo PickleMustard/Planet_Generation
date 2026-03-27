@@ -1,7 +1,5 @@
 using System;
 using Godot;
-using ProceduralGeneration.PlanetGeneration;
-using Structures.Logistics;
 using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 using EngineDef = Structures.Logistics.EngineDefinition;
