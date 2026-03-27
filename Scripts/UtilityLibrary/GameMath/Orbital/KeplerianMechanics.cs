@@ -7,83 +7,6 @@ namespace UtilityLibrary.GameMath.Orbital;
 
 public static class KeplerianMechanics
 {
-    /*
-      public static Vector3 PropagateKepler(
-          Vector3 positionAtT0,
-          Vector3 velocityAtT0,
-          float mu,
-          float deltaTime
-      )
-      {
-          float radius = positionAtT0.Length();
-          float velocity = velocityAtT0.Length();
-          float radialVelocity = positionAtT0.Dot(velocityAtT0) / radius;
-  
-          float alpha = 2f / radius - Mathf.Pow(velocity, 2f) / mu;
-  
-          float muSqrt = Mathf.Sqrt(mu);
-          float chi = 0f;
-  
-          if (alpha > 1e-10f)
-              chi = muSqrt * deltaTime * alpha;
-          else if (alpha < -1e-10f)
-          {
-              float a = 1f / alpha;
-              chi = (
-                  Mathf.Sqrt(-a)
-                  * Mathf.Log(
-                      (-2f * mu * alpha * deltaTime) / (positionAtT0.Dot(velocityAtT0))
-                          + Mathf.Sqrt(-mu * a) * (1f - radius * alpha)
-                  )
-              );
-          }
-          else
-              chi = muSqrt * deltaTime / radius;
-  
-          float z,
-              C,
-              S = 0f;
-          for (int i = 0; i < 100; i++)
-          {
-              z = alpha * chi * chi;
-              C = CalculateStumpffC(z);
-              S = CalculateStumpffS(z);
-  
-              float radiusOverMuSqrt = radius * radialVelocity / muSqrt;
-              float oneMinusAR = 1f - alpha * radius;
-  
-              float F =
-                  (radiusOverMuSqrt * chi * chi * C)
-                  + (oneMinusAR * chi * chi * chi * S)
-                  + (radius * chi)
-                  - (muSqrt * deltaTime);
-  
-              float FPrime =
-                  (radiusOverMuSqrt * chi * (1f - z * S)) + (oneMinusAR * chi * chi * C) + radius;
-              if (Mathf.Abs(F) < 1e-30f)
-                  break;
-              float chiNew = chi - F / FPrime;
-              if (Mathf.Abs(chiNew - chi) < (1e-10f * Mathf.Max(1f, Mathf.Abs(chi))))
-              {
-                  chi = chiNew;
-                  break;
-              }
-              chi = chiNew;
-          }
-          z = alpha * chi * chi;
-          C = CalculateStumpffC(z);
-          S = CalculateStumpffS(z);
-          float f = 1f - (chi * chi / radius) * C;
-          float g = deltaTime - (chi * chi * chi / muSqrt) * S;
-  
-          Vector3 newPosition = f * positionAtT0 + g * velocityAtT0;
-          float fDot = muSqrt / (newPosition.Length() * radius) * chi * (z * S - 1f);
-          float gDot = 1f - (chi * chi / newPosition.Length()) * C;
-  
-          Vector3 newVelocity = fDot * positionAtT0 + gDot * velocityAtT0;
-          return newPosition;
-      }
-  */
     public static (Vector3, Vector3) PropagateKepler(
         Vector3 positionAtTime0,
         Vector3 velocityAtTime0,
@@ -216,6 +139,7 @@ public static class KeplerianMechanics
         }
 
         Vector3 hHat = h / hMag;
+        float p = h.LengthSquared() / mu;
 
         // 2. Node vector: n = Y_up × h (lies in XZ plane, points toward ascending node)
         Vector3 n = Vector3.Up.Cross(h);
@@ -226,33 +150,18 @@ public static class KeplerianMechanics
         float e = eVec.Length();
 
         // 4. Semi-major axis from vis-viva: a = 1 / (2/r − v²/μ)
-        float visVivaInverse = 2f / r - v * v / mu;
-        float a;
-        if (Mathf.Abs(visVivaInverse) < EPSILON)
-        {
-            // Near-parabolic
-            a = r;
-        }
-        else
-        {
-            a = 1f / visVivaInverse;
-            if (a < 0f)
-            {
-                // Hyperbolic — keep negative a for correctness
-                // (mean anomaly calculation will use hyperbolic anomaly)
-            }
-        }
+        float a = p / (1f - e * e);
 
         // 5. Inclination: angle between h and Y-up
-        float inclination = Mathf.Acos(Mathf.Clamp(hHat.Y, -1f, 1f));
+        float inclination = Mathf.Acos(h.Y / hMag);
 
         // 6. RAAN (Ω): angle of node vector from +X in the XZ plane
         float raan = 0f;
         if (nMag > EPSILON)
         {
-            Vector3 nHat = n / nMag;
-            raan = Mathf.Acos(Mathf.Clamp(nHat.X, -1f, 1f));
-            if (nHat.Z < 0f)
+            float cosRaan = Mathf.Clamp(n.X / nMag, -1f, 1f);
+            raan = Mathf.Acos(cosRaan);
+            if (n.Z < 0f)
                 raan = Mathf.Tau - raan;
         }
 
@@ -262,15 +171,14 @@ public static class KeplerianMechanics
         {
             if (nMag > EPSILON)
             {
-                float dotNE = n.Dot(eVec) / (nMag * e);
-                argPeriapsis = Mathf.Acos(Mathf.Clamp(dotNE, -1f, 1f));
-                // If periapsis is below reference plane (eVec.Y < 0), ω is in [π, 2π)
+                float cosArgP = Mathf.Clamp(n.Dot(eVec) / (nMag * e), -1f, 1f);
+                argPeriapsis = Mathf.Acos(cosArgP);
                 if (eVec.Y < 0f)
                     argPeriapsis = Mathf.Tau - argPeriapsis;
             }
             else
             {
-                // Equatorial orbit: use longitude of periapsis from +X axis
+                // Equatorial orbit: longitude of periapsis from +X
                 argPeriapsis = Mathf.Atan2(eVec.Z, eVec.X);
                 if (argPeriapsis < 0f)
                     argPeriapsis += Mathf.Tau;
@@ -278,62 +186,18 @@ public static class KeplerianMechanics
         }
 
         // 8. True anomaly (ν): angle from eccentricity vector to position
-        float trueAnomaly = 0f;
-        if (e > EPSILON)
+        float cosf = eVec.Dot(position) / (e * r);
+        float sinf = position.Dot(velocity) * hMag / (e * r * mu);
+        float f = Mathf.Atan2(sinf, cosf);
+        if (f < 0f)
         {
-            float dotER = eVec.Dot(position) / (e * r);
-            trueAnomaly = Mathf.Acos(Mathf.Clamp(dotER, -1f, 1f));
-            // If moving away from periapsis (r·v < 0 means approaching), sign convention
-            if (position.Dot(velocity) < 0f)
-                trueAnomaly = Mathf.Tau - trueAnomaly;
+            f += 2f * Mathf.Pi;
         }
-        else
-        {
-            // Circular orbit: use argument of latitude
-            if (nMag > EPSILON)
-            {
-                float dotNR = n.Dot(position) / (nMag * r);
-                trueAnomaly = Mathf.Acos(Mathf.Clamp(dotNR, -1f, 1f));
-                if (position.Y < 0f)
-                    trueAnomaly = Mathf.Tau - trueAnomaly;
-            }
-            else
-            {
-                // Circular equatorial: true longitude from +X
-                trueAnomaly = Mathf.Atan2(position.Z, position.X);
-                if (trueAnomaly < 0f)
-                    trueAnomaly += Mathf.Tau;
-            }
-        }
+        float trueAnomaly = f;
 
         // 9-10. Mean anomaly from true anomaly and eccentricity
-        float meanAnomaly = 0f;
-        if (a > 0f && e < 1f)
-        {
-            // Elliptical: E = 2 * atan2(sqrt(1-e) * sin(ν/2), sqrt(1+e) * cos(ν/2))
-            float halfNu = trueAnomaly / 2f;
-            float eccentricAnomaly = 2f * Mathf.Atan2(
-                Mathf.Sqrt(1f - e) * Mathf.Sin(halfNu),
-                Mathf.Sqrt(1f + e) * Mathf.Cos(halfNu)
-            );
-            meanAnomaly = eccentricAnomaly - e * Mathf.Sin(eccentricAnomaly);
-        }
-        else if (a < 0f && e > 1f)
-        {
-            // Hyperbolic: H from tanh(H/2) = sqrt((e-1)/(e+1)) * tan(ν/2)
-            float tanHalfNu = Mathf.Tan(trueAnomaly / 2f);
-            float tanhHalfH = Mathf.Sqrt((e - 1f) / (e + 1f)) * tanHalfNu;
-            // atanh(x) = 0.5 * ln((1+x)/(1-x))
-            float clampedTanh = Mathf.Clamp(tanhHalfH, -0.9999f, 0.9999f);
-            float halfH = 0.5f * Mathf.Log((1f + clampedTanh) / (1f - clampedTanh));
-            float H = 2f * halfH;
-            meanAnomaly = e * (float)Math.Sinh(H) - H;
-        }
-
-        // Normalize mean anomaly to [0, 2π)
-        meanAnomaly %= Mathf.Tau;
-        if (meanAnomaly < 0f)
-            meanAnomaly += Mathf.Tau;
+        float E = 2f * Mathf.Atan(Mathf.Sqrt((1f - e) / (1f + e)) * Mathf.Tan(f / 2f));
+        float meanAnomaly = (E - e * Mathf.Sin(E));
 
         return new ClassicalOrbitalElements
         {
@@ -401,19 +265,23 @@ public static class KeplerianMechanics
             {
                 // Elliptical
                 double E = SolveKeplerElliptical(M, e);
-                trueAnomaly = 2.0 * Math.Atan2(
-                    Math.Sqrt(1.0 + e) * Math.Sin(E / 2.0),
-                    Math.Sqrt(1.0 - e) * Math.Cos(E / 2.0)
-                );
+                trueAnomaly =
+                    2.0
+                    * Math.Atan2(
+                        Math.Sqrt(1.0 + e) * Math.Sin(E / 2.0),
+                        Math.Sqrt(1.0 - e) * Math.Cos(E / 2.0)
+                    );
             }
             else if (e > 1.0 + 1e-6)
             {
                 // Hyperbolic
                 double H = SolveKeplerHyperbolic(M, e);
-                trueAnomaly = 2.0 * Math.Atan2(
-                    Math.Sqrt(e + 1.0) * Math.Sinh(H / 2.0),
-                    Math.Sqrt(e - 1.0) * Math.Cosh(H / 2.0)
-                );
+                trueAnomaly =
+                    2.0
+                    * Math.Atan2(
+                        Math.Sqrt(e + 1.0) * Math.Sinh(H / 2.0),
+                        Math.Sqrt(e - 1.0) * Math.Cosh(H / 2.0)
+                    );
             }
             else
             {
@@ -486,7 +354,8 @@ public static class KeplerianMechanics
     {
         // Normalize M to [0, 2*pi)
         M = M % (2.0 * Math.PI);
-        if (M < 0) M += 2.0 * Math.PI;
+        if (M < 0)
+            M += 2.0 * Math.PI;
 
         // Initial guess: first-order approximation
         double E0 = M + e * Math.Sin(M);
