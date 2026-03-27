@@ -49,6 +49,8 @@ import/blender/enabled=false
 [gdunit4]
 
 settings/test/test_lookup_folder="Tests"
+settings/test/test_discovery=true
+ui/toolbar/run_overall=true
 
 [gui]
 
