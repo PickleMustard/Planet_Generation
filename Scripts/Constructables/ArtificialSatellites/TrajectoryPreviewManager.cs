@@ -286,7 +286,7 @@ public partial class TrajectoryPreviewManager : Node
     private Vector3[] SampleTransferArc(TrajectorySolution trajectory)
     {
         var points = new Vector3[ARC_SAMPLE_COUNT];
-        float dt = (trajectory.TimeOfFlight * 2f) / (ARC_SAMPLE_COUNT - 1);
+        float dt = (trajectory.TimeOfFlight) / (ARC_SAMPLE_COUNT - 1);
         float mu = trajectory.GravitationalParameter;
 
         for (int i = 0; i < ARC_SAMPLE_COUNT; i++)
