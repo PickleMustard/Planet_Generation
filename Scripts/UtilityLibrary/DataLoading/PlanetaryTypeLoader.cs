@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 using Godot;
-
 using Structures.Enums;
 
-namespace UtilityLibrary;
+namespace UtilityLibrary.DataLoading;
 
 /// <summary>
 /// Loads and caches planetary type definitions from YAML configuration files

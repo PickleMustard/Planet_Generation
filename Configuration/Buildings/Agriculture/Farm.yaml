@@ -1,0 +1,63 @@
+buildings:
+  - id_name: farm
+    display_name: Agricultural Farm
+    description: Grows crops on fertile land using hydroponic and aeroponic systems for maximum yield in limited space.
+    category: agriculture
+    building_time: 3600.0  # 1 hour in seconds
+    work_required: 500.0
+    
+    placement_requirements:
+      biomes: [Grassland, Forest, Rainforest, Coastal]
+      min_elevation: 0.2
+      max_elevation: 0.5
+      max_slope: 15.0
+      cell_count: 1
+      requires_adjacent: false
+    
+    required_resources:
+      iron: 100
+      copper: 50
+      concrete: 200
+      water: 100
+    
+    production:
+      extraction_rate: 0.0
+      resources: [food, biomass, oxygen]
+      recipes: [crop_rotation, fertilizer_production, seed_propagation]
+    
+    visual:
+      model_path: "res://Models/Buildings/farm.glb"
+      scale: 1.0
+      rotation_offset: [0, 0, 0]
+  
+  - id_name: greenhouse
+    display_name: Advanced Greenhouse
+    description: Climate-controlled facility for year-round crop production with integrated irrigation and nutrient delivery.
+    category: agriculture
+    building_time: 5400.0  # 1.5 hours in seconds
+    work_required: 750.0
+    
+    placement_requirements:
+      biomes: [Grassland, Forest, Tundra, Taiga]
+      min_elevation: 0.1
+      max_elevation: 0.6
+      max_slope: 10.0
+      cell_count: 2
+      requires_adjacent: true
+    
+    required_resources:
+      steel: 150
+      copper: 100
+      glass: 200
+      plastic: 100
+      water: 200
+    
+    production:
+      extraction_rate: 0.0
+      resources: [vegetable, fruit, medicinal_plants, oxygen]
+      recipes: [genetic_modification, vertical_farming, aquaponics]
+    
+    visual:
+      model_path: "res://Models/Buildings/greenhouse.glb"
+      scale: 1.2
+      rotation_offset: [0, 90, 0]

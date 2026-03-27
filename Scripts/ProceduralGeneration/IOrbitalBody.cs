@@ -8,7 +8,7 @@ public interface IOrbitalBody
     public float Mass { get; set; }
     public Vector3 Velocity { get; set; }
     public Vector3 BodyPosition { get; set; }
-    public string BodyName { get; set; }
+    public string BodyName { get; }
 
     // Orbital Band System - Properties
     public Godot.Collections.Array<OrbitBand> OrbitBands { get; }

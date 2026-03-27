@@ -1,7 +1,7 @@
 using System;
 using Godot;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 
 namespace UI;
 
@@ -238,9 +238,7 @@ public partial class SatelliteBeltItem : VBoxContainer
         // Keys like ring_apogee, ring_perigee, etc. are at the top level of t.
         var apogee = t.ContainsKey("ring_apogee") ? (float)t["ring_apogee"] : 0f;
         var perigee = t.ContainsKey("ring_perigee") ? (float)t["ring_perigee"] : 0f;
-        var velocity = t.ContainsKey("ring_velocity")
-            ? (Vector3)t["ring_velocity"]
-            : Vector3.Zero;
+        var velocity = t.ContainsKey("ring_velocity") ? (Vector3)t["ring_velocity"] : Vector3.Zero;
         var lowerRange = t.ContainsKey("lower_range") ? (int)t["lower_range"] : 1;
         var upperRange = t.ContainsKey("upper_range") ? (int)t["upper_range"] : 4;
         var grouping = t.ContainsKey("grouping") ? (String)t["grouping"] : "Balanced";

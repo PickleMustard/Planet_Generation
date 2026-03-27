@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://dartudq2j6q67"]
+
+[ext_resource type="Script" uid="uid://mainmenu" path="res://Scripts/UI/MainMenu.cs" id="1_mainmenu"]
+
+[node name="MainMenu" type="Control" unique_id=904998352]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_mainmenu")
+
+[node name="Background" type="ColorRect" parent="." unique_id=734698123]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=825984644]
+layout_mode = 0
+anchor_left = 0.3
+anchor_top = 0.3
+anchor_right = 0.7
+anchor_bottom = 0.7
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer" unique_id=2077261008]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Main Menu"
+horizontal_alignment = 1
+
+[node name="StartButton" type="Button" parent="VBoxContainer" unique_id=1709260947]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Start Game"
+
+[node name="SettingsButton" type="Button" parent="VBoxContainer" unique_id=1234567891]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Settings"
+
+[node name="DebugButton" type="Button" parent="VBoxContainer" unique_id=1234567892]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Debug"
+
+[node name="ExitButton" type="Button" parent="VBoxContainer" unique_id=1870627271]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Exit"

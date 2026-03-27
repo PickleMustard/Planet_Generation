@@ -1,10 +1,8 @@
 using GdUnit4;
-using static GdUnit4.Assertions;
-
 using Godot;
-
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
+using static GdUnit4.Assertions;
 
 namespace Tests;
 
@@ -142,8 +140,7 @@ public class PlanetaryTypeLoaderTest
     [RequireGodotRuntime]
     public void ToCelestialBodyType_ConvertsCorrectly()
     {
-        AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("Star"))
-            .IsEqual(CelestialBodyType.Star);
+        AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("Star")).IsEqual(CelestialBodyType.Star);
         AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("RockyPlanet"))
             .IsEqual(CelestialBodyType.RockyPlanet);
         AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("BlackHole"))
@@ -154,8 +151,7 @@ public class PlanetaryTypeLoaderTest
     [RequireGodotRuntime]
     public void ToSatelliteBodyType_ConvertsCorrectly()
     {
-        AssertThat(PlanetaryTypeLoader.ToSatelliteBodyType("Moon"))
-            .IsEqual(SatelliteBodyType.Moon);
+        AssertThat(PlanetaryTypeLoader.ToSatelliteBodyType("Moon")).IsEqual(SatelliteBodyType.Moon);
         AssertThat(PlanetaryTypeLoader.ToSatelliteBodyType("Asteroid"))
             .IsEqual(SatelliteBodyType.Asteroid);
     }
@@ -176,8 +172,7 @@ public class PlanetaryTypeLoaderTest
     [RequireGodotRuntime]
     public void ToDominantBodyType_ConvertsCorrectly()
     {
-        AssertThat(PlanetaryTypeLoader.ToDominantBodyType("Star"))
-            .IsEqual(DominantBodyType.Star);
+        AssertThat(PlanetaryTypeLoader.ToDominantBodyType("Star")).IsEqual(DominantBodyType.Star);
         AssertThat(PlanetaryTypeLoader.ToDominantBodyType("NeutronStar"))
             .IsEqual(DominantBodyType.NeutronStar);
         AssertThat(PlanetaryTypeLoader.ToDominantBodyType("BlackHole"))
@@ -201,16 +196,14 @@ public class PlanetaryTypeLoaderTest
         AssertThat(FileAccess.FileExists("res://Configuration/planetary_types/dominant_bodies.yml"))
             .IsTrue();
         AssertThat(
-            FileAccess.FileExists("res://Configuration/planetary_types/planetary_bodies.yml")
-        )
+                FileAccess.FileExists("res://Configuration/planetary_types/planetary_bodies.yml")
+            )
             .IsTrue();
         AssertThat(
-            FileAccess.FileExists("res://Configuration/planetary_types/satellite_bodies.yml")
-        )
+                FileAccess.FileExists("res://Configuration/planetary_types/satellite_bodies.yml")
+            )
             .IsTrue();
-        AssertThat(
-            FileAccess.FileExists("res://Configuration/planetary_types/satellite_belts.yml")
-        )
+        AssertThat(FileAccess.FileExists("res://Configuration/planetary_types/satellite_belts.yml"))
             .IsTrue();
     }
 }

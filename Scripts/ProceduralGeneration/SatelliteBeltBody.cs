@@ -2,7 +2,7 @@ using System;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
 
 namespace ProceduralGeneration.PlanetGeneration;

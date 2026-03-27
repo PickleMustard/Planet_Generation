@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using UI.Debug;
 using ProceduralGeneration.PlanetGeneration;
 using Constructables.ArtificialSatellites;
 using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 
 namespace UI.Debug.Console;
 
@@ -51,7 +51,8 @@ public static class LogisticsCommands
 
     private static string ToTitleCase(string input)
     {
-        if (string.IsNullOrEmpty(input)) return input;
+        if (string.IsNullOrEmpty(input))
+            return input;
 
         var words = input.Split(' ');
         for (int i = 0; i < words.Length; i++)
@@ -66,7 +67,8 @@ public static class LogisticsCommands
 
     private static void LoadShipNamesIfNeeded()
     {
-        if (_namesLoaded) return;
+        if (_namesLoaded)
+            return;
 
         try
         {
@@ -111,7 +113,9 @@ public static class LogisticsCommands
             _shipAdjectives = allAdjectives.ToArray();
             _namesLoaded = true;
 
-            GD.Print($"[LogisticsCommands] Loaded {_shipNames.Length} ship names and {_shipAdjectives.Length} adjectives");
+            GD.Print(
+                $"[LogisticsCommands] Loaded {_shipNames.Length} ship names and {_shipAdjectives.Length} adjectives"
+            );
         }
         catch (Exception e)
         {
@@ -121,6 +125,7 @@ public static class LogisticsCommands
             _namesLoaded = true;
         }
     }
+
     // NOTE: spawn_station was removed from LogisticsCommands to resolve a duplicate
     // command name conflict with ConstructionManagerDebug.SpawnStationCommand.
     // The instance version on ConstructionManagerDebug is the canonical one.
@@ -162,7 +167,9 @@ public static class LogisticsCommands
                         var ship = instance as LogisticsUnit;
                         string parent = ship?.GetParent()?.Name ?? "Unknown";
                         string state = ship?.State.ToString() ?? "N/A";
-                        ctx.WriteLine($"  {ns}: {instance.GetType().Name} (Parent: {parent}, State: {state})");
+                        ctx.WriteLine(
+                            $"  {ns}: {instance.GetType().Name} (Parent: {parent}, State: {state})"
+                        );
                     }
                 }
                 total += shipNamespaces.Count;
@@ -183,7 +190,9 @@ public static class LogisticsCommands
                 {
                     if (InstanceRegistry.TryGetInstance(ns, out var instance) && instance != null)
                     {
-                        string parent = instance is Node3D node ? node.GetParent()?.Name ?? "Unknown" : "Unknown";
+                        string parent = instance is Node3D node
+                            ? node.GetParent()?.Name ?? "Unknown"
+                            : "Unknown";
                         ctx.WriteLine($"  {ns}: {instance.GetType().Name} (Parent: {parent})");
                     }
                 }
@@ -250,10 +259,14 @@ public static class LogisticsCommands
                 var band = orbitBands[i];
                 int current = body.GetBandSatelliteCount(i);
                 bool canAdd = body.CanAddToBand(i);
-                string status = canAdd ? "[color=green]Available[/color]" : "[color=red]Full[/color]";
+                string status = canAdd
+                    ? "[color=green]Available[/color]"
+                    : "[color=red]Full[/color]";
 
-                ctx.WriteLine($"  Band {i}: Radius={band.Radius:F1}, Capacity={band.Capacity}, " +
-                            $"Current={current}, {status}");
+                ctx.WriteLine(
+                    $"  Band {i}: Radius={band.Radius:F1}, Capacity={band.Capacity}, "
+                        + $"Current={current}, {status}"
+                );
             }
 
             return 0;
@@ -264,6 +277,5 @@ public static class LogisticsCommands
             return 1;
         }
     }
-
 }
 #endif

@@ -1,4 +1,3 @@
-using System;
 using Constructables.ArtificialSatellites;
 using GdUnit4;
 using Godot;
@@ -264,7 +263,6 @@ public class LogisticsUnitOrbitalVelocityTest
     public void PredictShipPositionAtTime_LargeTimeDelta_WrapsAngleCorrectly()
     {
         // Test angle normalization calculation
-        float radius = 1000f;
         float speed = 0.1f; // 0.1 rad/s
         float initialAngle = 1.0f; // radians
         float timeDelta = 100f; // seconds

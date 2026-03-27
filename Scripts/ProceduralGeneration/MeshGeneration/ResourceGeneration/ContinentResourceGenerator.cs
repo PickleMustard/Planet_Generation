@@ -5,7 +5,6 @@ using Godot;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.Resources;
-using UtilityLibrary;
 
 namespace ProceduralGeneration.MeshGeneration.ResourceGeneration;
 

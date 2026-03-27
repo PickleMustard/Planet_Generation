@@ -1,7 +1,7 @@
 using System;
 using Godot;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 
 namespace UI;
 

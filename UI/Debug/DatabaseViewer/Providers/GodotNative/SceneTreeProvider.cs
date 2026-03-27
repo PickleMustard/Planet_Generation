@@ -1,9 +1,7 @@
 #if DEBUG
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using UI.Debug;
 
 namespace UI.Debug.DatabaseViewer;
 

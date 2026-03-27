@@ -23,7 +23,7 @@ public partial class Barycenter : Node3D, IOrbitalBody
     public float Radius
     {
         get => 1f;
-        set => value = value;
+        set => throw new System.NotImplementedException();
     }
     public float Mass
     {
@@ -38,7 +38,6 @@ public partial class Barycenter : Node3D, IOrbitalBody
     public string BodyName
     {
         get => "Barycenter";
-        set => value = value;
     }
 
     public Array<OrbitBand> OrbitBands => throw new System.NotImplementedException();

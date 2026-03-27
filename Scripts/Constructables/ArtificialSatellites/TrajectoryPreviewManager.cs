@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Logistics;
@@ -160,7 +159,7 @@ public partial class TrajectoryPreviewManager : Node
                 continue;
 
             var centralBody = OrbitalMath.FindCentralBody(body);
-            float mu = OrbitalMath.GetGravitationalParameter(centralBody);
+            float mu = OrbitalMath.GetGravitationalParameter(centralBody!);
 
             Vector3 currentPos = body.GlobalPosition;
             Vector3 currentVel = body.Velocity;
@@ -334,7 +333,7 @@ public partial class TrajectoryPreviewManager : Node
             // Fallback: propagate destination body and use its position
             var destBody = trajectory.DestinationBody;
             var centralBody = OrbitalMath.FindCentralBody(destBody);
-            float mu = OrbitalMath.GetGravitationalParameter(centralBody);
+            float mu = OrbitalMath.GetGravitationalParameter(centralBody!);
 
             try
             {

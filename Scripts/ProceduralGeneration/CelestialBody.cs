@@ -6,6 +6,7 @@ using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
 using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
 #if DEBUG
 using UI.Debug;

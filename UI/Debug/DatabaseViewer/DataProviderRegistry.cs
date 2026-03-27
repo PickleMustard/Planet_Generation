@@ -116,10 +116,7 @@ public static class DataProviderRegistry
         {
             IDebugDataProvider? instance = null;
 
-            if (typeof(Node).IsAssignableFrom(type))
-            {
-                instance = FindSingletonInstance(type);
-            }
+            instance = FindSingletonInstance(type);
 
             if (instance == null)
             {
@@ -139,7 +136,9 @@ public static class DataProviderRegistry
         }
         catch (Exception ex)
         {
-            GD.PrintErr($"Failed to create instance of {type.Name}: {ex.Message}");
+            GD.PrintErr(
+                $"Failed to create instance of {type.Name}: {ex.Message}\n {ex.StackTrace}"
+            );
         }
     }
 
