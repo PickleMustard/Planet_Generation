@@ -199,8 +199,8 @@ public static class LambertSolver
             float vt = gamma * sigma * (y + lambda * solutions[i]);
             float vts = vt / distanceA;
             float vtf = vt / distanceB;
-            Vector3 v0 = vrs * distanceANormalized + vts * distanceBNormalized;
-            Vector3 v1 = vrf * distanceANormalized + vtf * distanceBNormalized;
+            Vector3 v0 = vrs * distanceANormalized + vts * instantaneousVelocityA;
+            Vector3 v1 = vrf * distanceBNormalized + vtf * instantaneousVelocityB;
 
             int numRevs = (i + 1) / 2;
             TrajectorySolution trajectorySolution = new TrajectorySolution(
