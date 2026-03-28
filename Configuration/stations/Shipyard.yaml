@@ -1,0 +1,19 @@
+stations:
+  - name: Small_Shipyard
+    station_type: Shipyard
+    construction_time: 60.0
+    can_build_ships: true
+    required_resources:
+      Steel: 1000
+      Electronics: 300
+      Machinery: 200
+
+  - name: Large_Shipyard
+    station_type: Shipyard
+    construction_time: 150.0
+    can_build_ships: true
+    required_resources:
+      Steel: 5000
+      Electronics: 1500
+      Machinery: 1000
+      Composites: 500
