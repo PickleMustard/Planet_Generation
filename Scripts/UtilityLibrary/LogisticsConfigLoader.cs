@@ -47,6 +47,29 @@ namespace UtilityLibrary
         public float CargoCapacity { get; set; }
         public float FuelCapacity { get; set; }
         public string EngineCategory { get; set; } = string.Empty;
+        public float ConstructionTime { get; set; }
+        public Dictionary<string, int> RequiredResources { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Represents a station template category from the configuration.
+    /// </summary>
+    public class StationTemplateCategory
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Represents a specific station definition from the configuration.
+    /// </summary>
+    public class StationDefinition
+    {
+        public string Name { get; set; } = string.Empty;
+        public string StationType { get; set; } = string.Empty;
+        public float ConstructionTime { get; set; }
+        public bool CanBuildShips { get; set; }
+        public Dictionary<string, int> RequiredResources { get; set; } = new();
     }
 
     /// <summary>
@@ -60,13 +83,17 @@ namespace UtilityLibrary
     {
         private const string EngineTypesPath = "res://Configuration/engines/EngineTypes.yaml";
         private const string ShipTemplatesPath = "res://Configuration/ships/ShipTemplates.yaml";
+        private const string StationTemplatesPath = "res://Configuration/stations/StationTemplates.yaml";
         private const string EnginesDirectory = "res://Configuration/engines/";
         private const string ShipsDirectory = "res://Configuration/ships/";
+        private const string StationsDirectory = "res://Configuration/stations/";
 
         private static List<EngineTypeCategory>? _engineTypes;
         private static List<ShipTemplateCategory>? _shipTemplates;
+        private static List<StationTemplateCategory>? _stationTemplates;
         private static Dictionary<string, List<EngineDefinition>>? _enginesByCategory;
         private static Dictionary<string, List<ShipDefinition>>? _shipsByCategory;
+        private static Dictionary<string, List<StationDefinition>>? _stationsByCategory;
 
         /// <summary>
         /// Loads all engine type categories from EngineTypes.yaml.
@@ -363,6 +390,173 @@ namespace UtilityLibrary
         }
 
         /// <summary>
+        /// Loads all station template categories from StationTemplates.yaml.
+        /// </summary>
+        public static List<StationTemplateCategory> LoadStationTemplates()
+        {
+            if (_stationTemplates != null)
+                return _stationTemplates;
+
+            _stationTemplates = new List<StationTemplateCategory>();
+
+            if (!Godot.FileAccess.FileExists(StationTemplatesPath))
+            {
+                GD.PrintErr($"Station templates file not found: {StationTemplatesPath}");
+                return _stationTemplates;
+            }
+
+            try
+            {
+                using var file = Godot.FileAccess.Open(StationTemplatesPath, Godot.FileAccess.ModeFlags.Read);
+                string yamlContent = file.GetAsText();
+
+                var deserializer = new DeserializerBuilder()
+                    .WithNamingConvention(UnderscoredNamingConvention.Instance)
+                    .Build();
+
+                var yamlData = deserializer.Deserialize<SysDict>(yamlContent);
+
+                if (yamlData != null && yamlData.ContainsKey("categories"))
+                {
+                    var categoriesList = yamlData["categories"] as List<object>;
+                    if (categoriesList != null)
+                    {
+                        foreach (var categoryObj in categoriesList)
+                        {
+                            if (categoryObj is Dictionary<object, object> categoryDict)
+                            {
+                                var category = new StationTemplateCategory
+                                {
+                                    Name = ReadString(categoryDict, "name", ""),
+                                    Description = ReadString(categoryDict, "description", ""),
+                                };
+                                _stationTemplates.Add(category);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                GD.PrintErr($"Error loading station templates from {StationTemplatesPath}: {e.Message}\n{e.StackTrace}");
+            }
+
+            return _stationTemplates;
+        }
+
+        /// <summary>
+        /// Gets the list of all station template category names.
+        /// </summary>
+        public static List<string> GetStationTemplateCategories()
+        {
+            var stationTemplates = LoadStationTemplates();
+            return stationTemplates.Select(s => s.Name).ToList();
+        }
+
+        /// <summary>
+        /// Loads all station definitions from a specific category file.
+        /// </summary>
+        public static List<StationDefinition> LoadStationsByCategory(string categoryName)
+        {
+            if (_stationsByCategory == null)
+                _stationsByCategory = new Dictionary<string, List<StationDefinition>>();
+
+            string normalizedName = categoryName.Replace(" ", "_");
+            if (_stationsByCategory.ContainsKey(normalizedName))
+                return _stationsByCategory[normalizedName];
+
+            var stations = new List<StationDefinition>();
+            string filePath = StationsDirectory + normalizedName + ".yaml";
+
+            if (!Godot.FileAccess.FileExists(filePath))
+            {
+                GD.PrintErr($"Station category file not found: {filePath}");
+                _stationsByCategory[normalizedName] = stations;
+                return stations;
+            }
+
+            try
+            {
+                using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
+                string yamlContent = file.GetAsText();
+
+                var deserializer = new DeserializerBuilder()
+                    .WithNamingConvention(UnderscoredNamingConvention.Instance)
+                    .Build();
+
+                var yamlData = deserializer.Deserialize<SysDict>(yamlContent);
+
+                if (yamlData != null && yamlData.ContainsKey("stations"))
+                {
+                    var stationsList = yamlData["stations"] as List<object>;
+                    if (stationsList != null)
+                    {
+                        foreach (var stationObj in stationsList)
+                        {
+                            if (stationObj is Dictionary<object, object> stationDict)
+                            {
+                                var station = ParseStationDefinition(stationDict);
+                                stations.Add(station);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                GD.PrintErr($"Error loading stations from {filePath}: {e.Message}\n{e.StackTrace}");
+            }
+
+            _stationsByCategory[normalizedName] = stations;
+            return stations;
+        }
+
+        /// <summary>
+        /// Loads all stations from all categories.
+        /// </summary>
+        public static List<StationDefinition> LoadAllStations()
+        {
+            var allStations = new List<StationDefinition>();
+            var categories = GetStationTemplateCategories();
+
+            foreach (var category in categories)
+            {
+                var stations = LoadStationsByCategory(category);
+                allStations.AddRange(stations);
+            }
+
+            return allStations;
+        }
+
+        /// <summary>
+        /// Gets a station definition by name, searching all categories.
+        /// </summary>
+        public static StationDefinition? GetStationDefinition(string name)
+        {
+            var allStations = LoadAllStations();
+            foreach (var station in allStations)
+            {
+                if (string.Equals(station.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return station;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Gets a ship definition by name, searching all categories.
+        /// </summary>
+        public static ShipDefinition? GetShipDefinition(string name)
+        {
+            var allShips = LoadAllShips();
+            foreach (var ship in allShips)
+            {
+                if (string.Equals(ship.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return ship;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Gets an engine type category by name, or null if not found.
         /// </summary>
         public static EngineTypeCategory? GetEngineType(string name)
@@ -401,8 +595,10 @@ namespace UtilityLibrary
         {
             _engineTypes = null;
             _shipTemplates = null;
+            _stationTemplates = null;
             _enginesByCategory = null;
             _shipsByCategory = null;
+            _stationsByCategory = null;
         }
 
         private static EngineTypeCategory ParseEngineTypeCategory(Dictionary<object, object> dict)
@@ -436,13 +632,28 @@ namespace UtilityLibrary
 
         private static ShipDefinition ParseShipDefinition(Dictionary<object, object> dict)
         {
-            return new ShipDefinition
+            var ship = new ShipDefinition
             {
                 Name = ReadString(dict, "name", ""),
                 DryMass = ReadFloat(dict, "dry_mass", 0f),
                 CargoCapacity = ReadFloat(dict, "cargo_capacity", 0f),
                 FuelCapacity = ReadFloat(dict, "fuel_capacity", 0f),
                 EngineCategory = ReadString(dict, "engine_category", ""),
+                ConstructionTime = ReadFloat(dict, "construction_time", 0f),
+                RequiredResources = ReadResourceDict(dict, "required_resources"),
+            };
+            return ship;
+        }
+
+        private static StationDefinition ParseStationDefinition(Dictionary<object, object> dict)
+        {
+            return new StationDefinition
+            {
+                Name = ReadString(dict, "name", ""),
+                StationType = ReadString(dict, "station_type", ""),
+                ConstructionTime = ReadFloat(dict, "construction_time", 0f),
+                CanBuildShips = ReadBool(dict, "can_build_ships", false),
+                RequiredResources = ReadResourceDict(dict, "required_resources"),
             };
         }
 
@@ -470,6 +681,39 @@ namespace UtilityLibrary
             }
 
             return NodeToFloat(dict[key], fallback);
+        }
+
+        private static bool ReadBool(Dictionary<object, object> dict, string key, bool fallback)
+        {
+            if (!dict.ContainsKey(key))
+                return fallback;
+
+            var value = dict[key];
+            if (value is bool b)
+                return b;
+            if (value is string s)
+                return string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
+            return fallback;
+        }
+
+        private static Dictionary<string, int> ReadResourceDict(Dictionary<object, object> dict, string key)
+        {
+            var result = new Dictionary<string, int>();
+            if (!dict.ContainsKey(key))
+                return result;
+
+            if (dict[key] is Dictionary<object, object> resourceDict)
+            {
+                foreach (var kvp in resourceDict)
+                {
+                    string resourceName = kvp.Key?.ToString() ?? "";
+                    int amount = (int)NodeToFloat(kvp.Value, 0f);
+                    if (!string.IsNullOrEmpty(resourceName) && amount > 0)
+                        result[resourceName] = amount;
+                }
+            }
+
+            return result;
         }
 
         private static float NodeToFloat(object node, float fallback)

@@ -29,6 +29,7 @@ DebugMenu="*res://UI/Debug/DebugMenu.tscn"
 CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
 ResourceDatabase="*res://Scripts/Structures/Resources/ResourceDatabase.cs"
 ConstructionManager="*res://Scripts/Constructables/ConstructionManager.cs"
+ConstructionHUD="*res://UI/Construction/ConstructionHUD.tscn"
 
 [display]
 

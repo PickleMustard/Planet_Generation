@@ -2,6 +2,7 @@ using System;
 using Constructables.ArtificialSatellites;
 using Godot;
 using Godot.Collections;
+using Structures.Enums;
 using UtilityLibrary;
 
 /* Construction Manager is responsible for managing the communication of construction requests and events
@@ -40,11 +41,31 @@ public partial class ConstructionManager : Node
     [Signal]
     public delegate void ShipConstructionCancelledEventHandler(Dictionary details);
 
-    private static ConstructionManager _instance;
+    [Signal]
+    public delegate void ConstructionProgressUpdatedEventHandler(
+        string entityName,
+        float progress,
+        string status
+    );
+
+  private static ConstructionManager _instance;
     public static ConstructionManager Instance => _instance;
 
-    private Array<StationSatellite> _stationsUnderConstruction;
-    private Array<LogisticsUnit> _shipsUnderConstruction;
+    [Export]
+    public Array<StationSatellite> _stationsUnderConstruction;
+
+    [Export]
+    public Array<LogisticsUnit> _shipsUnderConstruction;
+
+    private float _progressSignalTimer;
+    private const float PROGRESS_SIGNAL_INTERVAL = 0.5f;
+
+    private ConstructionManager()
+    {
+        _stationsUnderConstruction = new Array<StationSatellite>();
+        _shipsUnderConstruction = new Array<LogisticsUnit>();
+        _instance = this;
+    }
 
     //Ensure singleton instance & signals are connected to correct methods
     public override void _EnterTree()
@@ -57,9 +78,6 @@ public partial class ConstructionManager : Node
 
         _instance = this;
 
-        _stationsUnderConstruction = new Array<StationSatellite>();
-        _shipsUnderConstruction = new Array<LogisticsUnit>();
-
         StationConstructionInitialized += OnStationConstructionInitialized;
         StationConstructionCompleted += OnStationConstructionCompleted;
         StationConstructionCancelled += OnStationConstructionCancelled;
@@ -68,6 +86,81 @@ public partial class ConstructionManager : Node
         ShipConstructionCancelled += OnShipConstructionCancelled;
 
         GD.Print($"[ConstructionManager] Initialized");
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        float dt = (float)delta;
+        _progressSignalTimer += dt;
+        bool emitProgress = _progressSignalTimer >= PROGRESS_SIGNAL_INTERVAL;
+        if (emitProgress)
+            _progressSignalTimer = 0f;
+
+        // Tick stations under construction (iterate in reverse for safe removal)
+        for (int i = _stationsUnderConstruction.Count - 1; i >= 0; i--)
+        {
+            var station = _stationsUnderConstruction[i];
+            if (!IsInstanceValid(station))
+            {
+                _stationsUnderConstruction.RemoveAt(i);
+                continue;
+            }
+
+            station.UpdateProgress(dt);
+
+            if (emitProgress)
+            {
+                EmitSignal(
+                    SignalName.ConstructionProgressUpdated,
+                    station.Name.ToString(),
+                    station.GetProgress(),
+                    station.GetStatus()
+                );
+            }
+
+            if (station.GetStatus() == ConstructionStatus.Complete.ToString())
+            {
+                _stationsUnderConstruction.RemoveAt(i);
+                FinalizeStation(station, new Dictionary());
+                EmitSignal(
+                    SignalName.StationConstructionCompleted,
+                    new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
+                );
+            }
+        }
+
+        // Tick ships under construction
+        for (int i = _shipsUnderConstruction.Count - 1; i >= 0; i--)
+        {
+            var ship = _shipsUnderConstruction[i];
+            if (!IsInstanceValid(ship))
+            {
+                _shipsUnderConstruction.RemoveAt(i);
+                continue;
+            }
+
+            ship.UpdateProgress(dt);
+
+            if (emitProgress)
+            {
+                EmitSignal(
+                    SignalName.ConstructionProgressUpdated,
+                    ship.Name.ToString(),
+                    ship.GetProgress(),
+                    ship.GetStatus()
+                );
+            }
+
+            if (ship.GetStatus() == ConstructionStatus.Complete.ToString())
+            {
+                _shipsUnderConstruction.RemoveAt(i);
+                FinalizeShip(ship, new Dictionary());
+                EmitSignal(
+                    SignalName.ShipConstructionCompleted,
+                    new Dictionary { { "ship", ship }, { "name", ship.Name.ToString() } }
+                );
+            }
+        }
     }
 
     public void EmitStationConstruct(StationSatellite inConstruction, Dictionary details)
@@ -253,6 +346,8 @@ public partial class ConstructionManager : Node
     {
         GameLogger.Info($"[ConstructionManager] Station construction cancelled: {cancelled.Name}");
 
+        cancelled.CancelConstruction();
+
         if (cancelled.GetParent() is Node parent)
             parent.RemoveChild(cancelled);
 
@@ -264,6 +359,8 @@ public partial class ConstructionManager : Node
     private void CancelShip(LogisticsUnit cancelled, Dictionary details)
     {
         GameLogger.Info($"[ConstructionManager] Ship construction cancelled: {cancelled.Name}");
+
+        cancelled.CancelConstruction();
 
         if (cancelled.GetParent() is Node parent)
             parent.RemoveChild(cancelled);
@@ -319,17 +416,31 @@ public partial class ConstructionManager : Node
     }
 
     /// <summary>
-    /// Creates a station satellite in orbit around the specified body.
-    /// Position and velocity are calculated based on the orbital band properties.
+    /// Delivers resources to a constructable entity (station or ship) that is under construction.
     /// </summary>
-    /// <param name="targetBody">The orbital body to orbit around</param>
-    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
-    /// <param name="name">Optional name for the station (auto-generated if null)</param>
-    /// <returns>The created station satellite</returns>
-    /// <exception cref="ArgumentNullException">Thrown when targetBody is null</exception>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when bandIndex is invalid</exception>
-    /// <exception cref="InvalidOperationException">Thrown when band is at capacity</exception>
-    public StationSatellite CreateStation(IOrbitalBody targetBody, int bandIndex, string? name = null)
+    public void DeliverResourcesToConstruction(IConstructable target, string resourceId, int amount)
+    {
+        if (target is StationSatellite station)
+        {
+            station.DeliverResources(resourceId, amount);
+        }
+        else if (target is LogisticsUnit unit)
+        {
+            unit.DeliverResources(resourceId, amount);
+        }
+    }
+
+    /// <summary>
+    /// Creates a station satellite in orbit around the specified body.
+    /// When a StationDefinition is provided, creates the station in construction mode (inactive, tracked).
+    /// When null, creates instantly (preserves current debug/test behavior).
+    /// </summary>
+    public StationSatellite CreateStation(
+        IOrbitalBody targetBody,
+        int bandIndex,
+        string? name = null,
+        StationDefinition? stationDefinition = null
+    )
     {
         if (targetBody == null)
         {
@@ -338,19 +449,22 @@ public partial class ConstructionManager : Node
 
         if (bandIndex < 0 || bandIndex >= targetBody.GetBandCount())
         {
-            throw new ArgumentOutOfRangeException(nameof(bandIndex),
-                $"Band index {bandIndex} out of range. Available bands: {targetBody.GetBandCount()}");
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {targetBody.GetBandCount()}"
+            );
         }
 
         if (!targetBody.CanAddToBand(bandIndex))
         {
             int currentCount = targetBody.GetBandSatelliteCount(bandIndex);
             throw new InvalidOperationException(
-                $"Cannot add station to band {bandIndex}: band is at capacity ({currentCount})");
+                $"Cannot add station to band {bandIndex}: band is at capacity ({currentCount})"
+            );
         }
 
         // Generate name if not provided
-        name ??= $"Station_{Guid.NewGuid().ToString()[..8]}";
+        name ??= stationDefinition?.Name ?? $"Station_{Guid.NewGuid().ToString()[..8]}";
 
         // Create station
         var station = new StationSatellite { Name = name };
@@ -364,22 +478,42 @@ public partial class ConstructionManager : Node
         // Increment band count
         targetBody.IncrementBandCount(bandIndex);
 
-        GameLogger.Debug($"Created station '{name}' in band {bandIndex} around {targetBody}");
+        // If a definition is provided, enter construction mode
+        if (stationDefinition != null)
+        {
+            station.SetStationDefinition(stationDefinition);
+            station.StartConstruction(new Dictionary());
+
+            // Make visible but translucent during construction
+            station.Visible = true;
+
+            _stationsUnderConstruction.Add(station);
+
+            GameLogger.Debug(
+                $"Started construction of station '{name}' in band {bandIndex} ({stationDefinition.ConstructionTime}s)"
+            );
+        }
+        else
+        {
+            GameLogger.Debug($"Created station '{name}' in band {bandIndex} around {targetBody}");
+        }
+
         return station;
     }
 
     /// <summary>
     /// Creates a logistics unit (ship) in orbit around the specified body.
-    /// Position and velocity are calculated based on the orbital band properties.
+    /// When a ShipDefinition is provided, creates the ship in construction mode.
+    /// When null, creates instantly (preserves current debug/test behavior).
+    /// Ship construction requires a parent station with CanBuildShips == true when a definition is provided.
     /// </summary>
-    /// <param name="targetBody">The orbital body to orbit around</param>
-    /// <param name="bandIndex">Index of the orbit band (0-based)</param>
-    /// <param name="name">Optional name for the ship (auto-generated if null)</param>
-    /// <returns>The created logistics unit</returns>
-    /// <exception cref="ArgumentNullException">Thrown when targetBody is null</exception>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when bandIndex is invalid</exception>
-    /// <exception cref="InvalidOperationException">Thrown when band is at capacity</exception>
-    public LogisticsUnit CreateLogisticsUnit(IOrbitalBody targetBody, int bandIndex, string? name = null)
+    public LogisticsUnit CreateLogisticsUnit(
+        IOrbitalBody targetBody,
+        int bandIndex,
+        string? name = null,
+        ShipDefinition? shipDefinition = null,
+        StationSatellite? parentStation = null
+    )
     {
         if (targetBody == null)
         {
@@ -388,19 +522,30 @@ public partial class ConstructionManager : Node
 
         if (bandIndex < 0 || bandIndex >= targetBody.GetBandCount())
         {
-            throw new ArgumentOutOfRangeException(nameof(bandIndex),
-                $"Band index {bandIndex} out of range. Available bands: {targetBody.GetBandCount()}");
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {targetBody.GetBandCount()}"
+            );
         }
 
         if (!targetBody.CanAddToBand(bandIndex))
         {
             int currentCount = targetBody.GetBandSatelliteCount(bandIndex);
             throw new InvalidOperationException(
-                $"Cannot add ship to band {bandIndex}: band is at capacity ({currentCount})");
+                $"Cannot add ship to band {bandIndex}: band is at capacity ({currentCount})"
+            );
+        }
+
+        // Validate ship construction at station
+        if (shipDefinition != null && parentStation != null && !parentStation.CanBuildShips)
+        {
+            throw new InvalidOperationException(
+                $"Station '{parentStation.Name}' cannot build ships (type: {parentStation.StationType})"
+            );
         }
 
         // Generate name if not provided
-        name ??= $"Ship_{Guid.NewGuid().ToString()[..8]}";
+        name ??= shipDefinition?.Name ?? $"Ship_{Guid.NewGuid().ToString()[..8]}";
 
         // Create unit
         var unit = new LogisticsUnit { Name = name };
@@ -411,12 +556,43 @@ public partial class ConstructionManager : Node
         // Initialize with orbital parameters - this sets up position/velocity based on band
         unit.Initialize(targetBody as Node3D, bandIndex);
         unit.InitializeCargo();
-        unit.SetFuelCapacity(1000f);
+
+        // Apply ship definition properties or defaults
+        if (shipDefinition != null)
+        {
+            unit.SetFuelCapacity(shipDefinition.FuelCapacity);
+            unit.SetDryMass(shipDefinition.DryMass);
+        }
+        else
+        {
+            unit.SetFuelCapacity(1000f);
+        }
 
         // Increment band count
         targetBody.IncrementBandCount(bandIndex);
 
-        GameLogger.Debug($"Created logistics unit '{name}' in band {bandIndex} around {targetBody}");
+        // If a definition is provided, enter construction mode
+        if (shipDefinition != null)
+        {
+            unit.SetShipDefinition(shipDefinition);
+            unit.StartConstruction(new Dictionary());
+
+            // Make visible but inactive during construction
+            unit.Visible = true;
+
+            _shipsUnderConstruction.Add(unit);
+
+            GameLogger.Debug(
+                $"Started construction of ship '{name}' in band {bandIndex} ({shipDefinition.ConstructionTime}s)"
+            );
+        }
+        else
+        {
+            GameLogger.Debug(
+                $"Created logistics unit '{name}' in band {bandIndex} around {targetBody}"
+            );
+        }
+
         return unit;
     }
 }

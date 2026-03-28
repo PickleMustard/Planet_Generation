@@ -1,17 +1,7 @@
-using Godot;
 using Godot.Collections;
 
 public interface IConstructable
 {
-    [Signal]
-    public delegate void OnCompletionEventHandler();
-
-    [Signal]
-    public delegate void OnConstructionBlockedEventHandler();
-
-    [Signal]
-    public delegate void OnConstructionResumedEventHandler();
-
     float workRequired { get; set; }
     float workDone { get; set; }
     Dictionary<string, int> requiredResources { get; set; }

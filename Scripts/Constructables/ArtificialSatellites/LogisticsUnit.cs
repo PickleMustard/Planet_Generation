@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using Structures.GameState;
@@ -10,8 +11,17 @@ using UtilityLibrary;
 
 namespace Constructables.ArtificialSatellites;
 
-public partial class LogisticsUnit : Node3D, IArtificialSatellite
+public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructable
 {
+    [Signal]
+    public delegate void OnCompletionEventHandler();
+
+    [Signal]
+    public delegate void OnConstructionBlockedEventHandler();
+
+    [Signal]
+    public delegate void OnConstructionResumedEventHandler();
+
     [Export]
     public string Id { get; private set; } = string.Empty;
 
@@ -37,6 +47,187 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
 
     [Export]
     public bool IsStationary { get; set; } = false;
+
+    // Construction state
+    private ConstructionState? _constructionState;
+    private ShipDefinition? _shipDefinition;
+    private bool _isUnderConstruction;
+
+    /// <summary>Whether this unit is currently under construction.</summary>
+    public bool IsUnderConstruction => _isUnderConstruction;
+
+    #region IConstructable
+
+    public float workRequired
+    {
+        get => _constructionState?.WorkRequired ?? 0f;
+        set { if (_constructionState != null) _constructionState.WorkRequired = value; }
+    }
+
+    public float workDone
+    {
+        get => _constructionState?.WorkDone ?? 0f;
+        set { if (_constructionState != null) _constructionState.WorkDone = value; }
+    }
+
+    public Godot.Collections.Dictionary<string, int> requiredResources
+    {
+        get
+        {
+            var dict = new Godot.Collections.Dictionary<string, int>();
+            if (_constructionState != null)
+                foreach (var kvp in _constructionState.RequiredResources)
+                    dict[kvp.Key] = kvp.Value;
+            return dict;
+        }
+        set
+        {
+            if (_constructionState != null)
+            {
+                _constructionState.RequiredResources.Clear();
+                foreach (var kvp in value)
+                    _constructionState.RequiredResources[kvp.Key] = kvp.Value;
+            }
+        }
+    }
+
+    public Godot.Collections.Dictionary<string, int> availableResources
+    {
+        get
+        {
+            var dict = new Godot.Collections.Dictionary<string, int>();
+            if (_constructionState != null)
+                foreach (var kvp in _constructionState.AvailableResources)
+                    dict[kvp.Key] = kvp.Value;
+            return dict;
+        }
+        set
+        {
+            if (_constructionState != null)
+            {
+                _constructionState.AvailableResources.Clear();
+                foreach (var kvp in value)
+                    _constructionState.AvailableResources[kvp.Key] = kvp.Value;
+            }
+        }
+    }
+
+    public bool CanConstruct(Godot.Collections.Dictionary LocationDetails)
+    {
+        // Check if parent station can build ships
+        if (LocationDetails.ContainsKey("parent_station"))
+        {
+            var parentStation = LocationDetails["parent_station"].As<StationSatellite>();
+            if (parentStation != null && !parentStation.CanBuildShips)
+            {
+                GameLogger.Warning($"LogisticsUnit: Parent station '{parentStation.Name}' cannot build ships");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public IConstructable StartConstruction(Godot.Collections.Dictionary LocationDetails)
+    {
+        if (_constructionState == null) return this;
+
+        _isUnderConstruction = true;
+        IsActive = false;
+        ProcessMode = ProcessModeEnum.Disabled;
+
+        _constructionState.TryStart();
+
+        GameLogger.Info($"LogisticsUnit {Name}: Construction started ({_constructionState.WorkRequired}s)");
+        return this;
+    }
+
+    public bool DefineTemplate(Godot.Collections.Dictionary templateData) => true;
+    public bool UpdateConfiguration(Godot.Collections.Dictionary updateData) => true;
+
+    public bool CancelConstruction()
+    {
+        if (_constructionState == null) return false;
+
+        _constructionState.Cancel();
+        _isUnderConstruction = false;
+
+        GameLogger.Info($"LogisticsUnit {Name}: Construction cancelled");
+        return true;
+    }
+
+    public string GetStatus()
+    {
+        return _constructionState?.Status.ToString() ?? "None";
+    }
+
+    public float GetProgress()
+    {
+        return _constructionState?.GetProgress() ?? 0f;
+    }
+
+    public void UpdateProgress(float delta)
+    {
+        if (_constructionState == null || !_isUnderConstruction) return;
+
+        var previousStatus = _constructionState.Status;
+        _constructionState.UpdateProgress(delta);
+
+        if (_constructionState.StatusChanged)
+        {
+            if (_constructionState.Status == ConstructionStatus.Blocked
+                && previousStatus == ConstructionStatus.InProgress)
+            {
+                EmitSignal(SignalName.OnConstructionBlocked);
+            }
+            else if (_constructionState.Status == ConstructionStatus.InProgress
+                && previousStatus == ConstructionStatus.Blocked)
+            {
+                EmitSignal(SignalName.OnConstructionResumed);
+            }
+            else if (_constructionState.Status == ConstructionStatus.Complete)
+            {
+                _isUnderConstruction = false;
+                EmitSignal(SignalName.OnCompletion);
+                GameLogger.Info($"LogisticsUnit {Name}: Construction complete");
+            }
+        }
+    }
+
+    public bool CheckRequiredResourcesAvailable()
+    {
+        return _constructionState?.CheckRequiredResourcesAvailable() ?? true;
+    }
+
+    public bool CanDemolish() => !_isUnderConstruction;
+    public bool DemolishConstructable() => false;
+    public bool CanDestroy() => true;
+    public bool DestroyConstructable()
+    {
+        QueueFree();
+        return true;
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Configures this unit with a ship definition for construction.
+    /// </summary>
+    public void SetShipDefinition(ShipDefinition definition)
+    {
+        _shipDefinition = definition;
+        _constructionState = new ConstructionState(
+            definition.ConstructionTime,
+            definition.RequiredResources
+        );
+    }
+
+    /// <summary>
+    /// Delivers resources to this unit's construction site.
+    /// </summary>
+    public void DeliverResources(string resourceId, int amount)
+    {
+        _constructionState?.DeliverResources(resourceId, amount);
+    }
 
     #region OrbitalParameters
 

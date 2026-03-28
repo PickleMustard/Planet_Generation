@@ -1,12 +1,23 @@
 using System;
 using Godot;
+using Godot.Collections;
+using Structures.Enums;
 using Structures.GameState;
 using UtilityLibrary;
 
 namespace Constructables.ArtificialSatellites;
 
-public partial class StationSatellite : Node3D, IArtificialSatellite
+public partial class StationSatellite : Node3D, IArtificialSatellite, IConstructable
 {
+    [Signal]
+    public delegate void OnCompletionEventHandler();
+
+    [Signal]
+    public delegate void OnConstructionBlockedEventHandler();
+
+    [Signal]
+    public delegate void OnConstructionResumedEventHandler();
+
     [Export]
     public string Id { get; private set; } = string.Empty;
 
@@ -36,6 +47,228 @@ public partial class StationSatellite : Node3D, IArtificialSatellite
     // Visual components
     private MeshInstance3D? _meshInstance;
     private float _rotationSpeed = 0.5f;
+
+    // Construction state
+    private ConstructionState? _constructionState;
+    private StationDefinition? _stationDefinition;
+    private bool _isUnderConstruction;
+    private StandardMaterial3D? _originalMaterial;
+
+    /// <summary>Whether this station type can build ships (from station definition).</summary>
+    public bool CanBuildShips => _stationDefinition?.CanBuildShips ?? false;
+
+    /// <summary>The station type from the definition.</summary>
+    public string StationType => _stationDefinition?.StationType ?? "";
+
+    #region IConstructable
+
+    public float workRequired
+    {
+        get => _constructionState?.WorkRequired ?? 0f;
+        set { if (_constructionState != null) _constructionState.WorkRequired = value; }
+    }
+
+    public float workDone
+    {
+        get => _constructionState?.WorkDone ?? 0f;
+        set { if (_constructionState != null) _constructionState.WorkDone = value; }
+    }
+
+    public Dictionary<string, int> requiredResources
+    {
+        get
+        {
+            var dict = new Dictionary<string, int>();
+            if (_constructionState != null)
+                foreach (var kvp in _constructionState.RequiredResources)
+                    dict[kvp.Key] = kvp.Value;
+            return dict;
+        }
+        set
+        {
+            if (_constructionState != null)
+            {
+                _constructionState.RequiredResources.Clear();
+                foreach (var kvp in value)
+                    _constructionState.RequiredResources[kvp.Key] = kvp.Value;
+            }
+        }
+    }
+
+    public Dictionary<string, int> availableResources
+    {
+        get
+        {
+            var dict = new Dictionary<string, int>();
+            if (_constructionState != null)
+                foreach (var kvp in _constructionState.AvailableResources)
+                    dict[kvp.Key] = kvp.Value;
+            return dict;
+        }
+        set
+        {
+            if (_constructionState != null)
+            {
+                _constructionState.AvailableResources.Clear();
+                foreach (var kvp in value)
+                    _constructionState.AvailableResources[kvp.Key] = kvp.Value;
+            }
+        }
+    }
+
+    public bool CanConstruct(Dictionary LocationDetails)
+    {
+        return true;
+    }
+
+    public IConstructable StartConstruction(Dictionary LocationDetails)
+    {
+        if (_constructionState == null) return this;
+
+        _isUnderConstruction = true;
+        IsActive = false;
+        ProcessMode = ProcessModeEnum.Disabled;
+
+        // Apply translucent construction material
+        ApplyConstructionMaterial();
+
+        _constructionState.TryStart();
+
+        GameLogger.Info($"StationSatellite {Name}: Construction started ({_constructionState.WorkRequired}s)");
+        return this;
+    }
+
+    public bool DefineTemplate(Dictionary templateData)
+    {
+        return true;
+    }
+
+    public bool UpdateConfiguration(Dictionary updateData)
+    {
+        return true;
+    }
+
+    public bool CancelConstruction()
+    {
+        if (_constructionState == null) return false;
+
+        _constructionState.Cancel();
+        _isUnderConstruction = false;
+
+        GameLogger.Info($"StationSatellite {Name}: Construction cancelled");
+        return true;
+    }
+
+    public string GetStatus()
+    {
+        return _constructionState?.Status.ToString() ?? "None";
+    }
+
+    public float GetProgress()
+    {
+        return _constructionState?.GetProgress() ?? 0f;
+    }
+
+    public void UpdateProgress(float delta)
+    {
+        if (_constructionState == null || !_isUnderConstruction) return;
+
+        var previousStatus = _constructionState.Status;
+        _constructionState.UpdateProgress(delta);
+
+        if (_constructionState.StatusChanged)
+        {
+            if (_constructionState.Status == ConstructionStatus.Blocked
+                && previousStatus == ConstructionStatus.InProgress)
+            {
+                EmitSignal(SignalName.OnConstructionBlocked);
+            }
+            else if (_constructionState.Status == ConstructionStatus.InProgress
+                && previousStatus == ConstructionStatus.Blocked)
+            {
+                EmitSignal(SignalName.OnConstructionResumed);
+            }
+            else if (_constructionState.Status == ConstructionStatus.Complete)
+            {
+                OnConstructionComplete();
+            }
+        }
+    }
+
+    public bool CheckRequiredResourcesAvailable()
+    {
+        return _constructionState?.CheckRequiredResourcesAvailable() ?? true;
+    }
+
+    public bool CanDemolish() => !_isUnderConstruction;
+    public bool DemolishConstructable() => false;
+    public bool CanDestroy() => true;
+    public bool DestroyConstructable()
+    {
+        QueueFree();
+        return true;
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Configures this station with a station definition for construction.
+    /// </summary>
+    public void SetStationDefinition(StationDefinition definition)
+    {
+        _stationDefinition = definition;
+        _constructionState = new ConstructionState(
+            definition.ConstructionTime,
+            definition.RequiredResources
+        );
+    }
+
+    /// <summary>
+    /// Delivers resources to this station's construction site.
+    /// </summary>
+    public void DeliverResources(string resourceId, int amount)
+    {
+        _constructionState?.DeliverResources(resourceId, amount);
+    }
+
+    /// <summary>Whether this station is currently under construction.</summary>
+    public bool IsUnderConstruction => _isUnderConstruction;
+
+    private void OnConstructionComplete()
+    {
+        _isUnderConstruction = false;
+
+        // Restore original material
+        RestoreOriginalMaterial();
+
+        EmitSignal(SignalName.OnCompletion);
+        GameLogger.Info($"StationSatellite {Name}: Construction complete");
+    }
+
+    private void ApplyConstructionMaterial()
+    {
+        if (_meshInstance?.MaterialOverride is StandardMaterial3D existingMat)
+        {
+            _originalMaterial = existingMat;
+        }
+
+        var constructionMat = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.4f, 0.5f, 0.6f, 0.3f),
+            Metallic = 0.7f,
+            Roughness = 0.3f,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+
+        if (_meshInstance != null)
+            _meshInstance.MaterialOverride = constructionMat;
+    }
+
+    private void RestoreOriginalMaterial()
+    {
+        if (_meshInstance != null && _originalMaterial != null)
+            _meshInstance.MaterialOverride = _originalMaterial;
+    }
 
     #region OrbitalParameters
 

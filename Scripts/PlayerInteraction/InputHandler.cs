@@ -44,6 +44,9 @@ public partial class InputHandler : Node
             return;
 #endif
 
+        if (UI.Construction.ConstructionHUD.Instance?.IsModalOpen == true)
+            return;
+
         if (@event is InputEventMouseButton mouseEvent)
         {
             if (mouseEvent.ButtonIndex == MouseButton.Right && mouseEvent.Pressed)

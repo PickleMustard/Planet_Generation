@@ -7,6 +7,7 @@ using ProceduralGeneration.PlanetGeneration;
 using UI.Debug;
 using UI.Debug.Console;
 using UI.Debug.DatabaseViewer;
+using UtilityLibrary;
 
 namespace Constructables;
 
@@ -14,14 +15,12 @@ public partial class ConstructionManager : IDebugDataProvider
 {
     /// <summary>
     /// Debug command to spawn a station satellite in an orbit band.
+    /// When --template is provided, spawns in construction mode.
     /// </summary>
-    /// <param name="ctx">Command context for console output</param>
-    /// <param name="args">Arguments: [0] = band index, [1] = optional station name</param>
-    /// <returns>0 on success, 1 on failure</returns>
     [DebugCommand(
         "spawn_station",
         "Spawn a station satellite in an orbit band",
-        "(namespace) spawn_station <band_index> [name]",
+        "(namespace) spawn_station <band_index> [name] [--template <template_name>]",
         Category = "Modification",
         RequiresTarget = true
     )]
@@ -34,13 +33,28 @@ public partial class ConstructionManager : IDebugDataProvider
         }
         if (args.Length < 1)
         {
-            ctx.WriteError("Usage: (CelestialBody.Name) spawn_station <band_index> [name]");
+            ctx.WriteError("Usage: (CelestialBody.Name) spawn_station <band_index> [name] [--template <template_name>]");
             return 1;
         }
 
-        if (!int.TryParse(args[0], out var bandIndex))
+        // Parse --template flag
+        string? templateName = null;
+        var cleanArgs = new List<string>();
+        for (int i = 0; i < args.Length; i++)
         {
-            ctx.WriteError($"Invalid band index: '{args[0]}'. Must be an integer.");
+            if (args[i] == "--template" && i + 1 < args.Length)
+            {
+                templateName = args[++i];
+            }
+            else
+            {
+                cleanArgs.Add(args[i]);
+            }
+        }
+
+        if (!int.TryParse(cleanArgs[0], out var bandIndex))
+        {
+            ctx.WriteError($"Invalid band index: '{cleanArgs[0]}'. Must be an integer.");
             return 1;
         }
 
@@ -73,11 +87,27 @@ public partial class ConstructionManager : IDebugDataProvider
             return 1;
         }
 
-        var name = args.Length > 1 ? args[1] : null;
+        var name = cleanArgs.Count > 1 ? cleanArgs[1] : null;
+
+        // Look up station definition if --template was provided
+        StationDefinition? stationDef = null;
+        if (templateName != null)
+        {
+            stationDef = LogisticsConfigLoader.GetStationDefinition(templateName);
+            if (stationDef == null)
+            {
+                ctx.WriteError($"Station template '{templateName}' not found. Available templates:");
+                var allStations = LogisticsConfigLoader.LoadAllStations();
+                foreach (var s in allStations)
+                    ctx.WriteLine($"  {s.Name} ({s.StationType}, {s.ConstructionTime}s)");
+                return 1;
+            }
+        }
+
         StationSatellite station;
         try
         {
-            station = CreateStation(body, bandIndex, name);
+            station = CreateStation(body, bandIndex, name, stationDef);
         }
         catch (Exception ex)
         {
@@ -85,22 +115,31 @@ public partial class ConstructionManager : IDebugDataProvider
             return 1;
         }
 
-        ctx.WriteLine(
-            $"[color=green]Station '{station.Name}' created in band {bandIndex} on '{Name}'[/color]"
-        );
+        if (stationDef != null)
+        {
+            ctx.WriteLine(
+                $"[color=green]Station '{station.Name}' construction started in band {bandIndex} on '{Name}'[/color]"
+            );
+            ctx.WriteLine($"Template: {stationDef.Name} | Type: {stationDef.StationType} | Time: {stationDef.ConstructionTime}s");
+            ctx.WriteLine($"Can build ships: {stationDef.CanBuildShips}");
+        }
+        else
+        {
+            ctx.WriteLine(
+                $"[color=green]Station '{station.Name}' created in band {bandIndex} on '{Name}'[/color]"
+            );
+        }
         return 0;
     }
 
     /// <summary>
     /// Debug command to spawn a logistics ship in an orbit band.
+    /// When --template is provided, spawns in construction mode.
     /// </summary>
-    /// <param name="ctx">Command context for console output</param>
-    /// <param name="args">Arguments: [0] = optional band index, [1] = optional name, [2] = optional dry mass</param>
-    /// <returns>0 on success, 1 on failure</returns>
     [DebugCommand(
         "spawn_ship",
         "Spawn a logistics ship in an orbit band",
-        "(namespace) spawn_ship [band_index] [name] [dry_mass]",
+        "(namespace) spawn_ship [band_index] [name] [dry_mass] [--template <template_name>]",
         Category = "Modification",
         RequiresTarget = true
     )]
@@ -118,33 +157,48 @@ public partial class ConstructionManager : IDebugDataProvider
             return 1;
         }
 
+        // Parse --template flag
+        string? templateName = null;
+        var cleanArgs = new List<string>();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "--template" && i + 1 < args.Length)
+            {
+                templateName = args[++i];
+            }
+            else
+            {
+                cleanArgs.Add(args[i]);
+            }
+        }
+
         int? bandIndex = null;
         string? name = null;
         float? dryMass = null;
 
         // Parse optional band index
-        if (args.Length > 0)
+        if (cleanArgs.Count > 0)
         {
-            if (!int.TryParse(args[0], out var parsed))
+            if (!int.TryParse(cleanArgs[0], out var parsed))
             {
-                ctx.WriteError($"Invalid band index: '{args[0]}'. Must be an integer.");
+                ctx.WriteError($"Invalid band index: '{cleanArgs[0]}'. Must be an integer.");
                 return 1;
             }
             bandIndex = parsed;
         }
 
         // Parse optional name
-        if (args.Length > 1)
+        if (cleanArgs.Count > 1)
         {
-            name = args[1];
+            name = cleanArgs[1];
         }
 
         // Parse optional dry mass
-        if (args.Length > 2)
+        if (cleanArgs.Count > 2)
         {
-            if (!float.TryParse(args[2], out var parsedMass))
+            if (!float.TryParse(cleanArgs[2], out var parsedMass))
             {
-                ctx.WriteError($"Invalid dry mass: '{args[2]}'. Must be a number.");
+                ctx.WriteError($"Invalid dry mass: '{cleanArgs[2]}'. Must be a number.");
                 return 1;
             }
             dryMass = parsedMass;
@@ -186,13 +240,28 @@ public partial class ConstructionManager : IDebugDataProvider
             return 1;
         }
 
+        // Look up ship definition if --template was provided
+        ShipDefinition? shipDef = null;
+        if (templateName != null)
+        {
+            shipDef = LogisticsConfigLoader.GetShipDefinition(templateName);
+            if (shipDef == null)
+            {
+                ctx.WriteError($"Ship template '{templateName}' not found. Available templates:");
+                var allShips = LogisticsConfigLoader.LoadAllShips();
+                foreach (var s in allShips)
+                    ctx.WriteLine($"  {s.Name} ({s.DryMass}kg, {s.ConstructionTime}s)");
+                return 1;
+            }
+        }
+
         // Generate name if not provided
         name ??= LogisticsCommands.GenerateRandomShipName();
 
         LogisticsUnit ship;
         try
         {
-            ship = CreateLogisticsUnit(body, bandIndex.Value, name);
+            ship = CreateLogisticsUnit(body, bandIndex.Value, name, shipDef);
         }
         catch (Exception ex)
         {
@@ -200,16 +269,69 @@ public partial class ConstructionManager : IDebugDataProvider
             return 1;
         }
 
-        // Apply optional dry mass override
-        if (dryMass.HasValue)
+        // Apply optional dry mass override (only for instant spawn)
+        if (dryMass.HasValue && shipDef == null)
         {
             ship.SetDryMass(dryMass.Value);
         }
 
-        ctx.WriteLine(
-            $"[color=green]Ship '{ship.Name}' created in band {bandIndex.Value} on '{Name}'[/color]"
-        );
-        ctx.WriteLine($"Fuel capacity: {ship.MaxFuel}");
+        if (shipDef != null)
+        {
+            ctx.WriteLine(
+                $"[color=green]Ship '{ship.Name}' construction started in band {bandIndex.Value} on '{Name}'[/color]"
+            );
+            ctx.WriteLine($"Template: {shipDef.Name} | Mass: {shipDef.DryMass}kg | Time: {shipDef.ConstructionTime}s");
+        }
+        else
+        {
+            ctx.WriteLine(
+                $"[color=green]Ship '{ship.Name}' created in band {bandIndex.Value} on '{Name}'[/color]"
+            );
+            ctx.WriteLine($"Fuel capacity: {ship.MaxFuel}");
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Debug command to show all items currently under construction.
+    /// </summary>
+    [DebugCommand(
+        "construction_status",
+        "Show all items under construction",
+        "construction_status",
+        Category = "Info"
+    )]
+    public int ConstructionStatusCommand(CommandContext ctx, string[] args)
+    {
+        var stations = _stationsUnderConstruction;
+        var ships = _shipsUnderConstruction;
+
+        if (stations.Count == 0 && ships.Count == 0)
+        {
+            ctx.WriteLine("No items under construction.");
+            return 0;
+        }
+
+        if (stations.Count > 0)
+        {
+            ctx.WriteLine($"[color=yellow]Stations ({stations.Count}):[/color]");
+            foreach (var station in stations)
+            {
+                float progress = station.GetProgress() * 100f;
+                ctx.WriteLine($"  {station.Name} - {station.GetStatus()} ({progress:F1}%) Band {station.BandIndex}");
+            }
+        }
+
+        if (ships.Count > 0)
+        {
+            ctx.WriteLine($"[color=yellow]Ships ({ships.Count}):[/color]");
+            foreach (var ship in ships)
+            {
+                float progress = ship.GetProgress() * 100f;
+                ctx.WriteLine($"  {ship.Name} - {ship.GetStatus()} ({progress:F1}%) Band {ship.BandIndex}");
+            }
+        }
+
         return 0;
     }
 
