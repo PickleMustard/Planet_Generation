@@ -28,6 +28,7 @@ TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
 DebugMenu="*res://UI/Debug/DebugMenu.tscn"
 CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
 ConstructionManager="*res://Scripts/Constructables/ConstructionManager.cs"
+ConstructionHUD="*res://UI/Construction/ConstructionHUD.tscn"
 
 [display]
 
