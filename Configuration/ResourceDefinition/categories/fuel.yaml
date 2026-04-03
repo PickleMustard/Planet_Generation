@@ -1,0 +1,54 @@
+resources:
+  - id_name: water
+    resource_tier: 0
+    display_color:
+      - 30
+      - 144
+      - 255
+    tags: [aquatic, water_world, marine, water_needed]
+  - id_name: uranium
+    resource_tier: 1
+    display_color:
+      - 50
+      - 205
+      - 50
+  - id_name: hydrogen
+    resource_tier: 2
+    display_color:
+      - 255
+      - 0
+      - 255
+  - id_name: tritium
+    resource_tier: 3
+    display_color:
+      - 255
+      - 0
+      - 255
+  - id_name: liquid_uranium
+    resource_tier: 2
+    display_color:
+      - 127
+      - 255
+      - 0
+  - id_name: antimatter
+    resource_tier: 3
+    display_color:
+      - 255
+      - 255
+      - 255
+
+  - id_name: methane
+    resource_tier: 1
+    display_color:
+      - 255
+      - 215
+      - 0
+    tags: [power, heat]
+
+  - id_name: hydrazine
+    resource_tier: 2
+    display_color:
+      - 255
+      - 215
+      - 0
+    tags: [power, heat]

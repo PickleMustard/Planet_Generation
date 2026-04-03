@@ -1,0 +1,24 @@
+resources:
+  - id_name: concrete
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 255
+    tags: []
+
+  - id_name: rebar
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 224
+    tags: []
+
+  - id_name: high_tensile_wire
+    resource_tier: 3
+    display_color:
+      - 255
+      - 255
+      - 192
+    tags: []

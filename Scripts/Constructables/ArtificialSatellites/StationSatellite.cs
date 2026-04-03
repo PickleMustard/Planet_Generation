@@ -45,14 +45,18 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     }
 
     // Visual components
-    private MeshInstance3D? _meshInstance;
+    protected MeshInstance3D? _meshInstance;
     private float _rotationSpeed = 0.5f;
 
     // Construction state
-    private ConstructionState? _constructionState;
-    private StationDefinition? _stationDefinition;
-    private bool _isUnderConstruction;
-    private StandardMaterial3D? _originalMaterial;
+    protected ConstructionState? _constructionState;
+    protected StationDefinition? _stationDefinition;
+    protected bool _isUnderConstruction;
+    protected StandardMaterial3D? _originalMaterial;
+
+    // Self-ticking construction progress reporting
+    private float _progressTimer;
+    private const float PROGRESS_SIGNAL_INTERVAL = 0.5f;
 
     /// <summary>Whether this station type can build ships (from station definition).</summary>
     public bool CanBuildShips => _stationDefinition?.CanBuildShips ?? false;
@@ -60,20 +64,59 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     /// <summary>The station type from the definition.</summary>
     public string StationType => _stationDefinition?.StationType ?? "";
 
+    /// <summary>
+    /// Runtime economy for this station. Lazily initialized on first building placement
+    /// or when transfer operations require it.
+    /// </summary>
+    public StationEconomy? Economy { get; private set; }
+
+    /// <summary>
+    /// Initializes the station economy if not already created, and registers it with EconomyManager.
+    /// </summary>
+    public StationEconomy InitializeEconomy()
+    {
+        if (Economy != null)
+            return Economy;
+
+        Economy = new StationEconomy(Id);
+        Constructables.EconomyManager.Instance?.RegisterStationEconomy(Economy);
+        GameLogger.Info($"StationSatellite {Name}: Economy initialized");
+        return Economy;
+    }
+
     #region IConstructable
 
+    [ExportGroup("Construction")]
+
+    [Export]
     public float workRequired
     {
         get => _constructionState?.WorkRequired ?? 0f;
         set { if (_constructionState != null) _constructionState.WorkRequired = value; }
     }
 
+    [Export]
     public float workDone
     {
         get => _constructionState?.WorkDone ?? 0f;
         set { if (_constructionState != null) _constructionState.WorkDone = value; }
     }
 
+    [Export]
+    public float ConstructionProgress
+    {
+        get => _constructionState?.GetProgress() ?? 0f;
+        set { }
+    }
+
+    [Export]
+    public string ConstructionStatusText
+    {
+        get => _constructionState?.Status.ToString() ?? "None";
+        set { }
+    }
+
+    [Export]
     public Dictionary<string, int> requiredResources
     {
         get
@@ -95,6 +138,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         }
     }
 
+    [Export]
     public Dictionary<string, int> availableResources
     {
         get
@@ -127,7 +171,6 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
         _isUnderConstruction = true;
         IsActive = false;
-        ProcessMode = ProcessModeEnum.Disabled;
 
         // Apply translucent construction material
         ApplyConstructionMaterial();
@@ -214,7 +257,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     /// <summary>
     /// Configures this station with a station definition for construction.
     /// </summary>
-    public void SetStationDefinition(StationDefinition definition)
+    public virtual void SetStationDefinition(StationDefinition definition)
     {
         _stationDefinition = definition;
         _constructionState = new ConstructionState(
@@ -234,7 +277,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     /// <summary>Whether this station is currently under construction.</summary>
     public bool IsUnderConstruction => _isUnderConstruction;
 
-    private void OnConstructionComplete()
+    protected virtual void OnConstructionComplete()
     {
         _isUnderConstruction = false;
 
@@ -286,7 +329,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     private float _orbitalRadius;
     private float _orbitalSpeed;
     private float _hostMass;
-    private bool _isInitialized;
+    protected bool _isInitialized;
     private Vector3 _velocity;
 
     /// <summary>
@@ -427,6 +470,11 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     public override void _ExitTree()
     {
+        if (Economy != null)
+        {
+            Constructables.EconomyManager.Instance?.UnregisterStationEconomy(Economy);
+        }
+
         GameLogger.Debug($"StationSatellite destroying: {Name}");
         _isInitialized = false;
         base._ExitTree();
@@ -442,6 +490,18 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     public override void _PhysicsProcess(double delta)
     {
+        float dt = (float)delta;
+
+        // Self-tick construction when under construction
+        if (_isUnderConstruction)
+        {
+            TickConstruction(dt);
+            return;
+        }
+
+        // Tick subclass operational behavior (ship queues, building budgets, etc.)
+        TickOperational(dt);
+
         if (!_isInitialized || !IsActive)
             return;
 
@@ -450,7 +510,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
             return;
 
         // Update orbital angle
-        _orbitalAngle += _orbitalSpeed * (float)delta;
+        _orbitalAngle += _orbitalSpeed * dt;
 
         // Keep angle in valid range [0, 2*PI]
         if (_orbitalAngle > Mathf.Tau)
@@ -467,6 +527,38 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         // Calculate and store velocity (tangent to orbit)
         float linearSpeed = _orbitalRadius * _orbitalSpeed;
         _velocity = new Vector3(-sin * linearSpeed, 0f, cos * linearSpeed);
+    }
+
+    /// <summary>
+    /// Called each physics tick while the station is under construction.
+    /// Base implementation advances construction progress and emits periodic progress signals.
+    /// </summary>
+    protected virtual void TickConstruction(float delta)
+    {
+        UpdateProgress(delta);
+
+        // Periodic progress reporting
+        _progressTimer += delta;
+        if (_progressTimer >= PROGRESS_SIGNAL_INTERVAL)
+        {
+            _progressTimer = 0f;
+            ConstructionManager.Instance?.NotifyProgressUpdate(
+                Name.ToString(), GetProgress(), GetStatus());
+        }
+
+        if (_constructionState?.Status == ConstructionStatus.Complete)
+        {
+            OnConstructionComplete();
+            ConstructionManager.Instance?.NotifyConstructionComplete(this);
+        }
+    }
+
+    /// <summary>
+    /// Called each physics tick when the station is NOT under construction.
+    /// Override in subclasses for operational behavior (e.g. ship build queues, building work budgets).
+    /// </summary>
+    protected virtual void TickOperational(float delta)
+    {
     }
 
     #endregion

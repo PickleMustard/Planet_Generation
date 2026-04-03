@@ -1,0 +1,32 @@
+resources:
+  - id_name: ceramics
+    resource_tier: 2
+    display_color:
+      - 255
+      - 255
+      - 255
+    tags: [processed]
+
+  - id_name: condensed_carbon
+    resource_tier: 1
+    display_color:
+      - 54
+      - 69
+      - 79
+    tags: [processed]
+
+  - id_name: steel
+    resource_tier: 1
+    display_color:
+      - 70
+      - 70
+      - 80
+    tags: [metal]
+
+  - id_name: fluid_barrel
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 192
+    tags: [processed, storage]

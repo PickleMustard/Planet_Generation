@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
@@ -11,6 +12,7 @@ using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
+using UtilityLibrary.NameGeneration;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
@@ -649,6 +651,45 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         };
     }
 
+    public CellSelectionResult? GetFaceFromIndex(int index)
+    {
+        var result = StrDb!.GetCellFromIndex(index);
+        if (result is null)
+            return null;
+        var continent = Mesh!.GetContinent(result.ContinentIndex);
+        return new CellSelectionResult
+        {
+            Point = result.Points[0],
+            Cell = result,
+            CellContinent = continent,
+        };
+    }
+
+    public VoronoiCell[] GetRuntimeCellNeighbors(
+        VoronoiCell origin,
+        bool includeSameContinent = true
+    )
+    {
+        HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
+        foreach (Point p in origin.Points)
+        {
+            if (!StrDb!.PlanetMap.TryGetValue(p, out var neighborCells))
+                continue;
+            foreach (VoronoiCell vc in neighborCells)
+            {
+                if (includeSameContinent)
+                {
+                    neighbors.Add(vc);
+                }
+                else if (vc.ContinentIndex != origin.ContinentIndex)
+                {
+                    neighbors.Add(vc);
+                }
+            }
+        }
+        return neighbors.ToArray();
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         var parent = GetParent() as CelestialBody;
@@ -724,19 +765,27 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         {
             meshParams.Add("Type", bodyDict["type"]);
 
-            // Use provided name, or pick from possible_names if available
-            if (bodyDict.ContainsKey("name"))
+            // Prefer name already set on the node (from SystemGenerator/builder),
+            // then check bodyDict, then fall back to type name
+            if (!string.IsNullOrEmpty(Name) && Name != GetType().Name)
+            {
+                meshParams.Add("name", Name);
+            }
+            else if (
+                bodyDict.ContainsKey("name") && !string.IsNullOrEmpty((string)bodyDict["name"])
+            )
             {
                 meshParams.Add("name", bodyDict["name"]);
             }
             else if (bodyDict.ContainsKey("possible_names"))
             {
-                var name = PickName((Godot.Collections.Dictionary)bodyDict["possible_names"]);
+                var name = NameGenerator.PickName(
+                    (Godot.Collections.Dictionary)bodyDict["possible_names"]
+                );
                 meshParams.Add("name", name);
             }
             else
             {
-                // Fallback to type name
                 meshParams.Add("name", SatelliteType.ToString());
             }
             if (
@@ -773,7 +822,15 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         else
         {
             var t = TemplateHelpers.GetSatelliteBodyDefaults(SatelliteType);
-            var name = PickName((Godot.Collections.Dictionary)t["possible_names"]);
+            string name;
+            if (!string.IsNullOrEmpty(Name) && Name != GetType().Name)
+            {
+                name = Name;
+            }
+            else
+            {
+                name = NameGenerator.PickName((Godot.Collections.Dictionary)t["possible_names"]);
+            }
             meshParams.Add("name", name);
             meshParams.Add("type", Enum.GetName(typeof(SatelliteBodyType), SatelliteType)!);
             var template = (Godot.Collections.Dictionary)t["template"];
@@ -842,50 +899,27 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
 
     /// <summary>
     /// Generates resources for this satellite based on its configuration.
+    /// Uses ResourceGenerationConfigDatabase for resource generation.
     /// </summary>
     public void GenerateResources()
     {
+        // Resource generation is now handled at mesh level via UnifiedCelestialMesh pipeline
+        // This method kept for test compatibility - uses same config as mesh pipeline
+        var resDb = ResourceGenerationConfigDatabase.Instance;
+        if (!resDb.IsLoaded || resDb.PlanetaryResources == null)
+        {
+            GameLogger.Warning("GenerateResources: ResourceGenerationConfigDatabase not loaded");
+            return;
+        }
+
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        Godot.Collections.Dictionary? resourceConfig = null;
+        Resources = SatelliteResourceGenerator.GenerateResources(
+            resDb.PlanetaryResources,
+            SatelliteType,  // Use SatelliteType as subtype
+            rng
+        );
 
-        if (bodyDict != null && bodyDict.ContainsKey("resources"))
-        {
-            resourceConfig = bodyDict["resources"].AsGodotDictionary();
-        }
-        else
-        {
-            var template = TemplateHelpers.GetSatelliteBodyDefaults(SatelliteType);
-            if (template.ContainsKey("resources"))
-            {
-                resourceConfig = template["resources"].AsGodotDictionary();
-            }
-        }
-
-        if (resourceConfig != null)
-        {
-            Resources = SatelliteResourceGenerator.GenerateResources(resourceConfig, rng);
-            GD.Print($"SatelliteBody '{Name}' generated {Resources.Count} resource deposits");
-        }
-    }
-
-    public String PickName(Godot.Collections.Dictionary nameDict)
-    {
-        GD.Print($"SatelliteBody.PickName: {nameDict}");
-        if (nameDict == null || nameDict.Count == 0)
-            return "";
-
-        var categories = new Godot.Collections.Array(nameDict.Keys);
-        if (categories.Count == 0)
-            return "";
-
-        var random = UtilityLibrary.Randomizer.rng;
-        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
-
-        var names = (Godot.Collections.Array)nameDict[selectedCategory];
-        if (names == null || names.Count == 0)
-            return "";
-
-        return (string)names[random.RandiRange(0, names.Count - 1)];
+        GameLogger.Info($"SatelliteBody '{Name}' generated {Resources.Count} resource deposits");
     }
 
     private void CalculateBaseMeshFromParams(

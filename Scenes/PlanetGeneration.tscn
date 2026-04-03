@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://5tg3txjex2wk"]
+
+[ext_resource type="Environment" uid="uid://s4wyheed0x8r" path="res://Shaders/stary_background.tres" id="1_env"]
+[ext_resource type="PackedScene" uid="uid://bjm7ea5tte2el" path="res://UI/IndividualPlanetGenerator.tscn" id="2_ipg"]
+[ext_resource type="Script" uid="uid://cf27m54pv1hef" path="res://Scripts/Scenes/SceneNavigator.cs" id="3_scenenav"]
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_1"]
+exposure_multiplier = 1.169
+
+[node name="planet_gen" type="Node3D" unique_id=809145855]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=829602117]
+environment = ExtResource("1_env")
+camera_attributes = SubResource("CameraAttributesPractical_1")
+
+[node name="IndividualPlanetGeneratorUI" parent="." unique_id=1006264755 node_paths=PackedStringArray("PlanetContainer", "PreviewCamera") instance=ExtResource("2_ipg")]
+anchors_preset = 9
+anchor_right = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 1
+size_flags_horizontal = 3
+size_flags_vertical = 3
+PlanetContainer = NodePath("../planet_container")
+PreviewCamera = NodePath("../Camera3D")
+
+[node name="SceneNavigator" type="CanvasLayer" parent="." unique_id=689994973]
+script = ExtResource("3_scenenav")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=68069167]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 100, 500)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1098126022]
+transform = Transform3D(0.86601907, -0.25000688, 0.43302146, 0, 0.8660238, 0.50000274, -0.500011, -0.4330119, 0.7499931, 200, 300, 200)
+shadow_enabled = true
+
+[node name="planet_container" type="Node3D" parent="." unique_id=1726764726]

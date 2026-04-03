@@ -1,0 +1,46 @@
+buildings:
+  - id_name: surface_transfer_station
+    display_name: Continental Transfer Station
+    description: Enables resource transfers between continents and to orbiting stations.
+    category: logistics
+    building_time: 480.0
+    work_required: 200.0
+    building_limit: 3
+    placement_requirements:
+      biomes: [Grassland, ScouredPlain, RustedPlain, StoneDesert]
+      min_elevation: 0.2
+      max_elevation: 0.7
+      max_slope: 15.0
+      cell_count: 3
+      requires_adjacent: true
+    required_resources:
+      steel: 500
+      concrete: 400
+      electronics: 100
+    transfer_station:
+      cargo_capacity: 500.0
+      vehicle_speed: 50.0
+      max_concurrent_transfers: 2
+
+  - id_name: heavy_transfer_hub
+    display_name: Heavy Transfer Hub
+    description: High-capacity transfer hub for bulk resource shipments.
+    category: logistics
+    building_time: 900.0
+    work_required: 400.0
+    building_limit: 1
+    placement_requirements:
+      biomes: [Grassland, ScouredPlain]
+      min_elevation: 0.3
+      max_elevation: 0.6
+      max_slope: 10.0
+      cell_count: 5
+      requires_adjacent: true
+    required_resources:
+      steel: 1000
+      concrete: 800
+      electronics: 250
+    transfer_station:
+      cargo_capacity: 1500.0
+      vehicle_speed: 30.0
+      max_concurrent_transfers: 4

@@ -1,0 +1,63 @@
+[gd_scene format=3 uid="uid://c81o2kq1irgm4"]
+
+[ext_resource type="Script" uid="uid://15l0ojjh3ffm" path="res://Scripts/UI/Construction/StationSelectionPopup.cs" id="1_13v2n"]
+
+[node name="StationSelectionPopup" type="PanelContainer" unique_id=348998364 node_paths=PackedStringArray("_stationList", "_selectButton", "_cancelButton", "_emptyLabel")]
+script = ExtResource("1_13v2n")
+_stationList = NodePath("VBoxContainer/ScrollContainer/StationList")
+_selectButton = NodePath("VBoxContainer/ButtonBar/SelectButton")
+_cancelButton = NodePath("VBoxContainer/ButtonBar/CancelButton")
+_emptyLabel = NodePath("VBoxContainer/EmptyLabel")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1527066399]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer" unique_id=1237987697]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+text = "Select Shipyard Station"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EmptyLabel" type="Label" parent="VBoxContainer" unique_id=2015936251]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "No shipyard stations available.
+Build a station with ship-building capability first."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer" unique_id=1367288822]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="StationList" type="ItemList" parent="VBoxContainer/ScrollContainer" unique_id=1136100089]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+auto_height = true
+
+[node name="ButtonBar" type="HBoxContainer" parent="VBoxContainer" unique_id=451391051]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+alignment = 2
+
+[node name="SelectButton" type="Button" parent="VBoxContainer/ButtonBar" unique_id=1283250809]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+disabled = true
+text = "Select"
+
+[node name="CancelButton" type="Button" parent="VBoxContainer/ButtonBar" unique_id=251591722]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+text = "Cancel"

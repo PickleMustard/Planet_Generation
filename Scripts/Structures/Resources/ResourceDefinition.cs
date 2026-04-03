@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using Godot;
-using Structures.Enums;
 
 namespace Structures.Resources;
 
 /// <summary>
-/// Defines a resource type with display properties, biome affinities, and elevation constraints.
+/// Defines a resource type with display properties and generation tags.
 /// </summary>
 public class ResourceDefinition
 {
@@ -26,22 +25,27 @@ public class ResourceDefinition
 
     /// <summary>
     /// The color used to display this resource in the UI and map views.
+    /// Defaults to white if not specified in configuration.
     /// </summary>
     public Color DisplayColor { get; set; } = Colors.White;
 
     /// <summary>
-    /// Dictionary mapping biome types to spawn rate multipliers.
-    /// Values greater than 1.0 increase spawn likelihood, values less than 1.0 decrease it.
+    /// Set of tags that define where and how this resource can generate.
+    /// Tags match against planetary type tags and biome probability modifiers
+    /// to determine generation eligibility and probability per cell.
+    /// Empty set if resource does not generate naturally on celestial bodies.
     /// </summary>
-    public Dictionary<Biome.BiomeType, float> BiomeAffinity { get; set; } = new();
+    public HashSet<string> Tags { get; set; } = new();
 
     /// <summary>
-    /// The minimum elevation at which this resource can spawn.
+    /// Capacity consumed per unit when transported via transfer stations.
+    /// Higher values mean each unit takes more cargo space.
     /// </summary>
-    public float MinElevation { get; set; } = 0.0f;
+    public float TransportWeight { get; set; } = 1.0f;
 
     /// <summary>
-    /// The maximum elevation at which this resource can spawn.
+    /// Gets whether this resource can generate naturally on celestial bodies.
+    /// A resource is generatable if it has tags defined for tag-based generation matching.
     /// </summary>
-    public float MaxElevation { get; set; } = 1.0f;
+    public bool IsGeneratable => Tags != null && Tags.Count > 0;
 }

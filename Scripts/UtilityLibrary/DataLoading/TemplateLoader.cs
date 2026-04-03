@@ -20,12 +20,14 @@ public static class TemplateLoader
     public static readonly ValidationCallback CelestialBodyValidator;
     public static readonly ValidationCallback SystemTemplateValidator;
     public static readonly ValidationCallback ResourceDefinitionValidator;
+    public static readonly ValidationCallback AUProbabilityValidator;
 
     private static readonly string[] DefaultSearchDirectories =
     {
         "res://Configuration/SystemGen/",
         "res://Configuration/SystemTemplate/",
         "res://Configuration/ResourceDefinition/",
+        "res://Configuration/AUProbability/",
     };
 
     private static string[]? _searchDirectories;
@@ -41,6 +43,7 @@ public static class TemplateLoader
         ResourceDefinitionValidator = CreateValidatorWrapper(
             YamlValidator.ValidateResourceDefinition
         );
+        AUProbabilityValidator = CreateValidatorWrapper(YamlValidator.ValidateAUProbability);
         _defaultValidator = SyntaxOnlyValidator;
     }
 

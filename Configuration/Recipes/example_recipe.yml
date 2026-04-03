@@ -1,0 +1,30 @@
+recipes:
+  - recipe_id: "recipe_name"
+    display_name: "Recipe Name"
+    description: This recipe demonstrates all available configuration fields in the YAML schema.
+    category: example
+    work_required: 10.0
+
+    input_resources:
+      - iron: 10
+      - carbon: 2
+
+    output_resources:
+      - steel: 10
+
+    visual:
+      recipe_icon: "res://Textures/Recipes/example.tres"
+
+  - recipe_id: "no_input_recipe"
+    display_name: "No Input Recipe"
+    description: This recipe demonstrates a recipe with no input resources.
+    category: example
+    work_required: 10.0
+
+    input_resources: []
+
+    output_resources:
+      - power: 10
+
+    visual:
+      recipe_icon: "res://Textures/Recipes/example.tres"

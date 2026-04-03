@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using UtilityLibrary.DataLoading;
@@ -55,13 +56,13 @@ namespace Structures.Resources
 
             try
             {
-                // Step 1: Parse YAML configuration
+                // Step 1: Parse YAML configuration from category files
                 LoadProgress = 0.3f;
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
 
-                string configPath =
-                    "res://Configuration/ResourceDefinition/ResourceDefinition.yaml";
-                var definitions = ResourceConfigLoader.LoadResourceDefinitions(configPath);
+                string categoriesPath =
+                    "res://Configuration/ResourceDefinition/categories";
+                var definitions = ResourceConfigLoader.LoadResourceDefinitionsFromCategories(categoriesPath);
 
                 // Step 2: Process definitions and populate dictionary
                 LoadProgress = 0.6f;
@@ -146,6 +147,30 @@ namespace Structures.Resources
         {
             EnsureLoaded();
             return _resources;
+        }
+
+        /// <summary>
+        /// Gets all resources that can generate naturally on celestial bodies.
+        /// </summary>
+        public IReadOnlyDictionary<string, ResourceDefinition> GetGeneratableResources()
+        {
+            EnsureLoaded();
+            return _resources
+                .Where(kvp => kvp.Value.IsGeneratable)
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        }
+
+        /// <summary>
+        /// Checks if a resource can generate naturally on celestial bodies.
+        /// </summary>
+        public bool IsResourceGeneratable(string resourceId)
+        {
+            EnsureLoaded();
+            if (TryGetResource(resourceId, out var resource) && resource != null)
+            {
+                return resource.IsGeneratable;
+            }
+            return false;
         }
 
         public Color GetResourceColor(string resourceId)

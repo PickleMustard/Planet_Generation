@@ -18,6 +18,7 @@ namespace UI
         // Popup references
         private Control? _settingsPanel;
         private Control? _debugMenu;
+        private Control? _templateMenu;
 
         public override void _Ready()
         {
@@ -63,42 +64,35 @@ namespace UI
         {
             GameLogger.EnterFunction(nameof(InitializeUI));
 
-            // Connect button signals
             if (_startButton != null)
             {
                 _startButton.Pressed += OnStartButtonPressed;
-                GameLogger.Debug("Connected StartButton signal");
             }
 
             if (_settingsButton != null)
             {
                 _settingsButton.Pressed += OnSettingsButtonPressed;
-                GameLogger.Debug("Connected SettingsButton signal");
             }
 
             if (_debugButton != null)
             {
                 _debugButton.Pressed += OnDebugButtonPressed;
-                GameLogger.Debug("Connected DebugButton signal");
             }
 
             if (_exitButton != null)
             {
                 _exitButton.Pressed += OnExitButtonPressed;
-                GameLogger.Debug("Connected ExitButton signal");
             }
 
             // Hide popups initially
             if (_settingsPanel != null)
             {
                 _settingsPanel.Visible = false;
-                GameLogger.Debug("SettingsPanel hidden");
             }
 
             if (_debugMenu != null)
             {
                 _debugMenu.Visible = false;
-                GameLogger.Debug("DebugMenu hidden");
             }
 
             GameLogger.ExitFunction(nameof(InitializeUI));
@@ -106,39 +100,133 @@ namespace UI
 
         /// <summary>
         /// Called when the Start Game button is pressed.
+        /// Shows the template selection menu.
         /// </summary>
         private void OnStartButtonPressed()
         {
             GameLogger.EnterFunction(nameof(OnStartButtonPressed));
             GameLogger.Info("Start Game button pressed");
 
-            // Transition to the main game scene
-            try
+            if (_templateMenu != null)
             {
-                if (ResourceLoader.Exists("res://Scenes/GameScene.tscn"))
-                {
-                    GetTree().ChangeSceneToFile("res://Scenes/GameScene.tscn");
-                    GameLogger.Info("Transitioning to GameScene.tscn");
-                }
-                else if (ResourceLoader.Exists("res://test_scene.tscn"))
-                {
-                    // Fallback to test scene
-                    GetTree().ChangeSceneToFile("res://test_scene.tscn");
-                    GameLogger.Info("Transitioning to test_scene.tscn (fallback)");
-                }
-                else
-                {
-                    GameLogger.Warning("Game scene not found.");
-                    ShowNotification("Game scene not available yet.");
-                }
+                _templateMenu.Visible = true;
             }
-            catch (Exception ex)
+            else
             {
-                GameLogger.Error($"Failed to transition to game scene: {ex.Message}");
-                ShowNotification($"Error: {ex.Message}");
+                CreateTemplateSelectionMenu();
             }
 
             GameLogger.ExitFunction(nameof(OnStartButtonPressed));
+        }
+
+        /// <summary>
+        /// Creates a template selection menu listing available system templates.
+        /// </summary>
+        private void CreateTemplateSelectionMenu()
+        {
+            GameLogger.EnterFunction(nameof(CreateTemplateSelectionMenu));
+
+            var panel = new Panel();
+            panel.Name = "TemplateSelectionMenu";
+            panel.Size = new Vector2(500, 400);
+            panel.Position = (new Vector2(Size.X, Size.Y) - panel.Size) / 2;
+            AddChild(panel);
+
+            var marginContainer = new MarginContainer();
+            marginContainer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            marginContainer.AddThemeConstantOverride("margin_left", 15);
+            marginContainer.AddThemeConstantOverride("margin_right", 15);
+            marginContainer.AddThemeConstantOverride("margin_top", 15);
+            marginContainer.AddThemeConstantOverride("margin_bottom", 15);
+            panel.AddChild(marginContainer);
+
+            var vbox = new VBoxContainer();
+            vbox.Name = "VBoxContainer";
+            vbox.SizeFlagsVertical = SizeFlags.ExpandFill;
+            marginContainer.AddChild(vbox);
+
+            // Title
+            var titleLabel = new Label();
+            titleLabel.Text = "Select System Template";
+            titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            vbox.AddChild(titleLabel);
+
+            // Scrollable list of templates
+            var scrollContainer = new ScrollContainer();
+            scrollContainer.SizeFlagsVertical = SizeFlags.ExpandFill;
+            vbox.AddChild(scrollContainer);
+
+            var templateList = new VBoxContainer();
+            templateList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            scrollContainer.AddChild(templateList);
+
+            // Scan for template files
+            var dir = DirAccess.Open("res://Configuration/SystemTemplate/");
+            if (dir != null)
+            {
+                var files = DirAccess.GetFilesAt("res://Configuration/SystemTemplate/");
+                foreach (var file in files)
+                {
+                    if (!file.EndsWith(".yaml"))
+                        continue;
+
+                    var templateName = file.Replace(".yaml", "");
+                    var button = new Button();
+                    button.Text = templateName;
+                    button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                    var capturedFile = file;
+                    button.Pressed += () => OnTemplateSelected(capturedFile);
+                    templateList.AddChild(button);
+                }
+            }
+            else
+            {
+                var errorLabel = new Label();
+                errorLabel.Text = "No templates found.";
+                errorLabel.HorizontalAlignment = HorizontalAlignment.Center;
+                templateList.AddChild(errorLabel);
+            }
+
+            // Close button
+            var closeButton = new Button();
+            closeButton.Text = "Cancel";
+            closeButton.Pressed += () =>
+            {
+                panel.QueueFree();
+                _templateMenu = null;
+            };
+            vbox.AddChild(closeButton);
+
+            _templateMenu = panel;
+
+            GameLogger.ExitFunction(nameof(CreateTemplateSelectionMenu));
+        }
+
+        /// <summary>
+        /// Called when a template is selected. Stores the selection and transitions to LoadingScreen.
+        /// </summary>
+        private void OnTemplateSelected(string templateFileName)
+        {
+            GameLogger.Info($"Template selected: {templateFileName}");
+
+            // Store the selected template in SignalBus for LoadingScreen to consume
+            if (SignalBus.Instance != null)
+            {
+                SignalBus.Instance.SelectedTemplate = templateFileName;
+            }
+
+            try
+            {
+                GetTree().ChangeSceneToFile("res://Scenes/LoadingScreen.tscn");
+                GameLogger.Info(
+                    "Transitioning to LoadingScreen with template: " + templateFileName
+                );
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to transition to loading screen: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -149,16 +237,12 @@ namespace UI
             GameLogger.EnterFunction(nameof(OnSettingsButtonPressed));
             GameLogger.Info("Settings button pressed");
 
-            // Check if we have a SettingsPanel in the scene
             if (_settingsPanel != null)
             {
                 _settingsPanel.Visible = true;
-                GameLogger.Info("Showing SettingsPanel");
             }
             else
             {
-                GameLogger.Warning("SettingsPanel not found in scene");
-                // Try to load the SettingsPanel from the Debug folder
                 LoadAndShowSettingsPanel();
             }
 
@@ -174,8 +258,9 @@ namespace UI
 
             try
             {
-                // Try to load the SettingsPanel from the Debug folder
-                var settingsPanelPrefab = ResourceLoader.Load<PackedScene>("res://UI/Debug/Settings/SettingsPanel.tscn");
+                var settingsPanelPrefab = ResourceLoader.Load<PackedScene>(
+                    "res://UI/Debug/Settings/SettingsPanel.tscn"
+                );
                 if (settingsPanelPrefab != null)
                 {
                     var settingsPanelInstance = settingsPanelPrefab.Instantiate<Control>();
@@ -183,11 +268,10 @@ namespace UI
                     _settingsPanel = settingsPanelInstance;
                     _settingsPanel.Visible = true;
 
-                    // Position it in the center
                     var panelSize = new Vector2(_settingsPanel.Size.X, _settingsPanel.Size.Y);
                     _settingsPanel.Position = (new Vector2(Size.X, Size.Y) - panelSize) / 2;
 
-                    GameLogger.Info("Loaded and displayed SettingsPanel from Debug folder");
+                    GameLogger.Info("Loaded and displayed SettingsPanel");
                 }
                 else
                 {
@@ -212,16 +296,12 @@ namespace UI
             GameLogger.EnterFunction(nameof(OnDebugButtonPressed));
             GameLogger.Info("Debug button pressed");
 
-            // Check if we have a DebugMenu in the scene
             if (_debugMenu != null)
             {
                 _debugMenu.Visible = true;
-                GameLogger.Info("Showing DebugMenu");
             }
             else
             {
-                GameLogger.Warning("DebugMenu not found in scene");
-                // Create a simple debug menu
                 CreateSimpleDebugMenu();
             }
 
@@ -235,56 +315,69 @@ namespace UI
         {
             GameLogger.EnterFunction(nameof(CreateSimpleDebugMenu));
 
-            // Create a popup panel
             var debugMenuPanel = new Panel();
             debugMenuPanel.Name = "SimpleDebugMenu";
             debugMenuPanel.Size = new Vector2(400, 300);
-            var debugPanelSize = new Vector2(debugMenuPanel.Size.X, debugMenuPanel.Size.Y);
-            debugMenuPanel.Position = (new Vector2(Size.X, Size.Y) - debugPanelSize) / 2;
-            debugMenuPanel.Visible = true;
+            debugMenuPanel.Position = (new Vector2(Size.X, Size.Y) - debugMenuPanel.Size) / 2;
             AddChild(debugMenuPanel);
 
-            // Create a VBoxContainer for layout
             var vbox = new VBoxContainer();
             vbox.Name = "VBoxContainer";
-            vbox.AnchorsPreset = (int)Control.LayoutPreset.FullRect;
+            vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             vbox.Alignment = BoxContainer.AlignmentMode.Center;
             debugMenuPanel.AddChild(vbox);
 
-            // Add title
             var titleLabel = new Label();
-            titleLabel.Name = "TitleLabel";
             titleLabel.Text = "Debug Scenes";
             titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
             vbox.AddChild(titleLabel);
 
-            // Add delauney_sphere.tscn button
-            if (ResourceLoader.Exists("res://delauney_sphere.tscn"))
+            // System Generation debug scene
+            if (ResourceLoader.Exists("res://Scenes/SystemGeneration.tscn"))
             {
-                var delaunayButton = new Button();
-                delaunayButton.Name = "DelaunaySphereButton";
-                delaunayButton.Text = "Delaunay Sphere";
-                delaunayButton.Pressed += () =>
+                var sysGenButton = new Button();
+                sysGenButton.Text = "System Generation";
+                sysGenButton.Pressed += () =>
                 {
                     try
                     {
-                        GetTree().ChangeSceneToFile("res://delauney_sphere.tscn");
-                        GameLogger.Info("Transitioning to delauney_sphere.tscn");
+                        GetTree().ChangeSceneToFile("res://Scenes/SystemGeneration.tscn");
+                        GameLogger.Info("Transitioning to SystemGeneration.tscn");
                     }
                     catch (Exception ex)
                     {
-                        GameLogger.Error($"Failed to load delauney_sphere.tscn: {ex.Message}");
+                        GameLogger.Error($"Failed to load SystemGeneration.tscn: {ex.Message}");
                         ShowNotification($"Error: {ex.Message}");
                     }
                 };
-                vbox.AddChild(delaunayButton);
+                vbox.AddChild(sysGenButton);
             }
 
-            // Add test_scene.tscn button
+            // Planet Generation debug scene
+            if (ResourceLoader.Exists("res://Scenes/PlanetGeneration.tscn"))
+            {
+                var planetGenButton = new Button();
+                planetGenButton.Text = "Planet Generation";
+                planetGenButton.Pressed += () =>
+                {
+                    try
+                    {
+                        GetTree().ChangeSceneToFile("res://Scenes/PlanetGeneration.tscn");
+                        GameLogger.Info("Transitioning to PlanetGeneration.tscn");
+                    }
+                    catch (Exception ex)
+                    {
+                        GameLogger.Error($"Failed to load PlanetGeneration.tscn: {ex.Message}");
+                        ShowNotification($"Error: {ex.Message}");
+                    }
+                };
+                vbox.AddChild(planetGenButton);
+            }
+
+            // Test scene
             if (ResourceLoader.Exists("res://test_scene.tscn"))
             {
                 var testSceneButton = new Button();
-                testSceneButton.Name = "TestSceneButton";
                 testSceneButton.Text = "Test Scene";
                 testSceneButton.Pressed += () =>
                 {
@@ -302,9 +395,8 @@ namespace UI
                 vbox.AddChild(testSceneButton);
             }
 
-            // Add close button
+            // Close button
             var closeButton = new Button();
-            closeButton.Name = "CloseButton";
             closeButton.Text = "Close";
             closeButton.Pressed += () =>
             {
@@ -313,7 +405,6 @@ namespace UI
             };
             vbox.AddChild(closeButton);
 
-            // Store reference
             _debugMenu = debugMenuPanel;
 
             GameLogger.Info("Created simple debug menu");
@@ -327,10 +418,7 @@ namespace UI
         {
             GameLogger.EnterFunction(nameof(OnExitButtonPressed));
             GameLogger.Info("Exit button pressed");
-
-            // Show confirmation dialog
             ShowExitConfirmation();
-
             GameLogger.ExitFunction(nameof(OnExitButtonPressed));
         }
 
@@ -339,17 +427,11 @@ namespace UI
         /// </summary>
         private void ShowExitConfirmation()
         {
-            GameLogger.EnterFunction(nameof(ShowExitConfirmation));
-
-            // Create a confirmation dialog
             var confirmDialog = new AcceptDialog();
             confirmDialog.Title = "Exit Game";
             confirmDialog.DialogText = "Are you sure you want to exit the game?";
             confirmDialog.Size = new Vector2I(300, 150);
-            confirmDialog.CloseRequested += () =>
-            {
-                confirmDialog.QueueFree();
-            };
+            confirmDialog.CloseRequested += () => confirmDialog.QueueFree();
             confirmDialog.Confirmed += () =>
             {
                 GameLogger.Info("User confirmed exit");
@@ -363,30 +445,21 @@ namespace UI
 
             AddChild(confirmDialog);
             confirmDialog.PopupCentered();
-
-            GameLogger.Info("Showing exit confirmation dialog");
-            GameLogger.ExitFunction(nameof(ShowExitConfirmation));
         }
 
         /// <summary>
         /// Shows a simple notification to the user.
         /// </summary>
-        /// <param name="message">The message to display.</param>
         private void ShowNotification(string message)
         {
-            GameLogger.EnterFunction(nameof(ShowNotification), message);
-
-            // Create a simple notification label
             var notificationLabel = new Label();
-            notificationLabel.Name = "NotificationLabel";
             notificationLabel.Text = message;
             notificationLabel.HorizontalAlignment = HorizontalAlignment.Center;
             notificationLabel.VerticalAlignment = VerticalAlignment.Center;
             notificationLabel.AutowrapMode = TextServer.AutowrapMode.Word;
             notificationLabel.Size = new Vector2(400, 100);
             notificationLabel.Position = new Vector2I((int)((Size.X - 400) / 2), 50);
-            
-            // Style it
+
             var styleBox = new StyleBoxFlat();
             styleBox.BgColor = new Color(0.1f, 0.1f, 0.2f, 0.9f);
             styleBox.BorderColor = new Color(0.2f, 0.2f, 0.4f);
@@ -402,9 +475,7 @@ namespace UI
 
             AddChild(notificationLabel);
 
-            // Remove after 3 seconds
             var timer = new Timer();
-            timer.Name = "NotificationTimer";
             timer.WaitTime = 3.0;
             timer.OneShot = true;
             timer.Timeout += () =>
@@ -414,42 +485,20 @@ namespace UI
             };
             AddChild(timer);
             timer.Start();
-
-            GameLogger.Info($"Showing notification: {message}");
-            GameLogger.ExitFunction(nameof(ShowNotification));
         }
 
-        /// <summary>
-        /// Cleans up resources when the scene is exiting.
-        /// </summary>
         public override void _ExitTree()
         {
-            GameLogger.EnterFunction(nameof(_ExitTree));
-
-            // Disconnect button signals
             if (_startButton != null)
-            {
                 _startButton.Pressed -= OnStartButtonPressed;
-            }
-
             if (_settingsButton != null)
-            {
                 _settingsButton.Pressed -= OnSettingsButtonPressed;
-            }
-
             if (_debugButton != null)
-            {
                 _debugButton.Pressed -= OnDebugButtonPressed;
-            }
-
             if (_exitButton != null)
-            {
                 _exitButton.Pressed -= OnExitButtonPressed;
-            }
 
             base._ExitTree();
-
-            GameLogger.ExitFunction(nameof(_ExitTree));
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using Godot;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
+using UtilityLibrary.NameGeneration;
 
 namespace UI;
 
@@ -86,6 +87,8 @@ public partial class PlanetaryBodyItem : HBoxContainer
     public Action<PlanetaryBodyItem>? OnRemoveRequested;
 
     private String? bodyName;
+    private bool _isNameUserEdited;
+    private LineEdit? _nameEditField;
 
     //Hidden Values
     //Base Mesh
@@ -245,7 +248,63 @@ public partial class PlanetaryBodyItem : HBoxContainer
         {
             AutoCalculateToggle.Pressed += UpdateAutoCalculate;
         }
+
+        // Double-click header to edit name
+        var headerBtn = GetNodeOrNull<Button>("MainContent/Header/Toggle");
+        if (headerBtn != null)
+        {
+            headerBtn.GuiInput += (InputEvent @event) =>
+            {
+                if (@event is InputEventMouseButton mb && mb.DoubleClick && mb.ButtonIndex == MouseButton.Left)
+                {
+                    StartNameEdit(headerBtn);
+                }
+            };
+        }
+
         UpdateSatellitesCountLabel();
+    }
+
+    private void StartNameEdit(Button headerBtn)
+    {
+        if (_nameEditField != null)
+            return;
+
+        _nameEditField = new LineEdit
+        {
+            Text = bodyName ?? "",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        headerBtn.Visible = false;
+
+        var header = headerBtn.GetParent();
+        header.AddChild(_nameEditField);
+        header.MoveChild(_nameEditField, headerBtn.GetIndex());
+        _nameEditField.GrabFocus();
+        _nameEditField.SelectAll();
+
+        _nameEditField.TextSubmitted += (_) => FinishNameEdit(headerBtn);
+        _nameEditField.FocusExited += () => FinishNameEdit(headerBtn);
+    }
+
+    private void FinishNameEdit(Button headerBtn)
+    {
+        if (_nameEditField == null)
+            return;
+
+        var newName = _nameEditField.Text.Trim();
+        if (!string.IsNullOrEmpty(newName) && newName != bodyName)
+        {
+            bodyName = newName;
+            _isNameUserEdited = true;
+        }
+
+        _nameEditField.QueueFree();
+        _nameEditField = null;
+        headerBtn.Visible = true;
+
+        if (OptionButton != null)
+            UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
     }
 
     public void UpdateAutoCalculate()
@@ -297,7 +356,8 @@ public partial class PlanetaryBodyItem : HBoxContainer
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = TemplateHelpers.GetCelestialBodyDefaults(type);
         var template = (Godot.Collections.Dictionary)t["template"];
-        bodyName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
+        bodyName = NameGenerator.PickName((Godot.Collections.Dictionary)t["possible_names"]);
+        _isNameUserEdited = false;
 
         // Planetary bodies use orbital parameters from template
         if (template.ContainsKey("apogee"))
@@ -347,6 +407,45 @@ public partial class PlanetaryBodyItem : HBoxContainer
             return;
         }
         var template = (Godot.Collections.Dictionary)t["template"];
+
+        // Set body name: use name from template if provided, otherwise generate random name
+        if (t.ContainsKey("name"))
+        {
+            var nameVariant = t["name"];
+            if (nameVariant.VariantType == Variant.Type.String)
+            {
+                var nameStr = (string)nameVariant;
+                if (!string.IsNullOrEmpty(nameStr))
+                {
+                    // Use the name from the template (user-saved name)
+                    bodyName = nameStr;
+                    _isNameUserEdited = true;
+                }
+            }
+        }
+        else if (OptionButton != null)
+        {
+            // Generate a random name based on body type
+            var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+            if (internalName != null)
+            {
+                var type = PlanetaryTypeLoader.ToCelestialBodyType(internalName);
+                var defaults = TemplateHelpers.GetCelestialBodyDefaults(type);
+                if (defaults.ContainsKey("possible_names"))
+                {
+                    bodyName = NameGenerator.PickName(
+                        (Godot.Collections.Dictionary)defaults["possible_names"]
+                    );
+                    _isNameUserEdited = false;
+                }
+            }
+        }
+        
+        // Update header with new name
+        if (OptionButton != null)
+        {
+            UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
+        }
 
         // Handle orbital parameters for planetary bodies (stored in bodyDict, not template)
         if (t.ContainsKey("orbital_parameters"))
@@ -457,24 +556,7 @@ public partial class PlanetaryBodyItem : HBoxContainer
         }
     }
 
-    public String PickName(Godot.Collections.Dictionary nameDict)
-    {
-        if (nameDict == null || nameDict.Count == 0)
-            return "";
-
-        var categories = new Godot.Collections.Array(nameDict.Keys);
-        if (categories.Count == 0)
-            return "";
-
-        var random = UtilityLibrary.Randomizer.rng;
-        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
-
-        var names = (Godot.Collections.Array)nameDict[selectedCategory];
-        if (names == null || names.Count == 0)
-            return "";
-
-        return (string)names[random.RandiRange(0, names.Count - 1)];
-    }
+    
 
     public void UpdateHeaderFromBodyType(string typeName)
     {
@@ -515,7 +597,8 @@ public partial class PlanetaryBodyItem : HBoxContainer
         _verticalOffset = Mathf.Clamp((float)VerticalOffset!.Value, 0f, Limit);
 
         dict["type"] = PlanetaryTypeLoader.GetSelectedInternalName(ob) ?? "RockyPlanet";
-        dict.Add("name", bodyName!);
+        dict.Add("name", bodyName ?? "");
+        dict.Add("name_user_edited", _isNameUserEdited);
         var templateDict = new Godot.Collections.Dictionary();
 
         // Planetary bodies use orbital parameters

@@ -2,6 +2,7 @@ using System;
 using Godot;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
+using UtilityLibrary.NameGeneration;
 
 namespace UI;
 
@@ -90,6 +91,8 @@ public partial class SatelliteItem : HBoxContainer
     private int[]? octaveRange;
 
     private String? satName;
+    private bool _isNameUserEdited;
+    private LineEdit? _nameEditField;
 
     public void SetParentType(PlanetaryBodyType type)
     {
@@ -115,6 +118,65 @@ public partial class SatelliteItem : HBoxContainer
 
         // Apply input constraints to fields
         ApplyConstraints();
+
+        // Double-click header to edit name
+        var headerBtn = GetNodeOrNull<Button>("MainContent/Header/Toggle");
+        if (headerBtn != null)
+        {
+            headerBtn.GuiInput += (InputEvent @event) =>
+            {
+                if (
+                    @event is InputEventMouseButton mb
+                    && mb.DoubleClick
+                    && mb.ButtonIndex == MouseButton.Left
+                )
+                {
+                    StartNameEdit(headerBtn);
+                }
+            };
+        }
+    }
+
+    private void StartNameEdit(Button headerBtn)
+    {
+        if (_nameEditField != null)
+            return;
+
+        _nameEditField = new LineEdit
+        {
+            Text = satName ?? "",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        headerBtn.Visible = false;
+
+        var header = headerBtn.GetParent();
+        header.AddChild(_nameEditField);
+        header.MoveChild(_nameEditField, headerBtn.GetIndex());
+        _nameEditField.GrabFocus();
+        _nameEditField.SelectAll();
+
+        _nameEditField.TextSubmitted += (_) => FinishNameEdit(headerBtn);
+        _nameEditField.FocusExited += () => FinishNameEdit(headerBtn);
+    }
+
+    private void FinishNameEdit(Button headerBtn)
+    {
+        if (_nameEditField == null)
+            return;
+
+        var newName = _nameEditField.Text.Trim();
+        if (!string.IsNullOrEmpty(newName) && newName != satName)
+        {
+            satName = newName;
+            _isNameUserEdited = true;
+        }
+
+        _nameEditField.QueueFree();
+        _nameEditField = null;
+        headerBtn.Visible = true;
+
+        if (OptionButton != null)
+            UpdateHeaderFromSatType(OptionButton.GetItemText(OptionButton.Selected));
     }
 
     public void SubscribeEvents()
@@ -184,7 +246,8 @@ public partial class SatelliteItem : HBoxContainer
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = TemplateHelpers.GetSatelliteBodyDefaults(type);
         var template = (Godot.Collections.Dictionary)t["template"];
-        satName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
+        satName = NameGenerator.PickName((Godot.Collections.Dictionary)t["possible_names"]);
+        _isNameUserEdited = false;
 
         // Assign orbital parameters to UI (already clamped by GetDefaults, but clamp again defensively)
         // Default values: apogee=500, perigee=300, starting_angle=0, vertical_offset=0
@@ -269,6 +332,45 @@ public partial class SatelliteItem : HBoxContainer
     {
         var template = (Godot.Collections.Dictionary)t["template"];
 
+        // Set satellite name: use name from template if provided, otherwise generate random name
+        if (t.ContainsKey("name"))
+        {
+            var nameVariant = t["name"];
+            if (nameVariant.VariantType == Variant.Type.String)
+            {
+                var nameStr = (string)nameVariant;
+                if (!string.IsNullOrEmpty(nameStr))
+                {
+                    // Use the name from the template (user-saved name)
+                    satName = nameStr;
+                    _isNameUserEdited = true;
+                }
+            }
+        }
+        else if (OptionButton != null)
+        {
+            // Generate a random name based on satellite type
+            var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+            if (internalName != null)
+            {
+                var type = PlanetaryTypeLoader.ToSatelliteBodyType(internalName);
+                var defaults = TemplateHelpers.GetSatelliteBodyDefaults(type);
+                if (defaults.ContainsKey("possible_names"))
+                {
+                    satName = NameGenerator.PickName(
+                        (Godot.Collections.Dictionary)defaults["possible_names"]
+                    );
+                    _isNameUserEdited = false;
+                }
+            }
+        }
+
+        // Update header with new name
+        if (OptionButton != null)
+        {
+            UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+        }
+
         // Assign orbital parameters to UI
         float apogee = template.ContainsKey("apogee") ? (float)template["apogee"] : 500f;
         float perigee = template.ContainsKey("perigee") ? (float)template["perigee"] : 300f;
@@ -348,23 +450,13 @@ public partial class SatelliteItem : HBoxContainer
         }
     }
 
-    public String PickName(Godot.Collections.Dictionary nameDict)
+    public void UpdateHeaderFromSatType(string typeName)
     {
-        if (nameDict == null || nameDict.Count == 0)
-            return "";
-
-        var categories = new Godot.Collections.Array(nameDict.Keys);
-        if (categories.Count == 0)
-            return "";
-
-        var random = UtilityLibrary.Randomizer.rng;
-        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
-
-        var names = (Godot.Collections.Array)nameDict[selectedCategory];
-        if (names == null || names.Count == 0)
-            return "";
-
-        return (string)names[random.RandiRange(0, names.Count - 1)];
+        var headerBtn = GetNodeOrNull<Button>("MainContent/Header/Toggle");
+        if (headerBtn != null)
+        {
+            headerBtn.Text = $"{satName} ({typeName})";
+        }
     }
 
     private void ApplyConstraints()

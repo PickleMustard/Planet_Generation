@@ -1,0 +1,68 @@
+buildings:
+  - id_name: wind_turbine
+    display_name: Wind Turbine Farm
+    description: Cluster of high-efficiency wind turbines for harnessing atmospheric energy flows.
+    category: power
+    building_time: 4200.0  # 1.17 hours in seconds
+    work_required: 700.0
+    
+    placement_requirements:
+      biomes: [Coastal, Mountain, Plain, Grassland]
+      min_elevation: 0.3
+      max_elevation: 0.9
+      max_slope: 25.0
+      cell_count: 1
+      requires_adjacent: false
+    
+    required_resources:
+      steel: 100
+      aluminum: 80
+      copper: 60
+      composites: 40
+      electronics: 30
+    
+    production:
+      default_recipe: "wind_analysis"
+      alternative_recipes: ["turbine_maintenance", "grid_synchronization"]
+      input_storage_amount: 50
+      output_storage_amount: 100
+      production_speed: 2
+    
+    visual:
+      model_path: "res://Models/Buildings/wind_turbine.glb"
+      scale: 1.0
+      rotation_offset: [0, 0, 0]
+  
+  - id_name: geothermal_plant
+    display_name: Geothermal Power Plant
+    description: Taps into planetary heat for consistent, reliable energy generation with minimal environmental impact.
+    category: power
+    building_time: 6600.0  # 1.83 hours in seconds
+    work_required: 1100.0
+    
+    placement_requirements:
+      biomes: [Volcanic, Mountain, RustedMountain, StoneDesert]
+      min_elevation: 0.4
+      max_elevation: 1.0
+      max_slope: 15.0
+      cell_count: 2
+      requires_adjacent: false
+    
+    required_resources:
+      steel: 300
+      titanium: 200
+      copper: 150
+      ceramics: 100
+      water: 400
+    
+    production:
+      default_recipe: "geothermal_drilling"
+      alternative_recipes: ["heat_exchange", "steam_management"]
+      input_storage_amount: 200
+      output_storage_amount: 300
+      production_speed: 3
+    
+    visual:
+      model_path: "res://Models/Buildings/geothermal_plant.glb"
+      scale: 1.4
+      rotation_offset: [0, 0, 0]

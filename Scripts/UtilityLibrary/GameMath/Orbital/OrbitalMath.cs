@@ -9,6 +9,15 @@ public static class OrbitalMath
     public const float GRAVITATIONAL_CONSTANT = .067394967f;
     public const float STANDARD_GRAVITY = 9.81f;
     public const float NAT_LOG_TWO = 0.69314718055994529f;
+    public const float UNITS_PER_AU = 3000f;
+
+    public static float ConvertUnitsToAU(float units) => units / UNITS_PER_AU;
+    public static float ConvertAUToUnits(float au) => au * UNITS_PER_AU;
+
+    public static float CalculateDistanceFromParentAU(Vector3 parentPos, Vector3 childPos)
+    {
+        return ConvertUnitsToAU((parentPos - childPos).Length());
+    }
 
     public static Vector3 CalculateOrbitalPosition(
         Vector3 pHat,

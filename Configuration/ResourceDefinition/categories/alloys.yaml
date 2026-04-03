@@ -1,0 +1,16 @@
+resources:
+  - id_name: stradium
+    resource_tier: 3
+    display_color:
+      - 255
+      - 255
+      - 0
+    tags: [metal, ferrous]
+
+  - id_name: electrum
+    resource_tier: 3
+    display_color:
+      - 255
+      - 255
+      - 128
+    tags: [metal, gold, copper, silver]

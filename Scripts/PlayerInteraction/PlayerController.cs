@@ -101,6 +101,7 @@ public partial class PlayerController : Node3D
         if (result.Count == 0)
             return;
 
+        GD.Print($"Hit Result: {result}");
         var collider = (Node3D)result["collider"];
         var position = (Vector3)result["position"];
 
@@ -113,14 +114,44 @@ public partial class PlayerController : Node3D
         if (selectableBody == null)
             return;
 
-        var selectionResult = selectableBody.FindNearestCell(position);
+        var faceIndex = (int)result["face_index"];
+        var selectionResult = selectableBody.GetFaceFromIndex(faceIndex);
+        
+        // Debug: Compare with old method for validation
+        var oldMethodResult = selectableBody.FindNearestCell(position);
+        if (selectionResult?.Cell != null && oldMethodResult?.Cell != null)
+        {
+            if (selectionResult.Cell.Index != oldMethodResult.Cell.Index)
+            {
+                GD.Print($"WARNING: Cell mismatch! FaceIndex method: {selectionResult.Cell.Index}, Octree method: {oldMethodResult.Cell.Index}");
+            }
+            else
+            {
+                GD.Print($"Cell match: {selectionResult.Cell.Index} (both methods agree)");
+            }
+        }
+        
         if (selectionResult?.Cell != null)
         {
+            GD.Print($"Selected Cell via face_index {faceIndex}: {selectionResult.Cell.Index}");
             CellSelectionManager.Instance?.SelectCell(
                 selectionResult.Cell,
                 selectionResult.CellContinent,
                 (Node3D)selectableBody
             );
+        }
+        else
+        {
+            GD.PrintErr($"Failed to get cell from face_index {faceIndex}, falling back to octree method");
+            if (oldMethodResult?.Cell != null)
+            {
+                GD.Print($"Selected Cell via octree fallback: {oldMethodResult.Cell.Index}");
+                CellSelectionManager.Instance?.SelectCell(
+                    oldMethodResult.Cell,
+                    oldMethodResult.CellContinent,
+                    (Node3D)selectableBody
+                );
+            }
         }
     }
 

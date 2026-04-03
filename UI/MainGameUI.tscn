@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://b0ryj27senqch"]
+
+[ext_resource type="Script" uid="uid://bn7s74688cck8" path="res://Scripts/UI/MainGameUI.cs" id="1_p5rbu"]
+[ext_resource type="PackedScene" uid="uid://bm7pd4sh2v07a" path="res://UI/Toast/ToastSystem.tscn" id="2_gz8ho"]
+[ext_resource type="PackedScene" uid="uid://0w5dedamrvlq" path="res://UI/Construction/ConstructionHUD.tscn" id="3_heg8f"]
+
+[node name="MainGameUI" type="CanvasLayer" unique_id=258373446]
+script = ExtResource("1_p5rbu")
+
+[node name="ToastSystem" parent="." unique_id=1360947958 instance=ExtResource("2_gz8ho")]
+
+[node name="ConstructionHUD" parent="." unique_id=1418225951 instance=ExtResource("3_heg8f")]

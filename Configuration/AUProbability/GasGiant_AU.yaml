@@ -1,0 +1,60 @@
+schema_version: 1.0
+body_type: GasGiant
+description: "AU-based probability distribution for GasGiant subtypes"
+max_considered_au: 100.0
+range_overlap_policy: "use_first"
+
+au_ranges:
+  - range:
+      min_au: 0.0
+      max_au: 0.5
+      exclusive_max: false
+    name: "hot_zone"
+    subtype_distribution:
+      - subtype: HotJupiter
+        weight: 0.7
+      - subtype: PuffyGiant
+        weight: 0.3
+
+  - range:
+      min_au: 0.5
+      max_au: 2.0
+      exclusive_max: false
+    name: "warm_zone"
+    subtype_distribution:
+      - subtype: StandardJupiter
+        weight: 0.4
+      - subtype: StormyGiant
+        weight: 0.3
+      - subtype: RingedGiant
+        weight: 0.3
+
+  - range:
+      min_au: 2.0
+      max_au: 10.0
+      exclusive_max: false
+    name: "standard_zone"
+    subtype_distribution:
+      - subtype: StandardJupiter
+        weight: 0.4
+      - subtype: RingedGiant
+        weight: 0.3
+      - subtype: StormyGiant
+        weight: 0.2
+      - subtype: FailedStar
+        weight: 0.1
+
+  - range:
+      min_au: 10.0
+      max_au: 100.0
+      exclusive_max: false
+    name: "outer_zone"
+    subtype_distribution:
+      - subtype: ColdJupiter
+        weight: 0.5
+      - subtype: FailedStar
+        weight: 0.3
+      - subtype: StandardJupiter
+        weight: 0.2
+
+default_subtype: StandardJupiter

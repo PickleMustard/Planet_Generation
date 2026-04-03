@@ -1,8 +1,8 @@
 using System;
-using System.Text.RegularExpressions;
 using Godot;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
+using UtilityLibrary.NameGeneration;
 
 namespace UI;
 
@@ -50,6 +50,8 @@ public partial class DominantBodyItem : HBoxContainer
     //public Action<DominantBodyItem>? OnRemoveRequested;
 
     private String? bodyName;
+    private bool _isNameUserEdited;
+    private LineEdit? _nameEditField;
     private const float Limit = 10000f; // constrain within ±10,000 units (mass 0..10,000)
     private const float MassLimit = 100000000f; // constrain within ±100,000,000,000 units (mass 0..100,000,000,000)
     private const float SizeLimit = 10000f; // constrain within ±10,000 units (size 0..10,000)
@@ -125,6 +127,61 @@ public partial class DominantBodyItem : HBoxContainer
         {
             Mass.GetLineEdit().TextSubmitted += idx => EmitSignal(SignalName.MassSubmitted, this);
         }
+
+        // Double-click header to edit name
+        var headerBtn = GetNodeOrNull<Button>("MainContent/Header/Toggle");
+        if (headerBtn != null)
+        {
+            headerBtn.GuiInput += (InputEvent @event) =>
+            {
+                if (@event is InputEventMouseButton mb && mb.DoubleClick && mb.ButtonIndex == MouseButton.Left)
+                {
+                    StartNameEdit(headerBtn);
+                }
+            };
+        }
+    }
+
+    private void StartNameEdit(Button headerBtn)
+    {
+        if (_nameEditField != null)
+            return;
+
+        _nameEditField = new LineEdit
+        {
+            Text = bodyName ?? "",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        headerBtn.Visible = false;
+
+        var header = headerBtn.GetParent();
+        header.AddChild(_nameEditField);
+        header.MoveChild(_nameEditField, headerBtn.GetIndex());
+        _nameEditField.GrabFocus();
+        _nameEditField.SelectAll();
+
+        _nameEditField.TextSubmitted += (_) => FinishNameEdit(headerBtn);
+        _nameEditField.FocusExited += () => FinishNameEdit(headerBtn);
+    }
+
+    private void FinishNameEdit(Button headerBtn)
+    {
+        if (_nameEditField == null)
+            return;
+
+        var newName = _nameEditField.Text.Trim();
+        if (!string.IsNullOrEmpty(newName) && newName != bodyName)
+        {
+            bodyName = newName;
+            _isNameUserEdited = true;
+        }
+
+        _nameEditField.QueueFree();
+        _nameEditField = null;
+        headerBtn.Visible = true;
+
+        if (OptionButton != null)
+            UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
     }
 
     private void ApplyConstraints()
@@ -166,7 +223,8 @@ public partial class DominantBodyItem : HBoxContainer
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = TemplateHelpers.GetCelestialBodyDefaults(type);
         var template = (Godot.Collections.Dictionary)t["template"];
-        bodyName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
+        bodyName = NameGenerator.PickName((Godot.Collections.Dictionary)t["possible_names"], NameFormat.NoSpacesLowerCase);
+        _isNameUserEdited = false;
 
         if (template.ContainsKey("starting_angle"))
             SetStartingAngle((float)template["starting_angle"]);
@@ -209,6 +267,46 @@ public partial class DominantBodyItem : HBoxContainer
         }
         var template = (Godot.Collections.Dictionary)t["template"];
 
+        // Set body name: use name from template if provided, otherwise generate random name
+        if (t.ContainsKey("name"))
+        {
+            var nameVariant = t["name"];
+            if (nameVariant.VariantType == Variant.Type.String)
+            {
+                var nameStr = (string)nameVariant;
+                if (!string.IsNullOrEmpty(nameStr))
+                {
+                    // Use the name from the template (user-saved name)
+                    bodyName = nameStr;
+                    _isNameUserEdited = true;
+                }
+            }
+        }
+        else if (OptionButton != null)
+        {
+            // Generate a random name based on body type
+            var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+            if (internalName != null)
+            {
+                var type = PlanetaryTypeLoader.ToCelestialBodyType(internalName);
+                var defaults = TemplateHelpers.GetCelestialBodyDefaults(type);
+                if (defaults.ContainsKey("possible_names"))
+                {
+                    bodyName = NameGenerator.PickName(
+                        (Godot.Collections.Dictionary)defaults["possible_names"],
+                        NameFormat.NoSpacesLowerCase
+                    );
+                    _isNameUserEdited = false;
+                }
+            }
+        }
+        
+        // Update header with new name
+        if (OptionButton != null)
+        {
+            UpdateHeaderFromBodyType(OptionButton.GetItemText(OptionButton.Selected));
+        }
+
         // Read central_parameters for inclination/starting_angle (matches ToParams() output)
         if (t.ContainsKey("central_parameters"))
         {
@@ -250,27 +348,7 @@ public partial class DominantBodyItem : HBoxContainer
         }
     }
 
-    public String PickName(Godot.Collections.Dictionary nameDict)
-    {
-        if (nameDict == null || nameDict.Count == 0)
-            return "";
-
-        var categories = new Godot.Collections.Array(nameDict.Keys);
-        if (categories.Count == 0)
-            return "";
-
-        var random = UtilityLibrary.Randomizer.rng;
-        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
-
-        var names = (Godot.Collections.Array)nameDict[selectedCategory];
-        if (names == null || names.Count == 0)
-            return "";
-
-        string chosen = (string)names[random.RandiRange(0, names.Count - 1)];
-        chosen = Regex.Replace(chosen, @"\s", "");
-        chosen = chosen.ToLower();
-        return chosen;
-    }
+    
 
     public void UpdateHeaderFromBodyType(string typeName)
     {
@@ -287,7 +365,8 @@ public partial class DominantBodyItem : HBoxContainer
         var ob = GetNode<OptionButton>("MainContent/Content/BodyTypeContent/OptionButton");
 
         dict["type"] = PlanetaryTypeLoader.GetSelectedInternalName(ob) ?? "Star";
-        dict.Add("name", bodyName!);
+        dict.Add("name", bodyName ?? "");
+        dict.Add("name_user_edited", _isNameUserEdited);
         var templateDict = new Godot.Collections.Dictionary();
 
         // Planetary bodies use orbital parameters

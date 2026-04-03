@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://bm7pd4sh2v07a"]
+
+[ext_resource type="Script" uid="uid://8vn2yejbmcja" path="res://Scripts/UI/ToastSystem.cs" id="1_jxs8j"]
+
+[node name="ToastSystem" type="CanvasLayer" unique_id=2088252769]
+script = ExtResource("1_jxs8j")
+
+[node name="ToastContainer" type="VBoxContainer" parent="." unique_id=888344796]
+anchors_preset = -1
+anchor_left = 0.9
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 8.0
+offset_right = -16.0
+offset_bottom = 28.0
+grow_horizontal = 0
+grow_vertical = 2
+size_flags_vertical = 3

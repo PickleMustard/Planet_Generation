@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 using Structures.Enums;
+using Structures.Transfers;
 
 namespace Structures.Resources;
 
@@ -41,6 +42,11 @@ public class BuildingDefinition
     public float WorkRequired { get; set; } = 100.0f;
 
     /// <summary>
+    /// Maximum number of this building allowed. -1 for no limit.
+    /// </summary>
+    public int BuildingLimit { get; set; } = -1;
+
+    /// <summary>
     /// Placement requirements and constraints.
     /// </summary>
     public PlacementRequirements Placement { get; set; } = new();
@@ -59,6 +65,16 @@ public class BuildingDefinition
     /// Visual representation settings.
     /// </summary>
     public VisualDefinition Visual { get; set; } = new();
+
+    /// <summary>
+    /// Sound effect settings.
+    /// </summary>
+    public SoundDefinition Sound { get; set; } = new();
+
+    /// <summary>
+    /// Transfer station capabilities. Null for non-logistics buildings.
+    /// </summary>
+    public TransferStationDefinition? TransferStation { get; set; }
 
     /// <summary>
     /// Defines placement requirements for a building.
@@ -102,19 +118,29 @@ public class BuildingDefinition
     public class ProductionDefinition
     {
         /// <summary>
-        /// Resource extraction rate per second (for extraction buildings).
+        /// Default recipe ID used by this building.
         /// </summary>
-        public float ExtractionRate { get; set; } = 0.0f;
+        public string? DefaultRecipe { get; set; }
 
         /// <summary>
-        /// Resources produced by the building.
+        /// Alternative recipe IDs available for this building.
         /// </summary>
-        public List<string> Resources { get; set; } = new();
+        public List<string> AlternativeRecipes { get; set; } = new();
 
         /// <summary>
-        /// Recipe IDs that can be produced by the building.
+        /// Maximum input storage capacity.
         /// </summary>
-        public List<string> Recipes { get; set; } = new();
+        public int InputStorageAmount { get; set; } = 0;
+
+        /// <summary>
+        /// Maximum output storage capacity.
+        /// </summary>
+        public int OutputStorageAmount { get; set; } = 0;
+
+        /// <summary>
+        /// Production speed multiplier.
+        /// </summary>
+        public float ProductionSpeed { get; set; } = 1.0f;
     }
 
     /// <summary>
@@ -128,6 +154,16 @@ public class BuildingDefinition
         public string? ModelPath { get; set; }
 
         /// <summary>
+        /// Path to material resource.
+        /// </summary>
+        public string? ModelMaterial { get; set; }
+
+        /// <summary>
+        /// Path to animation resource.
+        /// </summary>
+        public string? AnimationPath { get; set; }
+
+        /// <summary>
         /// Scale factor for the model.
         /// </summary>
         public float Scale { get; set; } = 1.0f;
@@ -136,5 +172,31 @@ public class BuildingDefinition
         /// Rotation offset in degrees (Euler angles).
         /// </summary>
         public Vector3 RotationOffset { get; set; } = Vector3.Zero;
+    }
+
+    /// <summary>
+    /// Defines sound effects for a building.
+    /// </summary>
+    public class SoundDefinition
+    {
+        /// <summary>
+        /// Sound played during construction.
+        /// </summary>
+        public string? Building { get; set; }
+
+        /// <summary>
+        /// Sound played when construction finishes.
+        /// </summary>
+        public string? Finished { get; set; }
+
+        /// <summary>
+        /// Sound played while building is idle.
+        /// </summary>
+        public string? Idle { get; set; }
+
+        /// <summary>
+        /// Sound played while building is fabricating.
+        /// </summary>
+        public string? Fabricating { get; set; }
     }
 }

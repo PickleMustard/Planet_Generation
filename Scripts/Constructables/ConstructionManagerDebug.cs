@@ -3,11 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Constructables.ArtificialSatellites;
+using Logistics.Resources;
 using ProceduralGeneration.PlanetGeneration;
 using UI.Debug;
 using UI.Debug.Console;
 using UI.Debug.DatabaseViewer;
 using UtilityLibrary;
+using UtilityLibrary.NameGeneration;
 
 namespace Constructables;
 
@@ -93,11 +95,11 @@ public partial class ConstructionManager : IDebugDataProvider
         StationDefinition? stationDef = null;
         if (templateName != null)
         {
-            stationDef = LogisticsConfigLoader.GetStationDefinition(templateName);
+            StationDatabase.Instance.TryGetStation(templateName, out stationDef);
             if (stationDef == null)
             {
                 ctx.WriteError($"Station template '{templateName}' not found. Available templates:");
-                var allStations = LogisticsConfigLoader.LoadAllStations();
+                var allStations = StationDatabase.Instance.GetAllStations().Values;
                 foreach (var s in allStations)
                     ctx.WriteLine($"  {s.Name} ({s.StationType}, {s.ConstructionTime}s)");
                 return 1;
@@ -244,11 +246,11 @@ public partial class ConstructionManager : IDebugDataProvider
         ShipDefinition? shipDef = null;
         if (templateName != null)
         {
-            shipDef = LogisticsConfigLoader.GetShipDefinition(templateName);
+            ShipDatabase.Instance.TryGetShip(templateName, out shipDef);
             if (shipDef == null)
             {
                 ctx.WriteError($"Ship template '{templateName}' not found. Available templates:");
-                var allShips = LogisticsConfigLoader.LoadAllShips();
+                var allShips = ShipDatabase.Instance.GetAllShips().Values;
                 foreach (var s in allShips)
                     ctx.WriteLine($"  {s.Name} ({s.DryMass}kg, {s.ConstructionTime}s)");
                 return 1;
@@ -256,7 +258,7 @@ public partial class ConstructionManager : IDebugDataProvider
         }
 
         // Generate name if not provided
-        name ??= LogisticsCommands.GenerateRandomShipName();
+        name ??= NameGenerator.GenerateShipName();
 
         LogisticsUnit ship;
         try
@@ -305,8 +307,9 @@ public partial class ConstructionManager : IDebugDataProvider
     {
         var stations = _stationsUnderConstruction;
         var ships = _shipsUnderConstruction;
+        var buildings = _buildingsUnderConstruction;
 
-        if (stations.Count == 0 && ships.Count == 0)
+        if (stations.Count == 0 && ships.Count == 0 && buildings.Count == 0)
         {
             ctx.WriteLine("No items under construction.");
             return 0;
@@ -318,7 +321,13 @@ public partial class ConstructionManager : IDebugDataProvider
             foreach (var station in stations)
             {
                 float progress = station.GetProgress() * 100f;
-                ctx.WriteLine($"  {station.Name} - {station.GetStatus()} ({progress:F1}%) Band {station.BandIndex}");
+                string typeInfo = station switch
+                {
+                    ConstructionYardStation yard => $" [Yard: {yard.GetActiveBuilds().Count} active, {yard.GetShipBuildQueue().Count} queued]",
+                    OrbitalArchitectStation arch => $" [Architect: {arch.GetActiveBuildings().Count} buildings]",
+                    _ => ""
+                };
+                ctx.WriteLine($"  {station.Name} - {station.GetStatus()} ({progress:F1}%) Band {station.BandIndex}{typeInfo}");
             }
         }
 
@@ -328,7 +337,19 @@ public partial class ConstructionManager : IDebugDataProvider
             foreach (var ship in ships)
             {
                 float progress = ship.GetProgress() * 100f;
-                ctx.WriteLine($"  {ship.Name} - {ship.GetStatus()} ({progress:F1}%) Band {ship.BandIndex}");
+                string parent = ship.ConstructingStation != null ? $" @ {ship.ConstructingStation.Name}" : "";
+                ctx.WriteLine($"  {ship.Name} - {ship.GetStatus()} ({progress:F1}%) Band {ship.BandIndex}{parent}");
+            }
+        }
+
+        if (buildings.Count > 0)
+        {
+            ctx.WriteLine($"[color=yellow]Buildings ({buildings.Count}):[/color]");
+            foreach (var building in buildings)
+            {
+                float progress = building.GetProgress() * 100f;
+                string architect = building.ConstructingStation != null ? $" via {building.ConstructingStation.Name}" : "";
+                ctx.WriteLine($"  {building.Name} - {building.GetStatus()} ({progress:F1}%){architect}");
             }
         }
 
@@ -360,7 +381,8 @@ public partial class ConstructionManager : IDebugDataProvider
     {
         var node = new DebugDataNode(Name.ToString())
             .AddProperty("# Ships in Construction", _shipsUnderConstruction.Count)
-            .AddProperty("# Stations in Construction", _stationsUnderConstruction.Count);
+            .AddProperty("# Stations in Construction", _stationsUnderConstruction.Count)
+            .AddProperty("# Buildings in Construction", _buildingsUnderConstruction.Count);
 
         return node;
     }

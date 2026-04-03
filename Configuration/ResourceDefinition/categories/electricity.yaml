@@ -1,0 +1,32 @@
+resources:
+  - id_name: power
+    resource_tier: 0
+    display_color:
+      - 255
+      - 0
+      - 0
+    tags: [electronic, industrial, power]
+
+  - id_name: low_voltage_wire
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 0
+    tags: [electronic, industrial]
+
+  - id_name: high_voltage_wire
+    resource_tier: 2
+    display_color:
+      - 224
+      - 255
+      - 0
+    tags: [electronic, industrial]
+
+  - id_name: superconductive_wire
+    resource_tier: 3
+    display_color:
+      - 255
+      - 255
+      - 0
+    tags: [electronic, industrial]

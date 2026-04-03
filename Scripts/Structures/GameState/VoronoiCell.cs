@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
+using Structures.Enums;
 using Structures.MeshGeneration;
 
 namespace Structures.GameState;
 
-public partial class VoronoiCell : Resource
+public partial class VoronoiCell : Resource, IVoronoiCell
 {
     public Point[] Points { get; set; }
     public Triangle[] Triangles { get; set; }
@@ -22,12 +24,52 @@ public partial class VoronoiCell : Resource
     public Vector3 Center { get; set; }
     public float Stress { get; set; } = 0.0f;
     public int Increment { get; set; } = 1;
+    
+    /// <summary>
+    /// The dominant biome type for this cell, calculated from its points.
+    /// When points have multiple biomes assigned, this represents the most common biome.
+    /// </summary>
+    public Biome.BiomeType Biome { get; set; }
 
     /// <summary>
     /// Resources available in this cell.
     /// Key is the resource ID, value is the abundance (0-1).
     /// </summary>
     public Dictionary<string, float> Resources { get; set; } = new();
+
+    /// <summary>
+    /// Priority order for biome tie-breaking. Higher values indicate higher priority.
+    /// Used when multiple biomes have the same count in a cell.
+    /// </summary>
+    private static readonly Dictionary<Biome.BiomeType, int> BiomePriority = new Dictionary<Biome.BiomeType, int>
+    {
+        { Structures.Enums.Biome.BiomeType.Mountain, 100 },
+        { Structures.Enums.Biome.BiomeType.Forest, 90 },
+        { Structures.Enums.Biome.BiomeType.Rainforest, 85 },
+        { Structures.Enums.Biome.BiomeType.Taiga, 80 },
+        { Structures.Enums.Biome.BiomeType.Grassland, 70 },
+        { Structures.Enums.Biome.BiomeType.Coastal, 60 },
+        { Structures.Enums.Biome.BiomeType.Tundra, 50 },
+        { Structures.Enums.Biome.BiomeType.Desert, 40 },
+        { Structures.Enums.Biome.BiomeType.SandDesert, 35 },
+        { Structures.Enums.Biome.BiomeType.StoneDesert, 30 },
+        { Structures.Enums.Biome.BiomeType.Icecap, 20 },
+        { Structures.Enums.Biome.BiomeType.Ocean, 10 },
+        { Structures.Enums.Biome.BiomeType.Swamp, 75 },
+        { Structures.Enums.Biome.BiomeType.Glacier, 25 },
+        { Structures.Enums.Biome.BiomeType.FrozenPlain, 45 },
+        { Structures.Enums.Biome.BiomeType.RustedPlain, 55 },
+        { Structures.Enums.Biome.BiomeType.RustedMountain, 95 },
+        { Structures.Enums.Biome.BiomeType.RustedDesert, 37 },
+        { Structures.Enums.Biome.BiomeType.ScouredPlain, 65 },
+        { Structures.Enums.Biome.BiomeType.VolcanicPeak, 98 },
+        { Structures.Enums.Biome.BiomeType.ObsidianField, 42 },
+        { Structures.Enums.Biome.BiomeType.AshPlain, 38 },
+        { Structures.Enums.Biome.BiomeType.VolcanicPlain, 32 },
+        { Structures.Enums.Biome.BiomeType.LavaOcean, 8 },
+        { Structures.Enums.Biome.BiomeType.ShallowOcean, 15 },
+        { Structures.Enums.Biome.BiomeType.DeepOcean, 5 },
+    };
 
     public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles, Edge[] edges)
     {
@@ -39,6 +81,7 @@ public partial class VoronoiCell : Resource
         BoundingContinentIndex = new int[] { };
         IsBorderTile = false;
         EdgeBoundaryMap = new Dictionary<Edge, int>();
+        Biome = Structures.Enums.Biome.BiomeType.Grassland;
 
         Vector3 center = new Vector3(0, 0, 0);
         foreach (Point p in Points)
@@ -77,6 +120,52 @@ public partial class VoronoiCell : Resource
         BoundingBox = new Aabb(expandedMin, extents).Abs();
     }
 
+    /// <summary>
+    /// Calculates and sets the dominant biome for this cell based on the biomes of its points.
+    /// Uses majority voting with priority-based tie-breaking.
+    /// </summary>
+    public void CalculateCellBiome()
+    {
+        if (Points == null || Points.Length == 0)
+        {
+            Biome = Structures.Enums.Biome.BiomeType.Grassland;
+            return;
+        }
+
+        var biomeCounts = new Dictionary<Structures.Enums.Biome.BiomeType, int>();
+        
+        foreach (Point p in Points)
+        {
+            var pointBiome = p.Biome;
+            if (!biomeCounts.ContainsKey(pointBiome))
+                biomeCounts[pointBiome] = 0;
+            biomeCounts[pointBiome]++;
+        }
+
+        if (biomeCounts.Count == 0)
+        {
+            Biome = Structures.Enums.Biome.BiomeType.Grassland;
+            return;
+        }
+
+        // Find the maximum count
+        int maxCount = biomeCounts.Values.Max();
+        
+        // Get all biomes with the maximum count
+        var topBiomes = biomeCounts.Where(kvp => kvp.Value == maxCount).Select(kvp => kvp.Key).ToList();
+        
+        if (topBiomes.Count == 1)
+        {
+            // Single majority biome
+            Biome = topBiomes[0];
+        }
+        else
+        {
+            // Tie - use priority order
+            Biome = topBiomes.OrderByDescending(b => BiomePriority.GetValueOrDefault(b, 0)).First();
+        }
+    }
+
     public override string ToString()
     {
         string output = "";
@@ -90,7 +179,7 @@ public partial class VoronoiCell : Resource
         output += ")";
         output += $"{BoundingBox}, ";
         output += $", {Points.Length}# Points, {Edges.Length}# Edges, {Triangles.Length}# Triangles.";
-        output += $"Part of: {ContinentIndex}, Height: {Height}";
+        output += $"Part of: {ContinentIndex}, Height: {Height}, Biome: {Biome}";
 
         return output;
     }

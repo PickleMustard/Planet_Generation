@@ -56,20 +56,42 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
     /// <summary>Whether this unit is currently under construction.</summary>
     public bool IsUnderConstruction => _isUnderConstruction;
 
+    /// <summary>The construction-yard station building this ship, if any.</summary>
+    public StationSatellite? ConstructingStation { get; set; }
+
     #region IConstructable
 
+    [ExportGroup("Construction")]
+
+    [Export]
     public float workRequired
     {
         get => _constructionState?.WorkRequired ?? 0f;
         set { if (_constructionState != null) _constructionState.WorkRequired = value; }
     }
 
+    [Export]
     public float workDone
     {
         get => _constructionState?.WorkDone ?? 0f;
         set { if (_constructionState != null) _constructionState.WorkDone = value; }
     }
 
+    [Export]
+    public float ConstructionProgress
+    {
+        get => _constructionState?.GetProgress() ?? 0f;
+        set { }
+    }
+
+    [Export]
+    public string ConstructionStatusText
+    {
+        get => _constructionState?.Status.ToString() ?? "None";
+        set { }
+    }
+
+    [Export]
     public Godot.Collections.Dictionary<string, int> requiredResources
     {
         get
@@ -91,6 +113,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
         }
     }
 
+    [Export]
     public Godot.Collections.Dictionary<string, int> availableResources
     {
         get

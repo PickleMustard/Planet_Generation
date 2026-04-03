@@ -7,3 +7,6 @@ categories:
 
   - name: Refinery
     description: Industrial stations for processing raw materials into refined goods
+
+  - name: Orbital_Architect
+    description: Stations that manage construction of surface buildings via orbital work beams

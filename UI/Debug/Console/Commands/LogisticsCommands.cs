@@ -7,6 +7,7 @@ using ProceduralGeneration.PlanetGeneration;
 using Constructables.ArtificialSatellites;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
+using UtilityLibrary.NameGeneration;
 
 namespace UI.Debug.Console;
 
@@ -16,114 +17,12 @@ namespace UI.Debug.Console;
 /// </summary>
 public static class LogisticsCommands
 {
-    // Cached ship names loaded from satellites.yml
-    private static string[]? _shipNames;
-    private static string[]? _shipAdjectives;
-    private static bool _namesLoaded = false;
-
     /// <summary>
     /// Generates a random ship name from the satellites.yml name list.
     /// </summary>
     internal static string GenerateRandomShipName()
     {
-        LoadShipNamesIfNeeded();
-
-        if (_shipNames == null || _shipNames.Length == 0)
-        {
-            return $"Ship_{DateTime.Now.Ticks % 10000}";
-        }
-
-        var rand = Randomizer.GetRandomNumberGenerator();
-
-        // 30% chance: adjective + name (e.g., "Iron-Veined Voyager")
-        // 70% chance: just a name
-        if (_shipAdjectives != null && _shipAdjectives.Length > 0 && rand.Randf() < 0.3f)
-        {
-            string adj = _shipAdjectives[rand.Randi() % _shipAdjectives.Length];
-            string name = _shipNames[rand.Randi() % _shipNames.Length];
-            // Convert adjective to title case and replace spaces with hyphens
-            adj = ToTitleCase(adj).Replace(" ", "-");
-            return $"{adj} {name}";
-        }
-
-        return _shipNames[rand.Randi() % _shipNames.Length];
-    }
-
-    private static string ToTitleCase(string input)
-    {
-        if (string.IsNullOrEmpty(input))
-            return input;
-
-        var words = input.Split(' ');
-        for (int i = 0; i < words.Length; i++)
-        {
-            if (words[i].Length > 0)
-            {
-                words[i] = char.ToUpper(words[i][0]) + words[i].Substring(1).ToLower();
-            }
-        }
-        return string.Join(" ", words);
-    }
-
-    private static void LoadShipNamesIfNeeded()
-    {
-        if (_namesLoaded)
-            return;
-
-        try
-        {
-            var namesData = TemplateLoader.LoadNamesFile("satellites");
-
-            var allNames = new List<string>();
-            var allAdjectives = new List<string>();
-
-            // Helper to extract string array from variant
-            void ExtractStrings(Godot.Collections.Dictionary data, string key, List<string> target)
-            {
-                if (data.TryGetValue(key, out var variant))
-                {
-                    var arr = variant.As<Godot.Collections.Array>();
-                    if (arr != null)
-                    {
-                        foreach (var item in arr)
-                        {
-                            var str = item.AsString();
-                            if (!string.IsNullOrEmpty(str))
-                            {
-                                target.Add(str);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Load mythology names
-            ExtractStrings(namesData, "mythology", allNames);
-
-            // Load scientists
-            ExtractStrings(namesData, "scientists", allNames);
-
-            // Load explorers
-            ExtractStrings(namesData, "explorers", allNames);
-
-            // Load adjectives
-            ExtractStrings(namesData, "adjectives", allAdjectives);
-
-            _shipNames = allNames.ToArray();
-            _shipAdjectives = allAdjectives.ToArray();
-            _namesLoaded = true;
-
-            GD.Print(
-                $"[LogisticsCommands] Loaded {_shipNames.Length} ship names and {_shipAdjectives.Length} adjectives"
-            );
-        }
-        catch (Exception e)
-        {
-            GD.PrintErr($"[LogisticsCommands] Failed to load ship names: {e.Message}");
-            _shipNames = Array.Empty<string>();
-            _shipAdjectives = Array.Empty<string>();
-            _namesLoaded = true;
-        }
+        return NameGenerator.GenerateShipName();
     }
 
     // NOTE: spawn_station was removed from LogisticsCommands to resolve a duplicate

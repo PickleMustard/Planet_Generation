@@ -1,51 +1,58 @@
-[gd_scene format=3 uid="uid://game_scene"]
+[gd_scene format=3 uid="uid://cgamescene0001"]
 
-[ext_resource type="Script" uid="uid://gamescene" path="res://Scripts/GameScene.cs" id="1_gamescene"]
+[ext_resource type="Environment" uid="uid://s4wyheed0x8r" path="res://Shaders/stary_background.tres" id="1_env"]
+[ext_resource type="PackedScene" uid="uid://brice0jo72tpo" path="res://Prefabs/player_ship.tscn" id="2_player"]
+[ext_resource type="Script" path="res://Scripts/GameScene.cs" id="3_gamescene"]
+[ext_resource type="Script" path="res://Scripts/Scenes/SceneNavigator.cs" id="4_scenenav"]
 
-[node name="GameScene" type="Node3D" unique_id=987654321]
-script = ExtResource("1_gamescene")
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_game"]
+exposure_multiplier = 1.169
+dof_blur_near_enabled = true
+dof_blur_amount = 0.0
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=123456789]
-environment = SubResource("Environment_123456")
+[sub_resource type="Compositor" id="Compositor_game"]
 
-[sub_resource type="Environment" id="Environment_123456"]
-background_mode = 1
-background_color = Color(0.05, 0.05, 0.1, 1)
+[node name="GameScene" type="Node3D"]
+script = ExtResource("3_gamescene")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=234567890]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-rotation = Vector3(-0.5, 0, 0)
-light_color = Color(1, 1, 0.9, 1)
-light_energy = 1.5
-shadow_enabled = true
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("1_env")
+camera_attributes = SubResource("CameraAttributesPractical_game")
+compositor = SubResource("Compositor_game")
 
-[node name="Camera3D" type="Camera3D" parent="." unique_id=345678901]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
-
-[node name="UI" type="Control" parent="." unique_id=456789012]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="UI" unique_id=567890123]
-anchors_preset = 2
+[node name="Crosshair" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -100
-offset_top = -100
-offset_right = 100
-offset_bottom = 100
-alignment = 1
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
 
-[node name="TitleLabel" type="Label" parent="UI/VBoxContainer" unique_id=678901234]
-horizontal_alignment = 1
-text = "Game Scene"
+[node name="ColorRect" type="ColorRect" parent="Crosshair"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -2.0
+offset_top = -2.0
+offset_right = 2.0
+offset_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="MessageLabel" type="Label" parent="UI/VBoxContainer" unique_id=789012345]
-horizontal_alignment = 1
-text = "Main game scene placeholder"
+[node name="PlayerShip" parent="." instance=ExtResource("2_player")]
 
-[node name="BackToMenuButton" type="Button" parent="UI/VBoxContainer" unique_id=890123456]
-text = "Back to Main Menu"
+[node name="system_container" type="Node" parent="."]
+
+[node name="SceneNavigator" type="CanvasLayer" parent="."]
+script = ExtResource("4_scenenav")

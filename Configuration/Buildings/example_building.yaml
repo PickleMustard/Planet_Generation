@@ -6,66 +6,77 @@ buildings:
     display_name: Example Building
     description: This building demonstrates all available configuration fields in the YAML schema.
     category: example
-    building_time: 300.0  # Time in seconds to construct
-    work_required: 500.0  # Work units required for construction
-    
+    building_limit: -1 # Negative for no limit, positive #s define limit
+    building_time: 300.0 # Time in seconds to construct
+    work_required: 500.0 # Work units required for construction
+
     # Placement requirements define where this building can be placed
     placement_requirements:
       # List of allowed biome types (from Biome.BiomeType enum)
       biomes: [Grassland, Forest, Mountain, Coastal]
-      
+
       # Elevation constraints (0-1, where 0 is lowest point, 1 is highest)
       min_elevation: 0.2
       max_elevation: 0.8
-      
+
       # Maximum slope angle in degrees for placement
       max_slope: 20.0
-      
+
       # Number of Voronoi cells required for building footprint
       cell_count: 1
-      
+
       # Whether adjacent cells must be available for expansion
       requires_adjacent: false
-    
+
     # Resources required for construction
     # Format: resource_name: quantity
+    # Can be empty for buildings with no construction cost
     required_resources:
       iron: 100
       copper: 50
       concrete: 200
       electronics: 25
       water: 100
-    
+
     # Production capabilities
     production:
-      # Extraction rate per second (for extraction buildings)
-      extraction_rate: 1.5
-      
-      # List of resources produced by this building
-      resources: [electricity, water, oxygen]
-      
-      # List of recipe IDs that can be produced
-      recipes: [basic_manufacturing, advanced_processing]
-    
+      default_recipe: "recipe_id"
+      alternative_recipes: ["recipe_id"]
+      input_storage_amount: 100
+      output_storage_amount: 100
+      production_speed: 5
+
     # Visual representation settings
     visual:
       # Path to 3D model resource (GLB/GLTF format recommended)
       model_path: "res://Models/Buildings/example.glb"
-      
+
+      # Path to material resource (GLB/GLTF format recommended)
+      model_material: "res://Textures/Buildings/example.tres"
+
+      # Path to animation resource (GLB/GLTF format recommended)
+      animation_path: "res://Animations/Buildings/example.glb"
+
       # Scale factor for the model
       scale: 1.0
-      
+
       # Rotation offset in degrees (Euler angles: X, Y, Z)
       rotation_offset: [0, 90, 0]
-  
+
+    sound:
+      building: ""
+      finished: ""
+      idle: ""
+      fabricating: ""
+
   - id_name: minimal_building
     display_name: Minimal Building Example
     description: Shows minimum required fields for a valid building definition.
     category: minimal
-    
+
     # Only id_name, display_name, and category are strictly required
     # Other fields have sensible defaults
-    
+
     placement_requirements:
       # Biome list can be empty (allows all biomes)
       biomes: []
@@ -73,16 +84,11 @@ buildings:
       # Default max_slope is 45.0
       # Default cell_count is 1
       # Default requires_adjacent is false
-    
+
     required_resources:
       # Can be empty for buildings with no construction cost
       iron: 10
-    
+
     production:
       # Default extraction_rate is 0.0
       # resources and recipes lists default to empty
-      
-    visual:
-      # model_path can be empty (will use placeholder)
-      # Default scale is 1.0
-      # Default rotation_offset is [0, 0, 0]

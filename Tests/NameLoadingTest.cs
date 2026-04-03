@@ -1,6 +1,7 @@
 using GdUnit4;
 using Godot;
 using Godot.Collections;
+using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using static GdUnit4.Assertions;
 
@@ -14,7 +15,7 @@ public class NameLoadingTest
     public void TestLoadRockyPlanetNames()
     {
         var defaults = TemplateHelpers.GetCelestialBodyDefaults(
-            Structures.Enums.CelestialBodyType.RockyPlanet
+            CelestialBodyType.RockyPlanet
         );
 
         AssertThat(defaults).IsNotNull();
@@ -43,7 +44,7 @@ public class NameLoadingTest
     public void TestLoadStarNames()
     {
         var defaults = TemplateHelpers.GetCelestialBodyDefaults(
-            Structures.Enums.CelestialBodyType.Star
+            CelestialBodyType.Star
         );
 
         AssertThat(defaults).IsNotNull();
@@ -70,7 +71,7 @@ public class NameLoadingTest
     public void TestLoadMoonNames()
     {
         var defaults = TemplateHelpers.GetSatelliteBodyDefaults(
-            Structures.Enums.SatelliteBodyType.Moon
+            SatelliteBodyType.Moon
         );
 
         AssertThat(defaults).IsNotNull();

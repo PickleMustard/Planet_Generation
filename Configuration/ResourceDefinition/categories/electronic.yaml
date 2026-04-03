@@ -1,0 +1,71 @@
+resources:
+  - id_name: pcb
+    resource_tier: 2
+    display_color:
+      - 255
+      - 255
+      - 255
+    tags: [electronic, industrial]
+
+  - id_name: microchip
+    resource_tier: 3
+    display_color:
+      - 255
+      - 255
+      - 255
+
+  - id_name: quantum_chip
+    resource_tier: 4
+    display_color:
+      - 255
+      - 255
+      - 255
+
+  - id_name: lithium_battery
+    resource_tier: 1
+    display_color:
+      - 255
+      - 128
+      - 64
+    tags: [electronic, industrial]
+
+  - id_name: capacitor
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 255
+    tags: [electronic, industrial]
+
+  - id_name: solid_state_battery
+    resource_tier: 2
+    display_color:
+      - 255
+      - 255
+      - 192
+    tags: [electronic, industrial]
+
+  - id_name: solar_cell
+    resource_tier: 1
+    display_color:
+      - 255
+      - 0
+      - 0
+    tags: [electronic, industrial, solar]
+
+  - id_name: workstation
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 0
+    tags: [electronic, labor, furniture]
+
+  - id_name: motor
+    resource_tier: 2
+    display_color:
+      - 255
+      - 255
+      - 0
+    tags: [electronic, industrial]
+
