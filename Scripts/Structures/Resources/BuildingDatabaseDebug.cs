@@ -71,9 +71,14 @@ namespace Structures.Resources
 
                     var productionNode = buildingNode.AddChild("Production");
                     productionNode
-                        .AddProperty("Extraction Rate", building.Production.ExtractionRate)
-                        .AddProperty("Resources", building.Production.Resources.Count)
-                        .AddProperty("Recipes", building.Production.Recipes.Count);
+                        .AddProperty("Default Recipe", building.Production.DefaultRecipe ?? "")
+                        .AddProperty(
+                            "Alternative Recipes",
+                            building.Production.AlternativeRecipes.Count
+                        )
+                        .AddProperty("Input Storage", building.Production.InputStorageAmount)
+                        .AddProperty("Output Storage", building.Production.OutputStorageAmount)
+                        .AddProperty("Production Speed", building.Production.ProductionSpeed);
 
                     var visualNode = buildingNode.AddChild("Visual");
                     visualNode

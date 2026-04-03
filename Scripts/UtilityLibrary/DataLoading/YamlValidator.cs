@@ -80,7 +80,7 @@ public static class YamlValidator
         return result;
     }
 
-    public static ValidationResult ValidateResourceDefinition(string filePath)
+public static ValidationResult ValidateResourceDefinition(string filePath)
     {
         var result = new ValidationResult { FilePath = filePath };
 
@@ -108,12 +108,109 @@ public static class YamlValidator
 
             ValidateResourceDefinitionStructure(root, result);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            result.AddError($"Validation exception: {e.Message}");
+            result.AddError($"Validation failed: {ex.Message}");
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Validates a resource definition category file.
+    /// Category files have resource type inferred from filename, so resource_type field should not be present.
+    /// </summary>
+    public static ValidationResult ValidateResourceDefinitionCategory(string filePath)
+    {
+        var result = new ValidationResult { FilePath = filePath };
+
+        if (!Godot.FileAccess.FileExists(filePath))
+        {
+            result.AddError("File does not exist");
+            return result;
+        }
+
+        try
+        {
+            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
+            string text = f.GetAsText();
+
+            var parseResult = ValidateYamlSyntax(text);
+            if (!parseResult.IsValid)
+            {
+                result.Errors.AddRange(parseResult.Errors);
+                return result;
+            }
+
+            var yaml = new YamlStream();
+            yaml.Load(new StringReader(text));
+            var root = (YamlMappingNode)yaml.Documents[0].RootNode;
+
+            ValidateResourceDefinitionCategoryStructure(root, result);
+        }
+        catch (Exception ex)
+        {
+            result.AddError($"Validation failed: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    private static void ValidateResourceDefinitionCategoryStructure(
+        YamlMappingNode root,
+        ValidationResult result
+    )
+    {
+        if (!root.Children.ContainsKey("resources"))
+        {
+            result.AddError("Missing required key: 'resources'");
+            return;
+        }
+
+        var resources = root.Children["resources"] as YamlSequenceNode;
+        if (resources == null)
+        {
+            result.AddError("'resources' must be a sequence");
+            return;
+        }
+
+        int resourceIndex = 0;
+        foreach (var resourceNode in resources.Children)
+        {
+            var resource = resourceNode as YamlMappingNode;
+            if (resource == null)
+            {
+                result.AddError($"Resource at index {resourceIndex} must be a mapping");
+                resourceIndex++;
+                continue;
+            }
+
+            // Check for required fields
+            if (!resource.Children.ContainsKey("id_name"))
+            {
+                result.AddError(
+                    $"Resource at index {resourceIndex} missing required field: 'id_name'"
+                );
+            }
+            
+            if (!resource.Children.ContainsKey("resource_tier"))
+            {
+                result.AddError(
+                    $"Resource at index {resourceIndex} missing required field: 'resource_tier'"
+                );
+            }
+            
+            // resource_type should NOT be present in category files
+            if (resource.Children.ContainsKey("resource_type"))
+            {
+                result.AddError(
+                    $"Resource at index {resourceIndex} contains 'resource_type' field. " +
+                    "In category-based format, resource type should be inferred from file name."
+                );
+            }
+
+            resourceIndex++;
+        }
     }
 
     public static ValidationResult ValidateBuildingDefinition(string filePath)
@@ -390,15 +487,29 @@ public static class YamlValidator
                 continue;
             }
 
-            var requiredFields = new[] { "id_name", "resource_tier", "resource_type" };
-            foreach (var field in requiredFields)
+            // Check for required fields
+            if (!resource.Children.ContainsKey("id_name"))
             {
-                if (!resource.Children.ContainsKey(field))
-                {
-                    result.AddError(
-                        $"Resource at index {resourceIndex} missing required field: '{field}'"
-                    );
-                }
+                result.AddError(
+                    $"Resource at index {resourceIndex} missing required field: 'id_name'"
+                );
+            }
+            
+            if (!resource.Children.ContainsKey("resource_tier"))
+            {
+                result.AddError(
+                    $"Resource at index {resourceIndex} missing required field: 'resource_tier'"
+                );
+            }
+            
+            // resource_type is now inferred from file name, but we check if it's present
+            // (it shouldn't be in the new category-based format)
+            if (resource.Children.ContainsKey("resource_type"))
+            {
+                result.AddWarning(
+                    $"Resource at index {resourceIndex} contains 'resource_type' field. " +
+                    "In category-based format, resource type should be inferred from file name."
+                );
             }
 
             resourceIndex++;
@@ -504,17 +615,32 @@ public static class YamlValidator
                 }
             }
 
+            // Validate building_limit if present
+            if (building.Children.ContainsKey("building_limit"))
+            {
+                var buildingLimit = building.Children["building_limit"];
+                if (!IsIntegerNode(buildingLimit))
+                {
+                    result.AddError(
+                        $"Building at index {buildingIndex}: 'building_limit' must be integer"
+                    );
+                }
+            }
+
             // Validate required_resources structure if present
             if (building.Children.ContainsKey("required_resources"))
             {
-                var resources = building.Children["required_resources"] as YamlMappingNode;
-                if (resources == null)
+                var resourcesNode = building.Children["required_resources"];
+
+                // Handle empty/null required_resources (YAML null scalar)
+                if (
+                    resourcesNode is YamlScalarNode scalar
+                    && (scalar.Value == null || scalar.Value == "" || scalar.Value == "~")
+                )
                 {
-                    result.AddError(
-                        $"Building at index {buildingIndex}: 'required_resources' must be a mapping"
-                    );
+                    // Valid: empty required_resources
                 }
-                else
+                else if (resourcesNode is YamlMappingNode resources)
                 {
                     foreach (var resourceEntry in resources.Children)
                     {
@@ -526,6 +652,156 @@ public static class YamlValidator
                             );
                         }
                     }
+                }
+                else
+                {
+                    result.AddError(
+                        $"Building at index {buildingIndex}: 'required_resources' must be a mapping or empty"
+                    );
+                }
+            }
+
+            // Validate production structure if present
+            if (building.Children.ContainsKey("production"))
+            {
+                var productionNode = building.Children["production"];
+
+                if (
+                    productionNode is YamlScalarNode prodScalar
+                    && (
+                        prodScalar.Value == null
+                        || prodScalar.Value == ""
+                        || prodScalar.Value == "~"
+                    )
+                )
+                {
+                    // Valid: empty production
+                }
+                else if (productionNode is YamlMappingNode productionMap)
+                {
+                    if (productionMap.Children.ContainsKey("input_storage_amount"))
+                    {
+                        if (!IsIntegerNode(productionMap.Children["input_storage_amount"]))
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'production.input_storage_amount' must be integer"
+                            );
+                        }
+                    }
+                    if (productionMap.Children.ContainsKey("output_storage_amount"))
+                    {
+                        if (!IsIntegerNode(productionMap.Children["output_storage_amount"]))
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'production.output_storage_amount' must be integer"
+                            );
+                        }
+                    }
+                    if (productionMap.Children.ContainsKey("production_speed"))
+                    {
+                        if (!IsNumericNode(productionMap.Children["production_speed"]))
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'production.production_speed' must be numeric"
+                            );
+                        }
+                    }
+                    if (productionMap.Children.ContainsKey("alternative_recipes"))
+                    {
+                        if (productionMap.Children["alternative_recipes"] is not YamlSequenceNode)
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'production.alternative_recipes' must be a sequence"
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    result.AddError(
+                        $"Building at index {buildingIndex}: 'production' must be a mapping or empty"
+                    );
+                }
+            }
+
+            // Validate visual structure if present
+            if (building.Children.ContainsKey("visual"))
+            {
+                var visualNode = building.Children["visual"];
+
+                if (
+                    visualNode is YamlScalarNode visScalar
+                    && (visScalar.Value == null || visScalar.Value == "" || visScalar.Value == "~")
+                )
+                {
+                    // Valid: empty visual
+                }
+                else if (visualNode is YamlMappingNode visualMap)
+                {
+                    if (visualMap.Children.ContainsKey("scale"))
+                    {
+                        if (!IsNumericNode(visualMap.Children["scale"]))
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'visual.scale' must be numeric"
+                            );
+                        }
+                    }
+                    if (visualMap.Children.ContainsKey("rotation_offset"))
+                    {
+                        if (visualMap.Children["rotation_offset"] is not YamlSequenceNode)
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'visual.rotation_offset' must be a sequence"
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    result.AddError(
+                        $"Building at index {buildingIndex}: 'visual' must be a mapping or empty"
+                    );
+                }
+            }
+
+            // Validate sound structure if present
+            if (building.Children.ContainsKey("sound"))
+            {
+                var soundNode = building.Children["sound"];
+
+                if (
+                    soundNode is YamlScalarNode sndScalar
+                    && (sndScalar.Value == null || sndScalar.Value == "" || sndScalar.Value == "~")
+                )
+                {
+                    // Valid: empty sound
+                }
+                else if (soundNode is YamlMappingNode soundMap)
+                {
+                    var knownSoundKeys = new HashSet<string>
+                    {
+                        "building",
+                        "finished",
+                        "idle",
+                        "fabricating",
+                    };
+                    foreach (var entry in soundMap.Children)
+                    {
+                        string key = entry.Key.ToString();
+                        if (!knownSoundKeys.Contains(key))
+                        {
+                            result.AddWarning(
+                                $"Building at index {buildingIndex}: Unknown sound key '{key}'"
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    result.AddError(
+                        $"Building at index {buildingIndex}: 'sound' must be a mapping or empty"
+                    );
                 }
             }
 
@@ -664,6 +940,162 @@ public static class YamlValidator
         }
     }
 
+    public static ValidationResult ValidateAUProbability(string filePath)
+    {
+        var result = new ValidationResult { FilePath = filePath };
+
+        if (!Godot.FileAccess.FileExists(filePath))
+        {
+            result.AddError("File does not exist");
+            return result;
+        }
+
+        try
+        {
+            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
+            string text = f.GetAsText();
+
+            var parseResult = ValidateYamlSyntax(text);
+            if (!parseResult.IsValid)
+            {
+                result.Errors.AddRange(parseResult.Errors);
+                return result;
+            }
+
+            var yaml = new YamlStream();
+            yaml.Load(new StringReader(text));
+            var root = (YamlMappingNode)yaml.Documents[0].RootNode;
+
+            ValidateAUProbabilityStructure(root, result);
+        }
+        catch (Exception e)
+        {
+            result.AddError($"Validation exception: {e.Message}");
+        }
+
+        return result;
+    }
+
+    private static void ValidateAUProbabilityStructure(
+        YamlMappingNode root,
+        ValidationResult result
+    )
+    {
+        // Validate required fields
+        var requiredFields = new[] { "schema_version", "body_type" };
+        foreach (var field in requiredFields)
+        {
+            if (!root.Children.ContainsKey(field))
+            {
+                result.AddError($"Missing required field: {field}");
+            }
+        }
+
+        // Validate au_ranges if present (not required for satellite configs with parent_body_influence)
+        bool hasAURanges = root.Children.ContainsKey("au_ranges");
+        bool hasParentInfluence = root.Children.ContainsKey("parent_body_influence");
+
+        if (!hasAURanges && !hasParentInfluence)
+        {
+            result.AddError("Must have either 'au_ranges' or 'parent_body_influence'");
+            return;
+        }
+
+        if (hasAURanges)
+        {
+            var auRanges = root.Children[new YamlScalarNode("au_ranges")] as YamlSequenceNode;
+            if (auRanges != null)
+            {
+                ValidateAURanges(auRanges, result);
+            }
+        }
+    }
+
+    private static void ValidateAURanges(YamlSequenceNode ranges, ValidationResult result)
+    {
+        float lastMax = 0;
+
+        for (int i = 0; i < ranges.Children.Count; i++)
+        {
+            var range = ranges.Children[i] as YamlMappingNode;
+            if (range == null)
+            {
+                result.AddError($"Range {i} is not a mapping node");
+                continue;
+            }
+
+            // Validate range bounds
+            if (range.Children.ContainsKey("range"))
+            {
+                var rangeBounds = range.Children[new YamlScalarNode("range")] as YamlMappingNode;
+                if (rangeBounds != null)
+                {
+                    float minAu = GetFloatFromYaml(rangeBounds, "min_au", result, $"range[{i}].min_au");
+                    float maxAu = GetFloatFromYaml(rangeBounds, "max_au", result, $"range[{i}].max_au");
+
+                    if (minAu >= maxAu)
+                    {
+                        result.AddError($"Range {i}: min_au ({minAu}) must be less than max_au ({maxAu})");
+                    }
+
+                    if (i > 0 && minAu < lastMax)
+                    {
+                        result.AddWarning($"Range {i}: min_au ({minAu}) overlaps with previous range max ({lastMax})");
+                    }
+
+                    lastMax = maxAu;
+                }
+            }
+
+            // Validate subtype distribution weights sum to ~1.0
+            if (range.Children.ContainsKey("subtype_distribution"))
+            {
+                var distribution = range.Children[new YamlScalarNode("subtype_distribution")] as YamlSequenceNode;
+                if (distribution != null)
+                {
+                    float totalWeight = 0;
+                    foreach (var item in distribution)
+                    {
+                        var distEntry = item as YamlMappingNode;
+                        if (distEntry != null && distEntry.Children.ContainsKey("weight"))
+                        {
+                            totalWeight += GetFloatFromYaml(distEntry, "weight", result, "weight");
+                        }
+                    }
+
+                    if (Math.Abs(totalWeight - 1.0f) > 0.01f)
+                    {
+                        result.AddWarning($"Range {i}: subtype weights sum to {totalWeight}, expected ~1.0");
+                    }
+                }
+            }
+        }
+    }
+
+    private static float GetFloatFromYaml(
+        YamlMappingNode node,
+        string key,
+        ValidationResult result,
+        string context
+    )
+    {
+        if (!node.Children.ContainsKey(key))
+        {
+            result.AddError($"Missing value for: {context}");
+            return 0f;
+        }
+
+        try
+        {
+            return Convert.ToSingle(node.Children[new YamlScalarNode(key)].ToString());
+        }
+        catch
+        {
+            result.AddError($"Invalid float value for {context}: {node.Children[new YamlScalarNode(key)]}");
+            return 0f;
+        }
+    }
+
     public static List<ValidationResult> ValidateAllConfigurations()
     {
         var results = new List<ValidationResult>();
@@ -718,6 +1150,20 @@ public static class YamlValidator
             }
         }
 
+        // Validate AU probability configurations
+        var auProbabilityPath = "res://Configuration/AUProbability/";
+        if (DirAccess.DirExistsAbsolute(auProbabilityPath))
+        {
+            var auFiles = DirAccess.GetFilesAt(auProbabilityPath);
+            foreach (var file in auFiles)
+            {
+                if (file.EndsWith(".yaml"))
+                {
+                    results.Add(ValidateAUProbability(auProbabilityPath + file));
+                }
+            }
+        }
+
         return results;
     }
 
@@ -746,6 +1192,96 @@ public static class YamlValidator
         }
 
         return files;
+    }
+
+    public static ValidationResult ValidateRecipeDefinition(string filePath)
+    {
+        var result = new ValidationResult { FilePath = filePath };
+
+        if (!Godot.FileAccess.FileExists(filePath))
+        {
+            result.AddError("File does not exist");
+            return result;
+        }
+
+        try
+        {
+            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
+            string text = f.GetAsText();
+
+            var parseResult = ValidateYamlSyntax(text);
+            if (!parseResult.IsValid)
+            {
+                result.Errors.AddRange(parseResult.Errors);
+                return result;
+            }
+
+            var yaml = new YamlStream();
+            yaml.Load(new StringReader(text));
+            var root = (YamlMappingNode)yaml.Documents[0].RootNode;
+
+            ValidateRecipeDefinitionStructure(root, result);
+        }
+        catch (Exception e)
+        {
+            result.AddError($"Validation exception: {e.Message}");
+        }
+
+        return result;
+    }
+
+    private static void ValidateRecipeDefinitionStructure(
+        YamlMappingNode root,
+        ValidationResult result)
+    {
+        if (!root.Children.ContainsKey("recipes"))
+        {
+            result.AddError("Missing required key: 'recipes'");
+            return;
+        }
+
+        var recipes = root.Children["recipes"] as YamlSequenceNode;
+        if (recipes == null)
+        {
+            result.AddError("'recipes' must be a sequence");
+            return;
+        }
+
+        int recipeIndex = 0;
+        foreach (var recipeNode in recipes.Children)
+        {
+            var recipe = recipeNode as YamlMappingNode;
+            if (recipe == null)
+            {
+                result.AddError($"Recipe at index {recipeIndex} must be a mapping");
+                recipeIndex++;
+                continue;
+            }
+
+            var requiredFields = new[] { "recipe_id", "work_required", "output_resources" };
+            foreach (var field in requiredFields)
+            {
+                if (!recipe.Children.ContainsKey(field))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex} missing required field: '{field}'"
+                    );
+                }
+            }
+
+            if (recipe.Children.ContainsKey("work_required"))
+            {
+                var workReq = recipe.Children["work_required"];
+                if (!IsNumericNode(workReq))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: 'work_required' must be numeric"
+                    );
+                }
+            }
+
+            recipeIndex++;
+        }
     }
 }
 

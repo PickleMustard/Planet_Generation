@@ -1,0 +1,166 @@
+[gd_scene format=3 uid="uid://dgkax1o3g4v1b"]
+
+[ext_resource type="Script" uid="uid://bwb1wdetdamuu" path="res://Scripts/UI/Loading/LoadingScreen.cs" id="1_5jf9l"]
+[ext_resource type="PackedScene" uid="uid://dgkax1o3g4v1a" path="res://UI/Loading/LoadingBodyItem.tscn" id="2_8m2n4"]
+[ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/ProceduralGeneration/SystemGenerator.cs" id="3_m6rkq"]
+
+[node name="LoadingScreen" type="Control" unique_id=1304215343 node_paths=PackedStringArray("_loadingLabel", "_progressBar", "_progressText", "_templateLabel", "_totalBodiesLabel", "_timeElapsedLabel", "_bodiesHeaderLabel", "_bodyListContainer")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_5jf9l")
+_loadingLabel = NodePath("CenterContainer/VBoxContainer/LoadingLabel")
+_progressBar = NodePath("CenterContainer/VBoxContainer/ProgressBar")
+_progressText = NodePath("CenterContainer/VBoxContainer/ProgressText")
+_templateLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TemplateContainer/TemplateValue")
+_totalBodiesLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TotalBodiesContainer/TotalBodiesValue")
+_timeElapsedLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TimeElapsedContainer/TimeElapsedValue")
+_bodiesHeaderLabel = NodePath("FoldableContainer/RightPanel/HeaderContainer/BodiesHeader")
+_bodyListContainer = NodePath("FoldableContainer/RightPanel/ScrollContainer/BodyListContainer")
+_bodyItemScene = ExtResource("2_8m2n4")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1304215344]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.05, 0.1, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1304215345]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = 50.0
+offset_right = -330.0
+offset_bottom = -50.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer" unique_id=1304215346]
+layout_mode = 2
+alignment = 1
+
+[node name="LoadingLabel" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1304215347]
+layout_mode = 2
+text = "LOADING"
+horizontal_alignment = 1
+
+[node name="ProgressBar" type="ProgressBar" parent="CenterContainer/VBoxContainer" unique_id=1304215348]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ProgressText" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1304215349]
+layout_mode = 2
+text = "0%"
+horizontal_alignment = 1
+
+[node name="HSplitContainer" type="HSplitContainer" parent="CenterContainer/VBoxContainer" unique_id=1304215350]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(400)
+split_offset = 400
+
+[node name="LeftPanel" type="VBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer" unique_id=1304215351]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailsContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel" unique_id=1304215352]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DetailsLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215353]
+layout_mode = 2
+text = "Loading Details"
+horizontal_alignment = 1
+
+[node name="TemplateContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215354]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TemplateLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TemplateContainer" unique_id=1304215355]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Template:"
+
+[node name="TemplateValue" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TemplateContainer" unique_id=1304215356]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "None"
+
+[node name="TotalBodiesContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215357]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TotalBodiesLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TotalBodiesContainer" unique_id=1304215358]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Total Bodies:"
+
+[node name="TotalBodiesValue" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TotalBodiesContainer" unique_id=1304215359]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0"
+
+[node name="TimeElapsedContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215360]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TimeElapsedLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TimeElapsedContainer" unique_id=1304215361]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Time Elapsed:"
+
+[node name="TimeElapsedValue" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TimeElapsedContainer" unique_id=1304215362]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0.0s"
+
+[node name="FoldableContainer" type="FoldableContainer" parent="." unique_id=2097202566]
+visibility_layer = 2
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -196.0
+grow_horizontal = 0
+grow_vertical = 2
+title = "Bodies List"
+
+[node name="RightPanel" type="VBoxContainer" parent="FoldableContainer" unique_id=1304215363]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HeaderContainer" type="HBoxContainer" parent="FoldableContainer/RightPanel" unique_id=1304215364]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BodiesHeader" type="Label" parent="FoldableContainer/RightPanel/HeaderContainer" unique_id=1304215365]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Orbital Bodies (0/0) 0.0s"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="FoldableContainer/RightPanel" unique_id=1304215366]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BodyListContainer" type="VBoxContainer" parent="FoldableContainer/RightPanel/ScrollContainer" unique_id=1304215367]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="system_generator" type="Node" parent="." unique_id=195861056]
+script = ExtResource("3_m6rkq")

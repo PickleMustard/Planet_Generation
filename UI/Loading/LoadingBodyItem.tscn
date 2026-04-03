@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://dgkax1o3g4v1a"]
+
+[ext_resource type="Script" uid="uid://b1n6wswrymcxo" path="res://Scripts/UI/Loading/LoadingBodyItem.cs" id="1_5jf9k"]
+
+[node name="LoadingBodyItem" type="PanelContainer" unique_id=1304215333 node_paths=PackedStringArray("_icon", "_bodyNameLabel", "_stageLabel", "_timeLabel")]
+script = ExtResource("1_5jf9k")
+_icon = NodePath("MarginContainer/HBoxContainer/IconContainer/Icon")
+_bodyNameLabel = NodePath("MarginContainer/HBoxContainer/BodyInfo/BodyName")
+_stageLabel = NodePath("MarginContainer/HBoxContainer/BodyInfo/Stage")
+_timeLabel = NodePath("MarginContainer/HBoxContainer/TimeLabel")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1304215334]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer" unique_id=1304215335]
+layout_mode = 2
+alignment = 1
+
+[node name="IconContainer" type="CenterContainer" parent="MarginContainer/HBoxContainer" unique_id=1304215336]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="Icon" type="TextureRect" parent="MarginContainer/HBoxContainer/IconContainer" unique_id=1304215337]
+layout_mode = 2
+stretch_mode = 4
+
+[node name="BodyInfo" type="VBoxContainer" parent="MarginContainer/HBoxContainer" unique_id=1304215338]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BodyName" type="Label" parent="MarginContainer/HBoxContainer/BodyInfo" unique_id=1304215339]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Body Name"
+
+[node name="Stage" type="Label" parent="MarginContainer/HBoxContainer/BodyInfo" unique_id=1304215340]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Initializing"
+
+[node name="Spacer" type="Control" parent="MarginContainer/HBoxContainer" unique_id=1304215341]
+layout_mode = 2
+
+[node name="TimeLabel" type="Label" parent="MarginContainer/HBoxContainer" unique_id=1304215342]
+layout_mode = 2
+size_flags_horizontal = 0
+horizontal_alignment = 1

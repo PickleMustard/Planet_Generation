@@ -104,6 +104,8 @@ public partial class StructureDatabase
     public Dictionary<Point, HashSet<VoronoiCell>> PlanetMap =
         new Dictionary<Point, HashSet<VoronoiCell>>();
 
+    public Dictionary<int, VoronoiCell> FaceToCellMap = new Dictionary<int, VoronoiCell>();
+
     // Canonical registries (Phase 0)
     /// <summary>
     /// Canonical registry mapping point indices to Point objects.
@@ -1032,6 +1034,23 @@ public partial class StructureDatabase
             }
             set.Add(cell);
         }
+    }
+
+    public void AddFaceToCellMap(int faceIndex, VoronoiCell cell)
+    {
+        lock (lockObject)
+        {
+            FaceToCellMap.Add(faceIndex, cell);
+        }
+    }
+
+    public VoronoiCell? GetCellFromIndex(int index)
+    {
+        if (FaceToCellMap.TryGetValue(index, out var cell))
+        {
+            return cell;
+        }
+        return null;
     }
 
     // ===== Phase 3–4: Phase reset hook =====

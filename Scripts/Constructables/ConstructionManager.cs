@@ -1,9 +1,14 @@
 using System;
+using System.Collections.Generic;
 using Constructables.ArtificialSatellites;
 using Godot;
 using Godot.Collections;
+using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
+using Structures.GameState;
+using Structures.Resources;
 using UtilityLibrary;
+using UtilityLibrary.NameGeneration;
 
 /* Construction Manager is responsible for managing the communication of construction requests and events
  * between the user and various systems
@@ -42,6 +47,15 @@ public partial class ConstructionManager : Node
     public delegate void ShipConstructionCancelledEventHandler(Dictionary details);
 
     [Signal]
+    public delegate void BuildingConstructionInitializedEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void BuildingConstructionCompletedEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void BuildingConstructionCancelledEventHandler(Dictionary details);
+
+    [Signal]
     public delegate void ConstructionProgressUpdatedEventHandler(
         string entityName,
         float progress,
@@ -57,13 +71,14 @@ public partial class ConstructionManager : Node
     [Export]
     public Array<LogisticsUnit> _shipsUnderConstruction;
 
-    private float _progressSignalTimer;
-    private const float PROGRESS_SIGNAL_INTERVAL = 0.5f;
+    [Export]
+    public Array<BuildingConstruction> _buildingsUnderConstruction;
 
     private ConstructionManager()
     {
         _stationsUnderConstruction = new Array<StationSatellite>();
         _shipsUnderConstruction = new Array<LogisticsUnit>();
+        _buildingsUnderConstruction = new Array<BuildingConstruction>();
         _instance = this;
     }
 
@@ -84,83 +99,89 @@ public partial class ConstructionManager : Node
         ShipConstructionInitialized += OnShipConstructionInitialized;
         ShipConstructionCompleted += OnShipConstructionCompleted;
         ShipConstructionCancelled += OnShipConstructionCancelled;
+        BuildingConstructionInitialized += OnBuildingConstructionInitialized;
+        BuildingConstructionCompleted += OnBuildingConstructionCompleted;
+        BuildingConstructionCancelled += OnBuildingConstructionCancelled;
 
         GD.Print($"[ConstructionManager] Initialized");
     }
 
-    public override void _PhysicsProcess(double delta)
+    /// <summary>
+    /// Called by constructable entities when construction completes.
+    /// Handles finalization, registry removal, and signal emission.
+    /// </summary>
+    public void NotifyConstructionComplete(IConstructable entity)
     {
-        float dt = (float)delta;
-        _progressSignalTimer += dt;
-        bool emitProgress = _progressSignalTimer >= PROGRESS_SIGNAL_INTERVAL;
-        if (emitProgress)
-            _progressSignalTimer = 0f;
-
-        // Tick stations under construction (iterate in reverse for safe removal)
-        for (int i = _stationsUnderConstruction.Count - 1; i >= 0; i--)
+        if (entity is StationSatellite station)
         {
-            var station = _stationsUnderConstruction[i];
-            if (!IsInstanceValid(station))
-            {
-                _stationsUnderConstruction.RemoveAt(i);
-                continue;
-            }
-
-            station.UpdateProgress(dt);
-
-            if (emitProgress)
-            {
-                EmitSignal(
-                    SignalName.ConstructionProgressUpdated,
-                    station.Name.ToString(),
-                    station.GetProgress(),
-                    station.GetStatus()
-                );
-            }
-
-            if (station.GetStatus() == ConstructionStatus.Complete.ToString())
-            {
-                _stationsUnderConstruction.RemoveAt(i);
-                FinalizeStation(station, new Dictionary());
-                EmitSignal(
-                    SignalName.StationConstructionCompleted,
-                    new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
-                );
-            }
+            _stationsUnderConstruction.Remove(station);
+            FinalizeStation(station, new Dictionary());
+            EmitSignal(
+                SignalName.StationConstructionCompleted,
+                new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
+            );
         }
-
-        // Tick ships under construction
-        for (int i = _shipsUnderConstruction.Count - 1; i >= 0; i--)
+        else if (entity is LogisticsUnit ship)
         {
-            var ship = _shipsUnderConstruction[i];
-            if (!IsInstanceValid(ship))
-            {
-                _shipsUnderConstruction.RemoveAt(i);
-                continue;
-            }
-
-            ship.UpdateProgress(dt);
-
-            if (emitProgress)
-            {
-                EmitSignal(
-                    SignalName.ConstructionProgressUpdated,
-                    ship.Name.ToString(),
-                    ship.GetProgress(),
-                    ship.GetStatus()
-                );
-            }
-
-            if (ship.GetStatus() == ConstructionStatus.Complete.ToString())
-            {
-                _shipsUnderConstruction.RemoveAt(i);
-                FinalizeShip(ship, new Dictionary());
-                EmitSignal(
-                    SignalName.ShipConstructionCompleted,
-                    new Dictionary { { "ship", ship }, { "name", ship.Name.ToString() } }
-                );
-            }
+            _shipsUnderConstruction.Remove(ship);
+            FinalizeShip(ship, new Dictionary());
+            EmitSignal(
+                SignalName.ShipConstructionCompleted,
+                new Dictionary { { "ship", ship }, { "name", ship.Name.ToString() } }
+            );
         }
+        else if (entity is BuildingConstruction building)
+        {
+            _buildingsUnderConstruction.Remove(building);
+            FinalizeBuilding(building, new Dictionary());
+            EmitSignal(
+                SignalName.BuildingConstructionCompleted,
+                new Dictionary { { "building", building }, { "name", building.Name.ToString() } }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Called by constructable entities when construction is cancelled.
+    /// Handles cleanup, registry removal, and signal emission.
+    /// </summary>
+    public void NotifyConstructionCancelled(IConstructable entity)
+    {
+        if (entity is StationSatellite station)
+        {
+            _stationsUnderConstruction.Remove(station);
+            CancelStation(station, new Dictionary());
+            EmitSignal(
+                SignalName.StationConstructionCancelled,
+                new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
+            );
+        }
+        else if (entity is LogisticsUnit ship)
+        {
+            _shipsUnderConstruction.Remove(ship);
+            CancelShip(ship, new Dictionary());
+            EmitSignal(
+                SignalName.ShipConstructionCancelled,
+                new Dictionary { { "ship", ship }, { "name", ship.Name.ToString() } }
+            );
+        }
+        else if (entity is BuildingConstruction building)
+        {
+            _buildingsUnderConstruction.Remove(building);
+            CancelBuilding(building, new Dictionary());
+            EmitSignal(
+                SignalName.BuildingConstructionCancelled,
+                new Dictionary { { "building", building }, { "name", building.Name.ToString() } }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Called by constructable entities to emit periodic progress updates.
+    /// </summary>
+    public void NotifyProgressUpdate(string entityName, float progress, string status)
+    {
+        EmitSignal(SignalName.ConstructionProgressUpdated, entityName, progress, status);
     }
 
     public void EmitStationConstruct(StationSatellite inConstruction, Dictionary details)
@@ -197,6 +218,24 @@ public partial class ConstructionManager : Node
     {
         _shipsUnderConstruction!.Remove(completed);
         EmitSignal(SignalName.ShipConstructionCompleted, details);
+    }
+
+    public void EmitBuildingConstruct(BuildingConstruction inConstruction, Dictionary details)
+    {
+        _buildingsUnderConstruction!.Add(inConstruction);
+        EmitSignal(SignalName.BuildingConstructionInitialized, details);
+    }
+
+    public void EmitBuildingCancel(BuildingConstruction cancelled, Dictionary details)
+    {
+        _buildingsUnderConstruction!.Remove(cancelled);
+        EmitSignal(SignalName.BuildingConstructionCancelled, details);
+    }
+
+    public void EmitBuildingComplete(BuildingConstruction completed, Dictionary details)
+    {
+        _buildingsUnderConstruction!.Remove(completed);
+        EmitSignal(SignalName.BuildingConstructionCompleted, details);
     }
 
     //Given a filter, return a list of all stations under construction
@@ -275,7 +314,6 @@ public partial class ConstructionManager : Node
 
         inConstruction.IsActive = false;
         inConstruction.Visible = false;
-        inConstruction.ProcessMode = ProcessModeEnum.Disabled;
 
         if (parentBody.FindChild("SatellitesContainer") is Node3D container)
             container.AddChild(inConstruction);
@@ -404,6 +442,159 @@ public partial class ConstructionManager : Node
         CancelShip(ship, details);
     }
 
+    private void OnBuildingConstructionInitialized(Dictionary details)
+    {
+        var building = details["building"].As<BuildingConstruction>();
+        GameLogger.Info($"[ConstructionManager] Building construction initialized: {building.Name}");
+    }
+
+    private void OnBuildingConstructionCompleted(Dictionary details)
+    {
+        var building = details["building"].As<BuildingConstruction>();
+        FinalizeBuilding(building, details);
+    }
+
+    private void OnBuildingConstructionCancelled(Dictionary details)
+    {
+        var building = details["building"].As<BuildingConstruction>();
+        CancelBuilding(building, details);
+    }
+
+    private void FinalizeBuilding(BuildingConstruction completed, Dictionary details)
+    {
+        completed.Visible = true;
+        completed.ProcessMode = ProcessModeEnum.Inherit;
+        SetChildrenVisible(completed, true);
+
+        // Register with continent economy for production
+        RegisterBuildingWithEconomy(completed);
+
+        GameLogger.Info($"[ConstructionManager] Building construction completed: {completed.Name}");
+    }
+
+    private void RegisterBuildingWithEconomy(BuildingConstruction building)
+    {
+        var parentBody = building.GetParent() as CelestialBody;
+        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
+            return;
+
+        int continentIdx = building.PrimaryCell.ContinentIndex;
+        if (continentIdx < 0)
+            return;
+
+        if (!parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent))
+            return;
+
+        continent.InitializeEconomy();
+
+        // Ensure continent economy is registered as a transfer endpoint
+        TransferManager.Instance?.RegisterContinentEndpoint(continentIdx, continent.Economy!);
+
+        string recipeId = building.Definition?.Production?.DefaultRecipe ?? "";
+        if (!string.IsNullOrEmpty(recipeId))
+        {
+            continent.Economy!.RegisterBuilding(building, recipeId);
+            building.ActiveRecipeId = recipeId;
+        }
+
+        // Notify TransferManager if this is a transfer station
+        if (building.Definition?.TransferStation != null)
+        {
+            TransferManager.Instance?.OnTransferStationBuilt(continentIdx, building);
+        }
+    }
+
+    private void UnregisterBuildingFromEconomy(BuildingConstruction building)
+    {
+        var parentBody = building.GetParent() as CelestialBody;
+        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
+            return;
+
+        int continentIdx = building.PrimaryCell.ContinentIndex;
+        if (continentIdx < 0)
+            return;
+
+        if (parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
+            && continent.Economy != null)
+        {
+            continent.Economy.UnregisterBuilding(building);
+        }
+
+        // Notify TransferManager if this is a transfer station
+        if (building.Definition?.TransferStation != null)
+        {
+            TransferManager.Instance?.OnTransferStationDestroyed(continentIdx, building);
+        }
+    }
+
+    private void CancelBuilding(BuildingConstruction cancelled, Dictionary details)
+    {
+        GameLogger.Info($"[ConstructionManager] Building construction cancelled: {cancelled.Name}");
+
+        // Unregister from economy if it was already registered
+        UnregisterBuildingFromEconomy(cancelled);
+
+        cancelled.CancelConstruction();
+
+        if (cancelled.GetParent() is Node parent)
+            parent.RemoveChild(cancelled);
+
+        cancelled.QueueFree();
+    }
+
+    /// <summary>
+    /// Creates a building on the surface of a celestial body at the specified Voronoi cell.
+    /// When an architectStation is provided, the building is registered with the station's work budget.
+    /// </summary>
+    public BuildingConstruction CreateBuilding(
+        VoronoiCell primaryCell,
+        Node3D parentBody,
+        BuildingDefinition definition,
+        List<VoronoiCell>? additionalCells = null,
+        OrbitalArchitectStation? architectStation = null
+    )
+    {
+        if (primaryCell == null)
+            throw new ArgumentNullException(nameof(primaryCell));
+        if (parentBody == null)
+            throw new ArgumentNullException(nameof(parentBody));
+        if (definition == null)
+            throw new ArgumentNullException(nameof(definition));
+
+        var building = new BuildingConstruction();
+
+        parentBody.AddChild(building);
+
+        building.SetBuildingDefinition(definition);
+        building.SetPlacement(primaryCell, additionalCells, parentBody);
+        building.StartConstruction(new Dictionary());
+        building.Visible = true;
+
+        // Emit signal to notify other systems
+        EmitBuildingConstruct(building, new Dictionary
+        {
+            { "building", building },
+            { "name", building.Name.ToString() }
+        });
+
+        // Register with orbital architect station's work budget if provided
+        if (architectStation != null)
+        {
+            architectStation.RegisterBuildingConstruction(building);
+            GameLogger.Debug(
+                $"Started construction of building '{definition.DisplayName ?? definition.IdName}' on cell {primaryCell.Index} via architect '{architectStation.Name}' ({definition.WorkRequired} work)"
+            );
+        }
+        else
+        {
+            GameLogger.Debug(
+                $"Started construction of building '{definition.DisplayName ?? definition.IdName}' on cell {primaryCell.Index} ({definition.WorkRequired} work)"
+            );
+        }
+
+        return building;
+    }
+
     private static void SetChildrenVisible(Node node, bool visible)
     {
         foreach (var child in node.GetChildren())
@@ -427,6 +618,10 @@ public partial class ConstructionManager : Node
         else if (target is LogisticsUnit unit)
         {
             unit.DeliverResources(resourceId, amount);
+        }
+        else if (target is BuildingConstruction building)
+        {
+            building.DeliverResources(resourceId, amount);
         }
     }
 
@@ -464,10 +659,10 @@ public partial class ConstructionManager : Node
         }
 
         // Generate name if not provided
-        name ??= stationDefinition?.Name ?? $"Station_{Guid.NewGuid().ToString()[..8]}";
+        name ??= stationDefinition?.Name ?? NameGenerator.GenerateStationName();
 
-        // Create station
-        var station = new StationSatellite { Name = name };
+        // Create the appropriate station subclass based on definition
+        var station = CreateStationInstance(name, stationDefinition);
 
         // Add to body's satellites container
         targetBody.SatellitesContainer.AddChild(station);
@@ -487,7 +682,12 @@ public partial class ConstructionManager : Node
             // Make visible but translucent during construction
             station.Visible = true;
 
-            _stationsUnderConstruction.Add(station);
+            // Emit signal to notify other systems
+            EmitStationConstruct(station, new Dictionary
+            {
+                { "station", station },
+                { "name", station.Name.ToString() }
+            });
 
             GameLogger.Debug(
                 $"Started construction of station '{name}' in band {bandIndex} ({stationDefinition.ConstructionTime}s)"
@@ -496,6 +696,63 @@ public partial class ConstructionManager : Node
         else
         {
             GameLogger.Debug($"Created station '{name}' in band {bandIndex} around {targetBody}");
+        }
+
+        return station;
+    }
+
+    /// <summary>
+    /// Creates a station satellite at a specific orbital radius (continuous placement).
+    /// Used for bodies that don't use discrete orbit bands (stars, black holes, neutron stars).
+    /// </summary>
+    public StationSatellite CreateStationAtRadius(
+        IOrbitalBody targetBody,
+        float radius,
+        string? name = null,
+        StationDefinition? stationDefinition = null
+    )
+    {
+        if (targetBody == null)
+        {
+            throw new ArgumentNullException(nameof(targetBody), "Target body cannot be null");
+        }
+
+        if (radius <= targetBody.Radius)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(radius),
+                $"Radius {radius} must be greater than body radius {targetBody.Radius}"
+            );
+        }
+
+        name ??= stationDefinition?.Name ?? NameGenerator.GenerateStationName();
+
+        var station = CreateStationInstance(name, stationDefinition);
+
+        targetBody.SatellitesContainer.AddChild(station);
+
+        station.InitializeOrbitAtRadius(targetBody, radius);
+
+        if (stationDefinition != null)
+        {
+            station.SetStationDefinition(stationDefinition);
+            station.StartConstruction(new Dictionary());
+            station.Visible = true;
+
+            // Emit signal to notify other systems
+            EmitStationConstruct(station, new Dictionary 
+            { 
+                { "station", station }, 
+                { "name", station.Name.ToString() }
+            });
+
+            GameLogger.Debug(
+                $"Started construction of station '{name}' at radius {radius} ({stationDefinition.ConstructionTime}s)"
+            );
+        }
+        else
+        {
+            GameLogger.Debug($"Created station '{name}' at radius {radius} around {targetBody}");
         }
 
         return station;
@@ -537,15 +794,15 @@ public partial class ConstructionManager : Node
         }
 
         // Validate ship construction at station
-        if (shipDefinition != null && parentStation != null && !parentStation.CanBuildShips)
+        if (shipDefinition != null && parentStation != null && parentStation is not ConstructionYardStation)
         {
             throw new InvalidOperationException(
-                $"Station '{parentStation.Name}' cannot build ships (type: {parentStation.StationType})"
+                $"Station '{parentStation.Name}' is not a construction yard (type: {parentStation.StationType})"
             );
         }
 
         // Generate name if not provided
-        name ??= shipDefinition?.Name ?? $"Ship_{Guid.NewGuid().ToString()[..8]}";
+        name ??= shipDefinition?.Name ?? NameGenerator.GenerateShipName();
 
         // Create unit
         var unit = new LogisticsUnit { Name = name };
@@ -575,16 +832,33 @@ public partial class ConstructionManager : Node
         if (shipDefinition != null)
         {
             unit.SetShipDefinition(shipDefinition);
-            unit.StartConstruction(new Dictionary());
 
             // Make visible but inactive during construction
             unit.Visible = true;
 
-            _shipsUnderConstruction.Add(unit);
+            // Emit signal to notify other systems
+            EmitShipConstruct(unit, new Dictionary
+            {
+                { "ship", unit },
+                { "name", unit.Name.ToString() }
+            });
 
-            GameLogger.Debug(
-                $"Started construction of ship '{name}' in band {bandIndex} ({shipDefinition.ConstructionTime}s)"
-            );
+            // If parent station is a construction yard, enqueue via the yard's build queue
+            if (parentStation is ConstructionYardStation yard)
+            {
+                yard.EnqueueShipConstruction(unit);
+                GameLogger.Debug(
+                    $"Enqueued ship '{name}' at construction yard '{yard.Name}' ({shipDefinition.ConstructionTime}s)"
+                );
+            }
+            else
+            {
+                // Fallback: start construction directly (no parent yard)
+                unit.StartConstruction(new Dictionary());
+                GameLogger.Debug(
+                    $"Started construction of ship '{name}' in band {bandIndex} ({shipDefinition.ConstructionTime}s)"
+                );
+            }
         }
         else
         {
@@ -594,5 +868,19 @@ public partial class ConstructionManager : Node
         }
 
         return unit;
+    }
+
+    /// <summary>
+    /// Creates the appropriate station subclass based on the station definition's capabilities.
+    /// </summary>
+    private static StationSatellite CreateStationInstance(string name, StationDefinition? definition)
+    {
+        if (definition?.CanBuildShips == true)
+            return new ConstructionYardStation { Name = name };
+
+        if (definition?.CanBuildBuildings == true)
+            return new OrbitalArchitectStation { Name = name };
+
+        return new StationSatellite { Name = name };
     }
 }

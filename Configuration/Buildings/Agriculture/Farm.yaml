@@ -21,9 +21,11 @@ buildings:
       water: 100
     
     production:
-      extraction_rate: 0.0
-      resources: [food, biomass, oxygen]
-      recipes: [crop_rotation, fertilizer_production, seed_propagation]
+      default_recipe: "crop_rotation"
+      alternative_recipes: ["fertilizer_production", "seed_propagation"]
+      input_storage_amount: 100
+      output_storage_amount: 100
+      production_speed: 1
     
     visual:
       model_path: "res://Models/Buildings/farm.glb"
@@ -53,9 +55,11 @@ buildings:
       water: 200
     
     production:
-      extraction_rate: 0.0
-      resources: [vegetable, fruit, medicinal_plants, oxygen]
-      recipes: [genetic_modification, vertical_farming, aquaponics]
+      default_recipe: "genetic_modification"
+      alternative_recipes: ["vertical_farming", "aquaponics"]
+      input_storage_amount: 150
+      output_storage_amount: 150
+      production_speed: 1
     
     visual:
       model_path: "res://Models/Buildings/greenhouse.glb"

@@ -1,0 +1,49 @@
+schema_version: 1.0
+body_type: Belt
+description: "AU-based probability distribution for Belt subtypes"
+max_considered_au: 100.0
+range_overlap_policy: "use_first"
+
+au_ranges:
+  - range:
+      min_au: 0.0
+      max_au: 3.0
+      exclusive_max: false
+    name: "inner_belt"
+    subtype_distribution:
+      - subtype: AsteroidBelt
+        weight: 0.5
+      - subtype: DebrisDisk
+        weight: 0.3
+      - subtype: DustRing
+        weight: 0.2
+
+  - range:
+      min_au: 3.0
+      max_au: 20.0
+      exclusive_max: false
+    name: "mid_belt"
+    subtype_distribution:
+      - subtype: AsteroidBelt
+        weight: 0.3
+      - subtype: ResonantBelt
+        weight: 0.3
+      - subtype: ShepherdBelt
+        weight: 0.2
+      - subtype: IceBelt
+        weight: 0.2
+
+  - range:
+      min_au: 20.0
+      max_au: 100.0
+      exclusive_max: false
+    name: "outer_belt"
+    subtype_distribution:
+      - subtype: IceBelt
+        weight: 0.5
+      - subtype: DebrisDisk
+        weight: 0.3
+      - subtype: DustRing
+        weight: 0.2
+
+default_subtype: AsteroidBelt

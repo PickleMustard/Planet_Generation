@@ -2,6 +2,7 @@ using System;
 using Godot;
 using Godot.Collections;
 using Structures.Enums;
+using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
 using FileAccess = Godot.FileAccess;
@@ -616,9 +617,8 @@ public partial class PlanetSystemGenerator : Control
         }
 
         _barycenter = barycenter;
-        // Emit signal with all data including barycenter
-        EmitSignal(
-            SignalName.GeneratePressed,
+        // Emit through SignalBus so any scene with a SystemGenerator can receive it
+        SignalBus.Instance?.EmitGenerateSystemRequested(
             dominantBodies,
             satelliteBelts,
             planetaryBodies,

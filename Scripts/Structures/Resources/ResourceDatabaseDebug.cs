@@ -29,10 +29,7 @@ namespace Structures.Resources
                     .AddChild(def.IdName ?? "Unknown")
                     .AddProperty("Resource Type", def.ResourceType ?? "Unknown")
                     .AddProperty("Resource Tier", def.ResourceTier)
-                    .AddProperty("Color", def.DisplayColor.ToString())
-                    .AddProperty("Min Elevation", def.MinElevation)
-                    .AddProperty("Max Elevation", def.MaxElevation)
-                    .AddProperty("Biome Affinities", def.BiomeAffinity.Count);
+                    .AddProperty("Color", def.DisplayColor.ToString());
             }
 
             return node;
@@ -47,7 +44,12 @@ namespace Structures.Resources
             {
                 if (
                     kvp.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase)
-                    || (kvp.Value.ResourceType?.Contains(pattern, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (
+                        kvp.Value.ResourceType?.Contains(
+                            pattern,
+                            StringComparison.OrdinalIgnoreCase
+                        ) ?? false
+                    )
                 )
                 {
                     results.Add($"Definitions/{kvp.Key}");

@@ -69,6 +69,10 @@ namespace UtilityLibrary
         public string StationType { get; set; } = string.Empty;
         public float ConstructionTime { get; set; }
         public bool CanBuildShips { get; set; }
+        public int MaxParallelShipBuilds { get; set; } = 1;
+        public bool CanBuildBuildings { get; set; }
+        public float BuildingWorkBudgetPerTick { get; set; } = 1.0f;
+        public float BuildingScalingPenalty { get; set; } = 0.05f;
         public Dictionary<string, int> RequiredResources { get; set; } = new();
     }
 

@@ -4,6 +4,7 @@ using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
+using UtilityLibrary.NameGeneration;
 
 namespace ProceduralGeneration.PlanetGeneration;
 
@@ -18,6 +19,7 @@ public class SatelliteBeltBody
     public float MassMax { get; private set; }
     public float BeltNumber { get; private set; }
     public SatelliteGroupTypes GroupType { get; private set; }
+    public Godot.Collections.Array<string>? SatelliteNames { get; private set; }
 
     public class Builder
     {
@@ -32,6 +34,7 @@ public class SatelliteBeltBody
         internal int _upperRange;
         internal int _lowerRange;
         internal int _beltNumber;
+        internal Godot.Collections.Array<string>? _satelliteNames;
 
         public Builder WithRingApogee(float ringApogee)
         {
@@ -115,7 +118,22 @@ public class SatelliteBeltBody
             _massMax = (float)bodyDict["mass_max"];
             _upperRange = (int)bodyDict["upper_range"];
             _lowerRange = (int)bodyDict["lower_range"];
-            _beltNumber = GD.RandRange(_lowerRange, _upperRange);
+
+            // Use pre-resolved belt_number from template loader if available
+            if (bodyDict.ContainsKey("belt_number"))
+            {
+                _beltNumber = (int)bodyDict["belt_number"];
+            }
+            else
+            {
+                _beltNumber = GD.RandRange(_lowerRange, _upperRange);
+            }
+
+            // Use pre-generated satellite names if available
+            if (bodyDict.ContainsKey("satellite_names"))
+            {
+                _satelliteNames = (Godot.Collections.Array<string>)bodyDict["satellite_names"];
+            }
 
             GD.Print(
                 $"Built belt consisting of {_ringApogee}, {_ringPerigee}, {_ringVelocity}, {_sizeMin}, {_sizeMax}, {_massMin}, {_massMax}, {_upperRange}, {_lowerRange}, {_beltNumber}"
@@ -143,6 +161,7 @@ public class SatelliteBeltBody
         MassMax = builder._massMax;
         BeltNumber = builder._beltNumber;
         GroupType = builder._beltType;
+        SatelliteNames = builder._satelliteNames;
     }
 
     public Godot.Collections.Array<SatelliteBody> GenerateSatelliteBelt(CelestialBody parent)
@@ -175,7 +194,7 @@ public class SatelliteBeltBody
 
             for (int i = 0; i < BeltNumber; i++)
             {
-                var satellite = CreateSatellite(parent, pHat, baseQHat);
+                var satellite = CreateSatellite(parent, pHat, baseQHat, i);
                 satellites.Add(satellite);
             }
         }
@@ -186,7 +205,7 @@ public class SatelliteBeltBody
         return satellites;
     }
 
-    private SatelliteBody CreateSatellite(CelestialBody parent, Vector3 pHat, Vector3 baseQHat)
+    private SatelliteBody CreateSatellite(CelestialBody parent, Vector3 pHat, Vector3 baseQHat, int index)
     {
         var satelliteType = DetermineSatelliteType(GroupType);
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
@@ -275,6 +294,16 @@ public class SatelliteBeltBody
         // Include possible names so SatelliteBody can pick a unique name
         if (template.ContainsKey("possible_names"))
             bodyDict["possible_names"] = template["possible_names"];
+
+        // Use pre-generated name from template loader if available
+        if (SatelliteNames != null && index < SatelliteNames.Count)
+        {
+            bodyDict["name"] = SatelliteNames[index];
+        }
+        else if (!bodyDict.ContainsKey("name") || string.IsNullOrEmpty((string)bodyDict["name"]))
+        {
+            bodyDict["name"] = NameGenerator.GenerateSatelliteName(satelliteType);
+        }
 
         var mesh = new UnifiedCelestialMesh();
         var satellite = new SatelliteBody.Builder()

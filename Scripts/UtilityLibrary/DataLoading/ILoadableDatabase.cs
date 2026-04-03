@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UtilityLibrary.TaskSystem;
 
 namespace UtilityLibrary.DataLoading
@@ -12,6 +13,11 @@ namespace UtilityLibrary.DataLoading
         /// Gets the unique name of the database.
         /// </summary>
         string DatabaseName { get; }
+
+        /// <summary>
+        /// Gets the DatabaseName values of databases that must be loaded before this one.
+        /// </summary>
+        IReadOnlyList<string> Dependencies => Array.Empty<string>();
 
         /// <summary>
         /// Gets whether the database is currently loaded.

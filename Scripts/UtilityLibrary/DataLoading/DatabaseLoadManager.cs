@@ -160,7 +160,9 @@ namespace UtilityLibrary.DataLoading
         }
 
         /// <summary>
-        /// Initiates loading of all registered databases in batches.
+        /// Initiates loading of all registered databases in dependency-ordered phases.
+        /// Databases within the same phase (no inter-dependencies) load in parallel.
+        /// Phases execute sequentially to respect dependency ordering.
         /// </summary>
         /// <param name="batchId">Optional batch identifier for grouping loads.</param>
         /// <returns>True if loading was initiated, false otherwise.</returns>
@@ -181,19 +183,75 @@ namespace UtilityLibrary.DataLoading
             _currentBatchId = batchId ?? Guid.NewGuid().ToString();
             GD.Print($"DatabaseLoadManager: Starting batch load '{_currentBatchId}' for {_registeredDatabases.Count} databases");
 
-            var databaseGroups = _registeredDatabases.Values
-                .Select((db, index) => new { Database = db, Index = index })
-                .GroupBy(x => x.Index % _maxConcurrentLoads)
-                .ToList();
+            var phases = TopologicalSort(_registeredDatabases.Values.ToList());
 
-            int groupIndex = 0;
-            foreach (var group in databaseGroups)
+            int phaseIndex = 0;
+            foreach (var phase in phases)
             {
-                string groupBatchId = $"{_currentBatchId}_group{groupIndex++}";
-                LoadDatabaseGroup(group.Select(x => x.Database).ToList(), groupBatchId);
+                string phaseBatchId = $"{_currentBatchId}_phase{phaseIndex++}";
+                LoadDatabaseGroup(phase, phaseBatchId);
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Performs a topological sort on databases using Kahn's algorithm.
+        /// Returns ordered phases where each phase contains databases
+        /// whose dependencies are satisfied by all previous phases.
+        /// </summary>
+        private List<List<ILoadableDatabase>> TopologicalSort(List<ILoadableDatabase> databases)
+        {
+            var phases = new List<List<ILoadableDatabase>>();
+            var dbByName = databases.ToDictionary(db => db.DatabaseName);
+            var remaining = new HashSet<string>(dbByName.Keys);
+            var satisfied = new HashSet<string>();
+
+            while (remaining.Count > 0)
+            {
+                var phase = new List<ILoadableDatabase>();
+
+                foreach (var dbName in remaining.ToList())
+                {
+                    var db = dbByName[dbName];
+                    bool allDepsSatisfied = true;
+
+                    foreach (var dep in db.Dependencies)
+                    {
+                        // Dependency on an unregistered database is ignored (may be external)
+                        if (remaining.Contains(dep) && !satisfied.Contains(dep))
+                        {
+                            allDepsSatisfied = false;
+                            break;
+                        }
+                    }
+
+                    if (allDepsSatisfied)
+                    {
+                        phase.Add(db);
+                    }
+                }
+
+                if (phase.Count == 0)
+                {
+                    GD.PrintErr("DatabaseLoadManager: Circular dependency detected, loading remaining databases without ordering");
+                    phase.AddRange(remaining.Select(name => dbByName[name]));
+                    phases.Add(phase);
+                    break;
+                }
+
+                foreach (var db in phase)
+                {
+                    remaining.Remove(db.DatabaseName);
+                    satisfied.Add(db.DatabaseName);
+                }
+
+                phases.Add(phase);
+
+                GD.Print($"DatabaseLoadManager: Phase {phases.Count - 1}: [{string.Join(", ", phase.Select(db => db.DatabaseName))}]");
+            }
+
+            return phases;
         }
 
         /// <summary>

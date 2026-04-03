@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://cqhmnkbcpp6lf"]
+
+[ext_resource type="Script" path="res://Scripts/UI/Generation/CollapsibleHeader.cs" id="1_rhxug"]
+
+[node name="CollapsibleHeader" type="Button" unique_id=743660295 node_paths=PackedStringArray("_expandIcon", "_headerLabel")]
+custom_minimum_size = Vector2(0, 28)
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+script = ExtResource("1_rhxug")
+_expandIcon = NodePath("HeaderHBox/ExpandIcon")
+_headerLabel = NodePath("HeaderHBox/HeaderLabel")
+
+[node name="HeaderHBox" type="HBoxContainer" parent="." unique_id=1716159173]
+layout_mode = 0
+size_flags_horizontal = 3
+
+[node name="ExpandIcon" type="TextureRect" parent="HeaderHBox" unique_id=1838495005]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+stretch_mode = 6
+
+[node name="HeaderLabel" type="Label" parent="HeaderHBox" unique_id=1582331746]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Header"
+vertical_alignment = 1

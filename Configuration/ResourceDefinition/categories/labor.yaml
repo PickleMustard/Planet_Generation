@@ -1,0 +1,24 @@
+resources:
+  - id_name: child
+    resource_tier: 0
+    tags: [human, unskilled, fragile]
+
+  - id_name: adult
+    resource_tier: 0
+    tags: [human, unskilled]
+
+  - id_name: scientist
+    resource_tier: 1
+    tags: [human, skilled, research]
+
+  - id_name: robot
+    resource_tier: 2
+    tags: [robot, unskilled]
+
+  - id_name: drone
+    resource_tier: 1
+    tags: [robot, unskilled, fragile]
+
+  - id_name: android
+    resource_tier: 3
+    tags: [robot, skilled]

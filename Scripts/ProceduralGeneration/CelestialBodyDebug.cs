@@ -76,6 +76,7 @@ public partial class CelestialBody : IDebugDataProvider
     {
         var node = new DebugDataNode(Name.ToString())
             .AddProperty("Type", Type.ToString())
+            .AddProperty("Subtype", Subtype?.ToString() ?? "(none)")
             .AddProperty("Mass", Mass)
             .AddProperty("Velocity", Velocity)
             .AddProperty("Position", GlobalPosition);

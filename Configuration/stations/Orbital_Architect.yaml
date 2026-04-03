@@ -1,0 +1,37 @@
+stations:
+  - name: Small_Orbital_Architect
+    station_type: Orbital_Architect
+    construction_time: 45.0
+    can_build_ships: false
+    can_build_buildings: true
+    building_work_budget_per_tick: 1.0
+    building_scaling_penalty: 0.1
+    required_resources:
+      Steel: 800
+      Electronics: 200
+
+  - name: Large_Orbital_Architect
+    station_type: Orbital_Architect
+    construction_time: 120.0
+    can_build_ships: false
+    can_build_buildings: true
+    building_work_budget_per_tick: 3.0
+    building_scaling_penalty: 0.07
+    required_resources:
+      Steel: 3000
+      Electronics: 800
+      Machinery: 400
+
+  - name: industrial_construction_ring
+    station_type: Orbital_Architect
+    construction_time: 500.0
+    can_build_ships: false
+    can_build_buildings: true
+    building_work_budget_per_tick: 10.0
+    building_scaling_penalty: 0.05
+    required_resources:
+      stradium: 5000
+      microchip: 1000
+      high_tensile_wire: 10000
+      hydrazine: 100
+      motor: 100

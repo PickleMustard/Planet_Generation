@@ -1,0 +1,27 @@
+schema_version: 1.0
+body_type: BlackHole
+description: "Equal probability distribution for BlackHole subtypes"
+max_considered_au: 100.0
+range_overlap_policy: "use_first"
+
+au_ranges:
+  - range:
+      min_au: 0.0
+      max_au: 100.0
+      exclusive_max: false
+    name: "all_distances"
+    subtype_distribution:
+      - subtype: StellarMass
+        weight: 0.25
+      - subtype: Intermediate
+        weight: 0.2
+      - subtype: Supermassive
+        weight: 0.15
+      - subtype: Primordial
+        weight: 0.15
+      - subtype: Rotating
+        weight: 0.15
+      - subtype: Charged
+        weight: 0.1
+
+default_subtype: StellarMass

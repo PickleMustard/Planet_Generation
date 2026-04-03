@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Logistics.Resources;
 using Structures.Resources;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
@@ -38,19 +39,19 @@ namespace UtilityLibrary.DataLoading
         public override void _Ready()
         {
             GameLogger.EnterFunction(nameof(_Ready));
-            
+
             // Get UI references
             GetUIReferences();
-            
+
             // Initialize UI
             InitializeUI();
-            
+
             // Initialize load manager
             InitializeLoadManager();
-            
+
             // Start loading databases
             StartDatabaseLoading();
-            
+
             GameLogger.ExitFunction(nameof(_Ready));
         }
 
@@ -61,15 +62,16 @@ namespace UtilityLibrary.DataLoading
             {
                 float overallProgress = CalculateOverallProgress();
                 _overallProgressBar.Value = overallProgress * 100;
-                
+
                 // Update status label
                 if (_statusLabel != null)
                 {
                     int loadedCount = GetLoadedDatabaseCount();
                     int totalCount = GetTotalDatabaseCount();
-                    _statusLabel.Text = $"Loading databases... {loadedCount}/{totalCount} ({Math.Round(overallProgress * 100)}%)";
+                    _statusLabel.Text =
+                        $"Loading databases... {loadedCount}/{totalCount} ({Math.Round(overallProgress * 100)}%)";
                 }
-                
+
                 // Check if all databases are loaded
                 if (overallProgress >= 1.0f && !_allDatabasesLoaded)
                 {
@@ -84,33 +86,45 @@ namespace UtilityLibrary.DataLoading
         private void GetUIReferences()
         {
             GameLogger.EnterFunction(nameof(GetUIReferences));
-            
+
             // Get UI nodes
             _background = GetNodeOrNull<ColorRect>("Background");
             _loadingUI = GetNodeOrNull<Control>("LoadingUI");
-            
+
             if (_loadingUI != null)
             {
                 _titleLabel = _loadingUI.GetNodeOrNull<Label>("VBoxContainer/TitleLabel");
-                _overallProgressBar = _loadingUI.GetNodeOrNull<ProgressBar>("VBoxContainer/OverallProgressBar");
+                _overallProgressBar = _loadingUI.GetNodeOrNull<ProgressBar>(
+                    "VBoxContainer/OverallProgressBar"
+                );
                 _statusLabel = _loadingUI.GetNodeOrNull<Label>("VBoxContainer/StatusLabel");
-                _databaseProgressContainer = _loadingUI.GetNodeOrNull<VBoxContainer>("VBoxContainer/DatabaseProgressContainer");
+                _databaseProgressContainer = _loadingUI.GetNodeOrNull<VBoxContainer>(
+                    "VBoxContainer/DatabaseProgressContainer"
+                );
                 _errorPanel = _loadingUI.GetNodeOrNull<Panel>("VBoxContainer/ErrorPanel");
-                
+
                 if (_errorPanel != null)
                 {
-                    _errorMessageLabel = _errorPanel.GetNodeOrNull<Label>("VBoxContainer2/ErrorMessageLabel");
-                    _retryButton = _errorPanel.GetNodeOrNull<Button>("VBoxContainer2/HBoxContainer/RetryButton");
-                    _skipButton = _errorPanel.GetNodeOrNull<Button>("VBoxContainer2/HBoxContainer/SkipButton");
+                    _errorMessageLabel = _errorPanel.GetNodeOrNull<Label>(
+                        "VBoxContainer2/ErrorMessageLabel"
+                    );
+                    _retryButton = _errorPanel.GetNodeOrNull<Button>(
+                        "VBoxContainer2/HBoxContainer/RetryButton"
+                    );
+                    _skipButton = _errorPanel.GetNodeOrNull<Button>(
+                        "VBoxContainer2/HBoxContainer/SkipButton"
+                    );
                 }
             }
-            
+
             // Try to load the progress item prefab
             if (_databaseProgressItemPrefab == null)
             {
-                _databaseProgressItemPrefab = ResourceLoader.Load<PackedScene>("res://UI/DataLoading/DatabaseProgressItem.tscn");
+                _databaseProgressItemPrefab = ResourceLoader.Load<PackedScene>(
+                    "res://UI/DataLoading/DatabaseProgressItem.tscn"
+                );
             }
-            
+
             GameLogger.ExitFunction(nameof(GetUIReferences));
         }
 
@@ -120,7 +134,7 @@ namespace UtilityLibrary.DataLoading
         private void InitializeUI()
         {
             GameLogger.EnterFunction(nameof(InitializeUI));
-            
+
             // Set initial UI state
             if (_overallProgressBar != null)
             {
@@ -128,34 +142,34 @@ namespace UtilityLibrary.DataLoading
                 _overallProgressBar.MaxValue = 100;
                 _overallProgressBar.Value = 0;
             }
-            
+
             if (_statusLabel != null)
             {
                 _statusLabel.Text = "Initializing...";
             }
-            
+
             if (_titleLabel != null)
             {
                 _titleLabel.Text = "Loading Game Data";
             }
-            
+
             // Hide error panel initially
             if (_errorPanel != null)
             {
                 _errorPanel.Visible = false;
             }
-            
+
             // Connect button signals
             if (_retryButton != null)
             {
                 _retryButton.Pressed += OnRetryButtonPressed;
             }
-            
+
             if (_skipButton != null)
             {
                 _skipButton.Pressed += OnSkipButtonPressed;
             }
-            
+
             GameLogger.ExitFunction(nameof(InitializeUI));
         }
 
@@ -165,7 +179,7 @@ namespace UtilityLibrary.DataLoading
         private void InitializeLoadManager()
         {
             GameLogger.EnterFunction(nameof(InitializeLoadManager));
-            
+
             // Get or create load manager
             _loadManager = DatabaseLoadManager.Instance;
             if (_loadManager == null)
@@ -178,10 +192,10 @@ namespace UtilityLibrary.DataLoading
             {
                 GameLogger.Info("Using existing DatabaseLoadManager instance");
             }
-            
+
             // Register databases
             RegisterDatabases();
-            
+
             GameLogger.ExitFunction(nameof(InitializeLoadManager));
         }
 
@@ -191,13 +205,13 @@ namespace UtilityLibrary.DataLoading
         private void RegisterDatabases()
         {
             GameLogger.EnterFunction(nameof(RegisterDatabases));
-            
+
             if (_loadManager == null)
             {
                 GameLogger.Error("Load manager not initialized");
                 return;
             }
-            
+
             // Register ResourceDatabase
             var resourceDb = ResourceDatabase.Instance;
             if (resourceDb != null && !_loadManager.IsDatabaseRegistered(resourceDb.DatabaseName))
@@ -211,7 +225,7 @@ namespace UtilityLibrary.DataLoading
                     GameLogger.Warning($"Failed to register database: {resourceDb.DatabaseName}");
                 }
             }
-            
+
             // Register BuildingDatabase
             var buildingDb = BuildingDatabase.Instance;
             if (buildingDb != null && !_loadManager.IsDatabaseRegistered(buildingDb.DatabaseName))
@@ -225,10 +239,66 @@ namespace UtilityLibrary.DataLoading
                     GameLogger.Warning($"Failed to register database: {buildingDb.DatabaseName}");
                 }
             }
-            
-            // Add more databases as needed...
-            
-            GameLogger.ExitFunction(nameof(RegisterDatabases), $"Registered {GetTotalDatabaseCount()} databases");
+
+            // Register ShipDatabase
+            var shipDb = ShipDatabase.Instance;
+            if (shipDb != null && !_loadManager.IsDatabaseRegistered(shipDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(shipDb))
+                {
+                    GameLogger.Info($"Registered database: {shipDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {shipDb.DatabaseName}");
+                }
+            }
+
+            // Register RecipeDatabase
+            var recipeDb = RecipeDatabase.Instance;
+            if (recipeDb != null && !_loadManager.IsDatabaseRegistered(recipeDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(recipeDb))
+                {
+                    GameLogger.Info($"Registered database: {recipeDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {recipeDb.DatabaseName}");
+                }
+            }
+
+            // Register StationDatabase
+            var stationDb = StationDatabase.Instance;
+            if (stationDb != null && !_loadManager.IsDatabaseRegistered(stationDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(stationDb))
+                {
+                    GameLogger.Info($"Registered database: {stationDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {stationDb.DatabaseName}");
+                }
+            }
+
+            var TagConfigDb = ResourceGenerationConfigDatabase.Instance;
+            if (TagConfigDb != null && !_loadManager.IsDatabaseRegistered(TagConfigDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(TagConfigDb))
+                {
+                    GameLogger.Info($"Registered database: {TagConfigDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {TagConfigDb.DatabaseName}");
+                }
+            }
+
+            GameLogger.ExitFunction(
+                nameof(RegisterDatabases),
+                $"Registered {GetTotalDatabaseCount()} databases"
+            );
         }
 
         /// <summary>
@@ -237,25 +307,25 @@ namespace UtilityLibrary.DataLoading
         private void StartDatabaseLoading()
         {
             GameLogger.EnterFunction(nameof(StartDatabaseLoading));
-            
+
             if (_loadManager == null)
             {
                 ShowError("Load manager not initialized");
                 return;
             }
-            
+
             _currentBatchId = Guid.NewGuid().ToString();
             _loadingInProgress = true;
             _allDatabasesLoaded = false;
-            
+
             // Create progress items for each database
             CreateProgressItems();
-            
+
             // Start loading
             if (_loadManager.LoadAllDatabases(_currentBatchId))
             {
                 GameLogger.Info($"Started database loading with batch ID: {_currentBatchId}");
-                
+
                 if (_statusLabel != null)
                 {
                     _statusLabel.Text = "Starting database loading...";
@@ -266,7 +336,7 @@ namespace UtilityLibrary.DataLoading
                 ShowError("Failed to start database loading");
                 GameLogger.Error("Failed to start database loading");
             }
-            
+
             GameLogger.ExitFunction(nameof(StartDatabaseLoading));
         }
 
@@ -276,34 +346,41 @@ namespace UtilityLibrary.DataLoading
         private void CreateProgressItems()
         {
             GameLogger.EnterFunction(nameof(CreateProgressItems));
-            
-            if (_loadManager == null || _databaseProgressContainer == null || _databaseProgressItemPrefab == null)
+
+            if (
+                _loadManager == null
+                || _databaseProgressContainer == null
+                || _databaseProgressItemPrefab == null
+            )
             {
                 GameLogger.Warning("Missing required references for progress items");
                 return;
             }
-            
+
             // Clear existing items
             foreach (var child in _databaseProgressContainer.GetChildren())
             {
                 child.QueueFree();
             }
             _progressItems.Clear();
-            
+
             // Create progress items for each database
             foreach (var dbName in _loadManager.GetRegisteredDatabaseNames())
             {
                 var progressItem = _databaseProgressItemPrefab.Instantiate<Control>();
                 _databaseProgressContainer.AddChild(progressItem);
                 _progressItems[dbName] = progressItem;
-                
+
                 // Initialize progress item
                 InitializeProgressItem(progressItem, dbName);
-                
+
                 GameLogger.Debug($"Created progress item for database: {dbName}");
             }
-            
-            GameLogger.ExitFunction(nameof(CreateProgressItems), $"Created {_progressItems.Count} progress items");
+
+            GameLogger.ExitFunction(
+                nameof(CreateProgressItems),
+                $"Created {_progressItems.Count} progress items"
+            );
         }
 
         /// <summary>
@@ -317,7 +394,7 @@ namespace UtilityLibrary.DataLoading
             {
                 nameLabel.Text = databaseName;
             }
-            
+
             // Initialize progress bar
             var progressBar = progressItem.GetNodeOrNull<ProgressBar>("HBoxContainer/ProgressBar");
             if (progressBar != null)
@@ -326,7 +403,7 @@ namespace UtilityLibrary.DataLoading
                 progressBar.MaxValue = 100;
                 progressBar.Value = 0;
             }
-            
+
             // Initialize status label
             var statusLabel = progressItem.GetNodeOrNull<Label>("HBoxContainer/StatusLabel");
             if (statusLabel != null)
@@ -340,15 +417,20 @@ namespace UtilityLibrary.DataLoading
         /// </summary>
         private void UpdateProgressItem(string databaseName, float progress, string status)
         {
-            if (_progressItems.TryGetValue(databaseName, out var progressItem) && progressItem != null)
+            if (
+                _progressItems.TryGetValue(databaseName, out var progressItem)
+                && progressItem != null
+            )
             {
                 // Update progress bar
-                var progressBar = progressItem.GetNodeOrNull<ProgressBar>("HBoxContainer/ProgressBar");
+                var progressBar = progressItem.GetNodeOrNull<ProgressBar>(
+                    "HBoxContainer/ProgressBar"
+                );
                 if (progressBar != null)
                 {
                     progressBar.Value = progress * 100;
                 }
-                
+
                 // Update status label
                 var statusLabel = progressItem.GetNodeOrNull<Label>("HBoxContainer/StatusLabel");
                 if (statusLabel != null)
@@ -365,16 +447,16 @@ namespace UtilityLibrary.DataLoading
         {
             if (_loadManager == null)
                 return 0f;
-            
+
             float totalProgress = 0f;
             int count = 0;
-            
+
             foreach (var dbName in _loadManager.GetRegisteredDatabaseNames())
             {
                 totalProgress += _loadManager.GetDatabaseProgress(dbName);
                 count++;
             }
-            
+
             return count > 0 ? totalProgress / count : 0f;
         }
 
@@ -385,14 +467,14 @@ namespace UtilityLibrary.DataLoading
         {
             if (_loadManager == null)
                 return 0;
-            
+
             int loadedCount = 0;
             foreach (var dbName in _loadManager.GetRegisteredDatabaseNames())
             {
                 if (_loadManager.GetDatabaseLoaded(dbName))
                     loadedCount++;
             }
-            
+
             return loadedCount;
         }
 
@@ -403,7 +485,7 @@ namespace UtilityLibrary.DataLoading
         {
             if (_loadManager == null)
                 return 0;
-            
+
             return _loadManager.GetRegisteredDatabaseNames().Count();
         }
 
@@ -413,21 +495,21 @@ namespace UtilityLibrary.DataLoading
         private void OnAllDatabasesLoaded()
         {
             GameLogger.EnterFunction(nameof(OnAllDatabasesLoaded));
-            
+
             _allDatabasesLoaded = true;
             _loadingInProgress = false;
-            
+
             // Update status
             if (_statusLabel != null)
             {
                 _statusLabel.Text = "All databases loaded successfully!";
             }
-            
+
             GameLogger.Info("All databases loaded successfully");
-            
+
             // Transition to main menu after a short delay
             CallDeferred(nameof(TransitionToMainMenu));
-            
+
             GameLogger.ExitFunction(nameof(OnAllDatabasesLoaded));
         }
 
@@ -437,12 +519,12 @@ namespace UtilityLibrary.DataLoading
         private void TransitionToMainMenu()
         {
             GameLogger.EnterFunction(nameof(TransitionToMainMenu));
-            
+
             GameLogger.Info("Transitioning to main menu...");
-            
+
             // Add a small delay for visual feedback
             CallDeferred(nameof(PerformSceneTransition));
-            
+
             GameLogger.ExitFunction(nameof(TransitionToMainMenu));
         }
 
@@ -452,7 +534,7 @@ namespace UtilityLibrary.DataLoading
         private void PerformSceneTransition()
         {
             GameLogger.EnterFunction(nameof(PerformSceneTransition));
-            
+
             try
             {
                 // Check if main menu scene exists
@@ -475,7 +557,7 @@ namespace UtilityLibrary.DataLoading
                 // Try fallback
                 CreateFallbackMainMenu();
             }
-            
+
             GameLogger.ExitFunction(nameof(PerformSceneTransition));
         }
 
@@ -485,18 +567,18 @@ namespace UtilityLibrary.DataLoading
         private void CreateFallbackMainMenu()
         {
             GameLogger.EnterFunction(nameof(CreateFallbackMainMenu));
-            
+
             // Create a simple fallback UI
             var fallbackControl = new Control();
             fallbackControl.Name = "FallbackMainMenu";
             fallbackControl.AnchorsPreset = (int)Control.LayoutPreset.FullRect;
-            
+
             var background = new ColorRect();
             background.Name = "Background";
             background.AnchorsPreset = (int)Control.LayoutPreset.FullRect;
             background.Color = new Color(0.05f, 0.05f, 0.1f);
             fallbackControl.AddChild(background);
-            
+
             var titleLabel = new Label();
             titleLabel.Name = "TitleLabel";
             titleLabel.Text = "Game Loaded Successfully!";
@@ -506,7 +588,7 @@ namespace UtilityLibrary.DataLoading
             titleLabel.Position = new Vector2(-200, -50);
             titleLabel.Size = new Vector2(400, 100);
             fallbackControl.AddChild(titleLabel);
-            
+
             var messageLabel = new Label();
             messageLabel.Name = "MessageLabel";
             messageLabel.Text = "All databases loaded successfully.\n\nThe game is ready to play!";
@@ -516,14 +598,14 @@ namespace UtilityLibrary.DataLoading
             messageLabel.Position = new Vector2(-200, 50);
             messageLabel.Size = new Vector2(400, 100);
             fallbackControl.AddChild(messageLabel);
-            
+
             // Replace current scene with fallback
             GetTree().Root.AddChild(fallbackControl);
             GetTree().CurrentScene.QueueFree();
             GetTree().CurrentScene = fallbackControl;
-            
+
             GameLogger.Info("Created fallback main menu");
-            
+
             GameLogger.ExitFunction(nameof(CreateFallbackMainMenu));
         }
 
@@ -533,16 +615,16 @@ namespace UtilityLibrary.DataLoading
         private void ShowError(string message)
         {
             GameLogger.EnterFunction(nameof(ShowError), message);
-            
+
             if (_errorPanel != null && _errorMessageLabel != null)
             {
                 _errorPanel.Visible = true;
                 _errorMessageLabel.Text = message;
                 _loadingInProgress = false;
             }
-            
+
             GameLogger.Error($"Loading error: {message}");
-            
+
             GameLogger.ExitFunction(nameof(ShowError));
         }
 
@@ -552,16 +634,16 @@ namespace UtilityLibrary.DataLoading
         private void OnRetryButtonPressed()
         {
             GameLogger.EnterFunction(nameof(OnRetryButtonPressed));
-            
+
             // Hide error panel
             if (_errorPanel != null)
             {
                 _errorPanel.Visible = false;
             }
-            
+
             // Restart loading
             StartDatabaseLoading();
-            
+
             GameLogger.ExitFunction(nameof(OnRetryButtonPressed));
         }
 
@@ -571,17 +653,17 @@ namespace UtilityLibrary.DataLoading
         private void OnSkipButtonPressed()
         {
             GameLogger.EnterFunction(nameof(OnSkipButtonPressed));
-            
+
             // Hide error panel
             if (_errorPanel != null)
             {
                 _errorPanel.Visible = false;
             }
-            
+
             // Skip to main menu (with potential missing data)
             GameLogger.Warning("Skipping database loading - some features may not work properly");
             TransitionToMainMenu();
-            
+
             GameLogger.ExitFunction(nameof(OnSkipButtonPressed));
         }
 
@@ -595,13 +677,14 @@ namespace UtilityLibrary.DataLoading
             {
                 _retryButton.Pressed -= OnRetryButtonPressed;
             }
-            
+
             if (_skipButton != null)
             {
                 _skipButton.Pressed -= OnSkipButtonPressed;
             }
-            
+
             base._ExitTree();
         }
     }
 }
+

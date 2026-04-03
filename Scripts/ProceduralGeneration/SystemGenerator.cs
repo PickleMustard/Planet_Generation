@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
+using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 
 namespace ProceduralGeneration.PlanetGeneration;
@@ -14,6 +15,9 @@ public partial class SystemGenerator : Node
 
     [Export]
     public Node? SystemContainer;
+
+    [Export]
+    public Node? TargetContainer;
 
     [ExportCategory("Thread Pool Settings")]
     [Export]
@@ -35,16 +39,38 @@ public partial class SystemGenerator : Node
     private Dictionary<String, CelestialBody> _parentBodies = new();
     private NBodyCoordinator? _coordinator;
 
+    /// <summary>
+    /// Gets the effective container to use for adding bodies.
+    /// Uses TargetContainer if set, otherwise falls back to SystemContainer.
+    /// </summary>
+    private Node GetEffectiveContainer()
+    {
+        return TargetContainer ?? SystemContainer!;
+    }
+
     public override void _Ready()
     {
         GD.Print(this.GetPath());
-        var GenerateButton = GetTree().GetFirstNodeInGroup("GenerationMenu");
-        ((UI.PlanetSystemGenerator)GenerateButton).GeneratePressed += GenerateMesh;
+
+        if (SignalBus.Instance != null)
+        {
+            SignalBus.Instance.GenerateSystemRequested += GenerateMesh;
+        }
 
         // ThreadPooler is now an autoload, no manual initialization needed
         GD.Print(
             $"SystemGenerator ready, ThreadPooler available: {UtilityLibrary.TaskSystem.ThreadPooler.Instance != null}"
         );
+    }
+
+    public override void _ExitTree()
+    {
+        if (SignalBus.Instance != null)
+        {
+            SignalBus.Instance.GenerateSystemRequested -= GenerateMesh;
+        }
+
+        base._ExitTree();
     }
 
     private void GenerateMesh(
@@ -62,9 +88,10 @@ public partial class SystemGenerator : Node
         }
 
         // Clear existing bodies
-        if (SystemContainer!.GetChildCount() > 0)
+        var effectiveContainer = GetEffectiveContainer();
+        if (effectiveContainer.GetChildCount() > 0)
         {
-            var children = SystemContainer.GetChildren();
+            var children = effectiveContainer.GetChildren();
             foreach (Node child in children)
             {
                 child.RemoveFromGroup("CelestialBody");
@@ -72,7 +99,7 @@ public partial class SystemGenerator : Node
             }
         }
 
-        SystemContainer!.AddChild(barycenter);
+        effectiveContainer.AddChild(barycenter);
 
         // Reset all tracking state for a fresh generation
         int totalBodies = dominantBodies.Count + satelliteBelts.Count + planetaryBodies.Count;
@@ -107,7 +134,7 @@ public partial class SystemGenerator : Node
 
         // Create the N-body physics coordinator for synchronized integration
         _coordinator = new NBodyCoordinator();
-        SystemContainer.AddChild(_coordinator);
+        GetEffectiveContainer().AddChild(_coordinator);
 
         GD.Print($"System generation started: {totalBodiesToGenerate} bodies queued");
     }
@@ -186,7 +213,7 @@ public partial class SystemGenerator : Node
         );
 
         // Update the body template with calculated position/velocity
-        var template = (Godot.Collections.Dictionary)body["template"];
+        var templateDict = (Godot.Collections.Dictionary)body["template"];
         if (Single.IsNaN(position.X) || Single.IsNaN(position.Y) || Single.IsNaN(position.Z))
         {
             position = Vector3.Zero;
@@ -195,14 +222,44 @@ public partial class SystemGenerator : Node
         {
             velocity = Vector3.Zero;
         }
-        template["position"] = position;
-        template["velocity"] = velocity;
-        body["template"] = template;
+        float mass = (float)templateDict["mass"];
+        String type = (String)body["type"];
+
+        // Calculate AU distance and select subtype
+        float distanceAU = OrbitalDistanceCalculator.CalculateDistanceFromStarAU(body);
+        var bodyType = (CelestialBodyType)
+            Enum.Parse(typeof(CelestialBodyType), (String)body["type"]);
+
+        object? manualSubtype = null;
+        if (body.ContainsKey("subtype"))
+        {
+            manualSubtype = SubtypeParser.Parse(bodyType, (String)body["subtype"]);
+        }
+
+        String name = (String)body["name"];
+
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var auManager = new AUProbabilityManager(rng);
+        object? subtype = auManager.SelectSubtype(bodyType, distanceAU, manualSubtype);
 
         var mesh = new UnifiedCelestialMesh();
-        CelestialBody celBody = CelestialBody.Builder.BuildFromBodyDict(body, mesh);
+        var celBodyBuilder = new CelestialBody.Builder();
+        celBodyBuilder
+            .WithVelocity(velocity)
+            .WithMass(mass)
+            .WithBodyDict(body)
+            .WithMesh(mesh)
+            .WithType(bodyType)
+            .WithSubtype(subtype!)
+            .WithName(name);
+        CelestialBody celBody = celBodyBuilder.Build();
 
-        SystemContainer!.AddChild(celBody);
+        if (subtype != null)
+        {
+            celBody.Subtype = subtype;
+        }
+
+        GetEffectiveContainer().AddChild(celBody);
         celBody.Position = position;
         _parentBodies.Add(celBody.Name, celBody);
         _totalMass += celBody.Mass;
@@ -284,19 +341,34 @@ public partial class SystemGenerator : Node
             GD.PrintErr($"Body {body["name"]} has invalid velocity: {velocity}");
             velocity = Vector3.Zero;
         }
+        var bodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
         String name = (String)body["name"];
+
+        // Select subtype for dominant body (stars, black holes, neutron stars)
+        object? manualSubtype = null;
+        if (body.ContainsKey("subtype"))
+        {
+            manualSubtype = SubtypeParser.Parse(bodyType, (String)body["subtype"]);
+        }
+
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var auManager = new AUProbabilityManager(rng);
+        object? subtype = auManager.SelectSubtype(bodyType, 0f, manualSubtype);
+
         var mesh = new UnifiedCelestialMesh();
         CelestialBody.Builder celBodyBuilder = new CelestialBody.Builder();
-        CelestialBody celBody = celBodyBuilder
+        celBodyBuilder
             .WithVelocity(velocity)
             .WithMass(mass)
             .WithBodyDict(body)
             .WithMesh(mesh)
-            .WithType((CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type))
-            .WithName(name)
-            .Build();
+            .WithType(bodyType)
+            .WithSubtype(subtype!)
+            .WithName(name);
 
-        SystemContainer!.AddChild(celBody);
+        var celBody = celBodyBuilder.Build();
+
+        GetEffectiveContainer().AddChild(celBody);
         celBody.Position = position;
         GD.Print($"CelBody: {celBody.Name}");
         _parentBodies.Add(celBody.Name, celBody);
@@ -345,7 +417,7 @@ public partial class SystemGenerator : Node
             GD.Print(
                 $"System generation complete: {bodiesCompleted}/{totalBodiesToGenerate} bodies generated"
             );
-            CallDeferred("emit_signal", SignalName.SystemGenerationComplete);
+            CallDeferred(nameof(EmitSystemGenerationCompleteViaSignalBus));
         }
     }
 
@@ -361,7 +433,7 @@ public partial class SystemGenerator : Node
         bodiesCompleted++;
         if (bodiesCompleted >= totalBodiesToGenerate)
         {
-            EmitSignal(SignalName.SystemGenerationComplete);
+            CallDeferred(nameof(EmitSystemGenerationCompleteViaSignalBus));
         }
     }
 
@@ -716,6 +788,16 @@ public partial class SystemGenerator : Node
         }
 
         return nearestMass > 0f ? nearestMass : _totalMass;
+    }
+
+    private void EmitSystemGenerationCompleteViaSignalBus()
+    {
+        string batchId = "system_" + GetInstanceId();
+        SignalBus.Instance?.EmitSystemGenerationComplete(
+            batchId,
+            totalBodiesToGenerate,
+            bodiesCompleted
+        );
     }
 
     private class BodyState

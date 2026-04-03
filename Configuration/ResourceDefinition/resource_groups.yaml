@@ -1,0 +1,38 @@
+# Resource Groups — reusable sets of resource IDs
+# Referenced by subtype configs in planetary_resource_config.yaml
+# Group names use camelCase to match CamelCaseNamingConvention
+
+commonOres:
+  - iron_ore
+  - copper_ore
+  - nickel_ore
+
+preciousOres:
+  - gold_ore
+  - platinum_ore
+  - cobalt_ore
+
+radioactiveOres:
+  - uranium_ore
+
+rareOres:
+  - loadstone_ore
+
+frozenVolatiles:
+  - water_ice
+
+basicFuels:
+  - water
+
+habitableFoods:
+  - grain
+  - vegetable
+  - protein
+
+industrialMaterials:
+  - clay
+  - silicon
+
+fusionMaterials:
+  - hydrogen
+  - tritium

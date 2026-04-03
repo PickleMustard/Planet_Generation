@@ -23,6 +23,7 @@ namespace UI.Debug.CellInfo
         private Label? _cellBorderLabel;
         private Label? _cellInteriornessLabel;
         private Label? _cellCenterLabel;
+        private Label? _cellBiomeLabel;
 
         private VBoxContainer? _resourcesSection;
         private VBoxContainer? _resourcesList;
@@ -123,6 +124,7 @@ namespace UI.Debug.CellInfo
             _cellBorderLabel = AddInfoRow(_cellSection, "Is Border", "-");
             _cellInteriornessLabel = AddInfoRow(_cellSection, "Interiorness", "-");
             _cellCenterLabel = AddInfoRow(_cellSection, "Center", "-");
+            _cellBiomeLabel = AddInfoRow(_cellSection, "Biome", "-");
         }
 
         private void BuildResourcesSection()
@@ -222,11 +224,7 @@ namespace UI.Debug.CellInfo
             CellSelectionManager.Instance?.ClearSelection();
         }
 
-        private void OnCellSelected(
-            VoronoiCell cell,
-            Node3D body,
-            Continent continent
-        )
+        private void OnCellSelected(VoronoiCell cell, Node3D body, Continent continent)
         {
             GD.Print("OnCellSelected");
             UpdateCellInfo(cell, body, continent);
@@ -245,11 +243,7 @@ namespace UI.Debug.CellInfo
             _continentSection!.Visible = false;
         }
 
-        private void UpdateCellInfo(
-            VoronoiCell cell,
-            Node3D body,
-            Continent continent
-        )
+        private void UpdateCellInfo(VoronoiCell cell, Node3D body, Continent continent)
         {
             GD.Print("UpdateCellInfo");
             _noSelectionLabel!.Visible = true;
@@ -264,6 +258,7 @@ namespace UI.Debug.CellInfo
             _cellInteriornessLabel!.Text =
                 cell.Interiorness == int.MaxValue ? "Max" : cell.Interiorness.ToString();
             _cellCenterLabel!.Text = cell.Center.ToString("F2");
+            _cellBiomeLabel!.Text = cell.Biome.ToString();
 
             UpdateResourcesList(cell);
 

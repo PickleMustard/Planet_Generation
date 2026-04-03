@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Structures.Enums;
+using FileAccess = Godot.FileAccess;
 
 namespace UtilityLibrary.DataLoading;
 
@@ -158,6 +159,7 @@ public static class PlanetaryTypeLoader
         ArgumentNullException.ThrowIfNull(types);
 
         optionButton.Clear();
+        GD.Print($"Populating option button with {types.Count} types");
         for (int i = 0; i < types.Count; i++)
         {
             optionButton.AddItem(types[i].DisplayName);
@@ -258,6 +260,48 @@ public static class PlanetaryTypeLoader
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Returns the list of subtype entries for a given CelestialBodyType.
+    /// Each entry contains the enum name and a display-friendly version.
+    /// </summary>
+    public static List<TypeEntry> GetSubtypesForBodyType(CelestialBodyType bodyType)
+    {
+        var subtypes = new List<TypeEntry>();
+        Type? enumType = bodyType switch
+        {
+            CelestialBodyType.Star => typeof(StarSubtype),
+            CelestialBodyType.RockyPlanet => typeof(RockyPlanetSubtype),
+            CelestialBodyType.GasGiant => typeof(GasGiantSubtype),
+            CelestialBodyType.IceGiant => typeof(IceGiantSubtype),
+            CelestialBodyType.DwarfPlanet => typeof(DwarfPlanetSubtype),
+            CelestialBodyType.BlackHole => typeof(BlackHoleSubtype),
+            CelestialBodyType.NeutronStar => typeof(NeutronStarSubtype),
+            _ => null,
+        };
+
+        if (enumType == null)
+            return subtypes;
+
+        foreach (var name in Enum.GetNames(enumType))
+        {
+            subtypes.Add(new TypeEntry(name, FormatPascalCase(name)));
+        }
+
+        return subtypes;
+    }
+
+    /// <summary>
+    /// Populates a subtype OptionButton based on the selected body type.
+    /// </summary>
+    public static void PopulateSubtypeOptionButton(
+        OptionButton optionButton,
+        CelestialBodyType bodyType
+    )
+    {
+        var subtypes = GetSubtypesForBodyType(bodyType);
+        PopulateOptionButton(optionButton, subtypes);
     }
 
     /// <summary>

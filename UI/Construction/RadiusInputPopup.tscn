@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://cy5grrspbdy1y"]
+
+[ext_resource type="Script" uid="uid://xk4yut2ditoh" path="res://Scripts/UI/Construction/RadiusInputPopup.cs" id="1_e1kqy"]
+
+[node name="RadiusInputPopup" type="PanelContainer" unique_id=1181896857 node_paths=PackedStringArray("_infoLabel", "_radiusSpinBox", "_confirmButton", "_cancelButton")]
+custom_minimum_size = Vector2(350, 200)
+script = ExtResource("1_e1kqy")
+_infoLabel = NodePath("MainVBox/InfoLabel")
+_radiusSpinBox = NodePath("MainVBox/SpinContainer/RadiusSpinBox")
+_confirmButton = NodePath("MainVBox/ButtonBar/ConfirmButton")
+_cancelButton = NodePath("MainVBox/ButtonBar/CancelButton")
+
+[node name="MainVBox" type="VBoxContainer" parent="." unique_id=781338278]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MainVBox" unique_id=669446365]
+layout_mode = 2
+text = "Set Orbital Radius"
+horizontal_alignment = 1
+
+[node name="InfoLabel" type="Label" parent="MainVBox" unique_id=481814385]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="SpinContainer" type="HBoxContainer" parent="MainVBox" unique_id=1524470320]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 2
+
+[node name="RadiusLabel" type="Label" parent="MainVBox/SpinContainer" unique_id=96470151]
+layout_mode = 2
+text = "Radius:"
+
+[node name="RadiusSpinBox" type="SpinBox" parent="MainVBox/SpinContainer" unique_id=1678053688]
+layout_mode = 2
+
+[node name="ButtonBar" type="HBoxContainer" parent="MainVBox" unique_id=945451953]
+layout_mode = 2
+alignment = 2
+
+[node name="ConfirmButton" type="Button" parent="MainVBox/ButtonBar" unique_id=31711446]
+layout_mode = 2
+text = "Confirm"
+
+[node name="CancelButton" type="Button" parent="MainVBox/ButtonBar" unique_id=2040827549]
+layout_mode = 2
+text = "Cancel"

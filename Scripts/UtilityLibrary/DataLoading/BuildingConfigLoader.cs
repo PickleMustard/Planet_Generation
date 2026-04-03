@@ -4,6 +4,7 @@ using System.Globalization;
 using Godot;
 using Structures.Enums;
 using Structures.Resources;
+using Structures.Transfers;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using SysDict = System.Collections.Generic.Dictionary<string, object>;
@@ -75,12 +76,15 @@ public static class BuildingConfigLoader
             DisplayName = ReadString(dict, "display_name", ""),
             Description = ReadString(dict, "description", ""),
             Category = ReadString(dict, "category", ""),
+            BuildingLimit = ReadInt(dict, "building_limit", -1),
             BuildingTime = ReadFloat(dict, "building_time", 60.0f),
             WorkRequired = ReadFloat(dict, "work_required", 100.0f),
             Placement = ParsePlacementRequirements(dict),
             RequiredResources = ParseRequiredResources(dict),
             Production = ParseProductionDefinition(dict),
             Visual = ParseVisualDefinition(dict),
+            Sound = ParseSoundDefinition(dict),
+            TransferStation = ParseTransferStationDefinition(dict),
         };
 
         return definition;
@@ -164,37 +168,11 @@ public static class BuildingConfigLoader
         if (productionDict == null)
             return production;
 
-        production.ExtractionRate = ReadFloat(productionDict, "extraction_rate", 0.0f);
-
-        if (productionDict.ContainsKey("resources"))
-        {
-            var resourcesList = productionDict["resources"] as List<object>;
-            if (resourcesList != null)
-            {
-                foreach (var resourceObj in resourcesList)
-                {
-                    if (resourceObj is string resourceName)
-                    {
-                        production.Resources.Add(resourceName);
-                    }
-                }
-            }
-        }
-
-        if (productionDict.ContainsKey("recipes"))
-        {
-            var recipesList = productionDict["recipes"] as List<object>;
-            if (recipesList != null)
-            {
-                foreach (var recipeObj in recipesList)
-                {
-                    if (recipeObj is string recipeId)
-                    {
-                        production.Recipes.Add(recipeId);
-                    }
-                }
-            }
-        }
+        production.DefaultRecipe = ReadString(productionDict, "default_recipe", "");
+        production.AlternativeRecipes = ReadStringList(productionDict, "alternative_recipes");
+        production.InputStorageAmount = ReadInt(productionDict, "input_storage_amount", 0);
+        production.OutputStorageAmount = ReadInt(productionDict, "output_storage_amount", 0);
+        production.ProductionSpeed = ReadFloat(productionDict, "production_speed", 1.0f);
 
         return production;
     }
@@ -212,11 +190,85 @@ public static class BuildingConfigLoader
         if (visualDict == null)
             return visual;
 
-        visual.ModelPath = ReadString(visualDict, "model_path", "");
+        visual.ModelPath = ValidateFilePath(
+            ReadString(visualDict, "model_path", ""),
+            "visual.model_path"
+        );
+        visual.ModelMaterial = ValidateFilePath(
+            ReadString(visualDict, "model_material", ""),
+            "visual.model_material"
+        );
+        visual.AnimationPath = ValidateFilePath(
+            ReadString(visualDict, "animation_path", ""),
+            "visual.animation_path"
+        );
         visual.Scale = ReadFloat(visualDict, "scale", 1.0f);
         visual.RotationOffset = ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
 
         return visual;
+    }
+
+    private static BuildingDefinition.SoundDefinition ParseSoundDefinition(
+        Dictionary<object, object> dict
+    )
+    {
+        var sound = new BuildingDefinition.SoundDefinition();
+
+        if (!dict.ContainsKey("sound"))
+            return sound;
+
+        var soundDict = dict["sound"] as Dictionary<object, object>;
+        if (soundDict == null)
+            return sound;
+
+        sound.Building = ValidateFilePath(
+            ReadString(soundDict, "building", ""),
+            "sound.building"
+        );
+        sound.Finished = ValidateFilePath(
+            ReadString(soundDict, "finished", ""),
+            "sound.finished"
+        );
+        sound.Idle = ValidateFilePath(ReadString(soundDict, "idle", ""), "sound.idle");
+        sound.Fabricating = ValidateFilePath(
+            ReadString(soundDict, "fabricating", ""),
+            "sound.fabricating"
+        );
+
+        return sound;
+    }
+
+    private static TransferStationDefinition? ParseTransferStationDefinition(
+        Dictionary<object, object> dict
+    )
+    {
+        if (!dict.ContainsKey("transfer_station"))
+            return null;
+
+        var stationDict = dict["transfer_station"] as Dictionary<object, object>;
+        if (stationDict == null)
+            return null;
+
+        return new TransferStationDefinition
+        {
+            CargoCapacity = ReadFloat(stationDict, "cargo_capacity", 500.0f),
+            VehicleSpeed = ReadFloat(stationDict, "vehicle_speed", 50.0f),
+            MaxConcurrentTransfers = ReadInt(stationDict, "max_concurrent_transfers", 2),
+        };
+    }
+
+    private static string? ValidateFilePath(string? path, string fieldName)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        if (!Godot.FileAccess.FileExists(path))
+        {
+            GD.PrintErr($"File not found for '{fieldName}': {path} — using default");
+            return null;
+        }
+
+        return path;
     }
 
     private static bool TryParseBiomeType(string name, out Biome.BiomeType biomeType)
@@ -269,6 +321,25 @@ public static class BuildingConfigLoader
             return fallback;
 
         return NodeToFloat(dict[key], fallback);
+    }
+
+    private static List<string> ReadStringList(Dictionary<object, object> dict, string key)
+    {
+        var list = new List<string>();
+        if (!dict.ContainsKey(key))
+            return list;
+
+        var items = dict[key] as List<object>;
+        if (items == null)
+            return list;
+
+        foreach (var item in items)
+        {
+            if (item is string s)
+                list.Add(s);
+        }
+
+        return list;
     }
 
     private static bool ReadBool(Dictionary<object, object> dict, string key, bool fallback)

@@ -3,6 +3,7 @@ stations:
     station_type: Shipyard
     construction_time: 60.0
     can_build_ships: true
+    max_parallel_ship_builds: 1
     required_resources:
       Steel: 1000
       Electronics: 300
@@ -12,6 +13,7 @@ stations:
     station_type: Shipyard
     construction_time: 150.0
     can_build_ships: true
+    max_parallel_ship_builds: 3
     required_resources:
       Steel: 5000
       Electronics: 1500

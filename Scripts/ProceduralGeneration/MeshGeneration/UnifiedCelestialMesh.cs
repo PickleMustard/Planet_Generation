@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
 using ProceduralGeneration.MeshGeneration.ResourceGeneration;
 using Structures.Enums;
 using Structures.GameState;
@@ -176,6 +178,28 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// </remarks>
     [Export]
     public bool ProjectToSphere = true;
+
+    /// <summary>
+    /// Whether to use cell-based biome for mesh coloring instead of point-based biome.
+    /// When enabled, the biome of each Voronoi cell is used for coloring the entire cell.
+    /// When disabled, each point retains its individual biome for coloring.
+    /// </summary>
+    /// <remarks>
+    /// Cell-based biome provides more consistent coloring across cells and better reflects
+    /// the dominant biome type for gameplay purposes like resource generation.
+    /// Default is false to maintain backward compatibility with existing point-based system.
+    /// </remarks>
+    [Export]
+    public bool UseCellBiomeForColoring = true;
+
+    /// <summary>
+    /// The body type and subtype used to select biome and color assigners.
+    /// Set by CelestialBody after construction.
+    /// </summary>
+    public CelestialBodyType? BodyType { get; set; }
+    public object? BodySubtype { get; set; }
+    private IBiomeAssigner? _biomeAssigner;
+    private IColorMapper? _colorMapper;
 
     /// <summary>
     /// Random seed for procedural generation. Set to 0 for random seed.
@@ -393,7 +417,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// </summary>
     private float _shAmplitude = 0.3f;
 
-    protected Godot.Collections.Dictionary? _resourceConfig;
     protected Dictionary<string, ResourceDeposit>? _satelliteResources;
 
     /// <summary>
@@ -426,6 +449,42 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         foreach (var mat in _cellHighlightMaterials)
         {
             mat.SetShaderParameter("selected_cell_id", cellId);
+        }
+    }
+
+    /// <summary>
+    /// Sets placement highlight on multiple cells with per-cell validity coloring.
+    /// Overrides normal selection highlighting while active.
+    /// </summary>
+    /// <param name="cellIds">Array of VoronoiCell indices to highlight.</param>
+    /// <param name="valid">Per-cell validity flags (true = green, false = red).</param>
+    public void SetPlacementHighlight(int[] cellIds, bool[] valid)
+    {
+        int count = Mathf.Min(cellIds.Length, 16);
+        float[] ids = new float[16];
+        float[] validity = new float[16];
+        for (int i = 0; i < count; i++)
+        {
+            ids[i] = cellIds[i];
+            validity[i] = valid[i] ? 1.0f : 0.0f;
+        }
+
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("placement_cell_count", count);
+            mat.SetShaderParameter("placement_cell_ids", ids);
+            mat.SetShaderParameter("placement_cell_valid", validity);
+        }
+    }
+
+    /// <summary>
+    /// Clears placement highlighting, returning to normal selection mode.
+    /// </summary>
+    public void ClearPlacementHighlight()
+    {
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("placement_cell_count", 0);
         }
     }
 
@@ -509,8 +568,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             rand.Seed = Seed;
         }
         GD.Print($"Rand Seed: {rand.Seed}\n");
-
-        //SignalBus.Instance?.CallDeferred("EmitStartTimer", TimerName ?? Name.ToString(), 2, 0, new[] { "First Pass", "Second Pass" });
 
         _octree = oct;
 
@@ -1081,8 +1138,22 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 GameLogger.EnterFunction("AssignResources", "");
                 try
                 {
-                    if (_resourceConfig == null)
+                    var resDb = ResourceGenerationConfigDatabase.Instance;
+                    if (
+                        !resDb.IsLoaded
+                        || resDb.PlanetaryResources == null
+                        || resDb.BiomeResources == null
+                    )
+                    {
+                        GD.PrintErr(
+                            "AssignResources: ResourceGenerationConfigDatabase not loaded, skipping"
+                        );
+                        GameLogger.Warning(
+                            "AssignResources: ResourceGenerationConfigDatabase not loaded, skipping"
+                        );
                         return 1;
+                    }
+
                     // Determine which resource pipeline to use based on generation type
                     if (
                         GenerationType == BodyGenerationType.ScalingWithNoise
@@ -1092,34 +1163,38 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     {
                         // Satellite pipeline - store at body level
                         _satelliteResources = SatelliteResourceGenerator.GenerateResources(
-                            _resourceConfig,
+                            resDb.PlanetaryResources,
+                            BodySubtype,
                             rand
                         );
-                        GD.Print(
-                            $"[ResourceDebug] Assigned satellite resources: {_satelliteResources?.Count ?? 0} deposits"
+                        GameLogger.Info(
+                            $"Assigned satellite resources: {_satelliteResources?.Count ?? 0} deposits"
                         );
                         return 0;
                     }
                     else
                     {
-                        // Continental pipeline - requires continents and distributes to cells
-                        if (Continents == null || Continents.Count == 0)
+                        // Cell-level pipeline - generates per VoronoiCell based on biome and tags
+                        if (Continents == null || Continents.Count == 0 || !BodyType.HasValue)
                             return 1;
 
-                        ContinentResourceGenerator.GenerateResources(
+                        CellResourceGenerator.GenerateResources(
                             Continents,
-                            _resourceConfig,
-                            rand,
-                            this
+                            resDb.PlanetaryResources,
+                            resDb.BiomeResources,
+                            BodyType.Value,
+                            BodySubtype,
+                            rand
                         );
-                        GD.Print(
-                            $"[ResourceDebug] Assigned continental resources to {Continents.Count} continents"
+                        GameLogger.Info(
+                            $"Assigned cell resources across {Continents.Count} continents"
                         );
                         return 0;
                     }
                 }
                 catch (Exception e)
                 {
+                    GD.PrintErr($"AssignResources Error: {e.Message}\n{e.StackTrace}");
                     GameLogger.Error($"AssignResources Error: {e.Message}\n{e.StackTrace}");
                     return 1;
                 }
@@ -1154,33 +1229,34 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             }
         );
 
-        builder.AddStep(
-            "CreateCollisions",
-            () =>
-            {
-                GameLogger.EnterFunction("CreateCollisions", "");
-                try
-                {
-                    CreateCollisions(_octree!);
-                    GameLogger.ExitFunction(
-                        "CreateCollisions",
-                        $"Vertices: {StrDb!.VoronoiCellVertices.Count}, Octree points: {_octree!.GetPoints().Count}"
-                    );
-                    return 0;
-                }
-                catch (Exception e)
-                {
-                    GameLogger.Error($"CreateCollisions Error: {e.Message}\n{e.StackTrace}");
-                    GD.PrintErr($"CreateCollisions Error: {e.Message}\n{e.StackTrace}");
-                    return 1;
-                }
-            }
-        );
+        //builder.AddStep(
+        //    "CreateCollisions",
+        //    () =>
+        //    {
+        //        GameLogger.EnterFunction("CreateCollisions", "");
+        //        try
+        //        {
+        //            CreateCollisions(_octree!);
+        //            GameLogger.ExitFunction(
+        //                "CreateCollisions",
+        //                $"Vertices: {StrDb!.VoronoiCellVertices.Count}, Octree points: {_octree!.GetPoints().Count}"
+        //            );
+        //            return 0;
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            GameLogger.Error($"CreateCollisions Error: {e.Message}\n{e.StackTrace}");
+        //            GD.PrintErr($"CreateCollisions Error: {e.Message}\n{e.StackTrace}");
+        //            return 1;
+        //        }
+        //    }
+        //);
     }
 
     private void OnMeshGenerationComplete(Action<UnifiedCelestialMesh> callback)
     {
         GD.Print($"Number of Vertices: {StrDb!.VoronoiVertices.Values.Count}\n");
+        CreateCollisions(_octree!);
         callback?.Invoke(this);
     }
 
@@ -1558,19 +1634,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             );
         }
 
-        if (meshParams.ContainsKey("resources"))
-        {
-            _resourceConfig = meshParams["resources"].AsGodotDictionary();
-            GD.Print(
-                $"[ResourceDebug] UnifiedCelestialMesh.ConfigureFrom: Set _resourceConfig, keys: {string.Join(", ", _resourceConfig.Keys)}"
-            );
-        }
-        else
-        {
-            GD.Print(
-                "[ResourceDebug] UnifiedCelestialMesh.ConfigureFrom: No resources key in meshParams"
-            );
-        }
+        // Resource generation uses group-based configs via ResourceGenerationConfigDatabase
+        // No per-body resource config needed from templates
     }
 
     public Continent GetContinent(int index)
@@ -1581,58 +1646,45 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     // Include all the helper methods from the original classes
     private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
+        // Use subtype-specific biome assigner if body type is set, else fall back to static
+        _biomeAssigner ??= BodyType.HasValue
+            ? BiomeAssignerFactory.GetAssigner(BodyType.Value, BodySubtype)
+            : new DefaultBiomeAssigner();
+
         foreach (var continent in continents)
         {
             Continent c = continent.Value;
-            c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
+            c.averageMoisture = _biomeAssigner.CalculateMoisture(c, rand, 0.5f);
             foreach (var cell in c.cells)
             {
                 foreach (Point p in cell.Points)
                 {
-                    p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
+                    p.Biome = _biomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
                 }
+                cell.CalculateCellBiome();
             }
         }
     }
 
     private void AssignResources(Dictionary<int, Continent> continents)
     {
-        GD.Print(
-            $"[ResourceDebug] AssignResources called: _resourceConfig is null: {_resourceConfig == null}, continents is null: {continents == null}, continent count: {continents?.Count ?? 0}"
-        );
+        if (continents == null || continents.Count == 0 || !BodyType.HasValue)
+            return;
 
-        if (_resourceConfig == null || continents == null || continents.Count == 0)
+        var resDb = ResourceGenerationConfigDatabase.Instance;
+        if (!resDb.IsLoaded || resDb.PlanetaryResources == null || resDb.BiomeResources == null)
         {
-            GD.PrintErr(
-                $"[ResourceDebug] AssignResources early return: _resourceConfig null: {_resourceConfig == null}"
-            );
+            GameLogger.Warning("AssignResources: ResourceGenerationConfigDatabase not loaded");
             return;
         }
 
-        GD.Print($"[ResourceDebug] Calling ContinentResourceGenerator.GenerateResources");
-        ContinentResourceGenerator.GenerateResources(continents, _resourceConfig, rand, this);
-        GD.Print($"[ResourceDebug] Assigned resources to {continents.Count} continents");
-
-        int totalCells = 0;
-        int cellsWithResources = 0;
-        foreach (var kvp in continents)
-        {
-            var c = kvp.Value;
-            if (c.cells != null)
-            {
-                totalCells += c.cells.Count;
-                foreach (var cell in c.cells)
-                {
-                    if (cell.Resources != null && cell.Resources.Count > 0)
-                        cellsWithResources++;
-                }
-            }
-            GD.Print(
-                $"[ResourceDebug] Continent {kvp.Key}: {c.cells?.Count ?? 0} cells, {c.ContinentalResources?.Count ?? 0} continental resources"
-            );
-        }
-        GD.Print(
-            $"[ResourceDebug] Total cells: {totalCells}, cells with resources: {cellsWithResources}"
+        CellResourceGenerator.GenerateResources(
+            continents,
+            resDb.PlanetaryResources,
+            resDb.BiomeResources,
+            BodyType.Value,
+            BodySubtype,
+            rand
         );
     }
 
@@ -1993,31 +2045,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
     private Color GetBiomeColor(Biome.BiomeType biome, float height)
     {
-        switch (biome)
-        {
-            case Biome.BiomeType.Tundra:
-                return new Color(0.85f, 0.85f, 0.8f);
-            case Biome.BiomeType.Icecap:
-                return Colors.White;
-            case Biome.BiomeType.Desert:
-                return new Color(0.9f, 0.8f, 0.5f);
-            case Biome.BiomeType.Grassland:
-                return new Color(0.5f, 0.8f, 0.3f);
-            case Biome.BiomeType.Forest:
-                return new Color(0.2f, 0.6f, 0.2f);
-            case Biome.BiomeType.Rainforest:
-                return new Color(0.1f, 0.4f, 0.1f);
-            case Biome.BiomeType.Taiga:
-                return new Color(0.4f, 0.5f, 0.3f);
-            case Biome.BiomeType.Ocean:
-                return new Color(0.1f, 0.3f, 0.7f);
-            case Biome.BiomeType.Coastal:
-                return new Color(0.8f, 0.7f, 0.4f);
-            case Biome.BiomeType.Mountain:
-                return new Color(0.6f, 0.5f, 0.4f);
-            default:
-                return Colors.Gray;
-        }
+        _colorMapper ??= BodyType.HasValue
+            ? ColorMapperFactory.GetMapper(BodyType.Value, BodySubtype)
+            : new DefaultColorMapper();
+
+        return _colorMapper.GetBiomeColor(biome, height);
     }
 
     public virtual void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, Octree<Point> oct)
@@ -2031,6 +2063,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         // create from any thread since they're not yet in the scene tree.
         var material = CreateSurfaceMaterials();
         st.SetMaterial(material);
+        int faceIndex = 0;
         foreach (VoronoiCell vor in VoronoiList)
         {
             Color biomeColor = Colors.Pink;
@@ -2092,15 +2125,25 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                                 * (size + vor.Points[3 * i + j].Height / 10f);
                         }
                         // Get biome color and apply resource tinting
-                        Color baseBiomeColor = GetBiomeColor(
-                            ((Point)vor.Points[3 * i + j]).Biome,
-                            ((Point)vor.Points[3 * i + j]).Height
-                        );
-                        Color tintedColor = ResourceVisualizer.ApplyResourceTint(
-                            baseBiomeColor,
-                            vor.Resources
-                        );
-                        st.SetColor(tintedColor);
+                        Color baseBiomeColor;
+                        if (UseCellBiomeForColoring)
+                        {
+                            // Use cell-level biome for consistent coloring across the cell
+                            baseBiomeColor = GetBiomeColor(vor.Biome, vor.Height);
+                        }
+                        else
+                        {
+                            // Use point-level biome for per-point coloring
+                            baseBiomeColor = GetBiomeColor(
+                                ((Point)vor.Points[3 * i + j]).Biome,
+                                ((Point)vor.Points[3 * i + j]).Height
+                            );
+                        }
+                        //Color tintedColor = ResourceVisualizer.ApplyResourceTint(
+                        //    baseBiomeColor,
+                        //    vor.Resources
+                        //);
+                        st.SetColor(baseBiomeColor);
                         st.AddVertex(vor.Points[3 * i + j].Position);
                         StrDb!.AddPointForCellPlanet(vor.Points[3 * i + j], vor);
                         oct.Insert(vor.Points[3 * i + j]);
@@ -2116,9 +2159,12 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         );
                     }
                 }
+                StrDb!.AddFaceToCellMap(faceIndex, vor);
+                faceIndex++;
             }
             vor.GenerateBoundingBox();
         }
+        GD.Print($"FaceIndex: {faceIndex}");
         st.CallDeferred("commit", arrMesh!);
     }
 
@@ -2426,6 +2472,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         settings.ConvexHullDownsampling = 16;
         settings.MaxNumVerticesPerConvexHull = 256;
         settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Voxel;
-        this.CallDeferred("create_multiple_convex_collisions", settings);
+        //this.CallDeferred("create_multiple_convex_collisions", settings);
+        this.CallDeferred("create_trimesh_collision");
     }
 }

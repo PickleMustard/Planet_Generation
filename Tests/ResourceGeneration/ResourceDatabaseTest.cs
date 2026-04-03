@@ -50,13 +50,42 @@ public class ResourceDatabaseTest
         AssertThat(ironOre!.IdName).IsEqual("iron_ore");
         AssertThat(ironOre.ResourceType).IsEqual("ore");
         AssertThat(ironOre.DisplayColor).IsNotEqual(Colors.White);
-        AssertThat(ironOre.BiomeAffinity).IsNotNull();
-        AssertThat(ironOre.BiomeAffinity!.Count).IsGreater(0);
-        AssertThat(ironOre.MinElevation).IsGreaterEqual(0f);
-        AssertThat(ironOre.MaxElevation).IsLessEqual(1f);
 
         AssertThat(db.TryGetResource("water", out var water)).IsTrue();
         AssertThat(water!.ResourceType).IsEqual("fuel");
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void GeneratableResources()
+    {
+        var db = ResourceDatabase.Instance;
+        
+        // Database should not be loaded initially
+        AssertThat(db.IsLoaded).IsFalse();
+        
+        // Load the database
+        db.LoadData();
+        AssertThat(db.IsLoaded).IsTrue();
+
+        // Test that some resources are generatable
+        AssertThat(db.IsResourceGeneratable("iron_ore")).IsTrue();
+        AssertThat(db.IsResourceGeneratable("water")).IsTrue();
+        
+        // Test GetGeneratableResources
+        var generatableResources = db.GetGeneratableResources();
+        AssertThat(generatableResources).IsNotNull();
+        AssertThat(generatableResources.Count).IsGreater(0);
+        
+        // All resources in generatableResources should have IsGeneratable = true
+        foreach (var kvp in generatableResources)
+        {
+            AssertThat(kvp.Value.IsGeneratable).IsTrue();
+        }
+        
+        // Test that non-generatable resources exist in GetAllResources but not in GetGeneratableResources
+        var allResources = db.GetAllResources();
+        AssertThat(allResources.Count).IsGreater(generatableResources.Count);
     }
 
     [TestCase]

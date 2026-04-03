@@ -9,7 +9,7 @@ namespace UtilityLibrary
     {
         public enum Mode
         {
-            DEBUG, CRITICAL, ERROR, WARNING, INFO, PROD
+            DEBUG, INFO, WARNING, ERROR, CRITICAL, PROD
         }
         private static readonly string LogDirectory = "logs";
         private static readonly string LogFilePath = Path.Combine(LogDirectory, "debug.log");
@@ -274,13 +274,11 @@ namespace UtilityLibrary
                         File.AppendAllText(LogFilePath, formattedMessage + System.Environment.NewLine);
                     }
 
-                    if (logToConsole)
+                    if (logToConsole && level >= logMode)
                     {
-                        if (level == Mode.DEBUG && logMode <= Mode.DEBUG)
-                            GD.Print(formattedMessage);
-                        else if ((level == Mode.CRITICAL || level == Mode.ERROR || level == Mode.WARNING) && logMode <= Mode.ERROR)
+                        if (level >= Mode.WARNING)
                             GD.PrintErr(formattedMessage);
-                        else if (level == Mode.INFO && logMode <= Mode.INFO)
+                        else
                             GD.Print(formattedMessage);
                     }
                 }

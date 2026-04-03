@@ -1,0 +1,8 @@
+resources:
+  - id_name: sulfuric_acid
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 128
+    tags: [water, mineral, toxic]

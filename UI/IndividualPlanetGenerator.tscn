@@ -1,0 +1,393 @@
+[gd_scene format=3 uid="uid://bjm7ea5tte2el"]
+
+[ext_resource type="Script" uid="uid://yekutbohkq0b" path="res://UI/IndividualPlanetGenerator.cs" id="1_ipg"]
+
+[node name="IndividualPlanetGeneratorUI" type="Control" unique_id=1095119676 node_paths=PackedStringArray("_bodyTypeOption", "_mass", "_size", "_subdivisions", "_subdivisionsContainer", "_num_abberation", "_num_deformation", "_num_continents", "_stress_scale", "_shear_scale", "_max_propagation_distance", "_propagation_falloff", "_inactive_stress_threshold", "_height_factor", "_shear_factor", "_compression_factor", "_transform_factor", "_generateBtn", "_resetBtn", "_detailPanel", "_templatesList")]
+layout_direction = 2
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -1143.88
+offset_bottom = -648.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ipg")
+_bodyTypeOption = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/BodyTypeSection/BodyTypeOption")
+_mass = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection/MassContent/MassSpinBox")
+_size = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection/SizeContent/SizeSpinBox")
+_subdivisions = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/SubdivisionContent/SubdivisionSpinBox")
+_subdivisionsContainer = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/VerticesContent")
+_num_abberation = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/AbberationsContent/AbberationsSpinBox")
+_num_deformation = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/CyclesContent/CyclesSpinBox")
+_num_continents = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ContinentsContent/ContinentsSpinBox")
+_stress_scale = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/StressScaleContent/StressScaleSpinBox")
+_shear_scale = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ShearScaleContent/ShearScaleSpinBox")
+_max_propagation_distance = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/PropogationDistanceContent/PropogationSpinBox")
+_propagation_falloff = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/PropogationFalloffContent/PropogationSpinBox")
+_inactive_stress_threshold = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/InactiveStressContent/StressSpinbox")
+_height_factor = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/HeightFactorContent/HeightFactorSpinBox")
+_shear_factor = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ShearFactorContent/ShearFactorSpinBox")
+_compression_factor = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/CompressionFactorContent/CompressionFactorSpinBox")
+_transform_factor = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/TransformFactorContent/TransformFactorSpinBox")
+_generateBtn = NodePath("MarginContainer/TabContainer/Parameters/GenerationRow/GenerateButton")
+_resetBtn = NodePath("MarginContainer/TabContainer/Parameters/GenerationRow/ResetButton")
+_detailPanel = NodePath("MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/DetailPanelContainer")
+_templatesList = NodePath("MarginContainer/TabContainer/Templates/TemplatesScroll/TemplatesList")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=191114348]
+layout_mode = 0
+offset_right = 422.0
+offset_bottom = 643.0
+
+[node name="TabContainer" type="TabContainer" parent="MarginContainer" unique_id=2063354945]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+current_tab = 0
+
+[node name="Parameters" type="VBoxContainer" parent="MarginContainer/TabContainer" unique_id=1339622909]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+metadata/_tab_index = 0
+
+[node name="GenerationRow" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters" unique_id=1067917704]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GenerateButton" type="Button" parent="MarginContainer/TabContainer/Parameters/GenerationRow" unique_id=1406453624]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Generate"
+
+[node name="ResetButton" type="Button" parent="MarginContainer/TabContainer/Parameters/GenerationRow" unique_id=970334143]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Reset"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/TabContainer/Parameters" unique_id=1285733711]
+layout_mode = 2
+
+[node name="GenerationScroll" type="ScrollContainer" parent="MarginContainer/TabContainer/Parameters" unique_id=1527319900]
+layout_mode = 2
+size_flags_vertical = 3
+draw_focus_border = true
+horizontal_scroll_mode = 0
+
+[node name="ParametersContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll" unique_id=224147827]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="BodyTypeSection" type="VBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=1557451255]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BodyTypeLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/BodyTypeSection" unique_id=1431297018]
+layout_mode = 2
+text = "Body Type"
+
+[node name="BodyTypeOption" type="OptionButton" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/BodyTypeSection" unique_id=310280042]
+layout_mode = 2
+
+[node name="PhysicalSection" type="VBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=2002814946]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PhysicalLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection" unique_id=53166217]
+layout_mode = 2
+text = "Physical Properties"
+
+[node name="MassContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection" unique_id=547670111]
+layout_mode = 2
+
+[node name="MassLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection/MassContent" unique_id=1400717462]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Mass"
+
+[node name="MassSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection/MassContent" unique_id=917963028]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100000000.0
+value = 1000.0
+
+[node name="SizeContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection" unique_id=439626361]
+layout_mode = 2
+
+[node name="SizeLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection/SizeContent" unique_id=896833824]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Size"
+
+[node name="SizeSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection/SizeContent" unique_id=1157089071]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 10000.0
+value = 150.0
+
+[node name="HSeparator2" type="HSeparator" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=494293119]
+layout_mode = 2
+
+[node name="MeshSection" type="VBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=1537292694]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="MeshLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection" unique_id=1534703333]
+layout_mode = 2
+text = "Mesh Properties"
+
+[node name="SubdivisionContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection" unique_id=1590775060]
+layout_mode = 2
+
+[node name="SubdivisionLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/SubdivisionContent" unique_id=789070730]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Subdivisions"
+
+[node name="SubdivisionSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/SubdivisionContent" unique_id=538971245]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 5.0
+value = 2.0
+rounded = true
+
+[node name="VerticesContent" type="VBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection" unique_id=281294253]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="VerticesIndex" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/VerticesContent" unique_id=319321821]
+layout_mode = 2
+
+[node name="VerticesLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/VerticesContent/VerticesIndex" unique_id=1520153153]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "# Vertices on Subdivision $"
+
+[node name="SizeSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/VerticesContent/VerticesIndex" unique_id=1083699304]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 20.0
+value = 2.0
+rounded = true
+
+[node name="AbberationsContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection" unique_id=926185668]
+layout_mode = 2
+
+[node name="AbberationsLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/AbberationsContent" unique_id=802559264]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Number Abberations Per Cycle"
+
+[node name="AbberationsSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/AbberationsContent" unique_id=1163934178]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 50.0
+value = 2.0
+rounded = true
+
+[node name="CyclesContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection" unique_id=1920417597]
+layout_mode = 2
+
+[node name="CyclesLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/CyclesContent" unique_id=1143549135]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Number Abberation Cycles"
+
+[node name="CyclesSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/MeshSection/CyclesContent" unique_id=1998294576]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 20.0
+value = 2.0
+rounded = true
+
+[node name="TectonicsSection" type="VBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=519566272]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PhysicalLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=363902879]
+layout_mode = 2
+text = "Tectonic Properties"
+
+[node name="ContinentsContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=874444989]
+layout_mode = 2
+
+[node name="ContinentsLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ContinentsContent" unique_id=1564843983]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Number Continents"
+
+[node name="ContinentsSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ContinentsContent" unique_id=747676047]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 5.0
+value = 15.0
+rounded = true
+
+[node name="ShearScaleContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=649213619]
+layout_mode = 2
+
+[node name="ShearScaleLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ShearScaleContent" unique_id=1784484093]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Shear Scale"
+
+[node name="ShearScaleSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ShearScaleContent" unique_id=959749400]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+step = 0.1
+value = 1.0
+
+[node name="StressScaleContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=2128379978]
+layout_mode = 2
+
+[node name="StressScaleLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/StressScaleContent" unique_id=354594947]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Stress Scale"
+
+[node name="StressScaleSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/StressScaleContent" unique_id=592732965]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+step = 0.1
+value = 1.0
+
+[node name="PropogationDistanceContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=198139969]
+layout_mode = 2
+
+[node name="PropogationLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/PropogationDistanceContent" unique_id=906175589]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Propogation Distance"
+
+[node name="PropogationSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/PropogationDistanceContent" unique_id=835318655]
+layout_mode = 2
+size_flags_horizontal = 3
+step = 0.01
+value = 0.01
+
+[node name="PropogationFalloffContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=1713877121]
+layout_mode = 2
+
+[node name="PropogationLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/PropogationFalloffContent" unique_id=32559407]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Propogation Falloff"
+
+[node name="PropogationSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/PropogationFalloffContent" unique_id=842155070]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.1
+
+[node name="InactiveStressContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=1685701943]
+layout_mode = 2
+
+[node name="StressLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/InactiveStressContent" unique_id=1749949384]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Inactive Stress Threshold"
+
+[node name="StressSpinbox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/InactiveStressContent" unique_id=305645802]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.1
+
+[node name="HeightFactorContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=2069099546]
+layout_mode = 2
+
+[node name="HeightFactorLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/HeightFactorContent" unique_id=1637237106]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Height Factor"
+
+[node name="HeightFactorSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/HeightFactorContent" unique_id=1513981410]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+step = 0.1
+value = 1.0
+
+[node name="ShearFactorContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=1753712675]
+layout_mode = 2
+
+[node name="ShearFactorLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ShearFactorContent" unique_id=1900292290]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Shear Factor"
+
+[node name="ShearFactorSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ShearFactorContent" unique_id=905294827]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+step = 0.1
+value = 1.0
+
+[node name="CompressionFactorContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=545553352]
+layout_mode = 2
+
+[node name="CompressionFactorLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/CompressionFactorContent" unique_id=54066989]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Compression Factor"
+
+[node name="CompressionFactorSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/CompressionFactorContent" unique_id=1064148564]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+step = 0.1
+value = 1.0
+
+[node name="TransformFactorContent" type="HBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=10864859]
+layout_mode = 2
+
+[node name="TransformFactorLabel" type="Label" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/TransformFactorContent" unique_id=1644226380]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Transform Factor"
+
+[node name="TransformFactorSpinBox" type="SpinBox" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/TransformFactorContent" unique_id=1909314034]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+step = 0.1
+value = 1.0
+
+[node name="HSeparator3" type="HSeparator" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=960857283]
+layout_mode = 2
+
+[node name="DetailPanelContainer" type="VBoxContainer" parent="MarginContainer/TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=2023799112]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Templates" type="VBoxContainer" parent="MarginContainer/TabContainer" unique_id=1008291006]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+metadata/_tab_index = 1
+
+[node name="TemplatesLabel" type="Label" parent="MarginContainer/TabContainer/Templates" unique_id=1011913008]
+layout_mode = 2
+text = "Body Type Presets"
+
+[node name="TemplatesScroll" type="ScrollContainer" parent="MarginContainer/TabContainer/Templates" unique_id=632432437]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="TemplatesList" type="VBoxContainer" parent="MarginContainer/TabContainer/Templates/TemplatesScroll" unique_id=1926993766]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4

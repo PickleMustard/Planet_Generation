@@ -1,0 +1,101 @@
+resources:
+  - id_name: iron
+    resource_tier: 0
+    display_color:
+      - 112
+      - 128
+      - 144
+
+  - id_name: copper
+    resource_tier: 0
+    display_color:
+      - 255
+      - 140
+      - 0
+
+  - id_name: gold
+    resource_tier: 0
+    display_color:
+      - 255
+      - 223
+      - 0
+    tags: [metal, valuables, conductive]
+
+  - id_name: nickel
+    resource_tier: 0
+    display_color:
+      - 255
+      - 192
+      - 203
+    tags: [metal, valuables, conductive]
+
+  - id_name: clay
+    resource_tier: 0
+    display_color:
+      - 127
+      - 52
+      - 0
+    tags: [water, earth, mineral]
+
+  - id_name: silicon
+    resource_tier: 0
+    display_color:
+      - 255
+      - 255
+      - 255
+
+  - id_name: plastic
+    resource_tier: 1
+    display_color:
+      - 255
+      - 215
+      - 0
+    tags: [raw_material, synthetic]
+
+  - id_name: titanium
+    resource_tier: 2
+    display_color:
+      - 255
+      - 0
+      - 255
+    tags: [metal, high_metal]
+
+  - id_name: tungsten
+    resource_tier: 2
+    display_color:
+      - 255
+      - 255
+      - 192
+    tags: [metal, high_metal]
+
+  - id_name: aluminum
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 224
+    tags: [metal, high_metal]
+
+  - id_name: silver
+    resource_tier: 2
+    display_color:
+      - 255
+      - 255
+      - 192
+    tags: [metal, valuables, high_metal]
+
+  - id_name: wood
+    resource_tier: 0
+    display_color:
+      - 255
+      - 255
+      - 160
+    tags: [timber, artisanal]
+
+  - id_name: lead
+    resource_tier: 1
+    display_color:
+      - 255
+      - 255
+      - 128
+    tags: [metal, high_metal, toxic]

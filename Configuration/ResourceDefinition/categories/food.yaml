@@ -1,0 +1,32 @@
+resources:
+  - id_name: grain
+    resource_tier: 0
+    display_color:
+      - 244
+      - 164
+      - 96
+    tags: [temperate, habitable, food]
+
+  - id_name: vegetable
+    resource_tier: 0
+    display_color:
+      - 34
+      - 139
+      - 34
+    tags: [temperate, habitable, lush]
+
+  - id_name: protein
+    resource_tier: 1
+    display_color:
+      - 255
+      - 182
+      - 193
+    tags: [temperate, habitable, food]
+
+  - id_name: mre
+    resource_tier: 3
+    display_color:
+      - 255
+      - 0
+      - 255
+    tags: [edible, military]

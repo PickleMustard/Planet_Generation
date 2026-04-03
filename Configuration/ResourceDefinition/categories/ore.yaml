@@ -1,0 +1,71 @@
+resources:
+  - id_name: iron_ore
+    resource_tier: 0
+    display_color:
+      - 139
+      - 69
+      - 19
+    tags: [ore, metallic]
+  - id_name: copper_ore
+    resource_tier: 0
+    display_color:
+      - 184
+      - 115
+      - 51
+    tags: [ore, metallic, conductive]
+  - id_name: gold_ore
+    resource_tier: 0
+    display_color:
+      - 255
+      - 215
+      - 0
+    tags: [ore, metallic, valuables, conductive]
+  - id_name: water_ice
+    resource_tier: 0
+    display_color:
+      - 173
+      - 216
+      - 230
+    tags: [frozen, water]
+  - id_name: uranium_ore
+    resource_tier: 1
+    display_color:
+      - 0
+      - 255
+      - 0
+    tags: [ore, metallic, radioactive]
+  - id_name: platinum_ore
+    resource_tier: 1
+    display_color:
+      - 229
+      - 228
+      - 226
+    tags: [ore, metallic, valuables, high_metal]
+  - id_name: cobalt_ore
+    resource_tier: 1
+    display_color:
+      - 0
+      - 71
+      - 171
+    tags: [ore, metallic, valuables, high_metal]
+  - id_name: nickel_ore
+    resource_tier: 1
+    display_color:
+      - 121
+      - 150
+      - 92
+    tags: [ore, metallic, high_metal]
+  - id_name: lithium_ore
+    resource_tier: 2
+    display_color:
+      - 27
+      - 200
+      - 15
+    tags: [ore, metallic, radioactive, conductive]
+  - id_name: loadstone_ore
+    resource_tier: 2
+    display_color:
+      - 47
+      - 79
+      - 79
+    tags: [ore, valuabes, supernatural]

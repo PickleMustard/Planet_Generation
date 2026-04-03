@@ -1,0 +1,12 @@
+# Planetary Type Tags Configuration
+# Defines tags for each celestial body subtype to influence resource generation
+# Tags are descriptive keywords that can be used for:
+# - Resource affinity matching (e.g., "arid" planets favor certain resources)
+# - Generation weight adjustments (via base_resource_weight)
+# - Procedural content selection
+
+rocky_planet_subtypes:
+  - subtype: Scoured
+    resource_categories: [rare_earth, valuables, high_metal]
+    base_resource_weight: 0.7
+

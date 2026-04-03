@@ -1,0 +1,67 @@
+buildings:
+  - id_name: mountain_extractor
+    display_name: Mountain Mineral Extractor
+    description: Heavy-duty mining facility built into mountain sides for extracting high-value ores and minerals.
+    category: extraction
+    building_time: 600.0
+    work_required: 120.0
+
+    placement_requirements:
+      biomes: [Mountain, RustedMountain, StoneDesert]
+      min_elevation: 0.6
+      max_elevation: 1.0
+      max_slope: 30.0
+      cell_count: 2
+      requires_adjacent: false
+
+    required_resources:
+      steel: 400
+      tungsten: 100
+      concrete: 300
+      explosives: 50
+      water: 200
+
+    production:
+      default_recipe: "tunnel_boring"
+      alternative_recipes: ["ore_processing", "smelting"]
+      input_storage_amount: 250
+      output_storage_amount: 250
+      production_speed: 3
+
+    visual:
+      model_path: "res://Models/Buildings/mountain_extractor.glb"
+      scale: 1.3
+      rotation_offset: [0, 45, 0]
+
+  - id_name: surface_quarry
+    display_name: Surface Quarry
+    description: Open-pit mining operation for bulk extraction of common minerals and construction materials.
+    category: extraction
+    building_time: 480.0
+    work_required: 800.0
+
+    placement_requirements:
+      biomes: [StoneDesert, RustedPlain, ScouredPlain, Grassland]
+      min_elevation: 0.3
+      max_elevation: 0.7
+      max_slope: 20.0
+      cell_count: 4
+      requires_adjacent: true
+
+    required_resources:
+      iron: 200
+      steel: 100
+      concrete: 400
+      water: 300
+
+    production:
+      default_recipe: "excavation"
+      alternative_recipes: ["crushing", "sorting"]
+      input_storage_amount: 300
+      output_storage_amount: 300
+      production_speed: 4
+
+    visual:
+      model_path: "res://Models/Buildings/surface_quarry.glb"
+      scale: 1.8
+      rotation_offset: [0, 0, 0]

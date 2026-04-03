@@ -4,6 +4,7 @@ using Godot;
 using Godot.Collections;
 using Structures;
 using Structures.Enums;
+using UtilityLibrary.NameGeneration;
 // Alias to disambiguate from Godot.Collections.Dictionary when using generic Dictionary<K,V>
 using SysDict = System.Collections.Generic.Dictionary<string, object>;
 
@@ -133,8 +134,15 @@ public static class TemplateHelpers
     private static Dictionary LoadDominantBody(Dictionary raw)
     {
         var result = new Dictionary();
-        result["type"] = ReadString(raw, "type", "Star");
-        result["name"] = ReadString(raw, "name", "");
+        var typeStr = ReadString(raw, "type", "Star");
+        result["type"] = typeStr;
+        var name = ReadString(raw, "name", "");
+        if (string.IsNullOrEmpty(name))
+        {
+            var bodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), typeStr);
+            name = NameGenerator.GenerateCelestialBodyName(bodyType);
+        }
+        result["name"] = name;
 
         // template: { mass, size, position, velocity }
         var template = new Dictionary();
@@ -178,7 +186,8 @@ public static class TemplateHelpers
     private static Dictionary LoadBeltEntry(Dictionary raw)
     {
         var result = new Dictionary();
-        result["type"] = ReadString(raw, "type", "AsteroidBelt");
+        var typeStr = ReadString(raw, "type", "AsteroidBelt");
+        result["type"] = typeStr;
         result["ring_apogee"] = ReadFloat(raw, "ring_apogee", 0f);
         result["ring_perigee"] = ReadFloat(raw, "ring_perigee", 0f);
         result["ring_velocity"] = ReadVector3(raw, "ring_velocity", Vector3.Zero);
@@ -186,10 +195,32 @@ public static class TemplateHelpers
         result["size_max"] = ReadFloat(raw, "size_max", 5f);
         result["mass_min"] = ReadFloat(raw, "mass_min", 1f);
         result["mass_max"] = ReadFloat(raw, "mass_max", 10f);
-        result["lower_range"] = (int)ReadFloat(raw, "lower_range", 1f);
-        result["upper_range"] = (int)ReadFloat(raw, "upper_range", 4f);
+        int lowerRange = (int)ReadFloat(raw, "lower_range", 1f);
+        int upperRange = (int)ReadFloat(raw, "upper_range", 4f);
+        result["lower_range"] = lowerRange;
+        result["upper_range"] = upperRange;
         result["grouping"] = ReadString(raw, "grouping", "Balanced");
         result["orbital_center_index"] = (int)ReadFloat(raw, "orbital_center_index", -1f);
+
+        // Resolve belt body count and pre-generate satellite names
+        int beltNumber = (int)GD.RandRange(lowerRange, upperRange);
+        result["belt_number"] = beltNumber;
+
+        var groupType = (SatelliteGroupTypes)Enum.Parse(typeof(SatelliteGroupTypes), typeStr);
+        var satType = groupType switch
+        {
+            SatelliteGroupTypes.Comet => SatelliteBodyType.Comet,
+            SatelliteGroupTypes.IceBelt => SatelliteBodyType.Comet,
+            _ => SatelliteBodyType.Asteroid,
+        };
+
+        var satelliteNames = new Godot.Collections.Array<string>();
+        for (int i = 0; i < beltNumber; i++)
+        {
+            satelliteNames.Add(NameGenerator.GenerateSatelliteName(satType));
+        }
+        result["satellite_names"] = satelliteNames;
+
         return result;
     }
 
@@ -199,8 +230,15 @@ public static class TemplateHelpers
     private static Dictionary LoadPlanetaryBody(Dictionary raw)
     {
         var result = new Dictionary();
-        result["type"] = ReadString(raw, "type", "RockyPlanet");
-        result["name"] = ReadString(raw, "name", "");
+        var typeStr = ReadString(raw, "type", "RockyPlanet");
+        result["type"] = typeStr;
+        var name = ReadString(raw, "name", "");
+        if (string.IsNullOrEmpty(name))
+        {
+            var bodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), typeStr);
+            name = NameGenerator.GeneratePlanetaryBodyName(bodyType);
+        }
+        result["name"] = name;
 
         // template: { mass, size }
         var template = new Dictionary();
@@ -270,8 +308,15 @@ public static class TemplateHelpers
     private static Dictionary LoadSatelliteEntry(Dictionary raw)
     {
         var result = new Dictionary();
-        result["type"] = ReadString(raw, "type", "Moon");
-        result["name"] = ReadString(raw, "name", "");
+        var typeStr = ReadString(raw, "type", "Moon");
+        result["type"] = typeStr;
+        var name = ReadString(raw, "name", "");
+        if (string.IsNullOrEmpty(name))
+        {
+            var satType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), typeStr);
+            name = NameGenerator.GenerateSatelliteName(satType);
+        }
+        result["name"] = name;
 
         // template: { apogee, perigee, starting_angle, vertical_offset, mass, size }
         var template = new Dictionary();
@@ -1028,7 +1073,7 @@ public static class TemplateHelpers
         {
             var dict = new SysDict();
             dict["type"] = (string)body["type"];
-            if (body.ContainsKey("name"))
+            if (ShouldSaveName(body))
                 dict["name"] = (string)body["name"];
 
             // template: { mass, size, position, velocity }
@@ -1124,7 +1169,7 @@ public static class TemplateHelpers
         {
             var dict = new SysDict();
             dict["type"] = (string)body["type"];
-            if (body.ContainsKey("name"))
+            if (ShouldSaveName(body))
                 dict["name"] = (string)body["name"];
 
             // template: { mass, size }
@@ -1194,7 +1239,7 @@ public static class TemplateHelpers
     {
         var dict = new SysDict();
         dict["type"] = (string)sat["type"];
-        if (sat.ContainsKey("name"))
+        if (ShouldSaveName(sat))
             dict["name"] = (string)sat["name"];
 
         // template: { apogee, perigee, starting_angle, vertical_offset, mass, size }
@@ -1241,6 +1286,18 @@ public static class TemplateHelpers
             dict["noise_settings"] = ConvertFloatRangeDictToYaml((Dictionary)sat["noise_settings"]);
 
         return dict;
+    }
+
+    private static bool ShouldSaveName(Dictionary body)
+    {
+        if (!body.ContainsKey("name"))
+            return false;
+        var nameStr = (string)body["name"];
+        if (string.IsNullOrEmpty(nameStr))
+            return false;
+        if (body.ContainsKey("name_user_edited"))
+            return (bool)body["name_user_edited"];
+        return true;
     }
 
     private static SysDict ConvertBaseMeshToYaml(Dictionary baseMesh)

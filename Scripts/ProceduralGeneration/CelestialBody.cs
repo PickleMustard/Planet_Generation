@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
@@ -77,12 +79,30 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     }
 
     [Export]
+    public string? BodyType
+    {
+        get => _subtype!.ToString();
+        set => _subtype = Enum.Parse(typeof(CelestialBodyType), value!);
+    }
+
+    [Export]
     public Vector3 TotalForce;
     private Vector3 _savedForce;
     public CelestialBodyType Type;
 
-    // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
-    // public RockyPlanetType? RockyType;
+    private object? _subtype;
+    public object? Subtype
+    {
+        get => _subtype;
+        set => _subtype = value;
+    }
+
+    public T? GetSubtype<T>()
+        where T : struct, Enum => _subtype is T val ? val : null;
+
+    public bool HasSubtype<T>()
+        where T : struct, Enum => _subtype is T;
+
     public UnifiedCelestialMesh? Mesh { get; set; }
     public Octree<Point> Oct;
     private Godot.Collections.Dictionary? bodyDict;
@@ -167,7 +187,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
     public CelestialBody(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
     {
-        GD.Print($"BodyDict: {bodyDict}");
         this.bodyDict = bodyDict;
         var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
         var type = (String)bodyDict["type"];
@@ -204,8 +223,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         this.Velocity = builder._velocity ?? Vector3.Zero;
         this.Mass = builder._mass ?? 0f;
         this.Type = builder._type ?? CelestialBodyType.RockyPlanet;
-        // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
-        // this.RockyType = builder._rockyType;
+        this._subtype = builder._subtype;
         this.Mesh = builder._mesh;
         this.bodyDict = builder._bodyDict;
         this.TotalForce = Vector3.Zero;
@@ -556,33 +574,11 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             )
             {
                 meshParams.Add("resources", resources);
-                GD.Print(
-                    $"[ResourceDebug] CelestialBody.GenerateMesh: Found resources in bodyDict, keys: {string.Join(", ", resources.Keys)}"
-                );
             }
-            else
-            {
-                // Fallback to template resources if not provided in bodyDict
-                var t = TemplateHelpers.GetCelestialBodyDefaults(Type);
-                if (
-                    t.ContainsKey("resources")
-                    && t["resources"].Obj is Godot.Collections.Dictionary templateResources
-                )
-                {
-                    meshParams.Add("resources", templateResources);
-                    GD.Print(
-                        $"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict, loaded from template, keys: {string.Join(", ", templateResources.Keys)}"
-                    );
-                }
-                else
-                {
-                    GD.Print(
-                        $"[ResourceDebug] CelestialBody.GenerateMesh: No resources in bodyDict or template"
-                    );
-                }
-            }
+            // Resource generation is now handled via ResourceGenerationConfigDatabase in the mesh pipeline
         }
-        GD.Print($"Mesh Params: {meshParams}");
+        Mesh!.BodyType = Type;
+        Mesh!.BodySubtype = _subtype;
         Mesh!.ConfigureFrom(StrDb, meshParams);
 
         Mesh.StartMeshGeneration(
@@ -591,7 +587,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             {
                 StrDb.FinalizeDB();
                 Radius = mesh.size;
-                GD.Print($"Generated mesh for {meshParams["name"]}");
                 onCompleted?.Invoke(this);
             },
             onFailed: (mesh, error) =>
@@ -602,29 +597,49 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         );
     }
 
-    public String PickName(Godot.Collections.Dictionary nameDict)
-    {
-        if (nameDict == null || nameDict.Count == 0)
-            return "";
-
-        var categories = new Godot.Collections.Array(nameDict.Keys);
-        if (categories.Count == 0)
-            return "";
-
-        var random = UtilityLibrary.Randomizer.rng;
-        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
-
-        var names = (Godot.Collections.Array)nameDict[selectedCategory];
-        if (names == null || names.Count == 0)
-            return "";
-
-        return (string)names[random.RandiRange(0, names.Count - 1)];
-    }
-
     public Point? FindNearest(Vector3 position)
     {
         var result = FindNearestCell(position);
         return result?.Point;
+    }
+
+    public CellSelectionResult? GetFaceFromIndex(int index)
+    {
+        var result = StrDb.GetCellFromIndex(index);
+        if (result is null)
+            return null;
+        var continent = Mesh!.GetContinent(result.ContinentIndex);
+        return new CellSelectionResult
+        {
+            Point = result.Points[0],
+            Cell = result,
+            CellContinent = continent,
+        };
+    }
+
+    public VoronoiCell[] GetRuntimeCellNeighbors(
+        VoronoiCell origin,
+        bool includeSameContinent = true
+    )
+    {
+        HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
+        foreach (Point p in origin.Points)
+        {
+            if (!StrDb.PlanetMap.TryGetValue(p, out var neighborCells))
+                continue;
+            foreach (VoronoiCell vc in neighborCells)
+            {
+                if (includeSameContinent)
+                {
+                    neighbors.Add(vc);
+                }
+                else if (vc.ContinentIndex != origin.ContinentIndex)
+                {
+                    neighbors.Add(vc);
+                }
+            }
+        }
+        return neighbors.ToArray();
     }
 
     public CellSelectionResult? FindNearestCell(Vector3 position)
@@ -797,7 +812,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             definedMesh["vertices_per_edge"];
         int[] vertices_per_edge = new int[(int)definedMesh["subdivisions"]];
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        GD.Print($"VPE Array: {vpeArray}");
         for (int i = 0; i < vertices_per_edge.Length; i++)
         {
             if (vpeArray.Count - 1 > i) //Defined subdivisions
@@ -836,7 +850,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         Godot.Collections.Dictionary customMesh
     )
     {
-        GD.Print($"Converting Custom Mesh: {customMesh}");
         var meshParams = new Godot.Collections.Dictionary();
         // Convert custom mesh data to the format expected by Mesh.ConfigureFrom
         if (
@@ -873,9 +886,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         internal Vector3? _velocity;
         internal float? _mass;
         internal CelestialBodyType? _type;
-
-        // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
-        // internal RockyPlanetType? _rockyType;
+        internal object? _subtype;
         internal UnifiedCelestialMesh? _mesh;
         internal Godot.Collections.Dictionary? _bodyDict;
         internal string? _name;
@@ -904,12 +915,11 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             return this;
         }
 
-        // TODO: RockyPlanetType enum not yet defined — will be added with subtype support
-        // public Builder WithRockyType(RockyPlanetType? rockyType)
-        // {
-        //     _rockyType = rockyType;
-        //     return this;
-        // }
+        public Builder WithSubtype(object subtype)
+        {
+            _subtype = subtype;
+            return this;
+        }
 
         public Builder WithMesh(UnifiedCelestialMesh mesh)
         {
