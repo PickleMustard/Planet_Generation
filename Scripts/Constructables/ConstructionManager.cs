@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Constructables.ArtificialSatellites;
 using Godot;
 using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
-using Structures.Enums;
 using Structures.GameState;
 using Structures.Resources;
 using UtilityLibrary;

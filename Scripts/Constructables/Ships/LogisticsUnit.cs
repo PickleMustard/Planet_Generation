@@ -9,7 +9,7 @@ using Structures.Logistics;
 using Structures.Resources;
 using UtilityLibrary;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructable
 {
@@ -475,6 +475,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
 
     // Movement controller for hybrid simulation (Task #435)
     private LogisticsMovementController? _movementController;
+    private OrbitalScheduleExecutor? _scheduleExecutor;
 
     // Trajectory preview manager for visualizing planned routes
     private TrajectoryPreviewManager? _trajectoryPreviewManager;
@@ -519,6 +520,11 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
     public LogisticsMovementController? MovementController => _movementController;
 
     /// <summary>
+    /// The schedule executor for this unit. Drives leg and schedule execution.
+    /// </summary>
+    public OrbitalScheduleExecutor? ScheduleExecutor => _scheduleExecutor;
+
+    /// <summary>
     /// The trajectory preview manager for visualizing planned routes before execution.
     /// </summary>
     public TrajectoryPreviewManager? PreviewManager => _trajectoryPreviewManager;
@@ -549,6 +555,9 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
 
         // Initialize trajectory preview manager
         InitializePreviewManager();
+
+        // Initialize orbital schedule executor
+        InitializeScheduleExecutor();
     }
 
     public override void _PhysicsProcess(double delta)
@@ -775,6 +784,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
         {
             case LogisticsUnitState.Idle:
                 return newState == LogisticsUnitState.Planning
+                    || newState == LogisticsUnitState.Loading
                     || newState == LogisticsUnitState.Disabled;
 
             case LogisticsUnitState.Planning:
@@ -789,6 +799,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
 
             case LogisticsUnitState.Arriving:
                 return newState == LogisticsUnitState.Idle
+                    || newState == LogisticsUnitState.Unloading
                     || newState == LogisticsUnitState.Disabled;
 
             case LogisticsUnitState.Disabled:
@@ -796,6 +807,21 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
 
             case LogisticsUnitState.Stranded:
                 return newState == LogisticsUnitState.Idle
+                    || newState == LogisticsUnitState.Disabled;
+
+            case LogisticsUnitState.Loading:
+                return newState == LogisticsUnitState.WaitingForTrajectory
+                    || newState == LogisticsUnitState.Planning
+                    || newState == LogisticsUnitState.Disabled;
+
+            case LogisticsUnitState.Unloading:
+                return newState == LogisticsUnitState.Idle
+                    || newState == LogisticsUnitState.Loading
+                    || newState == LogisticsUnitState.Disabled;
+
+            case LogisticsUnitState.WaitingForTrajectory:
+                return newState == LogisticsUnitState.Planning
+                    || newState == LogisticsUnitState.Stranded
                     || newState == LogisticsUnitState.Disabled;
 
             default:
@@ -844,6 +870,9 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
             && _state != LogisticsUnitState.Disabled
             && _state != LogisticsUnitState.InTransit
             && _state != LogisticsUnitState.Stranded
+            && _state != LogisticsUnitState.Loading
+            && _state != LogisticsUnitState.Unloading
+            && _state != LogisticsUnitState.WaitingForTrajectory
         )
         {
             GameLogger.Warning(
@@ -1963,6 +1992,58 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
         CallDeferred("add_child", _trajectoryPreviewManager);
         GameLogger.Debug($"LogisticsUnit {Name}: Preview manager initialized");
     }
+
+    private void InitializeScheduleExecutor()
+    {
+        _scheduleExecutor = new OrbitalScheduleExecutor { Name = "ScheduleExecutor" };
+        CallDeferred("add_child", _scheduleExecutor);
+        GameLogger.Debug($"LogisticsUnit {Name}: Schedule executor initialized");
+    }
+
+    /// <summary>
+    /// Assigns an orbital transfer schedule to this unit.
+    /// </summary>
+    public bool AssignSchedule(OrbitalTransferSchedule schedule)
+    {
+        return _scheduleExecutor?.AssignSchedule(schedule) ?? false;
+    }
+
+    /// <summary>
+    /// Starts the assigned orbital transfer schedule.
+    /// </summary>
+    public bool StartSchedule()
+    {
+        return _scheduleExecutor?.StartSchedule() ?? false;
+    }
+
+    /// <summary>
+    /// Stops the active schedule. Can be resumed with StartSchedule().
+    /// </summary>
+    public void StopSchedule()
+    {
+        _scheduleExecutor?.StopSchedule();
+    }
+
+    /// <summary>
+    /// Cancels and clears the active schedule.
+    /// </summary>
+    public void CancelSchedule()
+    {
+        _scheduleExecutor?.CancelSchedule();
+    }
+
+    /// <summary>
+    /// Executes a single leg as a non-repeating schedule.
+    /// </summary>
+    public bool ExecuteSingleLeg(Leg leg)
+    {
+        return _scheduleExecutor?.ExecuteSingleLeg(leg) ?? false;
+    }
+
+    /// <summary>
+    /// The currently active orbital transfer schedule, if any.
+    /// </summary>
+    public OrbitalTransferSchedule? ActiveSchedule => _scheduleExecutor?.ActiveSchedule;
 
     private void CreateVisualRepresentation()
     {

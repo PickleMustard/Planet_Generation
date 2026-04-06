@@ -3,6 +3,7 @@ using System.Reflection;
 using Godot;
 using Godot.Collections;
 using ProceduralGeneration.MeshGeneration;
+using Structures.Enums;
 using UtilityLibrary.TaskSystem;
 
 namespace UtilityLibrary
@@ -152,6 +153,74 @@ namespace UtilityLibrary
         public void EmitContinentTransferCapacityChanged(int continentIndex, float newTotalCapacity)
         {
             ContinentTransferCapacityChanged?.Invoke(continentIndex, newTotalCapacity);
+        }
+
+        // --- Orbital Logistics Signals ---
+
+        /// <summary>
+        /// Fired when a logistics unit begins executing a leg in its schedule.
+        /// Parameters: unitId, legIndex
+        /// </summary>
+        public event Action<string, int>? OrbitalLegStarted;
+
+        public void EmitOrbitalLegStarted(string unitId, int legIndex)
+        {
+            OrbitalLegStarted?.Invoke(unitId, legIndex);
+        }
+
+        /// <summary>
+        /// Fired when a logistics unit completes a leg in its schedule.
+        /// Parameters: unitId, legIndex
+        /// </summary>
+        public event Action<string, int>? OrbitalLegCompleted;
+
+        public void EmitOrbitalLegCompleted(string unitId, int legIndex)
+        {
+            OrbitalLegCompleted?.Invoke(unitId, legIndex);
+        }
+
+        /// <summary>
+        /// Fired when a leg fails (e.g., max trajectory retries exceeded).
+        /// Parameters: unitId, legIndex, reason
+        /// </summary>
+        public event Action<string, int, string>? OrbitalLegFailed;
+
+        public void EmitOrbitalLegFailed(string unitId, int legIndex, string reason)
+        {
+            OrbitalLegFailed?.Invoke(unitId, legIndex, reason);
+        }
+
+        /// <summary>
+        /// Fired when an orbital transfer schedule changes state.
+        /// Parameters: unitId, newState
+        /// </summary>
+        public event Action<string, OrbitalScheduleState>? OrbitalScheduleStateChanged;
+
+        public void EmitOrbitalScheduleStateChanged(string unitId, OrbitalScheduleState newState)
+        {
+            OrbitalScheduleStateChanged?.Invoke(unitId, newState);
+        }
+
+        /// <summary>
+        /// Fired when cargo loading or unloading completes at a station.
+        /// Parameters: unitId, stationId, isLoading (true=pickup, false=dropoff)
+        /// </summary>
+        public event Action<string, string, bool>? OrbitalCargoTransferCompleted;
+
+        public void EmitOrbitalCargoTransferCompleted(string unitId, string stationId, bool isLoading)
+        {
+            OrbitalCargoTransferCompleted?.Invoke(unitId, stationId, isLoading);
+        }
+
+        /// <summary>
+        /// Fired when trajectory planning is retried for a leg.
+        /// Parameters: unitId, legIndex, attemptNumber, maxAttempts
+        /// </summary>
+        public event Action<string, int, int, int>? OrbitalTrajectoryRetry;
+
+        public void EmitOrbitalTrajectoryRetry(string unitId, int legIndex, int attemptNumber, int maxAttempts)
+        {
+            OrbitalTrajectoryRetry?.Invoke(unitId, legIndex, attemptNumber, maxAttempts);
         }
 
         public void Emit(string signalName, params Variant[] args)

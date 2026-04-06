@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Constructables.ArtificialSatellites;
+using Constructables;
 using Godot;
 
 namespace UI.Construction;

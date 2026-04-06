@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Constructables.ArtificialSatellites;
 using Logistics.Resources;
 using ProceduralGeneration.PlanetGeneration;
 using UI.Debug;

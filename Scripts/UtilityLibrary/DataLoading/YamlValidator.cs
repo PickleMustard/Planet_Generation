@@ -612,6 +612,91 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                             );
                         }
                     }
+
+                    // Validate biomes field
+                    if (placement.Children.ContainsKey("biomes"))
+                    {
+                        var biomesNode = placement.Children["biomes"];
+
+                        if (biomesNode is YamlSequenceNode biomesSequence)
+                        {
+                            // Check for empty list - deprecated
+                            if (biomesSequence.Children.Count == 0)
+                            {
+                                result.AddWarning(
+                                    $"Building at index {buildingIndex}: Empty 'biomes' list is deprecated. " +
+                                    "Use ['*'] to allow construction in any biome."
+                                );
+                            }
+                            else
+                            {
+                                // Check for wildcard and other biomes
+                                bool hasWildcard = false;
+                                var otherBiomes = new List<string>();
+
+                                foreach (var biomeNode in biomesSequence.Children)
+                                {
+                                    if (biomeNode is YamlScalarNode biomeScalar)
+                                    {
+                                        string biomeName = biomeScalar.Value ?? "";
+
+                                        if (biomeName == "*")
+                                        {
+                                            hasWildcard = true;
+                                        }
+                                        else
+                                        {
+                                            // Validate biome name against known types
+                                            if (!IsValidBiomeName(biomeName))
+                                            {
+                                                result.AddError(
+                                                    $"Building at index {buildingIndex}: Unknown biome type '{biomeName}'"
+                                                );
+                                            }
+                                            otherBiomes.Add(biomeName);
+                                        }
+                                    }
+                                }
+
+                                // Warn if wildcard is used with other biomes
+                                if (hasWildcard && otherBiomes.Count > 0)
+                                {
+                                    result.AddWarning(
+                                        $"Building at index {buildingIndex}: Wildcard '*' allows all biomes, " +
+                                        $"but additional biomes were also specified: {string.Join(", ", otherBiomes)}. " +
+                                        "These additional biomes will be ignored."
+                                    );
+                                }
+                            }
+                        }
+                        else if (biomesNode is YamlScalarNode biomesScalar)
+                        {
+                            // Handle null/empty scalar
+                            if (
+                                biomesScalar.Value == null
+                                || biomesScalar.Value == ""
+                                || biomesScalar.Value == "~"
+                            )
+                            {
+                                result.AddWarning(
+                                    $"Building at index {buildingIndex}: Null 'biomes' is deprecated. " +
+                                    "Use ['*'] to allow construction in any biome."
+                                );
+                            }
+                            else
+                            {
+                                result.AddError(
+                                    $"Building at index {buildingIndex}: 'placement_requirements.biomes' must be a sequence"
+                                );
+                            }
+                        }
+                        else
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'placement_requirements.biomes' must be a sequence"
+                            );
+                        }
+                    }
                 }
             }
 
@@ -836,6 +921,25 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                 out _
             );
         }
+        return false;
+    }
+
+    private static bool IsValidBiomeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+
+        string normalized = name.Replace("_", "").Replace(" ", "").Trim();
+
+        foreach (Structures.Enums.Biome.BiomeType type in System.Enum.GetValues(typeof(Structures.Enums.Biome.BiomeType)))
+        {
+            string enumName = type.ToString().Replace("_", "");
+            if (string.Equals(normalized, enumName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
         return false;
     }
 

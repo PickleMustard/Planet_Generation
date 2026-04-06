@@ -1,8 +1,7 @@
 using System.Collections.Generic;
-using Godot;
 using UtilityLibrary;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 /// <summary>
 /// A station capable of constructing ships via a queued build system.

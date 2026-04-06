@@ -1,4 +1,4 @@
-using Constructables.ArtificialSatellites;
+using Constructables;
 using GdUnit4;
 using Godot;
 using ProceduralGeneration.MeshGeneration;

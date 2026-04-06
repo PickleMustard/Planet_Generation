@@ -32,7 +32,7 @@ public partial class BuildingConstruction : Node3D, IConstructable
     public BuildingDefinition? Definition => _buildingDefinition;
 
     /// <summary>The orbital-architect station managing this building's construction, if any.</summary>
-    public ArtificialSatellites.StationSatellite? ConstructingStation { get; set; }
+    public StationSatellite? ConstructingStation { get; set; }
 
     /// <summary>
     /// The currently active recipe ID for this building's production.

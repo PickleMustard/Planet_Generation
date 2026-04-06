@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Constructables;
-using Constructables.ArtificialSatellites;
 using Godot;
 using Logistics.Resources;
 using Structures.GameState;
