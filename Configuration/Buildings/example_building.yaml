@@ -13,6 +13,7 @@ buildings:
     # Placement requirements define where this building can be placed
     placement_requirements:
       # List of allowed biome types (from Biome.BiomeType enum)
+      # Use ["*"] to allow construction in any biome
       biomes: [Grassland, Forest, Mountain, Coastal]
 
       # Elevation constraints (0-1, where 0 is lowest point, 1 is highest)
@@ -69,17 +70,17 @@ buildings:
       idle: ""
       fabricating: ""
 
-  - id_name: minimal_building
-    display_name: Minimal Building Example
-    description: Shows minimum required fields for a valid building definition.
-    category: minimal
+  - id_name: universal_building
+    display_name: Universal Building Example
+    description: Shows a building that can be constructed in any biome using the wildcard operator.
+    category: universal
 
     # Only id_name, display_name, and category are strictly required
     # Other fields have sensible defaults
 
     placement_requirements:
-      # Biome list can be empty (allows all biomes)
-      biomes: []
+      # Use ["*"] to allow construction in any biome
+      biomes: ["*"]
       # Default elevation range is 0.0-1.0
       # Default max_slope is 45.0
       # Default cell_count is 1

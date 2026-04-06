@@ -4,7 +4,7 @@ using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 using EngineDef = Structures.Logistics.EngineDefinition;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 /// <summary>
 /// Calculator for thrust-based performance metrics including payload capacity,

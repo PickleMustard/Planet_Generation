@@ -5,7 +5,7 @@ using Structures.Enums;
 using Structures.GameState;
 using UtilityLibrary;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 public partial class StationSatellite : Node3D, IArtificialSatellite, IConstructable
 {

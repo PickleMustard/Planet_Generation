@@ -1,12 +1,9 @@
 #if DEBUG
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
-using Constructables.ArtificialSatellites;
-using UtilityLibrary;
-using UtilityLibrary.DataLoading;
+using Constructables;
 using UtilityLibrary.NameGeneration;
 
 namespace UI.Debug.Console;

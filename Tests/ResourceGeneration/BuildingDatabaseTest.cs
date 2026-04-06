@@ -47,7 +47,7 @@ public class BuildingDatabaseTest
         var definitions = BuildingConfigLoader.LoadBuildingDefinitions(
             "res://Configuration/Buildings/example_building.yaml"
         );
-        AssertThat(definitions.Count).IsGreaterEqual(2); // Should have example_building and minimal_building
+        AssertThat(definitions.Count).IsGreaterEqual(2); // Should have example_building and universal_building
 
         var exampleBuilding = definitions.Find(b => b.IdName == "example_building");
         AssertThat(exampleBuilding).IsNotNull();
@@ -59,6 +59,7 @@ public class BuildingDatabaseTest
         AssertThat(exampleBuilding.Placement.CellCount).IsEqual(1);
         AssertThat(exampleBuilding.Placement.RequiresAdjacent).IsFalse();
         AssertThat(exampleBuilding.Placement.Biomes.Count).IsEqual(4); // Grassland, Forest, Mountain, Coastal
+        AssertThat(exampleBuilding.Placement.AllowAnyBiome).IsFalse(); // Specific biomes only
 
         // Test required resources
         AssertThat(exampleBuilding.RequiredResources.Count).IsEqual(5);
@@ -83,44 +84,45 @@ public class BuildingDatabaseTest
 
     [TestCase]
     [RequireGodotRuntime]
-    public void MinimalBuildingParsing()
+    public void UniversalBuildingParsing()
     {
         var definitions = BuildingConfigLoader.LoadBuildingDefinitions(
             "res://Configuration/Buildings/example_building.yaml"
         );
-        var minimalBuilding = definitions.Find(b => b.IdName == "minimal_building");
-        AssertThat(minimalBuilding).IsNotNull();
+        var universalBuilding = definitions.Find(b => b.IdName == "universal_building");
+        AssertThat(universalBuilding).IsNotNull();
 
-        AssertThat(minimalBuilding!.DisplayName).IsEqual("Minimal Building Example");
-        AssertThat(minimalBuilding.Category).IsEqual("minimal");
+        AssertThat(universalBuilding!.DisplayName).IsEqual("Universal Building Example");
+        AssertThat(universalBuilding.Category).IsEqual("universal");
 
         // Default values should be set
-        AssertThat(minimalBuilding.BuildingTime).IsEqual(60.0f); // Default
-        AssertThat(minimalBuilding.WorkRequired).IsEqual(100.0f); // Default
+        AssertThat(universalBuilding.BuildingTime).IsEqual(60.0f); // Default
+        AssertThat(universalBuilding.WorkRequired).IsEqual(100.0f); // Default
 
-        // Placement defaults
-        AssertThat(minimalBuilding.Placement.MinElevation).IsEqual(0.0f);
-        AssertThat(minimalBuilding.Placement.MaxElevation).IsEqual(1.0f);
-        AssertThat(minimalBuilding.Placement.MaxSlope).IsEqual(45.0f);
-        AssertThat(minimalBuilding.Placement.CellCount).IsEqual(1);
-        AssertThat(minimalBuilding.Placement.RequiresAdjacent).IsFalse();
-        AssertThat(minimalBuilding.Placement.Biomes.Count).IsEqual(0); // Empty list
+        // Placement - should allow any biome via wildcard
+        AssertThat(universalBuilding.Placement.AllowAnyBiome).IsTrue();
+        AssertThat(universalBuilding.Placement.Biomes.Count).IsEqual(0); // No specific biomes stored when using wildcard
+        AssertThat(universalBuilding.Placement.MinElevation).IsEqual(0.0f);
+        AssertThat(universalBuilding.Placement.MaxElevation).IsEqual(1.0f);
+        AssertThat(universalBuilding.Placement.MaxSlope).IsEqual(45.0f);
+        AssertThat(universalBuilding.Placement.CellCount).IsEqual(1);
+        AssertThat(universalBuilding.Placement.RequiresAdjacent).IsFalse();
 
         // Required resources
-        AssertThat(minimalBuilding.RequiredResources.Count).IsEqual(1);
-        AssertThat(minimalBuilding.RequiredResources["iron"]).IsEqual(10);
+        AssertThat(universalBuilding.RequiredResources.Count).IsEqual(1);
+        AssertThat(universalBuilding.RequiredResources["iron"]).IsEqual(10);
 
         // Production defaults
-        AssertThat(minimalBuilding.Production.DefaultRecipe).IsEqual("");
-        AssertThat(minimalBuilding.Production.AlternativeRecipes.Count).IsEqual(0);
-        AssertThat(minimalBuilding.Production.InputStorageAmount).IsEqual(0);
-        AssertThat(minimalBuilding.Production.OutputStorageAmount).IsEqual(0);
-        AssertThat(minimalBuilding.Production.ProductionSpeed).IsEqual(1.0f);
+        AssertThat(universalBuilding.Production.DefaultRecipe).IsEqual("");
+        AssertThat(universalBuilding.Production.AlternativeRecipes.Count).IsEqual(0);
+        AssertThat(universalBuilding.Production.InputStorageAmount).IsEqual(0);
+        AssertThat(universalBuilding.Production.OutputStorageAmount).IsEqual(0);
+        AssertThat(universalBuilding.Production.ProductionSpeed).IsEqual(1.0f);
 
         // Visual defaults
-        AssertThat(minimalBuilding.Visual.ModelPath).IsNull();
-        AssertThat(minimalBuilding.Visual.Scale).IsEqual(1.0f);
-        AssertThat(minimalBuilding.Visual.RotationOffset).IsEqual(Vector3.Zero);
+        AssertThat(universalBuilding.Visual.ModelPath).IsNull();
+        AssertThat(universalBuilding.Visual.Scale).IsEqual(1.0f);
+        AssertThat(universalBuilding.Visual.RotationOffset).IsEqual(Vector3.Zero);
     }
 
     [TestCase]
@@ -188,6 +190,23 @@ public class BuildingDatabaseTest
             {
                 GD.PrintErr($"Validation error: {error}");
             }
+        }
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void WildcardBiomeValidation()
+    {
+        // Test that buildings with wildcard biomes validate correctly
+        var validation = YamlValidator.ValidateBuildingDefinition(
+            "res://Configuration/Buildings/Administration/BusinessAdmin.yaml"
+        );
+        AssertThat(validation.IsValid).IsTrue();
+
+        // The wildcard should not produce errors
+        foreach (var error in validation.Errors)
+        {
+            AssertThat(error.Contains('*')).IsFalse();
         }
     }
 }

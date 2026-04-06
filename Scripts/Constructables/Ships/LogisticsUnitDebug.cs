@@ -1,11 +1,14 @@
 #if DEBUG
 using System;
+using System.Collections.Generic;
 using Structures.Enums;
+using Structures.Logistics;
+using Structures.Resources;
 using UI.Debug;
 using UI.Debug.Console;
 using UtilityLibrary;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 public partial class LogisticsUnit
 {
@@ -873,6 +876,261 @@ public partial class LogisticsUnit
         }
 
         return 0;
+    }
+    // ==================== Schedule Commands ====================
+
+    [DebugCommand(
+        "create_leg",
+        "Create a transfer leg between two bodies/stations",
+        "create_leg <origin_ns> <dest_ns> [--pickup res:qty ...] [--dropoff res:qty ...] [--max-tof N] [--max-dv N] [--refuel origin|dest|both]",
+        Category = "Logistics",
+        RequiresTarget = true
+    )]
+    public int CreateLeg(CommandContext ctx, string[] args)
+    {
+        if (args.Length < 2)
+        {
+            ctx.WriteError("Usage: create_leg <origin_ns> <dest_ns> [options]");
+            ctx.WriteLine("  --pickup res:qty    Load resource from origin station");
+            ctx.WriteLine("  --dropoff res:qty   Unload resource at destination station");
+            ctx.WriteLine("  --max-tof N         Maximum time-of-flight in seconds");
+            ctx.WriteLine("  --max-dv N          Maximum delta-v in m/s");
+            ctx.WriteLine("  --refuel origin|dest|both  Refuel at endpoint(s)");
+            return 1;
+        }
+
+        // Resolve origin
+        if (!InstanceRegistry.TryGetInstance(args[0], out var originObj) || originObj is not IOrbitalBody originBody)
+        {
+            ctx.WriteError($"Cannot resolve origin '{args[0]}' as an orbital body.");
+            return 1;
+        }
+
+        // Resolve destination
+        if (!InstanceRegistry.TryGetInstance(args[1], out var destObj) || destObj is not IOrbitalBody destBody)
+        {
+            ctx.WriteError($"Cannot resolve destination '{args[1]}' as an orbital body.");
+            return 1;
+        }
+
+        var originEndpoint = originObj is StationSatellite originStation
+            ? LegEndpoint.ForStation(originStation, originBody)
+            : LegEndpoint.ForBody(originBody);
+
+        var destEndpoint = destObj is StationSatellite destStation
+            ? LegEndpoint.ForStation(destStation, destBody)
+            : LegEndpoint.ForBody(destBody);
+
+        var leg = new Leg
+        {
+            Origin = originEndpoint,
+            Destination = destEndpoint
+        };
+
+        // Parse optional flags
+        CargoManifest? pickup = null;
+        CargoManifest? dropoff = null;
+
+        for (int i = 2; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--pickup" when i + 1 < args.Length:
+                    pickup ??= new CargoManifest();
+                    if (TryParseResourceArg(args[++i], out string pRes, out float pQty))
+                        pickup.LoadResource(pRes, pQty);
+                    else
+                        ctx.WriteWarning($"Invalid pickup format: {args[i]} (expected res:qty)");
+                    break;
+
+                case "--dropoff" when i + 1 < args.Length:
+                    dropoff ??= new CargoManifest();
+                    if (TryParseResourceArg(args[++i], out string dRes, out float dQty))
+                        dropoff.LoadResource(dRes, dQty);
+                    else
+                        ctx.WriteWarning($"Invalid dropoff format: {args[i]} (expected res:qty)");
+                    break;
+
+                case "--max-tof" when i + 1 < args.Length:
+                    if (float.TryParse(args[++i], out float maxTof))
+                    {
+                        leg.DepartureConstraints.BudgetMode = ExpenditureBudgetMode.TimeOfFlight;
+                        leg.DepartureConstraints.MaxBudget = maxTof;
+                    }
+                    break;
+
+                case "--max-dv" when i + 1 < args.Length:
+                    if (float.TryParse(args[++i], out float maxDv))
+                    {
+                        leg.DepartureConstraints.BudgetMode = ExpenditureBudgetMode.DeltaV;
+                        leg.DepartureConstraints.MaxBudget = maxDv;
+                    }
+                    break;
+
+                case "--refuel" when i + 1 < args.Length:
+                    string refuelArg = args[++i].ToLowerInvariant();
+                    leg.RefuelInstructions.Policy = refuelArg switch
+                    {
+                        "origin" => RefuelPolicy.AtOrigin,
+                        "dest" or "destination" => RefuelPolicy.AtDestination,
+                        "both" => RefuelPolicy.AtBoth,
+                        _ => RefuelPolicy.None
+                    };
+                    break;
+            }
+        }
+
+        leg.PickupOrder = pickup;
+        leg.DropoffOrder = dropoff;
+
+        // Store the leg in a temporary list on the schedule executor
+        // For simplicity, execute this as a single-leg schedule
+        if (ExecuteSingleLeg(leg))
+        {
+            ctx.WriteLine($"[color=green]Leg created and schedule started.[/color]");
+            ctx.WriteLine($"  Origin: {args[0]}");
+            ctx.WriteLine($"  Destination: {args[1]}");
+            if (pickup != null) ctx.WriteLine($"  Pickup: {pickup}");
+            if (dropoff != null) ctx.WriteLine($"  Dropoff: {dropoff}");
+            if (leg.DepartureConstraints.MaxBudget.HasValue)
+                ctx.WriteLine($"  Max {leg.DepartureConstraints.BudgetMode}: {leg.DepartureConstraints.MaxBudget}");
+            if (leg.RefuelInstructions.Policy != RefuelPolicy.None)
+                ctx.WriteLine($"  Refuel: {leg.RefuelInstructions.Policy}");
+            return 0;
+        }
+
+        ctx.WriteError("Failed to create and start leg.");
+        return 1;
+    }
+
+    [DebugCommand(
+        "start_schedule",
+        "Create and start a multi-leg schedule from previously added legs",
+        "start_schedule [--repeating] [--retry-period N] [--wait-period N] [--max-retries N]",
+        Category = "Logistics",
+        RequiresTarget = true
+    )]
+    public int StartScheduleCmd(CommandContext ctx, string[] args)
+    {
+        if (ActiveSchedule != null && ActiveSchedule.State == OrbitalScheduleState.Running)
+        {
+            ctx.WriteError("A schedule is already running. Use stop_schedule first.");
+            return 1;
+        }
+
+        if (ActiveSchedule != null
+            && ActiveSchedule.State == OrbitalScheduleState.Stopped)
+        {
+            // Resume stopped schedule
+            if (StartSchedule())
+            {
+                ctx.WriteLine("[color=green]Schedule resumed.[/color]");
+                return 0;
+            }
+            ctx.WriteError("Failed to resume schedule.");
+            return 1;
+        }
+
+        ctx.WriteError("No schedule assigned. Use create_leg to create and execute a single-leg schedule.");
+        ctx.WriteLine("For multi-leg schedules, use the programmatic API.");
+        return 1;
+    }
+
+    [DebugCommand(
+        "stop_schedule",
+        "Stop the current schedule (can be resumed)",
+        "stop_schedule",
+        Category = "Logistics",
+        RequiresTarget = true
+    )]
+    public int StopScheduleCmd(CommandContext ctx, string[] args)
+    {
+        if (ActiveSchedule == null)
+        {
+            ctx.WriteError("No active schedule.");
+            return 1;
+        }
+
+        StopSchedule();
+        ctx.WriteLine("[color=yellow]Schedule stopped. Use start_schedule to resume.[/color]");
+        return 0;
+    }
+
+    [DebugCommand(
+        "cancel_schedule",
+        "Cancel and clear the current schedule",
+        "cancel_schedule",
+        Category = "Logistics",
+        RequiresTarget = true
+    )]
+    public int CancelScheduleCmd(CommandContext ctx, string[] args)
+    {
+        if (ActiveSchedule == null)
+        {
+            ctx.WriteError("No active schedule.");
+            return 1;
+        }
+
+        CancelSchedule();
+        ctx.WriteLine("[color=yellow]Schedule cancelled and cleared.[/color]");
+        return 0;
+    }
+
+    [DebugCommand(
+        "schedule_status",
+        "Show the current schedule status",
+        "schedule_status",
+        Category = "Logistics",
+        RequiresTarget = true
+    )]
+    public int ScheduleStatusCmd(CommandContext ctx, string[] args)
+    {
+        var schedule = ActiveSchedule;
+        if (schedule == null)
+        {
+            ctx.WriteLine("No active schedule.");
+            return 0;
+        }
+
+        ctx.WriteLine($"[color=cyan]Schedule: {schedule.ScheduleId}[/color]");
+        ctx.WriteLine($"  State: {schedule.State}");
+        ctx.WriteLine($"  Legs: {schedule.Legs.Count}");
+        ctx.WriteLine($"  Current Leg: {schedule.CurrentLegIndex + 1}/{schedule.Legs.Count}");
+        ctx.WriteLine($"  Repeating: {schedule.IsRepeating}");
+        ctx.WriteLine($"  Retry Period: {schedule.RetryPeriod}s");
+        ctx.WriteLine($"  Max Retries: {schedule.MaxRetries}");
+        ctx.WriteLine($"  Wait Between Legs: {schedule.WaitPeriodBetweenLegs}s");
+
+        for (int i = 0; i < schedule.Legs.Count; i++)
+        {
+            var leg = schedule.Legs[i];
+            string marker = i == schedule.CurrentLegIndex ? "[color=green]►[/color] " : "  ";
+            ctx.WriteLine($"\n{marker}Leg {i + 1}: {leg.State}");
+            ctx.WriteLine($"    Origin: {(leg.Origin.IsStation ? leg.Origin.Station!.Name : "orbital position")}");
+            ctx.WriteLine($"    Destination: {(leg.Destination.IsStation ? leg.Destination.Station!.Name : "orbital position")}");
+            ctx.WriteLine($"    Attempts: {leg.TrajectoryAttempts}");
+
+            if (leg.SelectedTrajectory != null)
+            {
+                ctx.WriteLine($"    TOF: {leg.SelectedTrajectory.TimeOfFlight:F1}s");
+                ctx.WriteLine($"    ΔV: {leg.SelectedTrajectory.DeltaVRequired:F1} m/s");
+            }
+        }
+
+        return 0;
+    }
+
+    private static bool TryParseResourceArg(string arg, out string resourceId, out float quantity)
+    {
+        resourceId = string.Empty;
+        quantity = 0f;
+
+        int colonIndex = arg.LastIndexOf(':');
+        if (colonIndex <= 0 || colonIndex >= arg.Length - 1)
+            return false;
+
+        resourceId = arg[..colonIndex];
+        return float.TryParse(arg[(colonIndex + 1)..], out quantity) && quantity > 0f;
     }
 }
 #endif

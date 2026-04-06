@@ -34,5 +34,20 @@ public enum LogisticsUnitState
     /// Ran out of fuel mid-transit - the unit is adrift at its current position
     /// and cannot complete its arrival burn. Requires rescue or refueling.
     /// </summary>
-    Stranded
+    Stranded,
+
+    /// <summary>
+    /// Unit is at a station loading cargo or refueling before departure.
+    /// </summary>
+    Loading,
+
+    /// <summary>
+    /// Unit is at a station unloading cargo or refueling after arrival.
+    /// </summary>
+    Unloading,
+
+    /// <summary>
+    /// Trajectory planning failed, unit is waiting before retrying.
+    /// </summary>
+    WaitingForTrajectory
 }

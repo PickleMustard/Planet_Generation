@@ -6,7 +6,7 @@ using Structures.Logistics;
 using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 /// <summary>
 /// Provides trajectory planning functionality for logistics units.

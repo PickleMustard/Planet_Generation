@@ -295,10 +295,15 @@ namespace Structures.Resources
             if (placement.MaxSlope < 0.0f || placement.MaxSlope > 90.0f)
                 return false;
 
-            // Check biomes - for now, skip biome validation since VoronoiCell doesn't have Biome property
-            // We would need to get biome from the points in the cell
-            // if (placement.Biomes.Count > 0 && !placement.Biomes.Contains(cell.Biome))
-            //     return false;
+            // Check biomes - skip if AllowAnyBiome is true
+            // Otherwise check if the cell's biome is in the allowed list
+            if (!placement.AllowAnyBiome && placement.Biomes.Count > 0)
+            {
+                // Biome validation would go here when VoronoiCell has Biome property
+                // For now, we can't validate biome since cell doesn't expose it
+                // if (!placement.Biomes.Contains(cell.Biome))
+                //     return false;
+            }
 
             return true;
         }

@@ -2,7 +2,7 @@ using Godot;
 using Structures.GameState;
 using UtilityLibrary;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 public partial class ShipSatellite : Node3D, IArtificialSatellite
 {

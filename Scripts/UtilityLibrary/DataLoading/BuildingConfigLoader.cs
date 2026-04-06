@@ -114,17 +114,64 @@ public static class BuildingConfigLoader
             var biomesList = placementDict["biomes"] as List<object>;
             if (biomesList != null)
             {
-                foreach (var biomeObj in biomesList)
+                // Check for empty list - deprecated, should use "*" instead
+                if (biomesList.Count == 0)
                 {
-                    if (biomeObj is string biomeName)
+                    GD.PushWarning(
+                        "BuildingConfigLoader: Empty 'biomes' list is deprecated. " +
+                        "Use ['*'] to allow construction in any biome."
+                    );
+                    placement.AllowAnyBiome = true;
+                }
+                else
+                {
+                    // Check for wildcard operator
+                    bool hasWildcard = false;
+                    var otherBiomes = new List<string>();
+
+                    foreach (var biomeObj in biomesList)
                     {
-                        if (TryParseBiomeType(biomeName, out Biome.BiomeType biomeType))
+                        if (biomeObj is string biomeName)
                         {
-                            placement.Biomes.Add(biomeType);
+                            if (biomeName == "*")
+                            {
+                                hasWildcard = true;
+                            }
+                            else
+                            {
+                                otherBiomes.Add(biomeName);
+                            }
                         }
-                        else
+                    }
+
+                    if (hasWildcard)
+                    {
+                        placement.AllowAnyBiome = true;
+
+                        // Warn if other biomes are defined alongside wildcard
+                        if (otherBiomes.Count > 0)
                         {
-                            GD.PrintErr($"Unknown biome type in building placement: {biomeName}");
+                            GD.PushWarning(
+                                $"BuildingConfigLoader: Wildcard '*' allows all biomes, " +
+                                $"but additional biomes were also specified: " +
+                                $"{string.Join(", ", otherBiomes)}. " +
+                                $"These additional biomes will be ignored."
+                            );
+                        }
+                    }
+                    else
+                    {
+                        // Parse normal biome names
+                        foreach (var biomeName in otherBiomes)
+                        {
+                            if (TryParseBiomeType(biomeName, out Biome.BiomeType biomeType))
+                            {
+                                placement.Biomes.Add(biomeType);
+                            }
+                            else
+                            {
+                                GD.PrintErr($"Unknown biome type in building placement: {biomeName}");
+                            }
                         }
                     }
                 }

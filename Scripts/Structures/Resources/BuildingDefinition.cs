@@ -83,8 +83,15 @@ public class BuildingDefinition
     {
         /// <summary>
         /// Allowed biome types for placement.
+        /// Use empty list with AllowAnyBiome=true for any biome.
         /// </summary>
         public List<Biome.BiomeType> Biomes { get; set; } = new();
+
+        /// <summary>
+        /// When true, building can be placed in any biome.
+        /// Set to true when biomes list contains "*" wildcard.
+        /// </summary>
+        public bool AllowAnyBiome { get; set; } = false;
 
         /// <summary>
         /// Minimum elevation (0-1) for placement.

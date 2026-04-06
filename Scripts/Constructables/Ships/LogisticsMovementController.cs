@@ -5,7 +5,7 @@ using Structures.Logistics;
 using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 /// <summary>
 /// Controller for logistics unit movement implementing hybrid simulation.

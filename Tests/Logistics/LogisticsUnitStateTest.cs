@@ -1,5 +1,5 @@
 using GdUnit4;
-using Constructables.ArtificialSatellites;
+using Constructables;
 using Structures.Enums;
 using static GdUnit4.Assertions;
 

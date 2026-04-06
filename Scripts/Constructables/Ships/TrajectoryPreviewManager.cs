@@ -4,7 +4,7 @@ using Structures.Logistics;
 using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 /// <summary>
 /// Manages trajectory preview visualization. When a route is selected, pauses the simulation

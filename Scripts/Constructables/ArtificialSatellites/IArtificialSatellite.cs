@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Constructables.ArtificialSatellites;
+namespace Constructables;
 
 public interface IArtificialSatellite
 {
