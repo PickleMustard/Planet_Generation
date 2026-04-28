@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Structures.Enums;
+using Structures.Logistics;
+using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
-using LogisticsConfigLoader = UtilityLibrary.LogisticsConfigLoader;
 #if DEBUG
 using UI.Debug;
 #endif
@@ -61,11 +63,11 @@ namespace Logistics.Resources
                 LoadProgress = 0.25f;
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
 
-                // Step 2: Load all station definitions via LogisticsConfigLoader
+                // Step 2: Load all station definitions via StationConfigLoader
                 LoadProgress = 0.5f;
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
 
-                var allStations = LogisticsConfigLoader.LoadAllStations();
+                var allStations = StationConfigLoader.LoadAllStations();
 
                 _stations.Clear();
                 foreach (var station in allStations)
@@ -102,9 +104,9 @@ namespace Logistics.Resources
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
                 OnLoadCompleted?.Invoke(DatabaseName, true);
 
-                GD.Print(
-                    $"StationDatabase: '{DatabaseName}' loaded successfully with {_stations.Count} stations"
-                );
+                GameLogger.Info($"StationDatabase: '{DatabaseName}' loaded successfully with {_stations.Count} stations, " +
+                                $"{StationConfigLoader.ModelsLoadedCount} models loaded, " +
+                                $"{StationConfigLoader.ModelsFailedCount} models failed");
             }
             catch (Exception ex)
             {
@@ -208,6 +210,62 @@ namespace Logistics.Resources
         {
             EnsureLoaded();
             return !string.IsNullOrEmpty(name) && _stations.ContainsKey(name);
+        }
+
+        // Add tracking for globally-limited stations
+        private readonly HashSet<string> _globallyPlacedStations = new();
+
+        public bool IsGloballyPlaced(string stationName) =>
+            _globallyPlacedStations.Contains(stationName);
+
+        public void MarkGloballyPlaced(string stationName)
+        {
+            if (!string.IsNullOrEmpty(stationName))
+                _globallyPlacedStations.Add(stationName);
+        }
+
+        public void ResetGlobalPlacements() => _globallyPlacedStations.Clear();
+
+        /// <summary>
+        /// Checks if a station can be built considering global limits.
+        /// </summary>
+        public bool ValidateGlobalPlacement(string stationName)
+        {
+            // Ramshackle_Builder can only be built once
+            if (stationName == "Ramshackle_Builder" && IsGloballyPlaced(stationName))
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Gets the icon for a station at a specific size.
+        /// Always returns a valid texture (uses fallback if needed).
+        /// </summary>
+        public Texture2D GetStationIcon(string name, IconSize size = IconSize.Medium)
+        {
+            EnsureLoaded();
+            if (TryGetStation(name, out var station) && station != null)
+            {
+                var texture = station.Icon?.GetTexture(size);
+                if (texture != null)
+                    return texture;
+            }
+
+            return IconDataLoader.GetFallbackIcon(size);
+        }
+
+        /// <summary>
+        /// Gets the full IconDefinition for a station.
+        /// </summary>
+        public IconDefinition? GetStationIconDefinition(string name)
+        {
+            EnsureLoaded();
+            if (TryGetStation(name, out var station) && station != null)
+            {
+                return station.Icon;
+            }
+            return null;
         }
     }
 }

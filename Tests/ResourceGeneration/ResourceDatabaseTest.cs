@@ -16,10 +16,10 @@ public class ResourceDatabaseTest
     {
         var db = ResourceDatabase.Instance;
         AssertThat(db).IsNotNull();
-        
+
         // Database should not be loaded initially
         AssertThat(db.IsLoaded).IsFalse();
-        
+
         // Load the database
         db.LoadData();
         AssertThat(db.IsLoaded).IsTrue();
@@ -38,10 +38,10 @@ public class ResourceDatabaseTest
     public void DefinitionParsing()
     {
         var db = ResourceDatabase.Instance;
-        
+
         // Database should not be loaded initially
         AssertThat(db.IsLoaded).IsFalse();
-        
+
         // Load the database
         db.LoadData();
         AssertThat(db.IsLoaded).IsTrue();
@@ -60,10 +60,10 @@ public class ResourceDatabaseTest
     public void GeneratableResources()
     {
         var db = ResourceDatabase.Instance;
-        
+
         // Database should not be loaded initially
         AssertThat(db.IsLoaded).IsFalse();
-        
+
         // Load the database
         db.LoadData();
         AssertThat(db.IsLoaded).IsTrue();
@@ -71,18 +71,18 @@ public class ResourceDatabaseTest
         // Test that some resources are generatable
         AssertThat(db.IsResourceGeneratable("iron_ore")).IsTrue();
         AssertThat(db.IsResourceGeneratable("water")).IsTrue();
-        
+
         // Test GetGeneratableResources
         var generatableResources = db.GetGeneratableResources();
         AssertThat(generatableResources).IsNotNull();
         AssertThat(generatableResources.Count).IsGreater(0);
-        
+
         // All resources in generatableResources should have IsGeneratable = true
         foreach (var kvp in generatableResources)
         {
             AssertThat(kvp.Value.IsGeneratable).IsTrue();
         }
-        
+
         // Test that non-generatable resources exist in GetAllResources but not in GetGeneratableResources
         var allResources = db.GetAllResources();
         AssertThat(allResources.Count).IsGreater(generatableResources.Count);
@@ -94,20 +94,20 @@ public class ResourceDatabaseTest
     {
         var db = ResourceDatabase.Instance;
         AssertThat(db).IsNotNull();
-        
+
         // Database should not be loaded initially
         AssertThat(db.IsLoaded).IsFalse();
-        
+
         // Attempting to access data should throw DatabaseNotLoadedException
         AssertThat(() => db.GetAllResources())
             .Throws<DatabaseNotLoadedException>();
-            
+
         AssertThat(() => db.TryGetResource("iron_ore", out _))
             .Throws<DatabaseNotLoadedException>();
-            
+
         AssertThat(() => db.ValidateResourceExists("iron_ore"))
             .Throws<DatabaseNotLoadedException>();
-            
+
         AssertThat(() => db.GetResourceColor("iron_ore"))
             .Throws<DatabaseNotLoadedException>();
     }
@@ -147,14 +147,14 @@ public class ResourceDatabaseTest
         var invalidError = ResourceValidationError.InvalidResourceDefinition("test", "missing field");
         AssertThat(invalidError.Message).Contains("Invalid resource definition");
     }
-    
+
     [TestCase]
     [RequireGodotRuntime]
     public void WorkPackageCreation()
     {
         var db = ResourceDatabase.Instance;
         AssertThat(db).IsNotNull();
-        
+
         var workPackage = db.CreateLoadPackage();
         AssertThat(workPackage).IsNotNull();
         AssertThat(workPackage.Name).Contains("Load_ResourceDatabase");

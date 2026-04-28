@@ -4,6 +4,8 @@ recipes:
     description: Sustained nuclear fusion generating massive amounts of power from hydrogen isotopes.
     category: power
     work_required: 10.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/fusion_reaction"
 
     input_resources:
       - tritium: 2
@@ -17,6 +19,8 @@ recipes:
     description: Optimized power grid management for efficient energy delivery.
     category: power
     work_required: 8.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/energy_distribution"
 
     input_resources:
       - tritium: 1
@@ -30,6 +34,8 @@ recipes:
     description: Water-cooled reactor operation with lower fuel consumption but reduced output.
     category: power
     work_required: 12.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/coolant_management"
 
     input_resources:
       - water: 10
@@ -42,6 +48,8 @@ recipes:
     description: Photovoltaic panels with active sun-tracking for optimal energy capture.
     category: power
     work_required: 5.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/solar_tracking"
 
     input_resources: []
 
@@ -53,6 +61,8 @@ recipes:
     description: Battery charging mode that stores energy for later use.
     category: power
     work_required: 8.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/energy_storage"
 
     input_resources: []
 
@@ -64,6 +74,8 @@ recipes:
     description: Automated cleaning cycle to maintain solar panel efficiency. Reduced output during maintenance.
     category: power
     work_required: 15.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/panel_cleaning"
 
     input_resources:
       - water: 2
@@ -76,6 +88,8 @@ recipes:
     description: Adaptive turbine positioning based on atmospheric data for peak generation.
     category: power
     work_required: 6.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/wind_analysis"
 
     input_resources: []
 
@@ -87,6 +101,8 @@ recipes:
     description: Routine maintenance to keep turbines running at peak efficiency.
     category: power
     work_required: 20.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/turbine_maintenance"
 
     input_resources:
       - iron: 1
@@ -99,6 +115,8 @@ recipes:
     description: Phase-locked operation for stable grid integration with other power sources.
     category: power
     work_required: 8.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/grid_synchronization"
 
     input_resources: []
 
@@ -110,6 +128,8 @@ recipes:
     description: Deep-well geothermal energy extraction from underground heat sources.
     category: power
     work_required: 10.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/geothermal_drilling"
 
     input_resources:
       - water: 8
@@ -122,6 +142,8 @@ recipes:
     description: Efficient heat transfer systems for sustained geothermal power generation.
     category: power
     work_required: 8.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/heat_exchange"
 
     input_resources:
       - water: 5
@@ -134,6 +156,8 @@ recipes:
     description: Controlled steam release with water recapture for minimal resource waste.
     category: power
     work_required: 12.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/steam_management"
 
     input_resources:
       - water: 3

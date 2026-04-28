@@ -71,16 +71,25 @@ public static class RecipeConfigLoader
 
     private static RecipeDefinition ParseRecipeDefinition(Dictionary<object, object> dict)
     {
+        string recipeId = ReadString(dict, "recipe_id", "");
+
         var definition = new RecipeDefinition
         {
-            RecipeId = ReadString(dict, "recipe_id", ""),
+            RecipeId = recipeId,
             DisplayName = ReadString(dict, "display_name", ""),
             Description = ReadString(dict, "description", ""),
             Category = ReadString(dict, "category", ""),
             WorkRequired = ReadFloat(dict, "work_required", 10.0f),
             InputResources = ParseResourceList(dict, "input_resources"),
             OutputResources = ParseResourceList(dict, "output_resources"),
+            Icon = ParseIconDefinition(dict, $"recipe:{recipeId}"),
         };
+
+        // Apply fallback if icon failed to load
+        if (!definition.Icon.IsValid)
+        {
+            definition.Icon = IconDataLoader.CreateFallbackIconDefinition();
+        }
 
         return definition;
     }
@@ -120,6 +129,66 @@ public static class RecipeConfigLoader
         }
 
         return resources;
+    }
+
+    private static IconDefinition ParseIconDefinition(Dictionary<object, object> dict, string context)
+    {
+        if (!dict.ContainsKey("icon"))
+        {
+            return new IconDefinition(); // Return empty - fallback applied by caller
+        }
+
+        var iconDict = dict["icon"] as Dictionary<object, object>;
+        if (iconDict == null)
+            return new IconDefinition();
+
+        // Get base_path (required)
+        string? basePath = ReadString(iconDict, "base_path", "");
+        if (string.IsNullOrEmpty(basePath))
+        {
+            GameLogger.Warning($"Icon section missing base_path for {context}");
+            return new IconDefinition();
+        }
+
+        // Load all sizes via IconDataLoader
+        var icon = IconDataLoader.LoadIcon(basePath, context);
+
+        // Parse optional properties
+        if (iconDict.ContainsKey("scale"))
+        {
+            icon.Scale = ReadFloat(iconDict, "scale", 1.0f);
+        }
+
+        if (iconDict.ContainsKey("tint"))
+        {
+            icon.Tint = ReadColor(iconDict, "tint", Colors.White);
+        }
+
+        return icon;
+    }
+
+    private static Color ReadColor(Dictionary<object, object> dict, string key, Color fallback)
+    {
+        if (!dict.ContainsKey(key))
+            return fallback;
+
+        if (dict[key] is not System.Collections.Generic.List<object> arr || arr.Count < 3)
+            return fallback;
+
+        float r = NodeToFloat(arr[0], fallback.R);
+        float g = NodeToFloat(arr[1], fallback.G);
+        float b = NodeToFloat(arr[2], fallback.B);
+        float a = arr.Count >= 4 ? NodeToFloat(arr[3], fallback.A) : 1.0f;
+
+        if (r > 1.0f || g > 1.0f || b > 1.0f || a > 1.0f)
+        {
+            r /= 255.0f;
+            g /= 255.0f;
+            b /= 255.0f;
+            a = arr.Count >= 4 ? a / 255.0f : 1.0f;
+        }
+
+        return new Color(r, g, b, a);
     }
 
     private static string ReadString(Dictionary<object, object> dict, string key, string fallback)

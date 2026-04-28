@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Structures;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.Resources;
@@ -30,8 +31,7 @@ public static class CellResourceGenerator
         Dictionary<int, Continent> continents,
         PlanetaryResourceConfig planetaryResourceConfig,
         BiomeResourceConfig biomeResourceConfig,
-        CelestialBodyType bodyType,
-        object? bodySubtype,
+        BodyClassification classification,
         RandomNumberGenerator rng,
         int maxResourcesPerCell = 3
     )
@@ -55,11 +55,11 @@ public static class CellResourceGenerator
         }
 
         // Step 1: Resolve body subtype config
-        var subtypeConfig = planetaryResourceConfig.GetConfigForSubtype(bodyType, bodySubtype);
+        var subtypeConfig = planetaryResourceConfig.GetConfigForSubtype(classification);
         if (subtypeConfig == null)
         {
             GameLogger.Warning(
-                $"CellResourceGenerator: No resource config for {bodyType}/{bodySubtype}"
+                $"CellResourceGenerator: No resource config for {classification}"
             );
             return;
         }
@@ -68,7 +68,7 @@ public static class CellResourceGenerator
         float baseResourceWeight = subtypeConfig.GetResourceWeight();
 
         GameLogger.Info(
-            $"CellResourceGenerator: Body {bodyType}/{bodySubtype}, resolvedResources: [{string.Join(", ", resolvedResources)}], baseWeight: {baseResourceWeight}"
+            $"CellResourceGenerator: Body {classification}, resolvedResources: [{string.Join(", ", resolvedResources)}], baseWeight: {baseResourceWeight}"
         );
 
         // Step 2: Pre-filter eligible resources by resolved set membership
@@ -127,7 +127,7 @@ public static class CellResourceGenerator
     /// </summary>
     public static Dictionary<string, ResourceDeposit> GenerateSatelliteResources(
         PlanetaryResourceConfig planetaryResourceConfig,
-        object? satelliteSubtype,
+        BodyClassification? classification,
         RandomNumberGenerator rng,
         int maxResources = 3
     )
@@ -140,11 +140,13 @@ public static class CellResourceGenerator
             return results;
         }
 
-        var subtypeConfig = planetaryResourceConfig.GetConfigForSatelliteSubtype(satelliteSubtype);
+        var subtypeConfig = classification != null
+            ? planetaryResourceConfig.GetConfigForSubtype(classification)
+            : null;
         if (subtypeConfig == null)
         {
             GameLogger.Warning(
-                $"CellResourceGenerator: No resource config for satellite subtype {satelliteSubtype}"
+                $"CellResourceGenerator: No resource config for satellite classification {classification}"
             );
             return results;
         }
@@ -158,8 +160,8 @@ public static class CellResourceGenerator
 
         // Build weighted pool using base resource weight and resolved count ratio (no biome modifiers)
         var pool = new List<(string id, float score)>();
-        float resolvedCountRatio = eligibleResources.Count > 0 
-            ? (float)resolvedResources.Count / eligibleResources.Count 
+        float resolvedCountRatio = eligibleResources.Count > 0
+            ? (float)resolvedResources.Count / eligibleResources.Count
             : 0.5f;
 
         foreach (var resource in eligibleResources)

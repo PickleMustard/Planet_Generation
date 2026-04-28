@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Constructables;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
 using ProceduralGeneration.MeshGeneration.ResourceGeneration;
+using ProceduralGeneration.TextureGeneration;
+using Structures;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
@@ -61,17 +64,38 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
     [Export]
     public Vector3 accelerationVector;
     bool isSatelliteGroup = false;
-    SatelliteBodyType SatelliteType;
+
+    public BodyClassification Classification { get; private set; } = null!;
+    public BodyBillboardTextures BillboardTextures { get; private set; } = null!;
+    public Sprite3D? BillboardSprite { get; private set; }
+
+    /// <summary>
+    /// Backward-compat computed property. Returns the SatelliteBodyType from Classification.
+    /// </summary>
+    public SatelliteBodyType SatelliteType =>
+        (Classification as BodyClassification.Satellite)?.SatType ?? SatelliteBodyType.Asteroid;
 
     // Analytical orbit fields (derived from initial position/velocity on first frame)
     private float _orbitalRadius;
     private float _orbitalAngle;
     private float _orbitalSpeed;
     private bool _orbitalInitialized;
-    public UnifiedCelestialMesh? Mesh { get; set; }
+    public UnifiedCelestialMesh Mesh { get; private set; }
     Octree<Point>? Oct;
     public Godot.Collections.Dictionary? bodyDict;
     StructureDatabase? StrDb;
+
+    /// <summary>
+    /// The camera anchor (Node3D) attached to this body for positioning the camera.
+    /// Created on-demand via GetOrCreateCameraAnchor().
+    /// </summary>
+    public Node3D? CameraAnchor { get; private set; }
+
+    /// <summary>
+    /// Stores the current look direction for the camera anchor when no explicit target is provided.
+    /// Used to maintain orientation when repositioning the anchor without a LookAt target.
+    /// </summary>
+    private Vector3 _cameraAnchorLookDir = Vector3.Forward;
 
     /// <summary>
     /// Resource deposits available on this satellite body.
@@ -88,6 +112,14 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
 
     [Export]
     public Node3D SatellitesContainer { get; private set; } = null!;
+    public BuildingConstructionManager? BuildingConstructionMgr { get; private set; }
+    public BodyEconomyManager? EconomyMgr { get; private set; }
+    public BodyTransferManager? TransferMgr { get; private set; }
+    public Node ConstructionManager
+    {
+        get => BuildingConstructionMgr!;
+    }
+
     private Dictionary<int, int> _bandSatelliteCounts = new();
 
     #region OrbitalParameters
@@ -95,7 +127,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
     /// <summary>
     /// Satellite bodies always use band-based placement.
     /// </summary>
-    public bool UsesBandPlacement => true;
+    public bool UsesBandPlacement => Classification.UsesBandPlacement;
 
     /// <summary>
     /// Gets orbital parameters for a satellite placed in the specified band.
@@ -238,7 +270,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         internal float _size;
         internal Vector3 _totalForce = Vector3.Zero;
         internal bool _isSatelliteGroup = false;
-        internal SatelliteBodyType _satelliteType;
+        internal BodyClassification? _classification;
         internal UnifiedCelestialMesh? _mesh;
         internal Octree<Point>? _oct;
         internal Godot.Collections.Dictionary? _bodyDict;
@@ -280,9 +312,15 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
             return this;
         }
 
+        public Builder WithClassification(BodyClassification classification)
+        {
+            _classification = classification;
+            return this;
+        }
+
         public Builder WithSatelliteType(SatelliteBodyType satelliteType)
         {
-            _satelliteType = satelliteType;
+            _classification = BodyClassification.FromSatelliteType(satelliteType);
             return this;
         }
 
@@ -338,7 +376,8 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
             var mass = (float)baseTemplates["mass"];
             var size = (int)baseTemplates["size"];
 
-            _satelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
+            var satType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), type);
+            _classification = BodyClassification.FromSatelliteType(satType);
             _mass = mass;
             _size = size;
 
@@ -378,7 +417,10 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         Radius = builder._size;
         accelerationVector = builder._totalForce;
         isSatelliteGroup = builder._isSatelliteGroup;
-        SatelliteType = builder._satelliteType;
+        Classification =
+            builder._classification
+            ?? BodyClassification.FromSatelliteType(SatelliteBodyType.Asteroid);
+        BillboardTextures = new BodyBillboardTextures();
         Mesh = builder._mesh;
         Oct = builder._oct;
         bodyDict = builder._bodyDict;
@@ -406,7 +448,9 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         this.Mesh = mesh;
         this.Radius = size;
         this.AddChild(mesh);
-        this.SatelliteType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), satType);
+        var parsedSatType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), satType);
+        this.Classification = BodyClassification.FromSatelliteType(parsedSatType);
+        this.BillboardTextures = new BodyBillboardTextures();
         this.Mass = mass;
         this.Velocity = velocity;
         var rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
@@ -502,6 +546,13 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         // Create the satellites container
         SatellitesContainer = new Node3D { Name = "SatellitesContainer" };
         AddChild(SatellitesContainer);
+
+        // Create per-body economy and transfer managers
+        EconomyMgr = new BodyEconomyManager { Name = "BodyEconomyManager" };
+        AddChild(EconomyMgr);
+
+        TransferMgr = new BodyTransferManager { Name = "BodyTransferManager" };
+        AddChild(TransferMgr);
 
         GameLogger.Debug(
             $"SatelliteBody OrbitSystem initialized: {OrbitBands.Count} bands for mass {Mass}"
@@ -688,6 +739,113 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
             }
         }
         return neighbors.ToArray();
+    }
+
+    /// <summary>
+    /// Gets or creates the camera anchor for this body.
+    /// Anchor is created as a child Node3D named "CameraAnchor".
+    /// </summary>
+    /// <returns>The CameraAnchor node.</returns>
+    public Node3D GetOrCreateCameraAnchor()
+    {
+        if (CameraAnchor == null)
+        {
+            CameraAnchor = new Node3D { Name = "CameraAnchor" };
+            AddChild(CameraAnchor);
+        }
+        return CameraAnchor;
+    }
+
+    /// <summary>
+    /// Positions the camera anchor at a world-space position looking at an optional target.
+    /// </summary>
+    /// <param name="worldPosition">The world-space position for the anchor.</param>
+    /// <param name="lookAtTarget">Optional world-space target to look at. If null, looks at body center.</param>
+    public void PositionCameraAnchor(Vector3 worldPosition, Vector3? lookAtTarget = null)
+    {
+        if (CameraAnchor == null)
+            GetOrCreateCameraAnchor();
+
+        CameraAnchor!.GlobalPosition = worldPosition;
+
+        if (lookAtTarget.HasValue)
+        {
+            CameraAnchor.LookAt(lookAtTarget.Value);
+            _cameraAnchorLookDir = (lookAtTarget.Value - worldPosition).Normalized();
+        }
+        else if (_cameraAnchorLookDir != Vector3.Zero)
+        {
+            CameraAnchor.LookAt(worldPosition + _cameraAnchorLookDir);
+        }
+        else
+        {
+            CameraAnchor.LookAt(GlobalPosition);
+            _cameraAnchorLookDir = (GlobalPosition - worldPosition).Normalized();
+        }
+
+        GameLogger.Debug(
+            $"CameraAnchor positioned at {worldPosition}"
+            + (lookAtTarget.HasValue ? $" looking at {lookAtTarget.Value}" : "")
+        );
+    }
+
+    /// <summary>
+    /// Rotates the camera anchor around its current position using spherical coordinates.
+    /// </summary>
+    /// <param name="yaw">Yaw angle in radians (horizontal rotation around Y axis).</param>
+    /// <param name="pitch">Pitch angle in radians (vertical rotation around X axis).</param>
+    public void UpdateCameraAnchorRotation(float yaw, float pitch)
+    {
+        if (CameraAnchor == null)
+            return;
+
+        Vector3 currentPos = CameraAnchor.GlobalPosition;
+
+        float cosPitch = Mathf.Cos(pitch);
+        Vector3 direction = new Vector3(
+            Mathf.Sin(yaw) * cosPitch,
+            Mathf.Sin(pitch),
+            Mathf.Cos(yaw) * cosPitch
+        );
+
+        CameraAnchor.LookAt(currentPos + direction);
+        _cameraAnchorLookDir = direction;
+
+        GameLogger.Debug(
+            $"CameraAnchor rotated: yaw={Mathf.RadToDeg(yaw):F1}°, pitch={Mathf.RadToDeg(pitch):F1}°"
+        );
+    }
+
+    /// <summary>
+    /// Positions the inspection camera to focus on a specific cell.
+    /// Camera is placed along the cell normal, close to the surface.
+    /// Uses local Position so the camera tracks the body's orbital movement.
+    /// </summary>
+    /// <param name="cell">The VoronoiCell to focus on</param>
+    public void FocusInspectionCameraOnCell(VoronoiCell cell)
+    {
+        if (CameraAnchor == null)
+            GetOrCreateCameraAnchor();
+
+        Vector3 cellCenter = cell.Center;
+        Vector3 normal = cellCenter.Normalized();
+        float offset = cellCenter.Length() * 1.3f;
+
+        Vector3 camLocation = Position + normal * offset;
+
+        PositionCameraAnchor(camLocation, cellCenter + GlobalPosition);
+    }
+
+    /// <summary>
+    /// Positions the inspection camera to focus on a specific continent.
+    /// Satellite bodies do not support continent-based camera framing.
+    /// </summary>
+    /// <param name="continent">The Continent to focus on (ignored for satellites)</param>
+    public void FocusInspectionCameraOnContinent(Continent continent)
+    {
+        GameLogger.Warning(
+            "SatelliteBody.FocusInspectionCameraOnContinent: Satellite bodies do not support continent-based camera framing"
+        );
     }
 
     public override void _PhysicsProcess(double delta)
@@ -883,9 +1041,11 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         }
         Mesh!.ConfigureFrom(StrDb!, meshParams);
         Mesh.StartMeshGeneration(
+            this,
             Oct!,
             onCompleted: (mesh) =>
             {
+                Radius = mesh.size;
                 GenerateResources();
                 onCompleted?.Invoke(this);
             },
@@ -915,7 +1075,7 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         Resources = SatelliteResourceGenerator.GenerateResources(
             resDb.PlanetaryResources,
-            SatelliteType,  // Use SatelliteType as subtype
+            Classification,
             rng
         );
 

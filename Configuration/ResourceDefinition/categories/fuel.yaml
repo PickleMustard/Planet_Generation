@@ -6,36 +6,53 @@ resources:
       - 144
       - 255
     tags: [aquatic, water_world, marine, water_needed]
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/water"
+
   - id_name: uranium
     resource_tier: 1
     display_color:
       - 50
       - 205
       - 50
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/uranium"
+
   - id_name: hydrogen
     resource_tier: 2
     display_color:
       - 255
       - 0
       - 255
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/hydrogen"
+
   - id_name: tritium
     resource_tier: 3
     display_color:
       - 255
       - 0
       - 255
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/tritium"
+
   - id_name: liquid_uranium
     resource_tier: 2
     display_color:
       - 127
       - 255
       - 0
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/liquid_uranium"
+
   - id_name: antimatter
     resource_tier: 3
     display_color:
       - 255
       - 255
       - 255
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/antimatter"
 
   - id_name: methane
     resource_tier: 1
@@ -44,6 +61,8 @@ resources:
       - 215
       - 0
     tags: [power, heat]
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/methane"
 
   - id_name: hydrazine
     resource_tier: 2
@@ -52,3 +71,5 @@ resources:
       - 215
       - 0
     tags: [power, heat]
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/hydrazine"

@@ -53,11 +53,33 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
     private ShipDefinition? _shipDefinition;
     private bool _isUnderConstruction;
 
+    /// <summary>The ship definition template used to construct this unit, if any.</summary>
+    public ShipDefinition? ShipDef => _shipDefinition;
+
     /// <summary>Whether this unit is currently under construction.</summary>
     public bool IsUnderConstruction => _isUnderConstruction;
 
     /// <summary>The construction-yard station building this ship, if any.</summary>
     public StationSatellite? ConstructingStation { get; set; }
+
+    /// <summary>
+    /// True when the user has manually paused this ship's construction.
+    /// Independent of the resource-driven Blocked status; manual pause
+    /// releases the station's parallel-build slot.
+    /// </summary>
+    public bool IsManuallyPaused { get; private set; }
+
+    /// <summary>Sets the manual-pause flag (GUI-driven).</summary>
+    public void SetManualPause(bool paused) => IsManuallyPaused = paused;
+
+    /// <summary>
+    /// Display status for UI: "Paused" takes precedence over the internal
+    /// ConstructionStatus when the user has manually paused the build.
+    /// </summary>
+    public string GetDisplayStatus()
+    {
+        return IsManuallyPaused ? "Paused" : GetStatus();
+    }
 
     #region IConstructable
 
@@ -242,6 +264,9 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
             definition.ConstructionTime,
             definition.RequiredResources
         );
+
+        Node3D? model = definition.Visual?.CreateModelInstance(1.0f);
+        InstallModel(model, definition.Name);
     }
 
     /// <summary>
@@ -482,6 +507,8 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
 
     // Visual components
     private MeshInstance3D? _meshInstance;
+    private Node3D? _modelRoot;
+    private Area3D? _selectionArea;
     private float _rotationSpeed = 1.0f;
 
     public LogisticsUnitState State
@@ -547,8 +574,8 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
     {
         base._Ready();
 
-        // Create visual representation
-        CreateVisualRepresentation();
+        if (_modelRoot == null)
+            InstallModel(null, Name);
 
         // Initialize movement controller for hybrid simulation
         InitializeMovementController();
@@ -2045,59 +2072,75 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
     /// </summary>
     public OrbitalTransferSchedule? ActiveSchedule => _scheduleExecutor?.ActiveSchedule;
 
-    private void CreateVisualRepresentation()
+    private void InstallModel(Node3D? model, string? logLabel)
     {
-        // Create MeshInstance3D for visual representation
-        _meshInstance = new MeshInstance3D { Name = "LogisticsUnitMesh" };
-
-        // Create a box mesh (logistics units look like elongated cargo containers)
-        var boxMesh = new BoxMesh
+        if (_modelRoot != null)
         {
-            Size = new Vector3(0.5f, 0.2f, 1.0f),
-            SubdivideWidth = 2,
-            SubdivideHeight = 1,
-            SubdivideDepth = 3,
-        };
-        _meshInstance.Mesh = boxMesh;
+            _modelRoot.QueueFree();
+            _modelRoot = null;
+            _meshInstance = null;
+        }
 
-        // Create a metallic material for the logistics unit (silver/light gray)
-        var material = new StandardMaterial3D
+        model ??= DefaultModelRegistry.InstantiateUnitDefault();
+        if (model == null)
         {
-            AlbedoColor = new Color(0.6f, 0.7f, 0.8f), // Silver/light gray
-            Metallic = 0.8f,
-            Roughness = 0.2f,
-        };
-        _meshInstance.MaterialOverride = material;
+            GameLogger.Error($"LogisticsUnit {Name}: Failed to obtain any model for '{logLabel}'");
+            return;
+        }
 
-        // Add mesh instance as child
-        CallDeferred("add_child", _meshInstance);
+        AddChild(model);
+        _modelRoot = model;
+        _meshInstance = NodeUtils.FindMeshInstanceRecursive(model);
 
-        // Add a small cone at the front for a pointed nose
-        var noseMesh = new MeshInstance3D { Name = "LogisticsUnitNose" };
-        var coneMesh = new CylinderMesh
+        EnsureSelectionArea();
+
+        GameLogger.Debug($"LogisticsUnit {Name}: Visual installed for '{logLabel}'");
+    }
+
+    private void EnsureSelectionArea()
+    {
+        Vector3 selectionSize = new Vector3(0.5f, 0.2f, 1.0f);
+        if (_meshInstance != null)
         {
-            TopRadius = 0f,
-            BottomRadius = 0.15f,
-            Height = 0.3f,
-            RadialSegments = 8,
-            Rings = 2,
-        };
-        noseMesh.Mesh = coneMesh;
-        noseMesh.MaterialOverride = material;
-        noseMesh.Position = new Vector3(0, 0, -0.6f);
-        noseMesh.RotationDegrees = new Vector3(90, 0, 0);
+            var aabb = _meshInstance.GetAabb();
+            if (aabb.Size.LengthSquared() > 0.0001f)
+                selectionSize = aabb.Size;
+        }
 
-        _meshInstance.CallDeferred("add_child", noseMesh);
-
-        GameLogger.Debug($"LogisticsUnit visuals created for: {Name}");
+        if (_selectionArea == null)
+        {
+            _selectionArea = new Area3D
+            {
+                Name = "SelectionArea",
+                InputRayPickable = true,
+                CollisionLayer = 1u << 1,
+                CollisionMask = 0,
+            };
+            var collisionShape = new CollisionShape3D
+            {
+                Shape = new BoxShape3D { Size = selectionSize },
+            };
+            _selectionArea.AddChild(collisionShape);
+            AddChild(_selectionArea);
+        }
+        else
+        {
+            foreach (var child in _selectionArea.GetChildren())
+            {
+                if (child is CollisionShape3D cs && cs.Shape is BoxShape3D box)
+                {
+                    box.Size = selectionSize;
+                    break;
+                }
+            }
+        }
     }
 
     public override void _Process(double delta)
     {
-        // Rotate the logistics unit for visual interest
-        if (_meshInstance != null && IsActive)
+        if (_modelRoot != null && IsActive)
         {
-            _meshInstance.RotateY(_rotationSpeed * (float)delta);
+            _modelRoot.RotateY(_rotationSpeed * (float)delta);
         }
     }
 }

@@ -8,6 +8,8 @@ ships:
     required_resources:
       Steel: 50
       Electronics: 30
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/light_courier"
 
   - name: Swift_Courier
     dry_mass: 250
@@ -18,6 +20,8 @@ ships:
     required_resources:
       Steel: 100
       Electronics: 60
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/swift_courier"
 
   - name: Express_Courier
     dry_mass: 500
@@ -29,6 +33,8 @@ ships:
       Steel: 200
       Electronics: 100
       Composites: 50
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/express_courier"
 
   - name: Hyper_Courier
     dry_mass: 1000
@@ -40,3 +46,5 @@ ships:
       Steel: 400
       Electronics: 200
       Composites: 100
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/hyper_courier"

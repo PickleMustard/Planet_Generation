@@ -4,6 +4,7 @@ using Godot;
 using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
+using Structures.Logistics;
 using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.NameGeneration;
@@ -60,7 +61,7 @@ public partial class ConstructionManager : Node
         string status
     );
 
-  private static ConstructionManager _instance;
+    private static ConstructionManager _instance;
     public static ConstructionManager Instance => _instance;
 
     [Export]
@@ -313,11 +314,6 @@ public partial class ConstructionManager : Node
         inConstruction.IsActive = false;
         inConstruction.Visible = false;
 
-        if (parentBody.FindChild("SatellitesContainer") is Node3D container)
-            container.AddChild(inConstruction);
-        else
-            parentBody.AddChild(inConstruction);
-
         inConstruction.Initialize(parentBody, bandIndex);
 
         GameLogger.Info(
@@ -443,7 +439,9 @@ public partial class ConstructionManager : Node
     private void OnBuildingConstructionInitialized(Dictionary details)
     {
         var building = details["building"].As<BuildingConstruction>();
-        GameLogger.Info($"[ConstructionManager] Building construction initialized: {building.Name}");
+        GameLogger.Info(
+            $"[ConstructionManager] Building construction initialized: {building.Name}"
+        );
     }
 
     private void OnBuildingConstructionCompleted(Dictionary details)
@@ -463,6 +461,10 @@ public partial class ConstructionManager : Node
         completed.Visible = true;
         completed.ProcessMode = ProcessModeEnum.Inherit;
         SetChildrenVisible(completed, true);
+
+        // Register building reference on all occupied cells
+        foreach (var cell in completed.OccupiedCells)
+            cell.Building = completed;
 
         // Register with continent economy for production
         RegisterBuildingWithEconomy(completed);
@@ -485,8 +487,9 @@ public partial class ConstructionManager : Node
 
         continent.InitializeEconomy();
 
-        // Ensure continent economy is registered as a transfer endpoint
-        TransferManager.Instance?.RegisterContinentEndpoint(continentIdx, continent.Economy!);
+        // Register continent economy with per-body managers
+        parentBody.EconomyMgr?.RegisterEconomy(continent.Economy!);
+        parentBody.TransferMgr?.RegisterContinentEndpoint(continentIdx, continent.Economy!);
 
         string recipeId = building.Definition?.Production?.DefaultRecipe ?? "";
         if (!string.IsNullOrEmpty(recipeId))
@@ -495,15 +498,25 @@ public partial class ConstructionManager : Node
             building.ActiveRecipeId = recipeId;
         }
 
-        // Notify TransferManager if this is a transfer station
+        // Notify per-body TransferManager if this is a transfer station
         if (building.Definition?.TransferStation != null)
         {
-            TransferManager.Instance?.OnTransferStationBuilt(continentIdx, building);
+            parentBody.TransferMgr?.OnTransferStationBuilt(continentIdx, building);
         }
+
+        SignalBus.Instance?.EmitBuildingConstructed(continentIdx);
     }
 
     private void UnregisterBuildingFromEconomy(BuildingConstruction building)
     {
+        // Free up building limit slot
+        if (building.Definition?.BuildingLimit > 0)
+            BuildingDatabase.Instance?.DecrementGlobalPlacement(building.Definition.IdName!);
+
+        // Clear building reference from all occupied cells
+        foreach (var cell in building.OccupiedCells)
+            cell.Building = null;
+
         var parentBody = building.GetParent() as CelestialBody;
         if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
             return;
@@ -512,22 +525,30 @@ public partial class ConstructionManager : Node
         if (continentIdx < 0)
             return;
 
-        if (parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
-            && continent.Economy != null)
+        if (
+            parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
+            && continent.Economy != null
+        )
         {
             continent.Economy.UnregisterBuilding(building);
         }
 
-        // Notify TransferManager if this is a transfer station
+        // Notify per-body TransferManager if this is a transfer station
         if (building.Definition?.TransferStation != null)
         {
-            TransferManager.Instance?.OnTransferStationDestroyed(continentIdx, building);
+            parentBody?.TransferMgr?.OnTransferStationDestroyed(continentIdx, building);
         }
+
+        SignalBus.Instance?.EmitBuildingRemoved(continentIdx);
     }
 
     private void CancelBuilding(BuildingConstruction cancelled, Dictionary details)
     {
         GameLogger.Info($"[ConstructionManager] Building construction cancelled: {cancelled.Name}");
+
+        // Free up building limit slot
+        if (cancelled.Definition?.BuildingLimit > 0)
+            BuildingDatabase.Instance?.DecrementGlobalPlacement(cancelled.Definition.IdName!);
 
         // Unregister from economy if it was already registered
         UnregisterBuildingFromEconomy(cancelled);
@@ -563,30 +584,47 @@ public partial class ConstructionManager : Node
 
         parentBody.AddChild(building);
 
-        building.SetBuildingDefinition(definition);
+        // Get body radius for scaling (works with both CelestialBody and SatelliteBody)
+        float bodyRadius = 1.0f;
+        if (parentBody is IOrbitalBody orbitalBody)
+        {
+            bodyRadius = orbitalBody.Radius;
+        }
+        else if (parentBody is CelestialBody parentCelestialBody)
+        {
+            bodyRadius = parentCelestialBody.Radius;
+        }
+
+        building.SetBuildingDefinition(definition, bodyRadius);
         building.SetPlacement(primaryCell, additionalCells, parentBody);
         building.StartConstruction(new Dictionary());
         building.Visible = true;
 
         // Emit signal to notify other systems
-        EmitBuildingConstruct(building, new Dictionary
-        {
-            { "building", building },
-            { "name", building.Name.ToString() }
-        });
+        EmitBuildingConstruct(
+            building,
+            new Dictionary { { "building", building }, { "name", building.Name.ToString() } }
+        );
 
-        // Register with orbital architect station's work budget if provided
-        if (architectStation != null)
+        // Track against building limit at construction start
+        if (definition.BuildingLimit > 0)
+            BuildingDatabase.Instance?.MarkGloballyPlaced(definition.IdName!);
+
+        // Register with the body's centralized BuildingConstructionManager
+        if (
+            parentBody is CelestialBody celestialBody
+            && celestialBody.BuildingConstructionMgr != null
+        )
         {
-            architectStation.RegisterBuildingConstruction(building);
+            celestialBody.BuildingConstructionMgr.RegisterBuilding(building);
             GameLogger.Debug(
-                $"Started construction of building '{definition.DisplayName ?? definition.IdName}' on cell {primaryCell.Index} via architect '{architectStation.Name}' ({definition.WorkRequired} work)"
+                $"Started construction of building '{definition.DisplayName ?? definition.IdName}' on cell {primaryCell.Index} ({definition.WorkRequired} work)"
             );
         }
         else
         {
-            GameLogger.Debug(
-                $"Started construction of building '{definition.DisplayName ?? definition.IdName}' on cell {primaryCell.Index} ({definition.WorkRequired} work)"
+            GameLogger.Warning(
+                $"No BuildingConstructionManager on body '{parentBody.Name}' — building '{definition.DisplayName ?? definition.IdName}' will not tick"
             );
         }
 
@@ -675,17 +713,28 @@ public partial class ConstructionManager : Node
         if (stationDefinition != null)
         {
             station.SetStationDefinition(stationDefinition);
-            station.StartConstruction(new Dictionary());
+            Dictionary stationDetails = new Dictionary();
+            if (targetBody.GetType() == typeof(CelestialBody))
+            {
+                stationDetails.Add("parent_body", (CelestialBody)targetBody);
+                stationDetails.Add("parent_type", "CelestialBody");
+                stationDetails.Add("band_index", bandIndex);
+            }
+            else if (targetBody.GetType() == typeof(SatelliteBody))
+            {
+                stationDetails.Add("parent_body", (SatelliteBody)targetBody);
+                stationDetails.Add("parent_type", "SatelliteBody");
+                stationDetails.Add("band_index", bandIndex);
+            }
+            station.StartConstruction(stationDetails);
 
             // Make visible but translucent during construction
             station.Visible = true;
+            stationDetails.Add("station", station);
+            stationDetails.Add("name", station.Name.ToString());
 
             // Emit signal to notify other systems
-            EmitStationConstruct(station, new Dictionary
-            {
-                { "station", station },
-                { "name", station.Name.ToString() }
-            });
+            EmitStationConstruct(station, stationDetails);
 
             GameLogger.Debug(
                 $"Started construction of station '{name}' in band {bandIndex} ({stationDefinition.ConstructionTime}s)"
@@ -734,15 +783,25 @@ public partial class ConstructionManager : Node
         if (stationDefinition != null)
         {
             station.SetStationDefinition(stationDefinition);
-            station.StartConstruction(new Dictionary());
+            Dictionary locationDetails = new Dictionary();
+            if (targetBody.GetType() == typeof(CelestialBody))
+            {
+                locationDetails.Add("parent_body", (CelestialBody)targetBody);
+                locationDetails.Add("parent_type", "CelestialBody");
+            }
+            else if (targetBody.GetType() == typeof(SatelliteBody))
+            {
+                locationDetails.Add("parent_body", (SatelliteBody)targetBody);
+                locationDetails.Add("parent_type", "SatelliteBody");
+            }
+            station.StartConstruction(locationDetails);
             station.Visible = true;
 
             // Emit signal to notify other systems
-            EmitStationConstruct(station, new Dictionary 
-            { 
-                { "station", station }, 
-                { "name", station.Name.ToString() }
-            });
+            EmitStationConstruct(
+                station,
+                new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
+            );
 
             GameLogger.Debug(
                 $"Started construction of station '{name}' at radius {radius} ({stationDefinition.ConstructionTime}s)"
@@ -792,7 +851,11 @@ public partial class ConstructionManager : Node
         }
 
         // Validate ship construction at station
-        if (shipDefinition != null && parentStation != null && parentStation is not ConstructionYardStation)
+        if (
+            shipDefinition != null
+            && parentStation != null
+            && parentStation is not ConstructionYardStation
+        )
         {
             throw new InvalidOperationException(
                 $"Station '{parentStation.Name}' is not a construction yard (type: {parentStation.StationType})"
@@ -835,11 +898,10 @@ public partial class ConstructionManager : Node
             unit.Visible = true;
 
             // Emit signal to notify other systems
-            EmitShipConstruct(unit, new Dictionary
-            {
-                { "ship", unit },
-                { "name", unit.Name.ToString() }
-            });
+            EmitShipConstruct(
+                unit,
+                new Dictionary { { "ship", unit }, { "name", unit.Name.ToString() } }
+            );
 
             // If parent station is a construction yard, enqueue via the yard's build queue
             if (parentStation is ConstructionYardStation yard)
@@ -871,7 +933,10 @@ public partial class ConstructionManager : Node
     /// <summary>
     /// Creates the appropriate station subclass based on the station definition's capabilities.
     /// </summary>
-    private static StationSatellite CreateStationInstance(string name, StationDefinition? definition)
+    private static StationSatellite CreateStationInstance(
+        string name,
+        StationDefinition? definition
+    )
     {
         if (definition?.CanBuildShips == true)
             return new ConstructionYardStation { Name = name };
@@ -881,4 +946,142 @@ public partial class ConstructionManager : Node
 
         return new StationSatellite { Name = name };
     }
+
+    /// <summary>
+    /// Creates the company headquarters building - can only be called once per game.
+    /// </summary>
+    public HeadquartersBuilding? CreateHeadquarters(
+        VoronoiCell primaryCell,
+        Node3D parentBody,
+        List<VoronoiCell>? additionalCells = null
+    )
+    {
+        if (BuildingDatabase.Instance?.IsGloballyPlaced("company_headquarters") == true)
+        {
+            GameLogger.Warning("[ConstructionManager] Headquarters already exists");
+            return null;
+        }
+
+        if (!BuildingDatabase.Instance.TryGetBuilding("company_headquarters", out var definition))
+        {
+            GameLogger.Error("[ConstructionManager] Headquarters definition not found");
+            return null;
+        }
+
+        var building = new HeadquartersBuilding();
+        parentBody.AddChild(building);
+
+        // Get body radius for scaling
+        float bodyRadius = 1.0f;
+        if (parentBody is IOrbitalBody orbitalBody)
+        {
+            bodyRadius = orbitalBody.Radius;
+        }
+        else if (parentBody is CelestialBody celestialBodyCheck)
+        {
+            bodyRadius = celestialBodyCheck.Radius;
+        }
+
+        building.SetBuildingDefinition(definition, bodyRadius);
+        building.SetPlacement(primaryCell, additionalCells, parentBody);
+        building.Visible = true;
+
+        // Register with economy
+        RegisterHeadquartersWithEconomy(building);
+
+        EmitBuildingConstruct(
+            building,
+            new Godot.Collections.Dictionary
+            {
+                { "building", building },
+                { "name", building.Name.ToString() },
+                { "is_headquarters", true },
+            }
+        );
+
+        _pendingHeadquarters = building;
+        return building;
+    }
+
+    private void RegisterHeadquartersWithEconomy(HeadquartersBuilding building)
+    {
+        var parentBody = building.GetParent() as CelestialBody;
+        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
+            return;
+
+        int continentIdx = building.PrimaryCell.ContinentIndex;
+        if (
+            continentIdx < 0
+            || !parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
+        )
+            return;
+
+        continent.InitializeEconomy();
+        parentBody.EconomyMgr?.RegisterEconomy(continent.Economy!);
+        parentBody.TransferMgr?.RegisterContinentEndpoint(continentIdx, continent.Economy!);
+    }
+
+    /// <summary>
+    /// Finalizes a headquarters after the player confirms the naming dialogue:
+    /// registers the building with its continent economy, binds the transfer
+    /// station (if any), and deposits starting stockpiles via InitializeHeadquarters.
+    /// </summary>
+    public void FinalizeHeadquarters(HeadquartersBuilding building)
+    {
+        var parentBody = building.GetParent() as CelestialBody;
+        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
+            return;
+
+        int continentIdx = building.PrimaryCell.ContinentIndex;
+        if (
+            continentIdx < 0
+            || !parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
+            || continent.Economy == null
+        )
+            return;
+
+        string recipeId = building.Definition?.Production?.DefaultRecipe ?? "";
+        GameLogger.Info(
+            $"[ConstructionManager] FinalizeHeadquarters recipeId: {recipeId}, Definition {building.Definition}, Production {building.Definition?.Production}"
+        );
+        if (!string.IsNullOrEmpty(recipeId))
+        {
+            continent.Economy.RegisterBuilding(building, recipeId);
+            building.ActiveRecipeId = recipeId;
+        }
+
+        if (building.Definition?.TransferStation != null)
+        {
+            parentBody.TransferMgr?.OnTransferStationBuilt(continentIdx, building);
+        }
+
+        building.InitializeHeadquarters(parentBody, continentIdx);
+        SignalBus.Instance?.EmitBuildingConstructed(continentIdx);
+
+        if (_pendingHeadquarters == building)
+            _pendingHeadquarters = null;
+    }
+
+    /// <summary>
+    /// Undoes a headquarters placement prior to finalization: frees the node
+    /// and releases the global placement slot so the player can re-place.
+    /// </summary>
+    public void CancelHeadquarters(HeadquartersBuilding building)
+    {
+        BuildingDatabase.Instance?.DecrementGlobalPlacement("company_headquarters");
+
+        if (_pendingHeadquarters == building)
+            _pendingHeadquarters = null;
+
+        if (GodotObject.IsInstanceValid(building))
+            building.QueueFree();
+    }
+
+    private HeadquartersBuilding? _pendingHeadquarters;
+
+    /// <summary>
+    /// The most recently placed headquarters awaiting naming confirmation.
+    /// Null once the placement is finalized or cancelled.
+    /// </summary>
+    public HeadquartersBuilding? PendingHeadquarters => _pendingHeadquarters;
 }

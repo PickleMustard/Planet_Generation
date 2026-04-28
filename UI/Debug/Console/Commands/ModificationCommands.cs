@@ -2,6 +2,7 @@
 using System;
 using System.Reflection;
 using Godot;
+using Structures;
 using Structures.Enums;
 using ProceduralGeneration.PlanetGeneration;
 using ProceduralGeneration.MeshGeneration;
@@ -61,7 +62,7 @@ public static class ModificationCommands
         {
             var mesh = new UnifiedCelestialMesh();
             var builder = new CelestialBody.Builder();
-            builder.WithType(bodyType);
+            builder.WithClassification(BodyClassification.FromLegacy(bodyType, null));
             builder.WithMesh(mesh);
 
             var celestialBody = builder.Build();

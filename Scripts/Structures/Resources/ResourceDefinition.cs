@@ -48,4 +48,21 @@ public class ResourceDefinition
     /// A resource is generatable if it has tags defined for tag-based generation matching.
     /// </summary>
     public bool IsGeneratable => Tags != null && Tags.Count > 0;
+
+    /// <summary>
+    /// Visual representation including 2D icon for UI display.
+    /// </summary>
+    public IconDefinition Icon { get; set; } = new();
+
+    /// <summary>
+    /// Gets the effective icon tint, falling back to DisplayColor if not set.
+    /// </summary>
+    public Color GetEffectiveIconTint()
+    {
+        if (Icon != null && Icon.Tint != Colors.White)
+        {
+            return Icon.Tint;
+        }
+        return DisplayColor;
+    }
 }

@@ -1,0 +1,31 @@
+[gd_scene load_steps=2 format=3 uid="uid://building_info_header"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/BuildingInfoHeader.cs" id="1_header"]
+
+[node name="BuildingInfoHeader" type="HBoxContainer"]
+theme_override_constants/separation = 12
+script = ExtResource("1_header")
+
+[node name="BuildingIcon" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BuildingNameLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Building Name"
+vertical_alignment = 1
+
+[node name="UpgradeButton" type="Button" parent="."]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+flat = true
+tooltip_text = "Upgrade Building"
+
+[node name="DemolishButton" type="Button" parent="."]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+flat = true
+tooltip_text = "Demolish Building"

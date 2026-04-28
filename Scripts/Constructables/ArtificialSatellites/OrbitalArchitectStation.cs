@@ -1,65 +1,52 @@
-using System.Collections.Generic;
+using ProceduralGeneration.PlanetGeneration;
+using Structures.Logistics;
 using UtilityLibrary;
 
 namespace Constructables;
 
 /// <summary>
 /// A station capable of constructing surface buildings via an orbital work beam system.
-/// Can construct unlimited buildings simultaneously, but with a shared work budget
-/// that diminishes as more buildings are constructed concurrently.
+/// Registers its work budget with the parent body's BuildingConstructionManager
+/// so that multiple architects on the same body contribute to a single aggregated pool.
 /// </summary>
 public partial class OrbitalArchitectStation : StationSatellite
 {
-    private BuildingWorkBudget? _buildingWorkBudget;
-
     public override void SetStationDefinition(StationDefinition definition)
     {
         base.SetStationDefinition(definition);
-        _buildingWorkBudget = new BuildingWorkBudget(
-            this,
-            definition.BuildingWorkBudgetPerTick,
-            definition.BuildingScalingPenalty
+        GameLogger.Info(
+            $"OrbitalArchitectStation {Name}: Initialized with budget "
+                + $"{definition.BuildingWorkBudgetPerTick}/tick, penalty {definition.BuildingScalingPenalty}"
         );
-        GameLogger.Info($"OrbitalArchitectStation {Name}: Initialized with budget {definition.BuildingWorkBudgetPerTick}/tick, penalty {definition.BuildingScalingPenalty}");
     }
 
-    protected override void TickOperational(float delta)
+    protected override void OnConstructionComplete()
     {
-        base.TickOperational(delta);
-        _buildingWorkBudget?.Tick(delta);
+        RegisterWithBodyManager();
+        base.OnConstructionComplete();
     }
 
-    /// <summary>
-    /// Registers a building to be constructed under this station's work budget.
-    /// </summary>
-    public void RegisterBuildingConstruction(BuildingConstruction building)
+    public override void _ExitTree()
     {
-        if (_buildingWorkBudget == null)
+        _parentBody.BuildingConstructionMgr.UnregisterArchitect(this);
+    }
+
+    protected virtual void RegisterWithBodyManager()
+    {
+        // Station tree: CelestialBody -> SatellitesContainer -> this
+        if (_parentBody?.BuildingConstructionMgr == null)
         {
-            GameLogger.Warning($"OrbitalArchitectStation {Name}: Cannot register building - no work budget initialized");
+            GameLogger.Warning(
+                $"OrbitalArchitectStation {Name}: No BuildingConstructionManager found on parent body"
+            );
             return;
         }
 
-        building.ConstructingStation = this;
-        _buildingWorkBudget.Register(building);
-    }
-
-    /// <summary>
-    /// Unregisters a building from this station's work budget (on completion or cancellation).
-    /// </summary>
-    public void UnregisterBuildingConstruction(BuildingConstruction building)
-    {
-        _buildingWorkBudget?.Unregister(building);
-        if (building.ConstructingStation == this)
-            building.ConstructingStation = null;
-    }
-
-    /// <summary>
-    /// Returns the list of buildings currently being constructed by this station.
-    /// </summary>
-    public IReadOnlyList<BuildingConstruction> GetActiveBuildings()
-    {
-        return _buildingWorkBudget?.GetActiveBuildings()
-            ?? (IReadOnlyList<BuildingConstruction>)new List<BuildingConstruction>();
+        _parentBody.BuildingConstructionMgr.RegisterArchitect(
+            this,
+            _stationDefinition?.BuildingWorkBudgetPerTick ?? 1.0f,
+            _stationDefinition?.BuildingScalingPenalty ?? 0.05f,
+            wasteFactor: 1.0f
+        );
     }
 }

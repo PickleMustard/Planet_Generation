@@ -5,7 +5,6 @@
 [ext_resource type="Script" uid="uid://cf27m54pv1hef" path="res://Scripts/Scenes/SceneNavigator.cs" id="3_scenenav"]
 
 [sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_1"]
-exposure_multiplier = 1.169
 
 [node name="planet_gen" type="Node3D" unique_id=809145855]
 
@@ -14,13 +13,11 @@ environment = ExtResource("1_env")
 camera_attributes = SubResource("CameraAttributesPractical_1")
 
 [node name="IndividualPlanetGeneratorUI" parent="." unique_id=1006264755 node_paths=PackedStringArray("PlanetContainer", "PreviewCamera") instance=ExtResource("2_ipg")]
-anchors_preset = 9
-anchor_right = 0.0
-offset_right = 0.0
+anchors_preset = -1
+anchor_right = 0.411
+offset_right = 0.5279846
 offset_bottom = 0.0
 grow_horizontal = 1
-size_flags_horizontal = 3
-size_flags_vertical = 3
 PlanetContainer = NodePath("../planet_container")
 PreviewCamera = NodePath("../Camera3D")
 

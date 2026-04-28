@@ -114,7 +114,7 @@ public class BiomeTagConfig
     public List<Biome.BiomeType> GetBiomesWithTag(string tag)
     {
         var biomes = new List<Biome.BiomeType>();
-        
+
         foreach (var kvp in Biomes)
         {
             if (kvp.Value?.HasTag(tag) ?? false)
@@ -122,7 +122,7 @@ public class BiomeTagConfig
                 biomes.Add(kvp.Key);
             }
         }
-        
+
         return biomes;
     }
 }

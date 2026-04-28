@@ -9,6 +9,8 @@ stations:
     required_resources:
       Steel: 800
       Electronics: 200
+    icon:
+      base_path: "res://Assets/Icons/Stations/architect/small_orbital_architect"
 
   - name: Large_Orbital_Architect
     station_type: Orbital_Architect
@@ -21,6 +23,8 @@ stations:
       Steel: 3000
       Electronics: 800
       Machinery: 400
+    icon:
+      base_path: "res://Assets/Icons/Stations/architect/large_orbital_architect"
 
   - name: industrial_construction_ring
     station_type: Orbital_Architect
@@ -35,3 +39,5 @@ stations:
       high_tensile_wire: 10000
       hydrazine: 100
       motor: 100
+    icon:
+      base_path: "res://Assets/Icons/Stations/architect/industrial_construction_ring"

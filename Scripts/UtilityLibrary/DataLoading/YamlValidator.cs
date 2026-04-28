@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Godot;
+using Structures.Enums;
 using YamlDotNet.RepresentationModel;
 
 namespace UtilityLibrary.DataLoading;
@@ -80,7 +81,7 @@ public static class YamlValidator
         return result;
     }
 
-public static ValidationResult ValidateResourceDefinition(string filePath)
+    public static ValidationResult ValidateResourceDefinition(string filePath)
     {
         var result = new ValidationResult { FilePath = filePath };
 
@@ -192,14 +193,14 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                     $"Resource at index {resourceIndex} missing required field: 'id_name'"
                 );
             }
-            
+
             if (!resource.Children.ContainsKey("resource_tier"))
             {
                 result.AddError(
                     $"Resource at index {resourceIndex} missing required field: 'resource_tier'"
                 );
             }
-            
+
             // resource_type should NOT be present in category files
             if (resource.Children.ContainsKey("resource_type"))
             {
@@ -207,6 +208,12 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                     $"Resource at index {resourceIndex} contains 'resource_type' field. " +
                     "In category-based format, resource type should be inferred from file name."
                 );
+            }
+
+            // Validate icon section if present
+            if (resource.Children.ContainsKey("icon"))
+            {
+                ValidateIconSection(resource.Children["icon"], $"Resource at index {resourceIndex}", result);
             }
 
             resourceIndex++;
@@ -494,14 +501,14 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                     $"Resource at index {resourceIndex} missing required field: 'id_name'"
                 );
             }
-            
+
             if (!resource.Children.ContainsKey("resource_tier"))
             {
                 result.AddError(
                     $"Resource at index {resourceIndex} missing required field: 'resource_tier'"
                 );
             }
-            
+
             // resource_type is now inferred from file name, but we check if it's present
             // (it shouldn't be in the new category-based format)
             if (resource.Children.ContainsKey("resource_type"))
@@ -630,9 +637,10 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                             }
                             else
                             {
-                                // Check for wildcard and other biomes
+                                // Check for wildcard and other biomes/categories
                                 bool hasWildcard = false;
-                                var otherBiomes = new List<string>();
+                                var otherEntries = new List<string>();
+                                var categoryNames = new List<string>();
 
                                 foreach (var biomeNode in biomesSequence.Children)
                                 {
@@ -644,6 +652,19 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                                         {
                                             hasWildcard = true;
                                         }
+                                        else if (biomeName.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            // Validate category reference
+                                            string categoryName = biomeName.Substring(9).Trim();
+                                            if (!IsValidBiomeCategory(categoryName))
+                                            {
+                                                result.AddError(
+                                                    $"Building at index {buildingIndex}: Unknown biome category '{categoryName}'"
+                                                );
+                                            }
+                                            categoryNames.Add(categoryName);
+                                            otherEntries.Add(biomeName);
+                                        }
                                         else
                                         {
                                             // Validate biome name against known types
@@ -653,18 +674,18 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                                                     $"Building at index {buildingIndex}: Unknown biome type '{biomeName}'"
                                                 );
                                             }
-                                            otherBiomes.Add(biomeName);
+                                            otherEntries.Add(biomeName);
                                         }
                                     }
                                 }
 
-                                // Warn if wildcard is used with other biomes
-                                if (hasWildcard && otherBiomes.Count > 0)
+                                // Warn if wildcard is used with other biomes/categories
+                                if (hasWildcard && otherEntries.Count > 0)
                                 {
                                     result.AddWarning(
                                         $"Building at index {buildingIndex}: Wildcard '*' allows all biomes, " +
-                                        $"but additional biomes were also specified: {string.Join(", ", otherBiomes)}. " +
-                                        "These additional biomes will be ignored."
+                                        $"but additional entries were also specified: {string.Join(", ", otherEntries)}. " +
+                                        "These additional entries will be ignored."
                                     );
                                 }
                             }
@@ -694,6 +715,44 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                         {
                             result.AddError(
                                 $"Building at index {buildingIndex}: 'placement_requirements.biomes' must be a sequence"
+                            );
+                        }
+                    }
+
+                    // Validate configurable_behavior if present
+                    if (placement.Children.ContainsKey("configurable_behavior"))
+                    {
+                        var behaviorNode = placement.Children["configurable_behavior"];
+                        if (behaviorNode is YamlScalarNode behaviorScalar)
+                        {
+                            string? behaviorValue = behaviorScalar.Value;
+                            if (!string.IsNullOrWhiteSpace(behaviorValue))
+                            {
+                                // Check if it's a file path or class name
+                                if (behaviorValue.StartsWith("res://", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // Validate file path format
+                                    if (!behaviorValue.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        result.AddWarning(
+                                            $"Building at index {buildingIndex}: " +
+                                            $"'configurable_behavior' file path should end with .cs: '{behaviorValue}'"
+                                        );
+                                    }
+                                }
+                                else if (!IsValidBehaviorName(behaviorValue))
+                                {
+                                    result.AddWarning(
+                                        $"Building at index {buildingIndex}: " +
+                                        $"'configurable_behavior' value '{behaviorValue}' may not be a valid class name"
+                                    );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'configurable_behavior' must be a string"
                             );
                         }
                     }
@@ -890,6 +949,12 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                 }
             }
 
+            // Validate icon structure if present
+            if (building.Children.ContainsKey("icon"))
+            {
+                ValidateIconSection(building.Children["icon"], $"Building at index {buildingIndex}", result);
+            }
+
             buildingIndex++;
         }
     }
@@ -941,6 +1006,51 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
         }
 
         return false;
+    }
+
+    // Valid biome category IDs from biome_categories.yaml
+    private static readonly HashSet<string> ValidBiomeCategories = new HashSet<string>(
+        System.StringComparer.OrdinalIgnoreCase
+    )
+    {
+        "flat",
+        "mountain",
+        "rocky",
+        "arable",
+        "temperate",
+        "tropical",
+        "desert",
+        "ocean",
+        "deep_ocean",
+        "frozen",
+        "terrestrial",
+        "volcanic",
+        "rusted",
+        "scoured",
+        "coastal",
+        "forested",
+    };
+
+    private static bool IsValidBiomeCategory(string categoryName)
+    {
+        return !string.IsNullOrWhiteSpace(categoryName)
+            && ValidBiomeCategories.Contains(categoryName.Trim());
+    }
+
+    private static bool IsValidBehaviorName(string name)
+    {
+        // Basic validation: alphanumeric with underscores, must start with letter
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+
+        // Allow fully qualified names (Namespace.ClassName)
+        foreach (char c in name)
+        {
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '.')
+                return false;
+        }
+
+        return char.IsLetter(name[0]) || name[0] == '_';
     }
 
     private static void ValidateTemplateSection(
@@ -1384,8 +1494,111 @@ public static ValidationResult ValidateResourceDefinition(string filePath)
                 }
             }
 
+            // Validate icon section if present
+            if (recipe.Children.ContainsKey("icon"))
+            {
+                ValidateIconSection(recipe.Children["icon"], $"Recipe at index {recipeIndex}", result);
+            }
+
             recipeIndex++;
         }
+    }
+
+    /// <summary>
+    /// Validates an icon section from YAML configuration.
+    /// Checks that all three icon sizes exist (64, 128, 512).
+    /// </summary>
+    /// <param name="iconNode">The icon YAML node</param>
+    /// <param name="context">Context for error messages (e.g., "Resource at index 0")</param>
+    /// <param name="result">Validation result to add errors/warnings to</param>
+    private static void ValidateIconSection(YamlNode iconNode, string context, ValidationResult result)
+    {
+        if (iconNode is YamlScalarNode scalar)
+        {
+            // Handle empty/null icon (valid - will use fallback)
+            if (scalar.Value == null || scalar.Value == "" || scalar.Value == "~")
+            {
+                return;
+            }
+        }
+
+        if (iconNode is not YamlMappingNode icon)
+        {
+            result.AddError($"{context}: 'icon' must be a mapping");
+            return;
+        }
+
+        // Check for base_path
+        if (!icon.Children.ContainsKey("base_path"))
+        {
+            result.AddWarning($"{context}: 'icon' section missing 'base_path' - will use fallback icons");
+            return;
+        }
+
+        var basePathNode = icon.Children["base_path"];
+        if (basePathNode is not YamlScalarNode basePathScalar || string.IsNullOrEmpty(basePathScalar.Value))
+        {
+            result.AddWarning($"{context}: 'icon.base_path' is empty - will use fallback icons");
+            return;
+        }
+
+        string basePath = basePathScalar.Value;
+
+        // Validate all three icon sizes exist
+        foreach (IconSize size in System.Enum.GetValues<IconSize>())
+        {
+            string suffix = size.GetSuffix();
+            int pixels = size.GetPixels();
+            string svgPath = $"{basePath}{suffix}.svg";
+            string pngPath = $"{basePath}{suffix}.png";
+
+            if (!Godot.FileAccess.FileExists(svgPath) && !Godot.FileAccess.FileExists(pngPath))
+            {
+                result.AddWarning($"{context}: Icon {size} ({pixels}px) not found: {svgPath} (or .png)");
+            }
+        }
+
+        // Validate optional scale field
+        if (icon.Children.ContainsKey("scale"))
+        {
+            if (!IsNumericNode(icon.Children["scale"]))
+            {
+                result.AddError($"{context}: 'icon.scale' must be numeric");
+            }
+        }
+
+        // Validate optional tint field (can be color array or hex string)
+        if (icon.Children.ContainsKey("tint"))
+        {
+            var tintNode = icon.Children["tint"];
+            if (tintNode is YamlSequenceNode)
+            {
+                // Color array [r, g, b] - valid
+            }
+            else if (tintNode is YamlScalarNode tintScalar)
+            {
+                // Hex color string - valid
+                if (string.IsNullOrEmpty(tintScalar.Value))
+                {
+                    result.AddWarning($"{context}: 'icon.tint' is empty");
+                }
+            }
+            else
+            {
+                result.AddError($"{context}: 'icon.tint' must be a color array [r, g, b] or hex string");
+            }
+        }
+    }
+
+    private static int GetIconSizePixels(IconSize size)
+    {
+        return size switch
+        {
+            IconSize.Small => 64,
+            IconSize.Medium => 128,
+            IconSize.Large => 512,
+            _ => 128
+        };
     }
 }
 

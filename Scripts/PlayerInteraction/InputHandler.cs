@@ -29,9 +29,6 @@ public partial class InputHandler : Node
     [Signal]
     public delegate void IndependentRotatationEventHandler(bool IsMouseButtonPressed);
 
-    [Signal]
-    public delegate void CastRayEventHandler(Vector3 origin, Vector3 direction);
-
     public override void _Ready()
     {
         Input.SetMouseMode(Input.MouseModeEnum.Captured);
@@ -44,16 +41,25 @@ public partial class InputHandler : Node
             return;
 #endif
 
-        if (UI.Construction.ConstructionHUD.Instance?.IsModalOpen == true)
-            return;
+#if DEBUG
+        // Temporary: log which Control is consuming left-clicks
+         if (
+             @event is InputEventMouseButton debugMouse
+             && debugMouse.ButtonIndex == MouseButton.Left
+             && debugMouse.Pressed
+         )
+         {
+             var hovered = GetViewport().GuiGetHoveredControl();
+             var focus = GetViewport().GuiGetFocusOwner();
+             GD.Print(
+                 $"[InputDebug] Left-click in _Input. Hovered control: {hovered?.Name ?? "null"} ({hovered?.GetClass() ?? ""}), path: {hovered?.GetPath() ?? "N/A"}, MouseFilter: {(hovered as Control)?.MouseFilter}, Focus owner: {focus?.Name ?? "null"}"
+             );
+         }
+#endif
 
         if (@event is InputEventMouseButton mouseEvent)
         {
-            if (mouseEvent.ButtonIndex == MouseButton.Right && mouseEvent.Pressed)
-            {
-                _isMouseButtonPressed = !_isMouseButtonPressed;
-                EmitSignal(SignalName.IndependentRotatation, _isMouseButtonPressed);
-            }
+            // Note: Right-click continent selection is handled in _UnhandledInput
             if (mouseEvent.ButtonIndex == MouseButton.Middle && mouseEvent.Pressed)
             {
                 _isMiddleMousePressed = !_isMiddleMousePressed;
@@ -66,10 +72,6 @@ public partial class InputHandler : Node
                     Input.SetMouseMode(Input.MouseModeEnum.Captured);
                 }
             }
-        }
-        else if (@event is InputEventMouseMotion mouseMotion)
-        {
-            EmitSignal(SignalName.CameraLook, mouseMotion.Relative);
         }
         //Button Press
         else if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.IsEcho())
@@ -91,6 +93,7 @@ public partial class InputHandler : Node
                     _moveDirection.X += 1;
                 _moveDirection = _moveDirection.Normalized();
                 EmitSignal(SignalName.Move, _moveDirection);
+                HandleInput();
             }
             if (keyEvent.Keycode == Key.Space || keyEvent.Keycode == Key.Ctrl)
             {
@@ -100,6 +103,7 @@ public partial class InputHandler : Node
                     _verticalMovement.Y -= 1;
                 _verticalMovement = _verticalMovement.Normalized();
                 EmitSignal(SignalName.VerticalMove, _verticalMovement);
+                HandleInput();
             }
             if (keyEvent.Keycode == Key.Q || keyEvent.Keycode == Key.E)
             {
@@ -108,30 +112,26 @@ public partial class InputHandler : Node
                 else if (keyEvent.Keycode == Key.E)
                     _rotation += 1;
                 EmitSignal(SignalName.RotateAxis, _rotation);
+                HandleInput();
             }
             if (keyEvent.Keycode == Key.Shift)
             {
                 EmitSignal(SignalName.Accelerate, true);
+                HandleInput();
             }
             if (keyEvent.Keycode == Key.Bracketright)
             {
                 Godot.Engine.TimeScale += .5;
                 GD.Print($"TimeScale: {Godot.Engine.TimeScale}");
                 Godot.Engine.PhysicsTicksPerSecond += 5;
+                HandleInput();
             }
             if (keyEvent.Keycode == Key.Bracketleft)
             {
                 Godot.Engine.TimeScale -= .5;
                 GD.Print($"TimeScale: {Godot.Engine.TimeScale}");
                 Godot.Engine.PhysicsTicksPerSecond -= 5;
-            }
-            if (keyEvent.Keycode == Key.R)
-            {
-                var mousePos = GetViewport().GetMousePosition();
-                var camera = GetNode<Camera3D>("../Camera3D");
-                Vector3 origin = camera.ProjectRayOrigin(mousePos);
-                var direction = origin + camera.ProjectRayNormal(mousePos) * 1000f;
-                EmitSignal(SignalName.CastRay, origin, direction);
+                HandleInput();
             }
         }
         //Button release
@@ -154,6 +154,7 @@ public partial class InputHandler : Node
                     _moveDirection.X += -_moveDirection.X;
                 _moveDirection = _moveDirection.Normalized();
                 EmitSignal(SignalName.Move, _moveDirection);
+                HandleInput();
             }
             if (keyUpEvent.Keycode == Key.Space || keyUpEvent.Keycode == Key.Ctrl)
             {
@@ -163,6 +164,7 @@ public partial class InputHandler : Node
                     _verticalMovement.Y += 1;
                 _verticalMovement = _verticalMovement.Normalized();
                 EmitSignal(SignalName.VerticalMove, _verticalMovement);
+                HandleInput();
             }
             if (keyUpEvent.Keycode == Key.Q || keyUpEvent.Keycode == Key.E)
             {
@@ -171,11 +173,36 @@ public partial class InputHandler : Node
                 else if (keyUpEvent.Keycode == Key.E)
                     _rotation -= 1;
                 EmitSignal(SignalName.RotateAxis, _rotation);
+                HandleInput();
             }
             if (keyUpEvent.Keycode == Key.Shift)
             {
                 EmitSignal(SignalName.Accelerate, false);
+                HandleInput();
             }
         }
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+#if DEBUG
+        if (UI.Debug.DebugMenu.Instance?.IsVisible == true)
+            return;
+#endif
+
+        if (@event is InputEventMouseMotion mouseMotion
+            && Input.GetMouseMode() != Input.MouseModeEnum.Visible)
+        {
+            EmitSignal(SignalName.CameraLook, mouseMotion.Relative);
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    // Click handling (left/right/ctrl+click) is owned by HudState,
+    // which routes through the GUI state machine.
+
+    private void HandleInput()
+    {
+        GetViewport().SetInputAsHandled();
     }
 }

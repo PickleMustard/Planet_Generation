@@ -25,6 +25,14 @@ public partial class BuildingConstruction : Node3D, IConstructable
     private bool _isUnderConstruction;
     private MeshInstance3D? _meshInstance;
     private StandardMaterial3D? _originalMaterial;
+    private Node3D? _parentBody;
+
+    public Buildings.BuildingManufacturing Manufacturing { get; }
+
+    public BuildingConstruction()
+    {
+        Manufacturing = new Buildings.BuildingManufacturing(this);
+    }
 
     public VoronoiCell? PrimaryCell { get; private set; }
     public List<VoronoiCell> OccupiedCells { get; private set; } = new();
@@ -161,7 +169,7 @@ public partial class BuildingConstruction : Node3D, IConstructable
     public bool CheckRequiredResourcesAvailable() =>
         _constructionState?.CheckRequiredResourcesAvailable() ?? true;
 
-    public bool CanDemolish() => !_isUnderConstruction;
+    public virtual bool CanDemolish() => !_isUnderConstruction;
     public bool DemolishConstructable() => false;
     public bool CanDestroy() => true;
 
@@ -173,7 +181,7 @@ public partial class BuildingConstruction : Node3D, IConstructable
 
     #endregion
 
-    public void SetBuildingDefinition(BuildingDefinition definition)
+    public void SetBuildingDefinition(BuildingDefinition definition, float bodyRadius = 1.0f)
     {
         _buildingDefinition = definition;
         _constructionState = new ConstructionState(
@@ -183,73 +191,90 @@ public partial class BuildingConstruction : Node3D, IConstructable
 
         Name = definition.DisplayName ?? definition.IdName ?? "Building";
 
-        if (!string.IsNullOrEmpty(definition.Visual?.ModelPath))
-        {
-            try
-            {
-                var scene = GD.Load<PackedScene>(definition.Visual.ModelPath);
-                if (scene != null)
-                {
-                    var model = scene.Instantiate<Node3D>();
-                    model.Scale = Vector3.One * definition.Visual.Scale;
-                    model.RotationDegrees = definition.Visual.RotationOffset;
-                    AddChild(model);
+        // Create model from pre-loaded prototype with body-relative scaling
+        Node3D? model = definition.Visual?.CreateModelInstance(bodyRadius);
 
-                    // Recursively search for MeshInstance3D
-                    _meshInstance = FindMeshInstanceRecursive(model);
-                    
-                    if (_meshInstance == null)
-                    {
-                        GameLogger.Warning($"BuildingConstruction: No MeshInstance3D found in model '{definition.Visual.ModelPath}'. Using fallback.");
-                    }
-                    else
-                    {
-                        GameLogger.Debug($"BuildingConstruction: Found MeshInstance3D in model '{definition.Visual.ModelPath}'");
-                    }
-                }
-                else
-                {
-                    GameLogger.Error($"BuildingConstruction: Failed to load scene from path '{definition.Visual.ModelPath}'");
-                }
-            }
-            catch (System.Exception e)
+        if (model != null)
+        {
+            AddChild(model);
+            _meshInstance = NodeUtils.FindMeshInstanceRecursive(model);
+
+            if (_meshInstance == null)
             {
-                GameLogger.Error($"BuildingConstruction: Exception loading model '{definition.Visual.ModelPath}': {e.Message}");
+                GameLogger.Warning($"BuildingConstruction: No MeshInstance3D found in model for '{definition.IdName}'. Using fallback.");
+            }
+            else
+            {
+                GameLogger.Debug($"BuildingConstruction: Created building model for '{definition.IdName}' from prototype");
             }
         }
         else
         {
-            GameLogger.Warning($"BuildingConstruction: No model path specified for building '{definition.IdName}'. Using fallback.");
+            GameLogger.Warning($"BuildingConstruction: No model prototype for '{definition.IdName}'. Using fallback.");
         }
 
+        // Fallback: use the generic default building prefab
         if (_meshInstance == null)
         {
-            _meshInstance = new MeshInstance3D
+            var fallbackModel = DefaultModelRegistry.InstantiateBuildingDefault();
+            if (fallbackModel != null)
             {
-                Mesh = new BoxMesh { Size = new Vector3(0.5f, 0.5f, 0.5f) },
-                Name = "FallbackMesh"
-            };
-            AddChild(_meshInstance);
-            GameLogger.Debug($"BuildingConstruction: Created fallback mesh for building '{definition.IdName}'");
+                float fallbackScale = bodyRadius * 0.5f;
+                if (fallbackScale > 0f)
+                    fallbackModel.Scale = Vector3.One * fallbackScale;
+                fallbackModel.Name = "FallbackModel";
+                AddChild(fallbackModel);
+                _meshInstance = NodeUtils.FindMeshInstanceRecursive(fallbackModel);
+                GameLogger.Debug($"BuildingConstruction: Installed default building prefab for '{definition.IdName}' (scale {fallbackScale})");
+            }
+            else
+            {
+                GameLogger.Error($"BuildingConstruction: Default building prefab unavailable for '{definition.IdName}'");
+            }
+        }
+
+        // Capture original material immediately after model creation
+        // This must happen BEFORE construction starts and before ApplyConstructionMaterial is called
+        if (_meshInstance != null)
+        {
+            _originalMaterial = _meshInstance.MaterialOverride?.Duplicate() as StandardMaterial3D;
+            GameLogger.Debug($"BuildingConstruction: Captured original material for '{definition.IdName}'");
         }
     }
 
     public void SetPlacement(VoronoiCell primaryCell, List<VoronoiCell>? additionalCells, Node3D parentBody)
     {
         PrimaryCell = primaryCell;
+        _parentBody = parentBody;
         OccupiedCells.Clear();
         OccupiedCells.Add(primaryCell);
         if (additionalCells != null)
             OccupiedCells.AddRange(additionalCells);
 
-        // Calculate world position of cell center (same as ghost positioning logic)
-        var cellWorldPos = parentBody.GlobalTransform * primaryCell.Center;
-        
+        // Calculate centroid of all occupied cells for multi-cell buildings
+        Vector3 centroidLocal;
+        if (OccupiedCells.Count > 1)
+        {
+            // Calculate centroid in local space
+            centroidLocal = Vector3.Zero;
+            foreach (var cell in OccupiedCells)
+                centroidLocal += cell.Center;
+            centroidLocal /= OccupiedCells.Count;
+        }
+        else
+        {
+            // Single cell building - use primary cell center
+            centroidLocal = primaryCell.Center;
+        }
+
+        // Transform centroid to world space
+        var centroidWorldPos = parentBody.GlobalTransform * centroidLocal;
+
         // Calculate local position relative to parent body
-        var localPosition = parentBody.GlobalTransform.AffineInverse() * cellWorldPos;
-        
-        // Orient along surface normal (same as ghost orientation logic)
-        var up = (cellWorldPos - parentBody.GlobalPosition).Normalized();
+        var localPosition = parentBody.GlobalTransform.AffineInverse() * centroidWorldPos;
+
+        // Calculate up vector from body center to centroid (for proper surface alignment)
+        var up = (centroidWorldPos - parentBody.GlobalPosition).Normalized();
         var forward = up.Cross(Vector3.Right).Normalized();
         if (forward.LengthSquared() < 0.001f)
             forward = up.Cross(Vector3.Forward).Normalized();
@@ -259,8 +284,8 @@ public partial class BuildingConstruction : Node3D, IConstructable
         // Create transform with correct orientation and position
         var localBasis = parentBody.GlobalTransform.Basis.Inverse() * new Basis(right, up, forward);
         Transform = new Transform3D(localBasis, localPosition);
-        
-        GameLogger.Debug($"BuildingConstruction.SetPlacement: Building '{Name}' placed at local position {localPosition}, world position {cellWorldPos}, up vector {up}");
+
+        GameLogger.Debug($"BuildingConstruction.SetPlacement: Building '{Name}' placed at centroid local position {localPosition}, world position {centroidWorldPos}, up vector {up}, cells={OccupiedCells.Count}");
     }
 
     public void DeliverResources(string resourceId, int amount)
@@ -278,8 +303,8 @@ public partial class BuildingConstruction : Node3D, IConstructable
 
     private void ApplyConstructionMaterial()
     {
-        if (_meshInstance?.MaterialOverride is StandardMaterial3D existingMat)
-            _originalMaterial = existingMat;
+        // Note: _originalMaterial is captured in SetBuildingDefinition() immediately after model creation
+        // We don't capture it here because by the time this is called, the material has already been set
 
         var constructionMat = new StandardMaterial3D
         {
@@ -295,27 +320,24 @@ public partial class BuildingConstruction : Node3D, IConstructable
 
     private void RestoreOriginalMaterial()
     {
-        if (_meshInstance != null && _originalMaterial != null)
-            _meshInstance.MaterialOverride = _originalMaterial;
-    }
+        if (_meshInstance == null) return;
 
-    /// <summary>
-    /// Recursively searches for a MeshInstance3D in a node hierarchy.
-    /// </summary>
-    private MeshInstance3D? FindMeshInstanceRecursive(Node node)
-    {
-        // Check if this node is a MeshInstance3D
-        if (node is MeshInstance3D meshInstance)
-            return meshInstance;
-
-        // Recursively search children
-        foreach (var child in node.GetChildren())
+        if (_originalMaterial != null)
         {
-            var found = FindMeshInstanceRecursive(child);
-            if (found != null)
-                return found;
+            _meshInstance.MaterialOverride = _originalMaterial;
+            GameLogger.Debug($"BuildingConstruction: Restored original material for '{Name}'");
         }
-
-        return null;
+        else
+        {
+            // No original material was captured, apply a default opaque material
+            var defaultMat = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 1f, 1f, 1f),
+                Transparency = BaseMaterial3D.TransparencyEnum.Disabled,
+            };
+            _meshInstance.MaterialOverride = defaultMat;
+            GameLogger.Debug($"BuildingConstruction: Applied default opaque material for '{Name}' (no original captured)");
+        }
     }
+
 }

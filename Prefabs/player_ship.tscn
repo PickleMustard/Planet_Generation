@@ -17,9 +17,11 @@ Target = NodePath("Camera3D/Pointer")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
 top_level = true
 keep_aspect = 0
+current = true
 fov = 90.0
 frustum_offset = Vector2(-0.14, 0.035)
-far = 8000.0
+near = 1.0
+far = 2000.0
 
 [node name="Pointer" type="MeshInstance3D" parent="Camera3D" unique_id=1207942000]
 transform = Transform3D(1, 1.42109e-14, 0, 0, 1, -2.98023e-08, 0, 0, 1, 2.45018e-06, -4.17917, -31.0807)

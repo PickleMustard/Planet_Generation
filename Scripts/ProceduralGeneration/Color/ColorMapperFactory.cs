@@ -1,19 +1,20 @@
+using Structures;
 using Structures.Enums;
 
 namespace ProceduralGeneration.ColorSystem;
 
 public static class ColorMapperFactory
 {
-    public static IColorMapper GetMapper(CelestialBodyType type, object? subtype = null)
+    public static IColorMapper GetMapper(BodyClassification classification)
     {
-        return type switch
+        return classification switch
         {
-            CelestialBodyType.RockyPlanet => GetRockyPlanetMapper(subtype as RockyPlanetSubtype?),
+            BodyClassification.RockyPlanet rp => GetRockyPlanetMapper(rp.Subtype),
             _ => new DefaultColorMapper()
         };
     }
 
-    private static IColorMapper GetRockyPlanetMapper(RockyPlanetSubtype? subtype)
+    private static IColorMapper GetRockyPlanetMapper(RockyPlanetSubtype subtype)
     {
         return subtype switch
         {

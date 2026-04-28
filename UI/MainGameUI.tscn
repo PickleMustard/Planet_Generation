@@ -1,12 +1,270 @@
 [gd_scene format=3 uid="uid://b0ryj27senqch"]
 
 [ext_resource type="Script" uid="uid://bn7s74688cck8" path="res://Scripts/UI/MainGameUI.cs" id="1_p5rbu"]
-[ext_resource type="PackedScene" uid="uid://bm7pd4sh2v07a" path="res://UI/Toast/ToastSystem.tscn" id="2_gz8ho"]
-[ext_resource type="PackedScene" uid="uid://0w5dedamrvlq" path="res://UI/Construction/ConstructionHUD.tscn" id="3_heg8f"]
+[ext_resource type="Script" uid="uid://smwggi56uw31" path="res://Scripts/UI/StateMachine/GUIControllerHSM.cs" id="3_2pbdv"]
+[ext_resource type="PackedScene" uid="uid://cfba15hnd3ydc" path="res://UI/CellInfo/VoronoiCellInfoWindow.tscn" id="4_cellwindow"]
+[ext_resource type="Script" uid="uid://2upsskxeefqh" path="res://Scripts/UI/StateMachine/States/HudState.cs" id="4_gl8ok"]
+[ext_resource type="PackedScene" uid="uid://cni3i1cmg5rym" path="res://UI/HeadsUpDisplay/HUD.tscn" id="4_rgulv"]
+[ext_resource type="Script" uid="uid://dbecewba3xdl0" path="res://Scripts/UI/StateMachine/ContinentHSM.cs" id="5_conthsm"]
+[ext_resource type="PackedScene" uid="uid://brjpgqyfkkvxo" path="res://UI/ContinentInfo/ContinentInfoWindow.tscn" id="5_continentwindow"]
+[ext_resource type="PackedScene" uid="uid://cgbcts5avg3fk" path="res://UI/GameStart/GameStartDialog.tscn" id="6_gamestart"]
+[ext_resource type="Script" uid="uid://y5e7tlbv0xbu" path="res://Scripts/UI/StateMachine/States/ContinentViewState.cs" id="6_jtlo3"]
+[ext_resource type="PackedScene" uid="uid://biy1ok7i4lvqq" path="res://UI/TransferPlanning/TransferPlanningWindow.tscn" id="7_transferplanning"]
+[ext_resource type="Script" uid="uid://qe21h6njuktg" path="res://Scripts/UI/StateMachine/States/TransferPlanningState.cs" id="8_anjjt"]
+[ext_resource type="PackedScene" uid="uid://cf6xfr162f71d" path="res://UI/OrbitalBodyWindow/OrbitalBodyWindow.tscn" id="8_orbitalbodywindow"]
+[ext_resource type="Script" uid="uid://fyofclfpigba" path="res://Scripts/UI/StateMachine/States/TransferViewState.cs" id="10_fohos"]
+[ext_resource type="Script" uid="uid://26ylhy4myrdh" path="res://Scripts/UI/StateMachine/VoronoiCellHSM.cs" id="11_vcellhsm"]
+[ext_resource type="Script" uid="uid://cyek4t1kwifs2" path="res://Scripts/UI/StateMachine/States/CellOverviewState.cs" id="12_2pbdv"]
+[ext_resource type="Script" uid="uid://p4boopojuw0l" path="res://Scripts/UI/StateMachine/OrbitalBodyHSM.cs" id="12_4wovb"]
+[ext_resource type="Script" uid="uid://2r1sf770dr74" path="res://Scripts/UI/StateMachine/States/BuildingDetailsState.cs" id="14_5pu0e"]
+[ext_resource type="Script" uid="uid://olbo6ws67u1b" path="res://Scripts/UI/StateMachine/States/ConstructablesMenuState.cs" id="15_yxgmr"]
+[ext_resource type="Script" uid="uid://2sxp2fumm1ke" path="res://Scripts/UI/StateMachine/States/PlanetSelectionState.cs" id="17_cdju0"]
+[ext_resource type="Script" uid="uid://c6h3oko2l3jvs" path="res://Scripts/UI/StateMachine/ConstructionMenuHSM.cs" id="18_cmenuhsm"]
+[ext_resource type="Script" uid="uid://c84ugwjud8y4" path="res://Scripts/UI/StateMachine/States/OrbitalPlacementState.cs" id="19_orbplace"]
+[ext_resource type="Script" uid="uid://ygfvi1e0dpuv" path="res://Scripts/UI/StateMachine/States/StationSelectionState.cs" id="20_stnselect"]
+[ext_resource type="Script" uid="uid://by1j0xb413qag" path="res://Scripts/UI/StateMachine/States/BuildingPlacementState.cs" id="21_bldgplace"]
+[ext_resource type="PackedScene" uid="uid://cvc6k2wepyqn8" path="res://UI/Construction/ConstructionMenu.tscn" id="22_constmenu"]
+[ext_resource type="PackedScene" uid="uid://c81o2kq1irgm4" path="res://UI/Construction/StationSelectionPopup.tscn" id="23_stnpopup"]
+[ext_resource type="Script" uid="uid://dekhdf7pg8e54" path="res://Scripts/UI/StateMachine/StationHSM.cs" id="24_stationhsm"]
+[ext_resource type="Script" uid="uid://b55cjis1f7gix" path="res://Scripts/UI/StateMachine/States/StationViewState.cs" id="25_stationview"]
+[ext_resource type="Script" uid="uid://bewar1ft6e4ho" path="res://Scripts/UI/StateMachine/States/ShipQueueManagementState.cs" id="26_shipqueue"]
+[ext_resource type="PackedScene" path="res://UI/StationWindow/StationWindow.tscn" id="27_stationwindow"]
+[ext_resource type="Script" uid="uid://bibl5grprogfx" path="res://Scripts/UI/StateMachine/States/GeneralInformationState.cs" id="28_generalinfo"]
+[ext_resource type="Script" uid="uid://bjo8uglqukc5a" path="res://Scripts/UI/StateMachine/LogisticsUnitHSM.cs" id="29_logunithsm"]
+[ext_resource type="Script" uid="uid://bqbobaw6d23sx" path="res://Scripts/UI/StateMachine/States/LogisticsUnitViewState.cs" id="30_logunitview"]
+[ext_resource type="PackedScene" path="res://UI/LogisticsUnitWindow/LogisticsUnitWindow.tscn" id="31_logunitwindow"]
+[ext_resource type="PackedScene" path="res://UI/ConstructionYard/ConstructionYardWindow.tscn" id="32_constyard"]
+[ext_resource type="Script" uid="uid://cdt314skyha4l" path="res://Scripts/UI/StateMachine/States/GameStartState.cs" id="33_gamestart"]
+[ext_resource type="Script" uid="uid://vghcv4re08wq" path="res://Scripts/UI/StateMachine/States/PauseMenuState.cs" id="34_pausestate"]
+[ext_resource type="PackedScene" uid="uid://2ybd2ibd551s" path="res://UI/PauseMenu/PauseMenu.tscn" id="35_pausemenu"]
 
-[node name="MainGameUI" type="CanvasLayer" unique_id=258373446]
+[sub_resource type="BlackboardPlan" id="BlackboardPlan_bstsa"]
+resource_name = "guiBlackboard"
+
+[node name="MainGameUI" type="Control" unique_id=45830705 node_paths=PackedStringArray("ToastSystem")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
 script = ExtResource("1_p5rbu")
+ToastSystem = NodePath("GUIController/HUD/Hud/ToastSystem")
 
-[node name="ToastSystem" parent="." unique_id=1360947958 instance=ExtResource("2_gz8ho")]
+[node name="GUIController" type="LimboHSM" parent="." unique_id=351927824 node_paths=PackedStringArray("HUD", "VoronoiCell", "Continent", "OrbitalBody", "ConstructionMenu", "Station", "LogisticsUnit", "GameStart", "PauseMenu")]
+process_mode = 3
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("3_2pbdv")
+HUD = NodePath("HUD")
+VoronoiCell = NodePath("VoronoiCell")
+Continent = NodePath("Continent")
+OrbitalBody = NodePath("OrbitalBody")
+ConstructionMenu = NodePath("ConstructionMenu")
+Station = NodePath("Station")
+LogisticsUnit = NodePath("LogisticsUnit")
+GameStart = NodePath("GameStartState")
+PauseMenu = NodePath("PauseMenu")
 
-[node name="ConstructionHUD" parent="." unique_id=1418225951 instance=ExtResource("3_heg8f")]
+[node name="HUD" type="LimboState" parent="GUIController" unique_id=975037447 node_paths=PackedStringArray("hudUI", "constructionButton", "demolishButton", "researchButton", "transferButton")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("4_gl8ok")
+hudUI = NodePath("Hud")
+constructionButton = NodePath("Hud/Panel/BuildMenuButton")
+demolishButton = NodePath("Hud/Panel/DemolishButton")
+researchButton = NodePath("Hud/Panel/ResearchMenuButton")
+transferButton = NodePath("Hud/Panel/TransferMenuButton")
+
+[node name="Hud" parent="GUIController/HUD" unique_id=1835559965 instance=ExtResource("4_rgulv")]
+
+[node name="Continent" type="LimboHSM" parent="GUIController" unique_id=734116922 node_paths=PackedStringArray("ContinentView", "TransferPlanning")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("5_conthsm")
+ContinentView = NodePath("ContinentView")
+TransferPlanning = NodePath("TransferPlanning")
+
+[node name="ContinentView" type="LimboState" parent="GUIController/Continent" unique_id=1914783144]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("6_jtlo3")
+
+[node name="ContinentInfoWindow" parent="GUIController/Continent/ContinentView" unique_id=1913673293 instance=ExtResource("5_continentwindow")]
+
+[node name="TransferPlanning" type="LimboState" parent="GUIController/Continent" unique_id=23540125]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("8_anjjt")
+
+[node name="TransferPlanningWindow" parent="GUIController/Continent/TransferPlanning" unique_id=215390927 instance=ExtResource("7_transferplanning")]
+visible = false
+
+[node name="TransferView" type="LimboState" parent="GUIController/Continent" unique_id=1989113937]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("10_fohos")
+
+[node name="OrbitalBody" type="LimboHSM" parent="GUIController" unique_id=764195442 node_paths=PackedStringArray("GeneralInfo")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("12_4wovb")
+GeneralInfo = NodePath("OrbitalBodyWindow")
+
+[node name="OrbitalBodyWindow" type="LimboState" parent="GUIController/OrbitalBody" unique_id=593739494 node_paths=PackedStringArray("window")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("28_generalinfo")
+window = NodePath("OrbitalBodyWindow")
+
+[node name="OrbitalBodyWindow" parent="GUIController/OrbitalBody/OrbitalBodyWindow" unique_id=481503733 instance=ExtResource("8_orbitalbodywindow")]
+visible = false
+
+[node name="Station" type="LimboHSM" parent="GUIController" unique_id=453021329 node_paths=PackedStringArray("StationView", "ShipQueueManagement")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("24_stationhsm")
+StationView = NodePath("StationView")
+ShipQueueManagement = NodePath("ShipQueueManagement")
+
+[node name="StationView" type="LimboState" parent="GUIController/Station" unique_id=82465164]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("25_stationview")
+
+[node name="StationWindow" parent="GUIController/Station/StationView" unique_id=1543048773 instance=ExtResource("27_stationwindow")]
+visible = false
+
+[node name="ShipQueueManagement" type="LimboState" parent="GUIController/Station" unique_id=1016153071]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("26_shipqueue")
+_constructionYardWindowScene = ExtResource("32_constyard")
+
+[node name="LogisticsUnit" type="LimboHSM" parent="GUIController" unique_id=1307815880 node_paths=PackedStringArray("LogisticsUnitView")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("29_logunithsm")
+LogisticsUnitView = NodePath("LogisticsUnitView")
+
+[node name="LogisticsUnitView" type="LimboState" parent="GUIController/LogisticsUnit" unique_id=1881864810]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("30_logunitview")
+
+[node name="LogisticsUnitWindow" parent="GUIController/LogisticsUnit/LogisticsUnitView" unique_id=1303490359 instance=ExtResource("31_logunitwindow")]
+visible = false
+
+[node name="SystemOverview" type="LimboHSM" parent="GUIController" unique_id=1581795785]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+
+[node name="LimboState" type="LimboState" parent="GUIController/SystemOverview" unique_id=112016238]
+
+[node name="WorkforceOverview" type="LimboHSM" parent="GUIController" unique_id=420899151]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+
+[node name="LimboState" type="LimboState" parent="GUIController/WorkforceOverview" unique_id=279394843]
+
+[node name="ConstructionOverview" type="LimboHSM" parent="GUIController" unique_id=1129833492]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+
+[node name="LimboState" type="LimboState" parent="GUIController/ConstructionOverview" unique_id=691032148]
+
+[node name="ShipsOverview" type="LimboHSM" parent="GUIController" unique_id=370321480]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+
+[node name="LimboState" type="LimboState" parent="GUIController/ShipsOverview" unique_id=785146968]
+
+[node name="MarketOverview" type="LimboHSM" parent="GUIController" unique_id=633572748]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+
+[node name="LimboState" type="LimboState" parent="GUIController/MarketOverview" unique_id=290762809]
+
+[node name="VoronoiCell" type="LimboHSM" parent="GUIController" unique_id=1698113890 node_paths=PackedStringArray("CellOverview", "BuildingDetails")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("11_vcellhsm")
+CellOverview = NodePath("CellOverview")
+BuildingDetails = NodePath("BuildingDetails")
+
+[node name="CellOverview" type="LimboState" parent="GUIController/VoronoiCell" unique_id=1117166457]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("12_2pbdv")
+
+[node name="VoronoiCellInfoWindow" parent="GUIController/VoronoiCell/CellOverview" unique_id=405348774 instance=ExtResource("4_cellwindow")]
+visible = false
+
+[node name="BuildingDetails" type="LimboState" parent="GUIController/VoronoiCell" unique_id=369406700]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("14_5pu0e")
+
+[node name="ConstructionMenu" type="LimboHSM" parent="GUIController" unique_id=1168915891 node_paths=PackedStringArray("ConstructablesMenu", "PlanetSelection", "OrbitalPlacement", "StationSelection", "BuildingPlacement")]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("18_cmenuhsm")
+ConstructablesMenu = NodePath("ConstructablesMenu")
+PlanetSelection = NodePath("PlanetSelection")
+OrbitalPlacement = NodePath("OrbitalPlacement")
+StationSelection = NodePath("StationSelection")
+BuildingPlacement = NodePath("BuildingPlacement")
+
+[node name="ConstructablesMenu" type="LimboState" parent="GUIController/ConstructionMenu" unique_id=308983194]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("15_yxgmr")
+
+[node name="ConstructionMenu" parent="GUIController/ConstructionMenu/ConstructablesMenu" unique_id=773856990 instance=ExtResource("22_constmenu")]
+visible = false
+
+[node name="PlanetSelection" type="LimboState" parent="GUIController/ConstructionMenu" unique_id=1863321060]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("17_cdju0")
+
+[node name="StatusLabel" type="Label" parent="GUIController/ConstructionMenu/PlanetSelection" unique_id=645604283]
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -60.0
+offset_right = 200.0
+grow_horizontal = 2
+grow_vertical = 0
+horizontal_alignment = 1
+
+[node name="OrbitalPlacement" type="LimboState" parent="GUIController/ConstructionMenu" unique_id=987327909]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("19_orbplace")
+
+[node name="StatusLabel" type="Label" parent="GUIController/ConstructionMenu/OrbitalPlacement" unique_id=111797413]
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -250.0
+offset_top = -80.0
+offset_right = 250.0
+grow_horizontal = 2
+grow_vertical = 0
+horizontal_alignment = 1
+
+[node name="StationSelection" type="LimboState" parent="GUIController/ConstructionMenu" unique_id=1061271594]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("20_stnselect")
+
+[node name="StationSelectionPopup" parent="GUIController/ConstructionMenu/StationSelection" unique_id=1075437100 instance=ExtResource("23_stnpopup")]
+visible = false
+
+[node name="BuildingPlacement" type="LimboState" parent="GUIController/ConstructionMenu" unique_id=579606220]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("21_bldgplace")
+
+[node name="GameStartState" type="LimboState" parent="GUIController" unique_id=1354260123]
+script = ExtResource("33_gamestart")
+
+[node name="GameStartDialog" parent="GUIController/GameStartState" unique_id=1802911452 instance=ExtResource("6_gamestart")]
+visible = false
+
+[node name="PauseMenu" type="LimboState" parent="GUIController" unique_id=379522005 node_paths=PackedStringArray("pauseMenuUI", "resumeButton", "settingsButton", "quitButton")]
+process_mode = 3
+script = ExtResource("34_pausestate")
+pauseMenuUI = NodePath("PauseMenu")
+resumeButton = NodePath("PauseMenu/CenterContainer/Panel/Margin/VBox/ResumeButton")
+settingsButton = NodePath("PauseMenu/CenterContainer/Panel/Margin/VBox/SettingsButton")
+quitButton = NodePath("PauseMenu/CenterContainer/Panel/Margin/VBox/QuitButton")
+
+[node name="PauseMenu" parent="GUIController/PauseMenu" unique_id=436212190 instance=ExtResource("35_pausemenu")]
+visible = false
+
+[editable path="GUIController/HUD/Hud"]
+[editable path="GUIController/HUD/Hud/ToastSystem"]
+[editable path="GUIController/OrbitalBody/OrbitalBodyWindow/OrbitalBodyWindow"]

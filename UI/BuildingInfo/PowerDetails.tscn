@@ -1,0 +1,49 @@
+[gd_scene load_steps=3 format=3 uid="uid://power_details"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/PowerDetails.cs" id="1_power"]
+[ext_resource type="PackedScene" uid="uid://recipe_display" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
+
+[node name="PowerDetails" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_power")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="RecipeDisplay" parent="VBoxContainer" instance=ExtResource("2_recipe")]
+layout_mode = 2
+
+[node name="PowerOutputLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "⚡ Generates: 0 kW"
+
+[node name="EfficiencyLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Efficiency: 100%"
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="InputsSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SectionLabel" type="Label" parent="VBoxContainer/InputsSection"]
+layout_mode = 2
+text = "Fuel / Resources"
+
+[node name="InputsList" type="VBoxContainer" parent="VBoxContainer/InputsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4

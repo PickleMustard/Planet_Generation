@@ -67,6 +67,11 @@ public class BuildingDefinition
     public VisualDefinition Visual { get; set; } = new();
 
     /// <summary>
+    /// Separate Icon property for 2D icons (distinct from 3D Visual).
+    /// </summary>
+    public IconDefinition Icon { get; set; } = new();
+
+    /// <summary>
     /// Sound effect settings.
     /// </summary>
     public SoundDefinition Sound { get; set; } = new();
@@ -75,6 +80,22 @@ public class BuildingDefinition
     /// Transfer station capabilities. Null for non-logistics buildings.
     /// </summary>
     public TransferStationDefinition? TransferStation { get; set; }
+
+    /// <summary>
+    /// If set, building can only use recipes in this category.
+    /// Null or empty means no restriction.
+    /// </summary>
+    public string? AllowedRecipeCategory { get; set; }
+
+    /// <summary>
+    /// Resource stockpiles to initialize when building is placed (for starter buildings).
+    /// </summary>
+    public Dictionary<string, int> StartingStockpiles { get; set; } = new();
+
+    /// <summary>
+    /// Storage capacity bonuses to add per category.
+    /// </summary>
+    public Dictionary<string, float> StartingStorageCapacity { get; set; } = new();
 
     /// <summary>
     /// Defines placement requirements for a building.
@@ -117,6 +138,13 @@ public class BuildingDefinition
         /// Whether building requires adjacent cells to be available.
         /// </summary>
         public bool RequiresAdjacent { get; set; } = false;
+
+        /// <summary>
+        /// Custom placement behavior instance for advanced validation logic.
+        /// Null to use the default behavior (biome/elevation/slope checks).
+        /// This is instantiated during configuration loading.
+        /// </summary>
+        public IPlacementBehavior? ConfigurableBehavior { get; set; }
     }
 
     /// <summary>
@@ -150,36 +178,7 @@ public class BuildingDefinition
         public float ProductionSpeed { get; set; } = 1.0f;
     }
 
-    /// <summary>
-    /// Defines visual representation of a building.
-    /// </summary>
-    public class VisualDefinition
-    {
-        /// <summary>
-        /// Path to 3D model resource.
-        /// </summary>
-        public string? ModelPath { get; set; }
-
-        /// <summary>
-        /// Path to material resource.
-        /// </summary>
-        public string? ModelMaterial { get; set; }
-
-        /// <summary>
-        /// Path to animation resource.
-        /// </summary>
-        public string? AnimationPath { get; set; }
-
-        /// <summary>
-        /// Scale factor for the model.
-        /// </summary>
-        public float Scale { get; set; } = 1.0f;
-
-        /// <summary>
-        /// Rotation offset in degrees (Euler angles).
-        /// </summary>
-        public Vector3 RotationOffset { get; set; } = Vector3.Zero;
-    }
+    // Note: VisualDefinition is now defined in Structures.Resources namespace (shared class)
 
     /// <summary>
     /// Defines sound effects for a building.

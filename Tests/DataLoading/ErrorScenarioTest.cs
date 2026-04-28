@@ -16,7 +16,7 @@ public class ErrorScenarioTest
     public void DatabaseNotLoadedException_AccessBeforeLoading()
     {
         var db = new TestDatabase("TestDB");
-        
+
         // Should throw when accessing before loading
         AssertThat(() => db.SimulateDataAccess())
             .Throws<DatabaseNotLoadedException>()
@@ -27,7 +27,7 @@ public class ErrorScenarioTest
     public void DatabaseLoadFailedException_PropagatesCorrectly()
     {
         var failingDb = new TestDatabase("FailingDB", 50f, true);
-        
+
         // Should throw DatabaseLoadFailedException when load fails
         AssertThat(() => failingDb.LoadData())
             .Throws<DatabaseLoadFailedException>()
@@ -38,7 +38,7 @@ public class ErrorScenarioTest
     public void DatabaseLoadFailedException_ContainsInnerException()
     {
         var failingDb = new TestDatabase("FailingDB", 50f, true);
-        
+
         try
         {
             failingDb.LoadData();
@@ -56,28 +56,28 @@ public class ErrorScenarioTest
         var successDb = new TestDatabase("SuccessDB", 10f);
         var failingDb = new TestDatabase("FailingDB", 10f, true);
         var anotherSuccessDb = new TestDatabase("AnotherSuccessDB", 10f);
-        
+
         var builder = new WorkPackageBuilder()
             .WithName("MixedSuccessFailurePackage")
             .AddStep("Load_Success", () => successDb.LoadData())
             .AddStep("Load_Failure", () => failingDb.LoadData())
             .AddStep("Load_AnotherSuccess", () => anotherSuccessDb.LoadData());
-            
+
         var package = builder.Build();
-        
+
         // Execute all steps
         List<int> results = new();
         while (!package.IsComplete)
         {
             results.Add(package.ExecuteNextStep());
         }
-        
+
         // Verify results: success (0), failure (non-zero), success (0)
         AssertThat(results.Count).IsEqual(3);
         AssertThat(results[0]).IsEqual(0); // First success
         AssertThat(results[1]).IsNotEqual(0); // Failure
         AssertThat(results[2]).IsEqual(0); // Second success
-        
+
         // Verify database states
         AssertThat(successDb.IsLoaded).IsTrue();
         AssertThat(failingDb.IsLoaded).IsFalse();
@@ -89,23 +89,23 @@ public class ErrorScenarioTest
     {
         int attempts = 0;
         var alwaysFailingDb = new AlwaysFailingTestDatabase("AlwaysFails", (attempt) => attempts += attempt);
-        
+
         var builder = new WorkPackageBuilder()
             .WithName("MaxRetriesTest")
             .WithMaxRetries(3)
             .AddStep("Load_AlwaysFails", () => alwaysFailingDb.LoadData());
-            
+
         var package = builder.Build();
-        
+
         // Execute step (will fail and retry)
         while (!package.IsComplete)
         {
             package.ExecuteNextStep();
         }
-        
+
         // Should have attempted 4 times (1 initial + 3 retries)
         AssertThat(attempts).IsEqual(4);
-        
+
         // Package should be complete (exhausted retries)
         AssertThat(package.IsComplete).IsTrue();
     }
@@ -114,11 +114,11 @@ public class ErrorScenarioTest
     public void DatabaseEvents_ErrorScenarios()
     {
         var failingDb = new TestDatabase("EventTestDB", 10f, true);
-        
+
         List<string> events = new();
         failingDb.OnLoadStarted += (name) => events.Add($"Started: {name}");
         failingDb.OnLoadCompleted += (name, success) => events.Add($"Completed: {name} - {success}");
-        
+
         try
         {
             failingDb.LoadData();
@@ -127,7 +127,7 @@ public class ErrorScenarioTest
         {
             // Expected to throw
         }
-        
+
         // Verify events were fired even on failure
         AssertThat(events).Contains("Started: EventTestDB");
         AssertThat(events).Contains("Completed: EventTestDB - False");
@@ -137,14 +137,14 @@ public class ErrorScenarioTest
     public void DatabaseUnload_AfterFailure()
     {
         var failingDb = new TestDatabase("UnloadTestDB", 10f, true);
-        
+
         // Try to load (will fail)
         AssertThat(() => failingDb.LoadData())
             .Throws<DatabaseLoadFailedException>();
-            
+
         // Should still be able to unload (no error)
         AssertThat(() => failingDb.Unload()).IsNotThrown();
-        
+
         // State should be reset
         AssertThat(failingDb.IsLoaded).IsFalse();
         AssertThat(failingDb.LoadProgress).IsEqual(0f);
@@ -156,7 +156,7 @@ public class ErrorScenarioTest
         // Test with TestDatabase (which validates in constructor)
         AssertThat(() => new TestDatabase(null!, 10f))
             .Throws<ArgumentNullException>();
-            
+
         AssertThat(() => new TestDatabase("", 10f))
             .Throws<ArgumentNullException>();
     }
@@ -168,17 +168,17 @@ public class ErrorScenarioTest
         var builder1 = new WorkPackageBuilder();
         AssertThat(() => builder1.Build())
             .Throws<InvalidOperationException>();
-            
+
         // Builder with no steps should throw on Build
         var builder2 = new WorkPackageBuilder()
             .WithName("NoSteps");
         AssertThat(() => builder2.Build())
             .Throws<InvalidOperationException>();
-            
+
         // Builder with invalid max retries
         AssertThat(() => new WorkPackageBuilder().WithMaxRetries(-1))
             .Throws<ArgumentOutOfRangeException>();
-            
+
         AssertThat(() => new WorkPackageBuilder().WithMaxRetries(0))
             .Throws<ArgumentOutOfRangeException>();
     }
@@ -188,17 +188,17 @@ public class ErrorScenarioTest
     {
         // Simulate concurrent access attempts
         var db = new TestDatabase("ConcurrentTestDB", 100f); // Slow load
-        
+
         // Start loading in background
         Task loadTask = Task.Run(() => db.LoadData());
-        
+
         // Immediately try to access (should fail)
         AssertThat(() => db.SimulateDataAccess())
             .Throws<DatabaseNotLoadedException>();
-            
+
         // Wait for load to complete
         loadTask.Wait();
-        
+
         // Now should succeed
         AssertThat(() => db.SimulateDataAccess()).IsNotThrown();
         AssertThat(db.IsLoaded).IsTrue();
@@ -208,11 +208,11 @@ public class ErrorScenarioTest
     public void DatabaseProgress_ResetOnFailure()
     {
         var failingDb = new TestDatabase("ProgressResetDB", 50f, true);
-        
+
         // Track progress
         List<float> progressValues = new();
         failingDb.OnLoadProgressChanged += (name, progress) => progressValues.Add(progress);
-        
+
         try
         {
             failingDb.LoadData();
@@ -221,10 +221,10 @@ public class ErrorScenarioTest
         {
             // Expected
         }
-        
+
         // Progress should have been updated during load attempt
         AssertThat(progressValues.Count).IsGreater(0);
-        
+
         // But final state should be 0
         AssertThat(failingDb.LoadProgress).IsEqual(0f);
     }
@@ -257,7 +257,7 @@ public class AlwaysFailingTestDatabase : ILoadableDatabase
     {
         _onAttempt?.Invoke(1); // Count this attempt
         OnLoadStarted?.Invoke(DatabaseName);
-        
+
         // Always fail
         IsLoaded = false;
         LoadProgress = 0f;

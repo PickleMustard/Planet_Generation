@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Structures.Enums;
+using Structures.Logistics;
+using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
-using LogisticsConfigLoader = UtilityLibrary.LogisticsConfigLoader;
-using ShipDefinition = UtilityLibrary.ShipDefinition;
 #if DEBUG
 using UI.Debug;
 #endif
@@ -62,11 +63,11 @@ namespace Logistics.Resources
                 LoadProgress = 0.25f;
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
 
-                // Step 2: Load all ship definitions via LogisticsConfigLoader
+                // Step 2: Load all ship definitions via ShipConfigLoader
                 LoadProgress = 0.5f;
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
 
-                var allShips = LogisticsConfigLoader.LoadAllShips();
+                var allShips = ShipConfigLoader.LoadAllShips();
 
                 _ships.Clear();
                 foreach (var ship in allShips)
@@ -103,9 +104,9 @@ namespace Logistics.Resources
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
                 OnLoadCompleted?.Invoke(DatabaseName, true);
 
-                GD.Print(
-                    $"ShipDatabase: '{DatabaseName}' loaded successfully with {_ships.Count} ships"
-                );
+                GameLogger.Info($"ShipDatabase: '{DatabaseName}' loaded successfully with {_ships.Count} ships, " +
+                                $"{ShipConfigLoader.ModelsLoadedCount} models loaded, " +
+                                $"{ShipConfigLoader.ModelsFailedCount} models failed");
             }
             catch (Exception ex)
             {
@@ -209,6 +210,36 @@ namespace Logistics.Resources
         {
             EnsureLoaded();
             return !string.IsNullOrEmpty(name) && _ships.ContainsKey(name);
+        }
+
+        /// <summary>
+        /// Gets the icon for a ship at a specific size.
+        /// Always returns a valid texture (uses fallback if needed).
+        /// </summary>
+        public Texture2D GetShipIcon(string name, IconSize size = IconSize.Medium)
+        {
+            EnsureLoaded();
+            if (TryGetShip(name, out var ship) && ship != null)
+            {
+                var texture = ship.Icon?.GetTexture(size);
+                if (texture != null)
+                    return texture;
+            }
+
+            return IconDataLoader.GetFallbackIcon(size);
+        }
+
+        /// <summary>
+        /// Gets the full IconDefinition for a ship.
+        /// </summary>
+        public IconDefinition? GetShipIconDefinition(string name)
+        {
+            EnsureLoaded();
+            if (TryGetShip(name, out var ship) && ship != null)
+            {
+                return ship.Icon;
+            }
+            return null;
         }
     }
 }

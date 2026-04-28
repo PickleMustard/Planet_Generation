@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://7s28768lv6bk"
+path="res://.godot/imported/billboard_computer.glsl-8d26c589e0cbb09ff48e5ccd5437dc6d.res"
+
+[deps]
+
+source_file="res://Shaders/billboard_computer.glsl"
+dest_files=["res://.godot/imported/billboard_computer.glsl-8d26c589e0cbb09ff48e5ccd5437dc6d.res"]
+
+[params]
+

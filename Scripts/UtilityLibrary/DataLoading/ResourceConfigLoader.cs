@@ -223,18 +223,68 @@ public static class ResourceConfigLoader
         // For backward compatibility, read resource_type if present
         // It will be overridden by file name inference for category files
         string resourceType = ReadString(dict, "resource_type", "");
+        string idName = ReadString(dict, "id_name", "");
 
         var definition = new ResourceDefinition
         {
-            IdName = ReadString(dict, "id_name", ""),
+            IdName = idName,
             ResourceTier = ReadInt(dict, "resource_tier", 0),
             ResourceType = resourceType, // May be overridden later
             DisplayColor = ReadColor(dict, "display_color", Colors.White),
             Tags = ReadTags(dict, "tags"),
             TransportWeight = ReadFloat(dict, "transport_weight", 1.0f),
+            Icon = ParseIconDefinition(dict, $"resource:{idName}"),
         };
 
+        // Apply fallback if icon failed to load
+        if (!definition.Icon.IsValid)
+        {
+            definition.Icon = IconDataLoader.CreateFallbackIconDefinition();
+        }
+
+        // If no tint specified, inherit from DisplayColor
+        if (definition.Icon.Tint == Colors.White)
+        {
+            definition.Icon.Tint = definition.DisplayColor;
+        }
+
         return definition;
+    }
+
+    private static IconDefinition ParseIconDefinition(Dictionary<object, object> dict, string context)
+    {
+        if (!dict.ContainsKey("icon"))
+        {
+            return new IconDefinition(); // Return empty - fallback applied by caller
+        }
+
+        var iconDict = dict["icon"] as Dictionary<object, object>;
+        if (iconDict == null)
+            return new IconDefinition();
+
+        // Get base_path (required)
+        string? basePath = ReadString(iconDict, "base_path", "");
+        if (string.IsNullOrEmpty(basePath))
+        {
+            GameLogger.Warning($"Icon section missing base_path for {context}");
+            return new IconDefinition();
+        }
+
+        // Load all sizes via IconDataLoader
+        var icon = IconDataLoader.LoadIcon(basePath, context);
+
+        // Parse optional properties
+        if (iconDict.ContainsKey("scale"))
+        {
+            icon.Scale = ReadFloat(iconDict, "scale", 1.0f);
+        }
+
+        if (iconDict.ContainsKey("tint"))
+        {
+            icon.Tint = ReadColor(iconDict, "tint", Colors.White);
+        }
+
+        return icon;
     }
 
     private static HashSet<string> ReadTags(Dictionary<object, object> dict, string key)
@@ -478,6 +528,143 @@ public static class ResourceConfigLoader
             );
             return null;
         }
+    }
+
+    /// <summary>
+    /// Loads biome categories from the standard configuration file.
+    /// </summary>
+    /// <returns>Loaded biome category configuration, or null if loading fails</returns>
+    public static BiomeCategoryConfig? LoadBiomeCategories()
+    {
+        return LoadBiomeCategories("res://Configuration/ResourceDefinition/biome_categories.yaml");
+    }
+
+    /// <summary>
+    /// Loads biome categories from a YAML file.
+    /// </summary>
+    /// <param name="filePath">Path to the YAML configuration file</param>
+    /// <returns>Loaded biome category configuration, or null if loading fails</returns>
+    public static BiomeCategoryConfig? LoadBiomeCategories(string filePath)
+    {
+        if (!Godot.FileAccess.FileExists(filePath))
+        {
+            GD.PrintErr($"Biome categories file not found: {filePath}");
+            return null;
+        }
+
+        try
+        {
+            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
+            string text = f.GetAsText();
+
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(UnderscoredNamingConvention.Instance)
+                .IgnoreUnmatchedProperties()
+                .Build();
+
+            var rawData = deserializer.Deserialize<SysDict>(text);
+
+            if (rawData == null || !rawData.ContainsKey("categories"))
+            {
+                GD.PrintErr($"Biome categories file missing 'categories' key: {filePath}");
+                return null;
+            }
+
+            var config = new BiomeCategoryConfig();
+            var categoriesList = rawData["categories"] as List<object>;
+
+            if (categoriesList == null)
+            {
+                GD.PrintErr($"Biome categories 'categories' is not a list: {filePath}");
+                return null;
+            }
+
+            foreach (var categoryObj in categoriesList)
+            {
+                if (categoryObj is Dictionary<object, object> categoryDict)
+                {
+                    var entry = ParseBiomeCategoryEntry(categoryDict);
+                    if (entry != null && !string.IsNullOrEmpty(entry.CategoryId))
+                    {
+                        config.Categories[entry.CategoryId] = entry;
+                    }
+                }
+            }
+
+            if (config.Validate())
+            {
+                GD.Print($"Successfully loaded {config.Categories.Count} biome categories from {filePath}");
+                return config;
+            }
+            else
+            {
+                GD.PrintErr($"Biome categories validation failed: {filePath}");
+                return null;
+            }
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr(
+                $"Error loading biome categories from {filePath}: {e.Message}\n{e.StackTrace}"
+            );
+            return null;
+        }
+    }
+
+    private static BiomeCategoryEntry? ParseBiomeCategoryEntry(Dictionary<object, object> dict)
+    {
+        var entry = new BiomeCategoryEntry
+        {
+            CategoryId = ReadString(dict, "category_id", ""),
+            DisplayName = ReadString(dict, "display_name", ""),
+            Description = ReadString(dict, "description", ""),
+        };
+
+        if (dict.ContainsKey("biomes"))
+        {
+            var biomesList = dict["biomes"] as List<object>;
+            if (biomesList != null)
+            {
+                foreach (var biomeObj in biomesList)
+                {
+                    if (biomeObj is string biomeName)
+                    {
+                        if (TryParseBiomeType(biomeName, out var biomeType))
+                        {
+                            entry.Biomes.Add(biomeType);
+                        }
+                        else
+                        {
+                            GD.PrintErr($"BiomeCategoryEntry: Unknown biome '{biomeName}' in category '{entry.CategoryId}'");
+                        }
+                    }
+                }
+            }
+        }
+
+        return entry;
+    }
+
+    private static bool TryParseBiomeType(string name, out Biome.BiomeType biomeType)
+    {
+        biomeType = Biome.BiomeType.Tundra;
+
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+
+        string normalized = name.Replace("_", "").Replace(" ", "").Trim();
+
+        foreach (Biome.BiomeType type in Enum.GetValues(typeof(Biome.BiomeType)))
+        {
+            string enumName = type.ToString().Replace("_", "");
+            if (string.Equals(normalized, enumName, StringComparison.OrdinalIgnoreCase))
+            {
+                biomeType = type;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

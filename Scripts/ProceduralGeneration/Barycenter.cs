@@ -1,5 +1,9 @@
+using Constructables;
 using Godot;
 using Godot.Collections;
+using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.TextureGeneration;
+using Structures;
 using Structures.GameState;
 
 public partial class Barycenter : Node3D, IOrbitalBody
@@ -46,7 +50,18 @@ public partial class Barycenter : Node3D, IOrbitalBody
 
     public Node3D SatellitesContainer => throw new System.NotImplementedException();
 
+    public BodyClassification Classification => throw new System.NotImplementedException();
+    public BodyBillboardTextures BillboardTextures => throw new System.NotImplementedException();
+    public UnifiedCelestialMesh Mesh => throw new System.NotImplementedException();
+
     public bool UsesBandPlacement => throw new System.NotImplementedException();
+
+    public BuildingConstructionManager BuildingConstructionMgr =>
+        throw new System.NotImplementedException();
+
+    public BodyEconomyManager EconomyMgr => throw new System.NotImplementedException();
+
+    public BodyTransferManager TransferMgr => throw new System.NotImplementedException();
 
     public Barycenter(Vector3 position, Vector3 velocity, float weight)
     {

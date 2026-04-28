@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 using UI.Debug.Console;
+using UI.Debug.Economy;
 using CellInfoModule = UI.Debug.CellInfo.CellInfo;
 using DatabaseViewerModule = UI.Debug.DatabaseViewer.DatabaseViewer;
 
@@ -87,6 +88,12 @@ public partial class DebugMenu : CanvasLayer
 
         var cellInfo = new CellInfoModule();
         RegisterModule(cellInfo);
+
+#if DEBUG
+        var economyScene = GD.Load<PackedScene>("res://UI/Debug/Economy/EconomyDebugModule.tscn");
+        var economyModule = economyScene.Instantiate<EconomyDebugModule>();
+        RegisterModule(economyModule);
+#endif
     }
 
     /// <summary>

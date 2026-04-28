@@ -6,6 +6,8 @@ resources:
       - 255
       - 255
     tags: [electronic, industrial]
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/pcb"
 
   - id_name: microchip
     resource_tier: 3
@@ -13,6 +15,8 @@ resources:
       - 255
       - 255
       - 255
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/microchip"
 
   - id_name: quantum_chip
     resource_tier: 4
@@ -20,6 +24,8 @@ resources:
       - 255
       - 255
       - 255
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/quantum_chip"
 
   - id_name: lithium_battery
     resource_tier: 1
@@ -28,6 +34,8 @@ resources:
       - 128
       - 64
     tags: [electronic, industrial]
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/lithium_battery"
 
   - id_name: capacitor
     resource_tier: 1
@@ -36,6 +44,8 @@ resources:
       - 255
       - 255
     tags: [electronic, industrial]
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/capacitor"
 
   - id_name: solid_state_battery
     resource_tier: 2
@@ -44,6 +54,8 @@ resources:
       - 255
       - 192
     tags: [electronic, industrial]
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/solid_state_battery"
 
   - id_name: solar_cell
     resource_tier: 1
@@ -52,6 +64,8 @@ resources:
       - 0
       - 0
     tags: [electronic, industrial, solar]
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/solar_cell"
 
   - id_name: workstation
     resource_tier: 1
@@ -60,6 +74,8 @@ resources:
       - 255
       - 0
     tags: [electronic, labor, furniture]
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/workstation"
 
   - id_name: motor
     resource_tier: 2
@@ -68,4 +84,6 @@ resources:
       - 255
       - 0
     tags: [electronic, industrial]
+    icon:
+      base_path: "res://Assets/Icons/Resources/electronic/motor"
 

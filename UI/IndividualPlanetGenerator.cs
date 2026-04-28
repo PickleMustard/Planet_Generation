@@ -4,7 +4,9 @@ using Godot.Collections;
 using ProceduralGeneration;
 using ProceduralGeneration.MeshGeneration;
 using ProceduralGeneration.PlanetGeneration;
+using Structures;
 using Structures.Enums;
+using UI.Generation;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.NameGeneration;
@@ -89,6 +91,9 @@ public partial class IndividualPlanetGenerator : Control
 
     [Export]
     public VBoxContainer? _templatesList;
+
+    [Export]
+    public TextureViewerPanel? _textureViewer;
 
     // Generation state
     private CelestialBody? _currentPlanet;
@@ -382,6 +387,9 @@ public partial class IndividualPlanetGenerator : Control
             _currentPlanet = null;
         }
 
+        // Clear texture viewer
+        _textureViewer?.Clear();
+
         var bodyParams = CollectParams();
 
         // Extract parameters for builder
@@ -394,7 +402,7 @@ public partial class IndividualPlanetGenerator : Control
         // Select subtype
         var rng = Randomizer.GetRandomNumberGenerator();
         var auManager = new AUProbabilityManager(rng);
-        object? subtype = auManager.SelectSubtype(bodyType, 0f, null);
+        BodyClassification classification = auManager.SelectClassification(bodyType, 0f);
 
         // Build the celestial body
         var mesh = new UnifiedCelestialMesh();
@@ -404,11 +412,8 @@ public partial class IndividualPlanetGenerator : Control
             .WithMass(mass)
             .WithBodyDict(bodyParams)
             .WithMesh(mesh)
-            .WithType(bodyType)
+            .WithClassification(classification)
             .WithName(name);
-
-        if (subtype != null)
-            builder.WithSubtype(subtype);
 
         _currentPlanet = builder.Build();
 
@@ -431,6 +436,9 @@ public partial class IndividualPlanetGenerator : Control
         // Adjust orbit radius to fit planet
         if (_size != null)
             _orbitRadius = (float)_size.Value * ORBIT_DISTANCE;
+
+        // Update texture viewer with new body
+        _textureViewer?.CallDeferred("UpdateForBody", completedBody);
 
         GameLogger.Info($"Planet '{_currentBodyName}' generated successfully");
     }

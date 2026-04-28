@@ -58,7 +58,7 @@ public static class NameGenerator
             return "";
 
         var random = Randomizer.rng;
-        
+
         // If category is specified, use it; otherwise pick random category
         string selectedCategory;
         if (!string.IsNullOrEmpty(category) && nameData.ContainsKey(category))
@@ -70,7 +70,7 @@ public static class NameGenerator
             var categories = new Godot.Collections.Array(nameData.Keys);
             if (categories.Count == 0)
                 return "";
-            
+
             // Filter out "categories" key if present
             var validCategories = new List<string>();
             foreach (var cat in categories)
@@ -79,10 +79,10 @@ public static class NameGenerator
                 if (catStr != "categories" && !string.IsNullOrWhiteSpace(catStr))
                     validCategories.Add(catStr);
             }
-            
+
             if (validCategories.Count == 0)
                 return "";
-                
+
             selectedCategory = validCategories[random.RandiRange(0, validCategories.Count - 1)];
         }
 
@@ -150,12 +150,12 @@ public static class NameGenerator
 
             // 30% chance: adjective + name (e.g., "Iron-Veined Voyager")
             // 70% chance: just a name
-            if (includeAdjective && _cachedAdjectiveArrays.TryGetValue("ships", out var adjectives) && 
+            if (includeAdjective && _cachedAdjectiveArrays.TryGetValue("ships", out var adjectives) &&
                 adjectives != null && adjectives.Length > 0 && random.Randf() < 0.3f)
             {
                 string adj = adjectives[random.Randi() % adjectives.Length];
                 string name = names[random.Randi() % names.Length];
-                
+
                 // Convert adjective to title case and replace spaces with hyphens
                 adj = ToTitleCase(adj).Replace(" ", "-");
                 return $"{adj} {name}";
@@ -176,6 +176,33 @@ public static class NameGenerator
         // For now, stations can use the same naming as ships
         // In the future, we might want separate station name lists
         return GenerateShipName(includeAdjective: false);
+    }
+
+    /// <summary>
+    /// Generates a name for a planet (for player settlement naming).
+    /// </summary>
+    /// <returns>A generated planet name</returns>
+    public static string GeneratePlanetName()
+    {
+        return PickNameFromFile("rockyplanets", format: NameFormat.TitleCase);
+    }
+
+    /// <summary>
+    /// Generates a name for a star system.
+    /// </summary>
+    /// <returns>A generated system name</returns>
+    public static string GenerateSystemName()
+    {
+        return PickNameFromFile("centralbodies", format: NameFormat.TitleCase);
+    }
+
+    /// <summary>
+    /// Generates a name for a player company.
+    /// </summary>
+    /// <returns>A generated company name</returns>
+    public static string GenerateCompanyName()
+    {
+        return PickNameFromFile("companies", format: NameFormat.TitleCase);
     }
 
     /// <summary>

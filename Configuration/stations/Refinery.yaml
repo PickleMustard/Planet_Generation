@@ -7,6 +7,8 @@ stations:
       Steel: 800
       Electronics: 200
       Machinery: 400
+    icon:
+      base_path: "res://Assets/Icons/Stations/refinery/small_refinery"
 
   - name: Large_Refinery
     station_type: Refinery
@@ -17,3 +19,5 @@ stations:
       Electronics: 1000
       Machinery: 2000
       Composites: 300
+    icon:
+      base_path: "res://Assets/Icons/Stations/refinery/large_refinery"

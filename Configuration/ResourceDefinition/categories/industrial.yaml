@@ -6,6 +6,8 @@ resources:
       - 255
       - 255
     tags: [processed]
+    icon:
+      base_path: "res://Assets/Icons/Resources/industrial/ceramics"
 
   - id_name: condensed_carbon
     resource_tier: 1
@@ -14,6 +16,8 @@ resources:
       - 69
       - 79
     tags: [processed]
+    icon:
+      base_path: "res://Assets/Icons/Resources/industrial/condensed_carbon"
 
   - id_name: steel
     resource_tier: 1
@@ -22,6 +26,8 @@ resources:
       - 70
       - 80
     tags: [metal]
+    icon:
+      base_path: "res://Assets/Icons/Resources/industrial/steel"
 
   - id_name: fluid_barrel
     resource_tier: 1
@@ -30,3 +36,5 @@ resources:
       - 255
       - 192
     tags: [processed, storage]
+    icon:
+      base_path: "res://Assets/Icons/Resources/industrial/fluid_barrel"

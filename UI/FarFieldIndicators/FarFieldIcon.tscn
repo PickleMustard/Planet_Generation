@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://pg7f3wfhr5oe"]
+
+[ext_resource type="Script" uid="uid://dgm4r1lu0mhxa" path="res://Scripts/UI/FarFieldIndicators/FarFieldIcon.cs" id="1_iconscript"]
+
+[node name="FarFieldIcon" type="Control" unique_id=1940226788 node_paths=PackedStringArray("IconTextureRect", "NameLabel")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 64.0
+offset_bottom = 80.0
+script = ExtResource("1_iconscript")
+IconTextureRect = NodePath("IconTextureRect")
+NameLabel = NodePath("NameLabel")
+
+[node name="IconTextureRect" type="TextureRect" parent="." unique_id=1223330895]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 64.0
+grow_horizontal = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="." unique_id=1326822862]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+horizontal_alignment = 1
+vertical_alignment = 1

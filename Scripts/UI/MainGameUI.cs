@@ -7,7 +7,7 @@ namespace UI;
 /// Main game UI container that holds UI elements like the toast system.
 /// This should be added to game scenes (GameScene, SystemGeneration) but not to menus.
 /// </summary>
-public partial class MainGameUI : CanvasLayer
+public partial class MainGameUI : Control
 {
     /// <summary>
     /// Singleton instance of the MainGameUI.
@@ -17,13 +17,16 @@ public partial class MainGameUI : CanvasLayer
     /// <summary>
     /// Reference to the toast system for easy access.
     /// </summary>
+    [Export]
     public ToastSystem? ToastSystem { get; private set; }
 
     public override void _EnterTree()
     {
         if (Instance != null)
         {
-            GD.PushError($"Multiple MainGameUI instances detected! Keeping first instance: {Instance.Name}, rejecting: {Name}");
+            GD.PushError(
+                $"Multiple MainGameUI instances detected! Keeping first instance: {Instance.Name}, rejecting: {Name}"
+            );
             QueueFree();
             return;
         }
@@ -44,32 +47,29 @@ public partial class MainGameUI : CanvasLayer
     public override void _Ready()
     {
         GameLogger.EnterFunction(nameof(_Ready));
-        
-        // Set layer to 1 as specified
-        Layer = 1;
-        
-        // Find and store reference to ToastSystem
-        ToastSystem = GetNode<ToastSystem>("ToastSystem");
-        
+
         if (ToastSystem == null)
         {
             GameLogger.Error("ToastSystem not found as child of MainGameUI!");
-            GD.PrintErr("ToastSystem not found as child of MainGameUI. Make sure ToastSystem.tscn is instantiated in MainGameUI.tscn.");
+            GD.PrintErr(
+                "ToastSystem not found as child of MainGameUI. Make sure ToastSystem.tscn is instantiated in MainGameUI.tscn."
+            );
         }
         else
         {
             GameLogger.Debug($"ToastSystem found and linked: {ToastSystem.Name}");
         }
-        
-        GameLogger.ExitFunction(nameof(_Ready), $"MainGameUI ready with layer {Layer}");
     }
 
     /// <summary>
     /// Helper method to show a toast message via the embedded toast system.
     /// </summary>
-    public void ShowToast(string message, float duration = 3.0f, 
-                         ToastSystem.ToastPriority priority = ToastSystem.ToastPriority.Info,
-                         bool useRichText = true)
+    public void ShowToast(
+        string message,
+        float duration = 3.0f,
+        ToastSystem.ToastPriority priority = ToastSystem.ToastPriority.Info,
+        bool useRichText = true
+    )
     {
         ToastSystem?.Show(message, duration, priority, useRichText);
     }

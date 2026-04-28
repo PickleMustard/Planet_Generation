@@ -25,7 +25,7 @@ public class NameGeneratorTest
             var name = NameGenerator.PickName(nameDict);
             AssertThat(name).IsNotNull();
             AssertThat(name).IsNotEmpty();
-            
+
             // Name should be one of our test names
             bool isValidName = name == "Name1" || name == "Name2" || name == "Name3" ||
                               name == "Alpha" || name == "Beta" || name == "Gamma";
@@ -55,7 +55,7 @@ public class NameGeneratorTest
         {
             ["emptyCategory"] = new Array() // Empty array
         };
-        
+
         var name = NameGenerator.PickName(nameDict);
         AssertThat(name).IsEmpty();
     }
@@ -107,10 +107,10 @@ public class NameGeneratorTest
     {
         var result = NameGenerator.ToTitleCase("hello world");
         AssertThat(result).IsEqual("Hello World");
-        
+
         result = NameGenerator.ToTitleCase("HELLO WORLD");
         AssertThat(result).IsEqual("Hello World");
-        
+
         result = NameGenerator.ToTitleCase("hElLo wOrLd");
         AssertThat(result).IsEqual("Hello World");
     }
@@ -120,7 +120,7 @@ public class NameGeneratorTest
     {
         var result = NameGenerator.ToTitleCase("");
         AssertThat(result).IsEmpty();
-        
+
         result = NameGenerator.ToTitleCase(null);
         AssertThat(result).IsNull();
     }
@@ -133,7 +133,7 @@ public class NameGeneratorTest
         var shipName = NameGenerator.GenerateShipName();
         AssertThat(shipName).IsNotNull();
         AssertThat(shipName).IsNotEmpty();
-        
+
         // Ship name should not be the fallback (which would indicate loading failed)
         AssertThat(shipName.StartsWith("Ship_")).IsFalse();
     }
@@ -153,7 +153,7 @@ public class NameGeneratorTest
     {
         var result = NameGenerator.GenerateCombinedName("iron veined", "Voyager");
         AssertThat(result).IsEqual("Iron-Veined Voyager");
-        
+
         // Test with different adjective format
         result = NameGenerator.GenerateCombinedName("iron veined", "Voyager", NameFormat.TitleCase);
         AssertThat(result).IsEqual("Iron Veined Voyager");
@@ -170,7 +170,7 @@ public class NameGeneratorTest
         // Test with NoSpaces format
         var name = NameGenerator.PickName(nameDict, NameFormat.NoSpaces);
         AssertThat(name).IsEqual("TestName");
-        
+
         // Test with LowerCase format
         name = NameGenerator.PickName(nameDict, NameFormat.LowerCase);
         AssertThat(name).IsEqual("test name");
@@ -183,10 +183,10 @@ public class NameGeneratorTest
         // Generate a ship name to ensure cache is populated
         var initialName = NameGenerator.GenerateShipName();
         AssertThat(initialName).IsNotEmpty();
-        
+
         // Clear cache
         NameGenerator.ClearNameCache();
-        
+
         // Generate another name - should still work after cache clear
         var newName = NameGenerator.GenerateShipName();
         AssertThat(newName).IsNotEmpty();
@@ -198,10 +198,10 @@ public class NameGeneratorTest
     {
         // Clear any existing cache
         NameGenerator.ClearNameCache();
-        
+
         // Preload data
         NameGenerator.PreloadNameData();
-        
+
         // Generate names - should work without hitting file system again
         var shipName = NameGenerator.GenerateShipName();
         AssertThat(shipName).IsNotEmpty();

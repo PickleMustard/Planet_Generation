@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using Structures;
 using Structures.Resources;
 
 namespace ProceduralGeneration.MeshGeneration.ResourceGeneration;
@@ -14,17 +15,17 @@ public static class SatelliteResourceGenerator
     /// Generates resource deposits for a satellite body using the group-based system.
     /// </summary>
     /// <param name="planetaryResourceConfig">Planetary resource configuration with resolved resource sets.</param>
-    /// <param name="satelliteSubtype">The satellite subtype enum value.</param>
+    /// <param name="classification">The body classification.</param>
     /// <param name="rng">Random number generator for deterministic generation.</param>
     /// <param name="maxResources">Maximum number of resources to generate.</param>
     /// <returns>Dictionary mapping resource IDs to ResourceDeposits.</returns>
     public static Dictionary<string, ResourceDeposit> GenerateResources(
         PlanetaryResourceConfig planetaryResourceConfig,
-        object? satelliteSubtype,
+        BodyClassification? classification,
         RandomNumberGenerator rng,
         int maxResources = 3)
     {
         return CellResourceGenerator.GenerateSatelliteResources(
-            planetaryResourceConfig, satelliteSubtype, rng, maxResources);
+            planetaryResourceConfig, classification, rng, maxResources);
     }
 }
