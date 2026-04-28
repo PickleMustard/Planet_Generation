@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Logistics.Resources;
 using ProceduralGeneration.PlanetGeneration;
+using Structures.Logistics;
 using UI.Debug;
 using UI.Debug.Console;
 using UI.Debug.DatabaseViewer;
@@ -323,7 +324,7 @@ public partial class ConstructionManager : IDebugDataProvider
                 string typeInfo = station switch
                 {
                     ConstructionYardStation yard => $" [Yard: {yard.GetActiveBuilds().Count} active, {yard.GetShipBuildQueue().Count} queued]",
-                    OrbitalArchitectStation arch => $" [Architect: {arch.GetActiveBuildings().Count} buildings]",
+                    OrbitalArchitectStation arch => $" [Architect]",
                     _ => ""
                 };
                 ctx.WriteLine($"  {station.Name} - {station.GetStatus()} ({progress:F1}%) Band {station.BandIndex}{typeInfo}");

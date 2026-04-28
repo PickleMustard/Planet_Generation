@@ -28,7 +28,6 @@ TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
 DebugMenu="*res://UI/Debug/DebugMenu.tscn"
 CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
 ConstructionManager="*res://Scripts/Constructables/ConstructionManager.cs"
-EconomyManager="*res://Scripts/Constructables/EconomyManager.cs"
 
 [display]
 
@@ -40,7 +39,7 @@ project/assembly_name="Delaunay Triangulation Map Generation"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/renderdoc_launcher/plugin.cfg")
 
 [filesystem]
 
@@ -62,5 +61,7 @@ level="INFO"
 
 [rendering]
 
+anti_aliasing/quality/msaa_2d=1
+anti_aliasing/quality/msaa_3d=1
 environment/glow/upscale_mode=0
 mesh_lod/lod_change/threshold_pixels=43.2

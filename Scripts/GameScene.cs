@@ -15,16 +15,6 @@ namespace Scenes
         {
             GameLogger.EnterFunction(nameof(_Ready));
 
-            // Instantiate Construction HUD
-            var constructionHudScene = GD.Load<PackedScene>(
-                "res://UI/Construction/ConstructionHUD.tscn"
-            );
-            if (constructionHudScene != null)
-            {
-                AddChild(constructionHudScene.Instantiate());
-                GameLogger.Debug("ConstructionHUD added to GameScene");
-            }
-
             // Instantiate Main Game UI (includes ToastSystem)
             var mainGameUIScene = GD.Load<PackedScene>("res://UI/MainGameUI.tscn");
             if (mainGameUIScene != null)
@@ -33,11 +23,18 @@ namespace Scenes
                 GameLogger.Debug("MainGameUI added to GameScene");
             }
 
-            // Check if bodies were generated into our system_container
-            // (should have been done by LoadingScreen)
+            // Ensure system_container has SystemData
             var systemContainer = GetNodeOrNull<Node>("system_container");
             if (systemContainer != null)
             {
+                // Add SystemData if not present
+                if (systemContainer.GetNodeOrNull<Structures.GameState.SystemData>("SystemData") == null)
+                {
+                    var systemData = new Structures.GameState.SystemData { Name = "SystemData" };
+                    systemContainer.AddChild(systemData);
+                    GameLogger.Debug("SystemData added to system_container");
+                }
+
                 int bodyCount = systemContainer.GetChildCount();
                 if (bodyCount > 0)
                 {

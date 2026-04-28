@@ -227,6 +227,56 @@ public static class InstanceRegistry
     }
 
     /// <summary>
+    /// Registers a continent economy under the ContinentEconomy namespace.
+    /// </summary>
+    /// <param name="economy">The continent economy to register.</param>
+    /// <param name="continentIndex">The continent index.</param>
+    /// <returns>The generated namespace (e.g., ContinentEconomy.0).</returns>
+    public static string RegisterContinentEconomy(object economy, int continentIndex)
+    {
+        if (economy == null)
+        {
+            throw new ArgumentNullException(nameof(economy));
+        }
+
+        var ns = $"ContinentEconomy.{continentIndex}";
+        return Register(economy, ns);
+    }
+
+    /// <summary>
+    /// Registers a station economy under the StationEconomy namespace.
+    /// </summary>
+    /// <param name="economy">The station economy to register.</param>
+    /// <param name="stationId">The station ID.</param>
+    /// <returns>The generated namespace (e.g., StationEconomy.0).</returns>
+    public static string RegisterStationEconomy(object economy, string stationId)
+    {
+        if (economy == null)
+        {
+            throw new ArgumentNullException(nameof(economy));
+        }
+
+        var ns = $"StationEconomy.{stationId}";
+        return Register(economy, ns);
+    }
+
+    /// <summary>
+    /// Gets all registered economy namespaces (both continent and station economies).
+    /// </summary>
+    /// <returns>Enumerable of economy namespaces.</returns>
+    public static IEnumerable<string> GetAllEconomyNamespaces()
+    {
+        lock (_lock)
+        {
+            return _instances.Keys
+                .Where(ns => ns.StartsWith("ContinentEconomy.", StringComparison.OrdinalIgnoreCase)
+                          || ns.StartsWith("StationEconomy.", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(ns => ns)
+                .ToList();
+        }
+    }
+
+    /// <summary>
     /// Gets the next sequential ID for a type (used for node fallback naming).
     /// </summary>
     private static int GetNextId(Type type)

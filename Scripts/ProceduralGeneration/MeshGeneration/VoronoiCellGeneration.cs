@@ -42,17 +42,10 @@ public class VoronoiCellGeneration
     /// and creates Voronoi cells by triangulating the projected circumcenters.
     /// </summary>
     /// <param name="percent">Progress tracking object for monitoring generation progress.</param>
-    public void GenerateVoronoiCells(
-        GenericPercent percent,
-        UnifiedCelestialMesh mesh,
-        Octree<Point> oct
-    )
+    public void GenerateVoronoiCells(UnifiedCelestialMesh mesh, Octree<Point> oct)
     {
         this.mesh = mesh;
-        GameLogger.EnterFunction(
-            "GenerateVoronoiCells",
-            $"startPercent={percent.PercentCurrent}/{percent.PercentTotal}"
-        );
+        GameLogger.EnterFunction("GenerateVoronoiCells");
         GD.Print($"Generating Voronoi Cells: {StrDb.BaseVertices.Count} Sites");
         GameLogger.Info($"Structure Database: {StrDb.Index}");
         try
@@ -111,7 +104,6 @@ public class VoronoiCellGeneration
 
                 if (triCircumcenters.Count == 0)
                 {
-                    percent.PercentCurrent++;
                     continue;
                 }
 
@@ -151,7 +143,6 @@ public class VoronoiCellGeneration
                     StrDb.AddCellForEdge(e.key, calculated);
                 }
                 triCircumcenters.Clear();
-                percent.PercentCurrent++;
             }
             GD.Print($"VoronoiCells Count: {StrDb.VoronoiCells.Count}");
             GD.Print($"EdgeMap Count: {StrDb.EdgeMap.Count}");
@@ -164,8 +155,7 @@ public class VoronoiCellGeneration
             GameLogger.Error($"Error in GenerateVoronoiCells: {e.Message}\n{e.StackTrace}");
         }
         GameLogger.ExitFunction(
-            "GenerateVoronoiCells",
-            $"endPercent={percent.PercentCurrent}/{percent.PercentTotal}, cells={StrDb.VoronoiCells.Count}"
+            "GenerateVoronoiCells"
         );
     }
 

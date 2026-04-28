@@ -7,7 +7,7 @@ buildings:
     work_required: 120.0
 
     placement_requirements:
-      biomes: [Mountain, RustedMountain, StoneDesert]
+      biomes: [category:mountain, category:rocky, volcanic]
       min_elevation: 0.6
       max_elevation: 1.0
       max_slope: 30.0
@@ -33,6 +33,9 @@ buildings:
       scale: 1.3
       rotation_offset: [0, 45, 0]
 
+    icon:
+      base_path: "res://Assets/Icons/Buildings/extraction/mountain_extractor"
+
   - id_name: surface_quarry
     display_name: Surface Quarry
     description: Open-pit mining operation for bulk extraction of common minerals and construction materials.
@@ -41,7 +44,7 @@ buildings:
     work_required: 800.0
 
     placement_requirements:
-      biomes: [StoneDesert, RustedPlain, ScouredPlain, Grassland]
+      biomes: [category:terrestrial]
       min_elevation: 0.3
       max_elevation: 0.7
       max_slope: 20.0
@@ -65,3 +68,6 @@ buildings:
       model_path: "res://Models/Buildings/surface_quarry.glb"
       scale: 1.8
       rotation_offset: [0, 0, 0]
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/extraction/surface_quarry"

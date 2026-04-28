@@ -1,8 +1,9 @@
 using System;
 using System.Reflection;
+using Constructables;
 using Godot;
 using Godot.Collections;
-using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using UtilityLibrary.TaskSystem;
 
@@ -22,19 +23,37 @@ namespace UtilityLibrary
         /// C# event for requesting system generation. Used instead of a Godot signal
         /// because the parameters include Barycenter (a Node3D subclass).
         /// </summary>
-        public event Action<Array<Dictionary>, Array<Dictionary>, Array<Dictionary>, Barycenter>? GenerateSystemRequested;
+        [Signal]
+        public delegate void GenerateSystemRequestedEventHandler(
+            Array<Dictionary> dominantBodies,
+            Array<Dictionary> satelliteBelts,
+            Array<Dictionary> planetaryBodies,
+            Barycenter barycenter
+        );
 
         public void EmitGenerateSystemRequested(
             Array<Dictionary> dominantBodies,
             Array<Dictionary> satelliteBelts,
             Array<Dictionary> planetaryBodies,
-            Barycenter barycenter)
+            Barycenter barycenter
+        )
         {
-            GenerateSystemRequested?.Invoke(dominantBodies, satelliteBelts, planetaryBodies, barycenter);
+            EmitSignal(
+                SignalName.GenerateSystemRequested,
+                dominantBodies,
+                satelliteBelts,
+                planetaryBodies,
+                barycenter
+            );
         }
 
         [Signal]
-        public delegate void StartTimerEventHandler(string name, int totalSteps, int startingStep, string[] stepNames);
+        public delegate void StartTimerEventHandler(
+            string name,
+            int totalSteps,
+            int startingStep,
+            string[] stepNames
+        );
 
         [Signal]
         public delegate void IncrementTimerStepEventHandler(string name);
@@ -46,14 +65,29 @@ namespace UtilityLibrary
         public delegate void QueuePackageEventHandler(WorkPackage package);
 
         [Signal]
-        public delegate void SystemGenerationCompleteEventHandler(string batchId, int totalBodies, int successfulBodies);
+        public delegate void SystemGenerationCompleteEventHandler(
+            string batchId,
+            int totalBodies,
+            int successfulBodies
+        );
+
+        [Signal]
+        public delegate void RequestRayCastEventHandler();
+
+        [Signal]
+        public delegate void ExportRaycastResultEventHandler(Dictionary results);
 
         public override void _Ready()
         {
             Instance = this;
         }
 
-        public void EmitStartTimer(string name, int totalSteps, int startingStep, string[] stepNames)
+        public void EmitStartTimer(
+            string name,
+            int totalSteps,
+            int startingStep,
+            string[] stepNames
+        )
         {
             EmitSignal(SignalName.StartTimer, name, totalSteps, startingStep, stepNames);
         }
@@ -73,86 +107,151 @@ namespace UtilityLibrary
             EmitSignal(SignalName.QueuePackage, package);
         }
 
-        public void EmitSystemGenerationComplete(string batchId, int totalBodies, int successfulBodies)
+        public void EmitSystemGenerationComplete(
+            string batchId,
+            int totalBodies,
+            int successfulBodies
+        )
         {
             EmitSignal(SignalName.SystemGenerationComplete, batchId, totalBodies, successfulBodies);
         }
+
+        public void EmitRequestRayCast() => EmitSignal(SignalName.RequestRayCast);
+
+        public void EmitExportRaycastResult(Dictionary results) =>
+            EmitSignal(SignalName.ExportRaycastResult, results);
 
         /// <summary>
         /// Fired when a continent's power state changes (deficit or recovery).
         /// Parameters: continentIndex, isDeficit
         /// </summary>
-        public event Action<int, bool>? ContinentPowerStateChanged;
+        [Signal]
+        public delegate void ContinentPowerStateChangedEventHandler(
+            int continentIndex,
+            bool isDeficit
+        );
 
         public void EmitContinentPowerStateChanged(int continentIndex, bool isDeficit)
         {
-            ContinentPowerStateChanged?.Invoke(continentIndex, isDeficit);
+            EmitSignal(SignalName.ContinentPowerStateChanged, continentIndex, isDeficit);
         }
 
         /// <summary>
         /// Fired when a continent enters or exits a resource shortage.
         /// Parameters: continentIndex, resourceId, isShortage
         /// </summary>
-        public event Action<int, string, bool>? ContinentResourceShortage;
+        [Signal]
+        public delegate void ContinentResourceShortageEventHandler(
+            int continentIndex,
+            string resourceID,
+            bool isShortage
+        );
 
-        public void EmitContinentResourceShortage(int continentIndex, string resourceId, bool isShortage)
+        public void EmitContinentResourceShortage(
+            int continentIndex,
+            string resourceId,
+            bool isShortage
+        )
         {
-            ContinentResourceShortage?.Invoke(continentIndex, resourceId, isShortage);
+            EmitSignal(
+                SignalName.ContinentResourceShortage,
+                continentIndex,
+                resourceId,
+                isShortage
+            );
+        }
+
+        /// <summary>
+        /// Fired when a continent's economy ticks (production/consumption cycle completes).
+        /// Parameters: continentIndex
+        /// </summary>
+        [Signal]
+        public delegate void ContinentEconomyTickedEventHandler(int continentIndex);
+
+        public void EmitContinentEconomyTicked(int continentIndex)
+        {
+            EmitSignal(SignalName.ContinentEconomyTicked, continentIndex);
         }
 
         /// <summary>
         /// Fired when a transfer is dispatched from a continent.
         /// Parameters: orderId, originContinentIndex
         /// </summary>
-        public event Action<string, int>? TransferDispatched;
+        [Signal]
+        public delegate void TransferDispatchedEventHandler(
+            string orderId,
+            int originContinentIndex
+        );
 
         public void EmitTransferDispatched(string orderId, int originContinentIndex)
         {
-            TransferDispatched?.Invoke(orderId, originContinentIndex);
+            EmitSignal(SignalName.TransferDispatched, orderId, originContinentIndex);
         }
 
         /// <summary>
         /// Fired when a transfer arrives at its destination.
         /// Parameters: orderId, fullyAccepted
         /// </summary>
-        public event Action<string, bool>? TransferArrived;
+        [Signal]
+        public delegate void TransferArrivedEventHandler(string orderId, bool fullyAccepted);
 
         public void EmitTransferArrived(string orderId, bool fullyAccepted)
         {
-            TransferArrived?.Invoke(orderId, fullyAccepted);
+            EmitSignal(SignalName.TransferArrived, orderId, fullyAccepted);
         }
 
         /// <summary>
         /// Fired when resources are reverted to origin due to destination rejection.
         /// Parameters: orderId, originContinentIndex, revertedAmount
         /// </summary>
-        public event Action<string, int, float>? TransferReverted;
+        [Signal]
+        public delegate void TransferRevertedEventHandler(
+            string orderId,
+            int originContinentIndex,
+            float revertedAmount
+        );
 
-        public void EmitTransferReverted(string orderId, int originContinentIndex, float revertedAmount)
+        public void EmitTransferReverted(
+            string orderId,
+            int originContinentIndex,
+            float revertedAmount
+        )
         {
-            TransferReverted?.Invoke(orderId, originContinentIndex, revertedAmount);
+            EmitSignal(SignalName.TransferReverted, orderId, originContinentIndex, revertedAmount);
         }
 
         /// <summary>
         /// Fired when a transfer schedule changes state.
         /// Parameters: scheduleId, newState (as int for Godot compat)
         /// </summary>
-        public event Action<string, int>? TransferScheduleStateChanged;
+        [Signal]
+        public delegate void TransferScheduleStateChangedEventHandler(
+            string scheduleId,
+            int newState
+        );
 
         public void EmitTransferScheduleStateChanged(string scheduleId, int newState)
         {
-            TransferScheduleStateChanged?.Invoke(scheduleId, newState);
+            EmitSignal(SignalName.TransferScheduleStateChanged, scheduleId, newState);
         }
 
         /// <summary>
         /// Fired when a continent's total transfer capacity changes (station built/destroyed).
         /// Parameters: continentIndex, newTotalCapacity
         /// </summary>
-        public event Action<int, float>? ContinentTransferCapacityChanged;
+        [Signal]
+        public delegate void ContinentTransferCapacityChangedEventHandler(
+            int continentIndex,
+            float newTotalCapacity
+        );
 
         public void EmitContinentTransferCapacityChanged(int continentIndex, float newTotalCapacity)
         {
-            ContinentTransferCapacityChanged?.Invoke(continentIndex, newTotalCapacity);
+            EmitSignal(
+                SignalName.ContinentTransferCapacityChanged,
+                continentIndex,
+                newTotalCapacity
+            );
         }
 
         // --- Orbital Logistics Signals ---
@@ -161,67 +260,199 @@ namespace UtilityLibrary
         /// Fired when a logistics unit begins executing a leg in its schedule.
         /// Parameters: unitId, legIndex
         /// </summary>
-        public event Action<string, int>? OrbitalLegStarted;
+        [Signal]
+        public delegate void OrbitalLegStartedEventHandler(string unitId, int legIndex);
 
         public void EmitOrbitalLegStarted(string unitId, int legIndex)
         {
-            OrbitalLegStarted?.Invoke(unitId, legIndex);
+            EmitSignal(SignalName.OrbitalLegStarted, unitId, legIndex);
         }
 
         /// <summary>
         /// Fired when a logistics unit completes a leg in its schedule.
         /// Parameters: unitId, legIndex
         /// </summary>
-        public event Action<string, int>? OrbitalLegCompleted;
+        [Signal]
+        public delegate void OrbitalLegCompletedEventHandler(string unitId, int legIndex);
 
         public void EmitOrbitalLegCompleted(string unitId, int legIndex)
         {
-            OrbitalLegCompleted?.Invoke(unitId, legIndex);
+            EmitSignal(SignalName.OrbitalLegCompleted, unitId, legIndex);
         }
 
         /// <summary>
         /// Fired when a leg fails (e.g., max trajectory retries exceeded).
         /// Parameters: unitId, legIndex, reason
         /// </summary>
-        public event Action<string, int, string>? OrbitalLegFailed;
+        [Signal]
+        public delegate void OrbitalLegFailedEventHandler(
+            string unitId,
+            int legIndex,
+            string reason
+        );
 
         public void EmitOrbitalLegFailed(string unitId, int legIndex, string reason)
         {
-            OrbitalLegFailed?.Invoke(unitId, legIndex, reason);
+            EmitSignal(SignalName.OrbitalLegFailed, unitId, legIndex, reason);
         }
 
         /// <summary>
         /// Fired when an orbital transfer schedule changes state.
         /// Parameters: unitId, newState
         /// </summary>
-        public event Action<string, OrbitalScheduleState>? OrbitalScheduleStateChanged;
+        [Signal]
+        public delegate void OrbitalScheduleStateChangedEventHandler(
+            string unitId,
+            string newState
+        );
 
-        public void EmitOrbitalScheduleStateChanged(string unitId, OrbitalScheduleState newState)
+        public void EmitOrbitalScheduleStateChanged(string unitId, string newState)
         {
-            OrbitalScheduleStateChanged?.Invoke(unitId, newState);
+            EmitSignal(SignalName.OrbitalScheduleStateChanged, unitId, newState);
         }
 
         /// <summary>
         /// Fired when cargo loading or unloading completes at a station.
         /// Parameters: unitId, stationId, isLoading (true=pickup, false=dropoff)
         /// </summary>
-        public event Action<string, string, bool>? OrbitalCargoTransferCompleted;
+        [Signal]
+        public delegate void OrbitalCargoTransferCompletedEventHandler(
+            string unitId,
+            string stationId,
+            bool isLoading
+        );
 
-        public void EmitOrbitalCargoTransferCompleted(string unitId, string stationId, bool isLoading)
+        public void EmitOrbitalCargoTransferCompleted(
+            string unitId,
+            string stationId,
+            bool isLoading
+        )
         {
-            OrbitalCargoTransferCompleted?.Invoke(unitId, stationId, isLoading);
+            EmitSignal(SignalName.OrbitalCargoTransferCompleted, unitId, stationId, isLoading);
         }
 
         /// <summary>
         /// Fired when trajectory planning is retried for a leg.
         /// Parameters: unitId, legIndex, attemptNumber, maxAttempts
         /// </summary>
-        public event Action<string, int, int, int>? OrbitalTrajectoryRetry;
+        [Signal]
+        public delegate void OrbitalTrajectoryRetryEventHandler(
+            string unitId,
+            int legIndex,
+            int attemptNumber,
+            int maxAttempts
+        );
 
-        public void EmitOrbitalTrajectoryRetry(string unitId, int legIndex, int attemptNumber, int maxAttempts)
+        public void EmitOrbitalTrajectoryRetry(
+            string unitId,
+            int legIndex,
+            int attemptNumber,
+            int maxAttempts
+        )
         {
-            OrbitalTrajectoryRetry?.Invoke(unitId, legIndex, attemptNumber, maxAttempts);
+            EmitSignal(
+                SignalName.OrbitalTrajectoryRetry,
+                unitId,
+                legIndex,
+                attemptNumber,
+                maxAttempts
+            );
         }
+
+        /// <summary>
+        /// Fired when a building upgrade is requested from the Building Info Panel.
+        /// Parameters: buildingInstanceId
+        /// </summary>
+        [Signal]
+        public delegate void BuildingUpgradeRequestedEventHandler(int buildingInstanceId);
+
+        /// <summary>
+        /// Fired when a building demolish is requested from the Building Info Panel.
+        /// Parameters: buildingInstanceId
+        /// </summary>
+        [Signal]
+        public delegate void BuildingDemolishRequestedEventHandler(int buildingInstanceId);
+
+        public void EmitBuildingUpgradeRequested(int buildingInstanceId) =>
+            EmitSignal(SignalName.BuildingUpgradeRequested, buildingInstanceId);
+
+        public void EmitBuildingDemolishRequested(int buildingInstanceId) =>
+            EmitSignal(SignalName.BuildingDemolishRequested, buildingInstanceId);
+
+        /// <summary>
+        /// Fired when a station is upgraded (e.g., Ramshackle Builder).
+        /// Parameters: StationSatellite (the upgraded station)
+        /// </summary>
+        [Signal]
+        public delegate void StationUpgradedEventHandler(StationSatellite station);
+
+        public void EmitStationUpgraded(StationSatellite station)
+        {
+            EmitSignal(SignalName.StationUpgraded, station);
+        }
+
+        /// <summary>
+        /// Fired after a building finishes construction and is registered with its
+        /// continent economy. Parameters: continentIndex.
+        /// </summary>
+        [Signal]
+        public delegate void BuildingConstructedEventHandler(int continentIndex);
+
+        public void EmitBuildingConstructed(int continentIndex) =>
+            EmitSignal(SignalName.BuildingConstructed, continentIndex);
+
+        /// <summary>
+        /// Fired after a building is unregistered from its continent economy (demolish
+        /// or cancel). Parameters: continentIndex.
+        /// </summary>
+        [Signal]
+        public delegate void BuildingRemovedEventHandler(int continentIndex);
+
+        public void EmitBuildingRemoved(int continentIndex) =>
+            EmitSignal(SignalName.BuildingRemoved, continentIndex);
+
+        /// <summary>
+        /// Fired when an economy is registered with the debug console.
+        /// Parameters: economyNamespace, economyType, parentName.
+        /// </summary>
+        [Signal]
+        public delegate void EconomyRegisteredEventHandler(string economyNamespace, string economyType, string parentName);
+
+        /// <summary>
+        /// Fired when an economy is unregistered from the debug console.
+        /// Parameters: economyNamespace.
+        /// </summary>
+        [Signal]
+        public delegate void EconomyUnregisteredEventHandler(string economyNamespace);
+
+        public void EmitEconomyRegistered(string economyNamespace, string economyType, string parentName)
+        {
+            EmitSignal(SignalName.EconomyRegistered, economyNamespace, economyType, parentName);
+        }
+
+        public void EmitEconomyUnregistered(string economyNamespace)
+        {
+            EmitSignal(SignalName.EconomyUnregistered, economyNamespace);
+        }
+
+        // --- Orbital Body Window Signals ---
+
+        /// <summary>
+        /// Fired when the orbital body inspection window opens.
+        /// </summary>
+        [Signal]
+        public delegate void OrbitalBodyWindowOpenedEventHandler(Dictionary bodyInfo);
+
+        public void EmitOrbitalBodyWindowOpened(Dictionary bodyInfo) =>
+            EmitSignal(SignalName.OrbitalBodyWindowOpened, bodyInfo);
+
+        /// <summary>
+        /// Fired when the orbital body inspection window closes.
+        /// </summary>
+        [Signal]
+        public delegate void OrbitalBodyWindowClosedEventHandler();
+
+        public void EmitOrbitalBodyWindowClosed() => EmitSignal(SignalName.OrbitalBodyWindowClosed);
 
         public void Emit(string signalName, params Variant[] args)
         {
@@ -260,10 +491,13 @@ namespace UtilityLibrary
 
         public void AutoConnect(GodotObject target)
         {
-            if (target == null) return;
+            if (target == null)
+                return;
 
             var type = target.GetType();
-            var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var methods = type.GetMethods(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
 
             foreach (var method in methods)
             {
@@ -278,10 +512,13 @@ namespace UtilityLibrary
 
         public void AutoDisconnect(GodotObject target)
         {
-            if (target == null) return;
+            if (target == null)
+                return;
 
             var type = target.GetType();
-            var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var methods = type.GetMethods(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
 
             foreach (var method in methods)
             {

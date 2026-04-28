@@ -1,0 +1,99 @@
+[gd_scene format=3 uid="uid://cw17748doqih4"]
+
+[ext_resource type="Script" uid="uid://clmujj41q7tcy" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyHeaderPanel.cs" id="1_header"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.15, 0.15, 0.18, 0.92)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="OrbitalBodyHeaderPanel" type="PanelContainer" unique_id=1067964937 node_paths=PackedStringArray("_bodyNameLabel", "_typeIcon", "_typeLabel", "_buildingCountLabel", "_stationCountLabel", "_transferCountLabel")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_header")
+_bodyNameLabel = NodePath("MarginContainer/VBoxContainer/BodyNameLabel")
+_typeIcon = NodePath("MarginContainer/VBoxContainer/TypeRow/TypeIcon")
+_typeLabel = NodePath("MarginContainer/VBoxContainer/TypeRow/TypeLabel")
+_buildingCountLabel = NodePath("MarginContainer/VBoxContainer/SummaryGrid/BuildingCountLabel")
+_stationCountLabel = NodePath("MarginContainer/VBoxContainer/SummaryGrid/StationCountLabel")
+_transferCountLabel = NodePath("MarginContainer/VBoxContainer/SummaryGrid/TransferCountLabel")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1642902358]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=1886348063]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BodyNameLabel" type="Label" parent="MarginContainer/VBoxContainer" unique_id=907961405]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Body Name"
+
+[node name="TypeRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=142994088]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TypeIcon" type="TextureRect" parent="MarginContainer/VBoxContainer/TypeRow" unique_id=290423554]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+stretch_mode = 5
+
+[node name="TypeLabel" type="Label" parent="MarginContainer/VBoxContainer/TypeRow" unique_id=354600875]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "Type - Subtype"
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer" unique_id=907692336]
+layout_mode = 2
+
+[node name="SummaryGrid" type="GridContainer" parent="MarginContainer/VBoxContainer" unique_id=1083724872]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="BuildingLabel" type="Label" parent="MarginContainer/VBoxContainer/SummaryGrid" unique_id=670885059]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = "Buildings:"
+
+[node name="BuildingCountLabel" type="Label" parent="MarginContainer/VBoxContainer/SummaryGrid" unique_id=258571228]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "0"
+
+[node name="StationLabel" type="Label" parent="MarginContainer/VBoxContainer/SummaryGrid" unique_id=1315433194]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = "Stations:"
+
+[node name="StationCountLabel" type="Label" parent="MarginContainer/VBoxContainer/SummaryGrid" unique_id=1351475251]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "0"
+
+[node name="TransferLabel" type="Label" parent="MarginContainer/VBoxContainer/SummaryGrid" unique_id=1667712851]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = "Active Transfers:"
+
+[node name="TransferCountLabel" type="Label" parent="MarginContainer/VBoxContainer/SummaryGrid" unique_id=1384960295]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "0"

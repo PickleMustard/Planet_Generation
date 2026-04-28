@@ -9,7 +9,7 @@ namespace UI;
 /// Toast notification system with queue management, priority levels, and rich text support.
 /// Displays up to 3 messages at once with configurable duration and animations.
 /// </summary>
-public partial class ToastSystem : CanvasLayer
+public partial class ToastSystem : Control
 {
     /// <summary>
     /// Singleton instance of the ToastSystem.
@@ -57,7 +57,8 @@ public partial class ToastSystem : CanvasLayer
         public bool UseRichText;
     }
 
-    private VBoxContainer _toastContainer = null!;
+    [Export]
+    public VBoxContainer _toastContainer = null!;
     private readonly Queue<QueuedToast> _messageQueue = new();
     private readonly List<Control> _visibleToasts = new();
     private readonly Dictionary<ToastPriority, Color> _priorityColors = new();
@@ -90,13 +91,8 @@ public partial class ToastSystem : CanvasLayer
     {
         GameLogger.EnterFunction(nameof(_Ready));
 
-        // Set layer to 1 as specified
-        Layer = 1;
-
         // Initialize priority colors
         InitializePriorityColors();
-
-        GameLogger.ExitFunction(nameof(_Ready), $"ToastSystem ready with layer {Layer}");
     }
 
     private void InitializePriorityColors()
@@ -359,4 +355,3 @@ public partial class ToastSystem : CanvasLayer
         Show(message, duration, ToastPriority.Error, useRichText);
     }
 }
-

@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://l3m0ivejs20r"
+path="res://.godot/imported/orbital_indicator.glsl-2459d10acf3b5e27ee396b3dbf28352b.res"
+
+[deps]
+
+source_file="res://Shaders/orbital_indicator.glsl"
+dest_files=["res://.godot/imported/orbital_indicator.glsl-2459d10acf3b5e27ee396b3dbf28352b.res"]
+
+[params]
+

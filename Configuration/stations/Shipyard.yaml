@@ -8,6 +8,8 @@ stations:
       Steel: 1000
       Electronics: 300
       Machinery: 200
+    icon:
+      base_path: "res://Assets/Icons/Stations/shipyard/small_shipyard"
 
   - name: Large_Shipyard
     station_type: Shipyard
@@ -19,3 +21,5 @@ stations:
       Electronics: 1500
       Machinery: 1000
       Composites: 500
+    icon:
+      base_path: "res://Assets/Icons/Stations/shipyard/large_shipyard"

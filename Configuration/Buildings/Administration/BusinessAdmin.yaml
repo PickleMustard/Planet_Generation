@@ -1,29 +1,4 @@
 buildings:
-  - id_name: headquarters
-    display_name: Company Headquarters
-    description: The headquarters for your company
-    category: Administration
-    building_limit: 1
-    building_time: 300.0
-    work_required: 500.0
-
-    placement_requirements:
-      biomes: ["*"]
-      min_elevation: 0.2
-      max_elevation: 0.8
-      max_slope: 20.0
-      cell_count: 1
-      requires_adjacent: false
-
-    required_resources:
-
-    production:
-
-    visual:
-      model_path: "res://Models/Buildings/headquarters.glb"
-      scale: 2.0
-      rotation_offset: [0, 0, 0]
-
   - id_name: labor_resources
     display_name: Labor Resources
     description: Department for managing your workforce
@@ -46,3 +21,6 @@ buildings:
       adult: 100
       workstation: 50
       furniture: 50
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/administration/labor_resources"

@@ -1,0 +1,20 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Transparent background (default) -->
+  
+  <!-- White vertical line at left (Y-axis) -->
+  <rect x="59" y="60" width="2" height="481" 
+        stroke="white" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- White horizontal line at bottom (X-axis) -->
+  <rect x="60" y="539" width="675" height="2" 
+        stroke="white" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Graph curve: starts at origin (60,540) and goes up-right -->
+  <!-- Using a cubic bezier curve for a smooth growth shape -->
+  <path d="M 60 540 C 180 540, 250 450, 350 380 S 550 280, 740 120" 
+        stroke="#00d4ff" stroke-width="3" fill="none" stroke-linecap="round"/>
+  
+  <!-- Optional: arrowheads for axes -->
+  <polygon points="60,55 55,65 65,65" fill="white"/>
+  <polygon points="745,540 735,535 735,545" fill="white"/>
+</svg>

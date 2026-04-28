@@ -1,0 +1,71 @@
+[gd_scene load_steps=3 format=3 uid="uid://manufacturing_details"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/ManufacturingDetails.cs" id="1_manufacturing"]
+[ext_resource type="PackedScene" uid="uid://recipe_display" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
+
+[node name="ManufacturingDetails" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_manufacturing")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="LeftPanel" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.4
+theme_override_constants/separation = 8
+
+[node name="RecipeDisplay" parent="HBoxContainer/LeftPanel" instance=ExtResource("2_recipe")]
+layout_mode = 2
+
+[node name="DescriptionLabel" type="Label" parent="HBoxContainer/LeftPanel"]
+layout_mode = 2
+text = "Recipe description goes here."
+autowrap_mode = 3
+
+[node name="RightPanel" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.6
+theme_override_constants/separation = 12
+
+[node name="InputsSection" type="VBoxContainer" parent="HBoxContainer/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SectionLabel" type="Label" parent="HBoxContainer/RightPanel/InputsSection"]
+layout_mode = 2
+text = "Inputs"
+
+[node name="InputsList" type="VBoxContainer" parent="HBoxContainer/RightPanel/InputsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="OutputsSection" type="VBoxContainer" parent="HBoxContainer/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SectionLabel" type="Label" parent="HBoxContainer/RightPanel/OutputsSection"]
+layout_mode = 2
+text = "Outputs"
+
+[node name="OutputsList" type="VBoxContainer" parent="HBoxContainer/RightPanel/OutputsSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DonutChartsHBox" type="HBoxContainer" parent="HBoxContainer/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1

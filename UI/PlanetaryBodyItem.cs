@@ -440,7 +440,7 @@ public partial class PlanetaryBodyItem : HBoxContainer
                 }
             }
         }
-        
+
         // Update header with new name
         if (OptionButton != null)
         {
@@ -556,7 +556,7 @@ public partial class PlanetaryBodyItem : HBoxContainer
         }
     }
 
-    
+
 
     public void UpdateHeaderFromBodyType(string typeName)
     {

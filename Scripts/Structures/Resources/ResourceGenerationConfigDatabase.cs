@@ -11,7 +11,7 @@ namespace Structures.Resources;
 /// Singleton database that loads and provides access to resource generation configurations
 /// for planetary types and biomes used in resource generation.
 /// </summary>
-public class ResourceGenerationConfigDatabase : ILoadableDatabase
+public partial class ResourceGenerationConfigDatabase : ILoadableDatabase
 {
     private static ResourceGenerationConfigDatabase? _instance;
     private static readonly object _lock = new object();

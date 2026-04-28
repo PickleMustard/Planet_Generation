@@ -1,6 +1,7 @@
 using System;
 using GdUnit4;
 using Godot;
+using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using static GdUnit4.Assertions;
 
@@ -58,7 +59,11 @@ public class BuildingDatabaseTest
         AssertThat(exampleBuilding.Placement.MaxSlope).IsEqual(20.0f);
         AssertThat(exampleBuilding.Placement.CellCount).IsEqual(1);
         AssertThat(exampleBuilding.Placement.RequiresAdjacent).IsFalse();
-        AssertThat(exampleBuilding.Placement.Biomes.Count).IsEqual(4); // Grassland, Forest, Mountain, Coastal
+        // Biomes are resolved from categories: [category:temperate, category:coastal]
+        // temperate = Grassland, Forest, Coastal, Mountain, Swamp, Taiga
+        // coastal = Coastal, ShallowOcean
+        // Combined (deduplicated) = Grassland, Forest, Coastal, Mountain, Swamp, Taiga, ShallowOcean = 7 biomes
+        AssertThat(exampleBuilding.Placement.Biomes.Count).IsEqual(7);
         AssertThat(exampleBuilding.Placement.AllowAnyBiome).IsFalse(); // Specific biomes only
 
         // Test required resources
@@ -113,7 +118,7 @@ public class BuildingDatabaseTest
         AssertThat(universalBuilding.RequiredResources["iron"]).IsEqual(10);
 
         // Production defaults
-        AssertThat(universalBuilding.Production.DefaultRecipe).IsEqual("");
+        AssertThat(universalBuilding.Production.DefaultRecipe ?? "").IsEqual("");
         AssertThat(universalBuilding.Production.AlternativeRecipes.Count).IsEqual(0);
         AssertThat(universalBuilding.Production.InputStorageAmount).IsEqual(0);
         AssertThat(universalBuilding.Production.OutputStorageAmount).IsEqual(0);
@@ -208,6 +213,64 @@ public class BuildingDatabaseTest
         {
             AssertThat(error.Contains('*')).IsFalse();
         }
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void CategoryBiomes_ResolveCorrectly()
+    {
+        // Test that category:X syntax resolves to the correct biomes
+        var definitions = BuildingConfigLoader.LoadBuildingDefinitions(
+            "res://Configuration/Buildings/example_building.yaml"
+        );
+
+        var exampleBuilding = definitions.Find(b => b.IdName == "example_building");
+        AssertThat(exampleBuilding).IsNotNull();
+
+        // Should have biomes from [category:temperate, category:coastal]
+        var biomes = exampleBuilding!.Placement.Biomes;
+
+        // From temperate: Grassland, Forest, Coastal, Mountain, Swamp, Taiga
+        AssertThat(biomes.Contains(Biome.BiomeType.Grassland)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.Forest)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.Coastal)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.Mountain)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.Swamp)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.Taiga)).IsTrue();
+
+        // From coastal: ShallowOcean (plus Coastal which is already counted)
+        AssertThat(biomes.Contains(Biome.BiomeType.ShallowOcean)).IsTrue();
+
+        // Should not have biomes not in these categories
+        AssertThat(biomes.Contains(Biome.BiomeType.Desert)).IsFalse();
+        AssertThat(biomes.Contains(Biome.BiomeType.Ocean)).IsFalse();
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void MixedBiomesAndCategories_ResolveCorrectly()
+    {
+        var definitions = BuildingConfigLoader.LoadBuildingDefinitions(
+            "res://Configuration/Buildings/example_building.yaml"
+        );
+
+        var mixedBuilding = definitions.Find(b => b.IdName == "example_mixed_biomes");
+        AssertThat(mixedBuilding).IsNotNull();
+
+        // Should have biomes from [category:arable, category:mountain, Ocean]
+        var biomes = mixedBuilding!.Placement.Biomes;
+
+        // From arable: Grassland, Forest, Rainforest, Coastal, Swamp
+        AssertThat(biomes.Contains(Biome.BiomeType.Grassland)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.Forest)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.Rainforest)).IsTrue();
+
+        // From mountain: Mountain, VolcanicPeak, RustedMountain
+        AssertThat(biomes.Contains(Biome.BiomeType.Mountain)).IsTrue();
+        AssertThat(biomes.Contains(Biome.BiomeType.VolcanicPeak)).IsTrue();
+
+        // Individual Ocean
+        AssertThat(biomes.Contains(Biome.BiomeType.Ocean)).IsTrue();
     }
 }
 

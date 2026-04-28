@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
+using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
@@ -207,6 +208,49 @@ namespace Structures.Resources
                     throw ResourceValidationError.ResourceNotFound(resourceId, bodyConfigName);
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets the icon for a resource at a specific size.
+        /// Always returns a valid texture (uses fallback if needed).
+        /// </summary>
+        public Texture2D GetResourceIcon(string resourceId, IconSize size = IconSize.Medium)
+        {
+            EnsureLoaded();
+            if (TryGetResource(resourceId, out var resource) && resource != null)
+            {
+                var texture = resource.Icon?.GetTexture(size);
+                if (texture != null)
+                    return texture;
+            }
+
+            return IconDataLoader.GetFallbackIcon(size);
+        }
+
+        /// <summary>
+        /// Gets the icon tint for a resource.
+        /// </summary>
+        public Color GetResourceIconTint(string resourceId)
+        {
+            EnsureLoaded();
+            if (TryGetResource(resourceId, out var resource) && resource != null)
+            {
+                return resource.GetEffectiveIconTint();
+            }
+            return Colors.White;
+        }
+
+        /// <summary>
+        /// Gets the full IconDefinition for a resource.
+        /// </summary>
+        public IconDefinition? GetResourceIconDefinition(string resourceId)
+        {
+            EnsureLoaded();
+            if (TryGetResource(resourceId, out var resource) && resource != null)
+            {
+                return resource.Icon;
+            }
+            return null;
         }
     }
 }

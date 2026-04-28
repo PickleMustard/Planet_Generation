@@ -39,9 +39,9 @@ public class RetryTestDatabase : ILoadableDatabase
     {
         _loadAttempts++;
         _onAttempt?.Invoke(_loadAttempts);
-        
+
         OnLoadStarted?.Invoke(DatabaseName);
-        
+
         if (_loadAttempts == 1)
         {
             // First attempt fails
@@ -185,11 +185,11 @@ public class DatabaseIntegrationTest
         // Test DatabaseAccess helper methods
         // Note: These tests only work when DatabaseLoadManager is initialized
         // For integration tests without Godot, we test the logic through direct calls
-        
+
         // Simulate what DatabaseAccess would check
         AssertThat(_testDb1.IsLoaded).IsTrue();
         AssertThat(_testDb2.IsLoaded).IsTrue();
-        
+
         // Test accessing data (simulating DatabaseAccess.GetDatabase)
         AssertThat(() => _testDb1.SimulateDataAccess()).IsNotThrown();
         AssertThat(() => _testDb2.SimulateDataAccess()).IsNotThrown();
@@ -243,11 +243,11 @@ public class DatabaseIntegrationTest
         // Verify events were fired
         AssertThat(events).Contains("Started: IntegrationTestDB1");
         AssertThat(events).Contains("Completed: IntegrationTestDB1 - True");
-        
+
         // Should have progress events (at least one)
         var progressEvents = events.Where(e => e.StartsWith("Progress:")).ToList();
         AssertThat(progressEvents.Count).IsGreater(0);
-        
+
         // Final progress should be 1.0
         AssertThat(lastProgress).IsEqual(1.0f);
     }
@@ -257,7 +257,7 @@ public class DatabaseIntegrationTest
     {
         // Test error handling in loading flow
         var errorEvents = new List<string>();
-        
+
         _failingDb!.OnLoadCompleted += (name, success) =>
         {
             if (!success)
@@ -286,18 +286,18 @@ public class DatabaseIntegrationTest
             .AddStep("Load_RetryDB", () => retryDb.LoadData());
 
         var package = builder.Build();
-        
+
         // First execution should fail but not throw due to retry logic
         int result1 = package.ExecuteNextStep();
         AssertThat(result1).IsNotEqual(0); // Failed
-        
+
         // Package should not be complete (has retries)
         AssertThat(package.IsComplete).IsFalse();
-        
+
         // Retry should succeed
         int result2 = package.ExecuteNextStep();
         AssertThat(result2).IsEqual(0); // Success
-        
+
         AssertThat(package.IsComplete).IsTrue();
         AssertThat(loadAttempts).IsEqual(2);
     }
@@ -318,7 +318,7 @@ public class DatabaseIntegrationTest
             .AddStep("Load_Main", () => mainDb.LoadData());
 
         var package = builder.Build();
-        
+
         // Execute all steps
         while (!package.IsComplete)
         {
@@ -329,7 +329,7 @@ public class DatabaseIntegrationTest
         AssertThat(dependentDb1.IsLoaded).IsTrue();
         AssertThat(dependentDb2.IsLoaded).IsTrue();
         AssertThat(mainDb.IsLoaded).IsTrue();
-        
+
         // Cleanup
         dependentDb1.Unload();
         dependentDb2.Unload();

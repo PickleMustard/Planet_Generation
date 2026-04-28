@@ -6,6 +6,8 @@ resources:
       - 255
       - 255
     tags: []
+    icon:
+      base_path: "res://Assets/Icons/Resources/construction/concrete"
 
   - id_name: rebar
     resource_tier: 1
@@ -14,6 +16,8 @@ resources:
       - 255
       - 224
     tags: []
+    icon:
+      base_path: "res://Assets/Icons/Resources/construction/rebar"
 
   - id_name: high_tensile_wire
     resource_tier: 3
@@ -22,3 +26,5 @@ resources:
       - 255
       - 192
     tags: []
+    icon:
+      base_path: "res://Assets/Icons/Resources/construction/high_tensile_wire"

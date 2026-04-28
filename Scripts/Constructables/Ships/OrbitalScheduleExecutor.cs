@@ -1,9 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Structures.Enums;
 using Structures.Logistics;
-using Structures.Resources;
 using UtilityLibrary;
 
 namespace Constructables;
@@ -558,7 +558,7 @@ public partial class OrbitalScheduleExecutor : Node
             return;
 
         _activeSchedule.State = newState;
-        SignalBus.Instance?.EmitOrbitalScheduleStateChanged(_unit.Id, newState);
+        SignalBus.Instance?.EmitOrbitalScheduleStateChanged(_unit.Id, Enum.GetName(typeof(OrbitalScheduleState), newState)!);
     }
 
     private void EmitLegCompleted()

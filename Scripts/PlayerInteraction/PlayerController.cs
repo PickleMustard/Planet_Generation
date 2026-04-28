@@ -1,7 +1,8 @@
-using System.Text.RegularExpressions;
+using Constructables;
 using Godot;
-using PlayerInteraction.CellSelection;
+using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
+using UtilityLibrary;
 
 public partial class PlayerController : Node3D
 {
@@ -58,7 +59,8 @@ public partial class PlayerController : Node3D
             _inputHandler.VerticalMove += OnVerticalMove;
             _inputHandler.CameraLook += OnCameraLook;
             _inputHandler.IndependentRotatation += OnMakeCameraIndependent;
-            _inputHandler.CastRay += OnCastRay;
+            Callable rayCastRequest = new Callable(this, "OnCastRay");
+            SignalBus.Instance!.ConnectToSignal("RequestRayCast", rayCastRequest);
         }
     }
 
@@ -93,66 +95,73 @@ public partial class PlayerController : Node3D
         UpdateCamera();
     }
 
-    private void OnCastRay(Vector3 origin, Vector3 direction)
+    private void OnCastRay()
     {
+        var mousePos = GetViewport().GetMousePosition();
+        Vector3 origin = _camera!.ProjectRayOrigin(mousePos);
+        var direction = origin + _camera.ProjectRayNormal(mousePos) * 1000f;
         var query = PhysicsRayQueryParameters3D.Create(origin, direction);
         query.CollideWithAreas = true;
         var result = GetWorld3D().DirectSpaceState.IntersectRay(query);
         if (result.Count == 0)
+        {
+            SignalBus.Instance!.EmitExportRaycastResult(new Dictionary());
             return;
+        }
 
-        GD.Print($"Hit Result: {result}");
         var collider = (Node3D)result["collider"];
-        var position = (Vector3)result["position"];
 
-        // Find the parent body that supports cell selection.
-        // Try CelestialBody first, then SatelliteBody.
-        string parentName = ((string)collider.GetName()).Split("_")[0];
-        parentName = Regex.Replace(parentName, "[0-9]", "");
-        ISelectableBody? selectableBody = collider.FindParent(parentName) as CelestialBody;
-        selectableBody ??= collider.FindParent(parentName) as SatelliteBody;
+        var selectableBody = FindSelectableBody(collider);
         if (selectableBody == null)
+        {
+            // Check if we hit a logistics unit
+            var logisticsUnit = FindLogisticsUnit(collider);
+            if (logisticsUnit != null)
+            {
+                Dictionary logisticsResult = new Dictionary();
+                logisticsResult["logistics_unit"] = (Node)logisticsUnit;
+                SignalBus.Instance!.EmitExportRaycastResult(logisticsResult);
+                return;
+            }
+
+            SignalBus.Instance!.EmitExportRaycastResult(new Dictionary());
             return;
+        }
 
         var faceIndex = (int)result["face_index"];
         var selectionResult = selectableBody.GetFaceFromIndex(faceIndex);
-        
-        // Debug: Compare with old method for validation
-        var oldMethodResult = selectableBody.FindNearestCell(position);
-        if (selectionResult?.Cell != null && oldMethodResult?.Cell != null)
+
+        Dictionary exportResult = new Dictionary();
+        exportResult["hit_result"] = result;
+        exportResult["selectable_body"] = (Node3D)selectableBody;
+        exportResult["cell"] = selectionResult!.Cell;
+        exportResult["cell_continent"] = selectionResult.CellContinent!;
+
+        SignalBus.Instance!.EmitExportRaycastResult(exportResult);
+    }
+
+    private static ISelectableBody? FindSelectableBody(Node node)
+    {
+        Node? current = node;
+        while (current != null)
         {
-            if (selectionResult.Cell.Index != oldMethodResult.Cell.Index)
-            {
-                GD.Print($"WARNING: Cell mismatch! FaceIndex method: {selectionResult.Cell.Index}, Octree method: {oldMethodResult.Cell.Index}");
-            }
-            else
-            {
-                GD.Print($"Cell match: {selectionResult.Cell.Index} (both methods agree)");
-            }
+            if (current is ISelectableBody body)
+                return body;
+            current = current.GetParentOrNull<Node>();
         }
-        
-        if (selectionResult?.Cell != null)
+        return null;
+    }
+
+    private static LogisticsUnit? FindLogisticsUnit(Node node)
+    {
+        Node? current = node;
+        while (current != null)
         {
-            GD.Print($"Selected Cell via face_index {faceIndex}: {selectionResult.Cell.Index}");
-            CellSelectionManager.Instance?.SelectCell(
-                selectionResult.Cell,
-                selectionResult.CellContinent,
-                (Node3D)selectableBody
-            );
+            if (current is LogisticsUnit unit)
+                return unit;
+            current = current.GetParentOrNull<Node>();
         }
-        else
-        {
-            GD.PrintErr($"Failed to get cell from face_index {faceIndex}, falling back to octree method");
-            if (oldMethodResult?.Cell != null)
-            {
-                GD.Print($"Selected Cell via octree fallback: {oldMethodResult.Cell.Index}");
-                CellSelectionManager.Instance?.SelectCell(
-                    oldMethodResult.Cell,
-                    oldMethodResult.CellContinent,
-                    (Node3D)selectableBody
-                );
-            }
-        }
+        return null;
     }
 
     private void UpdateCamera()

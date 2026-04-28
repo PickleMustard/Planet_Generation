@@ -10,6 +10,8 @@ ships:
       Electronics: 1000
       Composites: 500
       Machinery: 400
+    icon:
+      base_path: "res://Assets/Icons/Ships/transport/heavy_lifter"
 
   - name: Massive_Hauler
     dry_mass: 100000
@@ -22,6 +24,8 @@ ships:
       Electronics: 5000
       Composites: 3000
       Machinery: 2000
+    icon:
+      base_path: "res://Assets/Icons/Ships/transport/massive_hauler"
 
   - name: Titan_Transport
     dry_mass: 500000
@@ -34,6 +38,8 @@ ships:
       Electronics: 25000
       Composites: 15000
       Machinery: 10000
+    icon:
+      base_path: "res://Assets/Icons/Ships/transport/titan_transport"
 
   - name: Orbital_Crane
     dry_mass: 250000
@@ -46,3 +52,5 @@ ships:
       Electronics: 15000
       Composites: 8000
       Machinery: 8000
+    icon:
+      base_path: "res://Assets/Icons/Ships/transport/orbital_crane"

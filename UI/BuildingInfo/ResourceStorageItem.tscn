@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3 uid="uid://resource_storage_item"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/ResourceStorageItem.cs" id="1_storage"]
+[ext_resource type="PackedScene" uid="uid://donut_chart_component" path="res://UI/Components/DonutChart.tscn" id="2_donut"]
+
+[node name="ResourceStorageItem" type="HBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_storage")
+
+[node name="ResourceIcon" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ResourceNameLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+clip_contents = true
+text = "Resource Name"
+vertical_alignment = 1
+
+[node name="AmountLabel" type="Label" parent="."]
+layout_mode = 2
+text = "0/0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="FillChart" parent="." instance=ExtResource("2_donut")]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+size_flags_vertical = 4

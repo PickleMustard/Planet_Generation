@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Constructables;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.TextureGeneration;
+using Structures;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
 using UtilityLibrary;
-using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
 #if DEBUG
 using UI.Debug;
@@ -81,32 +83,47 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     [Export]
     public string? BodyType
     {
-        get => _subtype!.ToString();
-        set => _subtype = Enum.Parse(typeof(CelestialBodyType), value!);
+        get => Classification?.TypeName;
+        set
+        {
+            // Deserialization: reconstruct Classification from stored type name
+            if (value != null && Enum.TryParse<CelestialBodyType>(value, out var cbt))
+            {
+                Classification = BodyClassification.FromLegacy(cbt, null);
+            }
+        }
     }
 
     [Export]
     public Vector3 TotalForce;
     private Vector3 _savedForce;
-    public CelestialBodyType Type;
 
-    private object? _subtype;
-    public object? Subtype
-    {
-        get => _subtype;
-        set => _subtype = value;
-    }
+    public BodyClassification Classification { get; set; } = null!;
 
-    public T? GetSubtype<T>()
-        where T : struct, Enum => _subtype is T val ? val : null;
+    [Export]
+    public BodyBillboardTextures BillboardTextures { get; private set; } = null!;
 
-    public bool HasSubtype<T>()
-        where T : struct, Enum => _subtype is T;
+    /// <summary>
+    /// Backward-compat computed property. Returns the CelestialBodyType from Classification.
+    /// </summary>
+    public CelestialBodyType Type => Classification.AsCelestialBodyType!.Value;
 
-    public UnifiedCelestialMesh? Mesh { get; set; }
+    public UnifiedCelestialMesh Mesh { get; private set; }
     public Octree<Point> Oct;
     private Godot.Collections.Dictionary? bodyDict;
     private StructureDatabase StrDb;
+
+    /// <summary>
+    /// The camera anchor (Node3D) attached to this body for positioning the camera.
+    /// Created on-demand via GetOrCreateCameraAnchor().
+    /// </summary>
+    public Node3D? CameraAnchor { get; private set; }
+
+    /// <summary>
+    /// Stores the current look direction for the camera anchor when no explicit target is provided.
+    /// Used to maintain orientation when repositioning the anchor without a LookAt target.
+    /// </summary>
+    private Vector3 _cameraAnchorLookDir = Vector3.Forward;
 
     // Orbit System
     [Export]
@@ -117,23 +134,22 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
     [Export]
     public Node3D SatellitesContainer { get; private set; } = null!;
+    public BuildingConstructionManager? BuildingConstructionMgr { get; private set; }
+    public BodyEconomyManager? EconomyMgr { get; private set; }
+    public BodyTransferManager? TransferMgr { get; private set; }
+    public Node ConstructionManager
+    {
+        get => BuildingConstructionMgr!;
+    }
     private Godot.Collections.Dictionary<int, int> _bandSatelliteCounts = new();
 
     #region OrbitalParameters
 
     /// <summary>
     /// Indicates whether this body uses discrete band-based placement.
-    /// Stars, Black Holes, and Neutron Stars use continuous placement.
-    /// All other body types use band-based placement.
+    /// Delegates to Classification.
     /// </summary>
-    public bool UsesBandPlacement =>
-        Type switch
-        {
-            CelestialBodyType.Star => false,
-            CelestialBodyType.BlackHole => false,
-            CelestialBodyType.NeutronStar => false,
-            _ => true,
-        };
+    public bool UsesBandPlacement => Classification.UsesBandPlacement;
 
     /// <summary>
     /// Gets orbital parameters for a satellite placed in the specified band.
@@ -188,6 +204,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     public CelestialBody(Godot.Collections.Dictionary bodyDict, UnifiedCelestialMesh mesh)
     {
         this.bodyDict = bodyDict;
+        this.BillboardTextures = new BodyBillboardTextures();
         var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
         var type = (String)bodyDict["type"];
         var mass = (float)baseTemplates["mass"];
@@ -199,22 +216,20 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
         Oct = new Octree<Point>(new Aabb(aabbBegin, aabbSize * 2f));
 
-        this.Type = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
+        var celestialBodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
+        this.Classification = BodyClassification.FromLegacy(celestialBodyType, null);
         this.Mass = mass;
         this.Velocity = velocity;
         this.Mesh = mesh;
         mesh.size = size;
         this.AddChild(mesh);
 
-        switch (Type)
+        if (Classification is BodyClassification.Star)
         {
-            case CelestialBodyType.Star:
-                //Add a omnidirectional light source
-                OmniLight3D emision = new OmniLight3D();
-                emision.OmniRange = 4096f;
-                emision.OmniAttenuation = .14f;
-                this.AddChild(emision);
-                break;
+            OmniLight3D emision = new OmniLight3D();
+            emision.OmniRange = 4096f;
+            emision.OmniAttenuation = .14f;
+            this.AddChild(emision);
         }
     }
 
@@ -222,12 +237,14 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     {
         this.Velocity = builder._velocity ?? Vector3.Zero;
         this.Mass = builder._mass ?? 0f;
-        this.Type = builder._type ?? CelestialBodyType.RockyPlanet;
-        this._subtype = builder._subtype;
+        this.Classification =
+            builder._classification
+            ?? BodyClassification.FromLegacy(CelestialBodyType.RockyPlanet, null);
         this.Mesh = builder._mesh;
         this.bodyDict = builder._bodyDict;
         this.TotalForce = Vector3.Zero;
         this.Name = builder._name ?? "";
+        this.BillboardTextures = new BodyBillboardTextures();
 
         if (this.Mesh != null)
         {
@@ -256,15 +273,12 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             Oct = new Octree<Point>(new Aabb(Vector3.One * -10, Vector3.One * 20));
         }
 
-        switch (Type)
+        if (Classification is BodyClassification.Star)
         {
-            case CelestialBodyType.Star:
-                //Add a omnidirectional light source
-                OmniLight3D emision = new OmniLight3D();
-                emision.OmniRange = 4096f;
-                emision.OmniAttenuation = .14f;
-                this.AddChild(emision);
-                break;
+            OmniLight3D emision = new OmniLight3D();
+            emision.OmniRange = 4096f;
+            emision.OmniAttenuation = .14f;
+            this.AddChild(emision);
         }
     }
 
@@ -310,6 +324,20 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         // Create the satellites container (always needed)
         SatellitesContainer = new Node3D { Name = "SatellitesContainer" };
         CallDeferred("add_child", SatellitesContainer);
+
+        // Create the centralized building construction manager
+        BuildingConstructionMgr = new BuildingConstructionManager
+        {
+            Name = "BuildingConstructionManager",
+        };
+        CallDeferred("add_child", BuildingConstructionMgr);
+
+        // Create per-body economy and transfer managers
+        EconomyMgr = new BodyEconomyManager { Name = "BodyEconomyManager" };
+        CallDeferred("add_child", EconomyMgr);
+
+        TransferMgr = new BodyTransferManager { Name = "BodyTransferManager" };
+        CallDeferred("add_child", TransferMgr);
 
         GameLogger.Debug(
             $"OrbitSystem initialized: {OrbitBands.Count} bands for mass {Mass}, UsesBandPlacement={UsesBandPlacement}"
@@ -577,16 +605,16 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             }
             // Resource generation is now handled via ResourceGenerationConfigDatabase in the mesh pipeline
         }
-        Mesh!.BodyType = Type;
-        Mesh!.BodySubtype = _subtype;
+        Mesh!.Classification = Classification;
         Mesh!.ConfigureFrom(StrDb, meshParams);
 
         Mesh.StartMeshGeneration(
+            this,
             Oct,
             onCompleted: (mesh) =>
             {
-                StrDb.FinalizeDB();
                 Radius = mesh.size;
+                StrDb.FinalizeDB();
                 onCompleted?.Invoke(this);
             },
             onFailed: (mesh, error) =>
@@ -640,6 +668,155 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             }
         }
         return neighbors.ToArray();
+    }
+
+    /// <summary>
+    /// Gets or creates the camera anchor for this body.
+    /// Anchor is created as a child Node3D named "CameraAnchor".
+    /// </summary>
+    /// <returns>The CameraAnchor node.</returns>
+    public Node3D GetOrCreateCameraAnchor()
+    {
+        if (CameraAnchor == null)
+        {
+            CameraAnchor = new Node3D { Name = "CameraAnchor" };
+            AddChild(CameraAnchor);
+        }
+        return CameraAnchor;
+    }
+
+    /// <summary>
+    /// Positions the camera anchor at a world-space position looking at an optional target.
+    /// If no target is provided, maintains the current look direction or defaults to looking at body center.
+    /// </summary>
+    /// <param name="worldPosition">The world-space position for the anchor.</param>
+    /// <param name="lookAtTarget">Optional world-space target to look at. If null, looks at body center.</param>
+    public void PositionCameraAnchor(Vector3 worldPosition, Vector3? lookAtTarget = null)
+    {
+        if (CameraAnchor == null)
+            GetOrCreateCameraAnchor();
+
+        CameraAnchor!.GlobalPosition = worldPosition;
+
+        if (lookAtTarget.HasValue)
+        {
+            CameraAnchor.LookAt(lookAtTarget.Value);
+            _cameraAnchorLookDir = (lookAtTarget.Value - worldPosition).Normalized();
+        }
+        else if (_cameraAnchorLookDir != Vector3.Zero)
+        {
+            // Maintain current look direction
+            CameraAnchor.LookAt(worldPosition + _cameraAnchorLookDir);
+        }
+        else
+        {
+            // Default to looking at body center
+            CameraAnchor.LookAt(GlobalPosition);
+            _cameraAnchorLookDir = (GlobalPosition - worldPosition).Normalized();
+        }
+
+        GameLogger.Debug(
+            $"CameraAnchor positioned at {worldPosition}"
+                + (lookAtTarget.HasValue ? $" looking at {lookAtTarget.Value}" : "")
+        );
+    }
+
+    /// <summary>
+    /// Rotates the camera anchor around its current position using spherical coordinates.
+    /// </summary>
+    /// <param name="yaw">Yaw angle in radians (horizontal rotation around Y axis).</param>
+    /// <param name="pitch">Pitch angle in radians (vertical rotation around X axis).</param>
+    public void UpdateCameraAnchorRotation(float yaw, float pitch)
+    {
+        if (CameraAnchor == null)
+            return;
+
+        Vector3 currentPos = CameraAnchor.GlobalPosition;
+
+        // Convert spherical coordinates to a direction vector
+        float cosPitch = Mathf.Cos(pitch);
+        Vector3 direction = new Vector3(
+            Mathf.Sin(yaw) * cosPitch,
+            Mathf.Sin(pitch),
+            Mathf.Cos(yaw) * cosPitch
+        );
+
+        // Apply rotation to the anchor around its position
+        // We rotate the anchor's transform so that the -Z axis points in the new direction
+        CameraAnchor.LookAt(currentPos + direction);
+        _cameraAnchorLookDir = direction;
+
+        GameLogger.Debug(
+            $"CameraAnchor rotated: yaw={Mathf.RadToDeg(yaw):F1}°, pitch={Mathf.RadToDeg(pitch):F1}°"
+        );
+    }
+
+    /// <summary>
+    /// Positions the inspection camera to focus on a specific cell.
+    /// Camera is placed along the cell normal, close to the surface.
+    /// Uses local Position so the camera tracks the body's orbital movement.
+    /// </summary>
+    /// <param name="cell">The VoronoiCell to focus on</param>
+    public void FocusInspectionCameraOnCell(VoronoiCell cell)
+    {
+        if (CameraAnchor == null)
+            GetOrCreateCameraAnchor();
+
+        Vector3 cellCenter = cell.Center;
+        Vector3 normal = cellCenter.Normalized();
+        float offset = cellCenter.Length() * 1.3f;
+
+        // Transform to global space accounting for body rotation
+        Vector3 camLocation = Position + normal * offset;
+
+        // Position camera anchor above the cell along its outward normal
+        PositionCameraAnchor(camLocation, cellCenter + GlobalPosition);
+    }
+
+    /// <summary>
+    /// Positions the inspection camera to focus on a specific continent.
+    /// Camera distance is calculated based on the continent's angular size to ensure
+    /// the entire continent is visible within the viewport.
+    /// </summary>
+    /// <param name="continent">The Continent to focus on</param>
+    public void FocusInspectionCameraOnContinent(Continent continent)
+    {
+        if (CameraAnchor == null && continent == null)
+            return;
+
+        // Get normalized center direction (averagedCenter is already normalized)
+        Vector3 center = continent.averagedCenter.Normalized();
+
+        // Get actual body radius from a cell center (averagedCenter.Length() is 1.0
+        // since it was normalized during generation)
+        float bodyRadius = continent.cells.Count > 0 ? continent.cells[0].Center.Length() : 1.0f;
+
+        // Calculate max angular radius from center to boundary cells
+        float maxAngle = 0f;
+        foreach (var cell in continent.boundaryCells)
+        {
+            Vector3 cellDir = cell.Center.Normalized();
+            float angle = Mathf.Acos(Mathf.Clamp(center.Dot(cellDir), -1f, 1f));
+            maxAngle = Mathf.Max(maxAngle, angle);
+        }
+
+        // Add 15% margin for visual comfort
+        float angularRadius = maxAngle * 1.15f;
+
+        // Calculate camera distance based on FOV and angular size
+        float fovRad = Mathf.DegToRad(30.0f); // Default FOV
+        float distance = bodyRadius * (1.0f + Mathf.Sin(angularRadius) / Mathf.Tan(fovRad / 2f));
+
+        // Ensure minimum distance
+        distance = Mathf.Max(distance, bodyRadius * 1.3f);
+
+        // Position and orient camera anchor
+        Vector3 camPosition = Position + center * distance;
+        PositionCameraAnchor(camPosition, center * bodyRadius + GlobalPosition);
+
+        GameLogger.Info(
+            $"InspectionCamera positioned for continent {continent.StartingIndex} at distance {distance:F2}"
+        );
     }
 
     public CellSelectionResult? FindNearestCell(Vector3 position)
@@ -885,8 +1062,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     {
         internal Vector3? _velocity;
         internal float? _mass;
-        internal CelestialBodyType? _type;
-        internal object? _subtype;
+        internal BodyClassification? _classification;
         internal UnifiedCelestialMesh? _mesh;
         internal Godot.Collections.Dictionary? _bodyDict;
         internal string? _name;
@@ -903,21 +1079,15 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             return this;
         }
 
-        public Builder WithType(CelestialBodyType type)
+        public Builder WithClassification(BodyClassification classification)
         {
-            _type = type;
+            _classification = classification;
             return this;
         }
 
         public Builder WithName(string name)
         {
             _name = name;
-            return this;
-        }
-
-        public Builder WithSubtype(object subtype)
-        {
-            _subtype = subtype;
             return this;
         }
 
@@ -948,7 +1118,9 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
                 var mass = (float)baseTemplates["mass"];
                 var velocity = (Vector3)baseTemplates["velocity"];
 
-                _type = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
+                var celestialBodyType = (CelestialBodyType)
+                    Enum.Parse(typeof(CelestialBodyType), type);
+                _classification = BodyClassification.FromLegacy(celestialBodyType, null);
                 _mass = mass;
                 _velocity = velocity;
                 _name = (String)bodyDict["name"];
@@ -969,8 +1141,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
                 throw new InvalidOperationException("Velocity is required");
             if (!_mass.HasValue)
                 throw new InvalidOperationException("Mass is required");
-            if (!_type.HasValue)
-                throw new InvalidOperationException("Type is required");
+            if (_classification == null)
+                throw new InvalidOperationException("Classification is required");
             if (_mesh == null)
                 throw new InvalidOperationException("Mesh is required");
         }

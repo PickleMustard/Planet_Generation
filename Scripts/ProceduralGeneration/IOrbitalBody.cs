@@ -1,8 +1,17 @@
+using Constructables;
 using Godot;
+using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.TextureGeneration;
+using Structures;
 using Structures.GameState;
 
 public interface IOrbitalBody
 {
+    // Type classification
+    BodyClassification Classification { get; }
+
+    public BodyBillboardTextures BillboardTextures { get; }
+
     // Physical properties
     public float Radius { get; set; }
     public float Mass { get; set; }
@@ -10,10 +19,15 @@ public interface IOrbitalBody
     public Vector3 BodyPosition { get; set; }
     public string BodyName { get; }
 
+    public UnifiedCelestialMesh Mesh { get; }
+
     // Orbital Band System - Properties
     public Godot.Collections.Array<OrbitBand> OrbitBands { get; }
     public OrbitConfiguration? OrbitConfig { get; }
     public Node3D SatellitesContainer { get; }
+    public BuildingConstructionManager BuildingConstructionMgr { get; }
+    public BodyEconomyManager EconomyMgr { get; }
+    public BodyTransferManager TransferMgr { get; }
 
     // Orbital Band System - Methods
     public void InitializeOrbitSystem();

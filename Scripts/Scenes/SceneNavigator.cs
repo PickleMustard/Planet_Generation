@@ -4,9 +4,9 @@ using UtilityLibrary;
 namespace Scenes;
 
 /// <summary>
-/// Lightweight scene navigation helper. Handles Escape key to return to main menu
-/// and provides a back button in the top-right corner.
-/// Attach to any scene's root node that needs menu navigation.
+/// Lightweight scene navigation helper for dev/utility scenes (PlanetGeneration,
+/// SystemGeneration). Provides a "Back to Menu" button in the top-right corner.
+/// Escape-to-main-menu behavior is gone — gameplay scenes use the pause menu instead.
 /// </summary>
 public partial class SceneNavigator : CanvasLayer
 {
@@ -25,15 +25,6 @@ public partial class SceneNavigator : CanvasLayer
         button.OffsetBottom = 40;
         button.Pressed += OnBackPressed;
         AddChild(button);
-    }
-
-    public override void _Input(InputEvent @event)
-    {
-        if (@event is InputEventKey keyEvent && keyEvent.Pressed && keyEvent.Keycode == Key.Escape)
-        {
-            OnBackPressed();
-            GetViewport().SetInputAsHandled();
-        }
     }
 
     private void OnBackPressed()

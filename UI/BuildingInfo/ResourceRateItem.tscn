@@ -1,0 +1,25 @@
+[gd_scene load_steps=2 format=3 uid="uid://resource_rate_item"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/ResourceRateItem.cs" id="1_rate"]
+
+[node name="ResourceRateItem" type="HBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_rate")
+
+[node name="ResourceIcon" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ResourceNameLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Resource Name"
+vertical_alignment = 1
+
+[node name="RateLabel" type="Label" type="Label" parent="."]
+layout_mode = 2
+text = "+0.0/s"
+horizontal_alignment = 2
+vertical_alignment = 1

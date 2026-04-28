@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
+using Structures;
 using Structures.Enums;
 using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
@@ -230,17 +231,17 @@ public partial class SystemGenerator : Node
         var bodyType = (CelestialBodyType)
             Enum.Parse(typeof(CelestialBodyType), (String)body["type"]);
 
-        object? manualSubtype = null;
+        BodyClassification? manualClassification = null;
         if (body.ContainsKey("subtype"))
         {
-            manualSubtype = SubtypeParser.Parse(bodyType, (String)body["subtype"]);
+            manualClassification = SubtypeParser.ParseClassification(bodyType, (String)body["subtype"]);
         }
 
         String name = (String)body["name"];
 
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var auManager = new AUProbabilityManager(rng);
-        object? subtype = auManager.SelectSubtype(bodyType, distanceAU, manualSubtype);
+        BodyClassification classification = auManager.SelectClassification(bodyType, distanceAU, manualClassification);
 
         var mesh = new UnifiedCelestialMesh();
         var celBodyBuilder = new CelestialBody.Builder();
@@ -249,15 +250,9 @@ public partial class SystemGenerator : Node
             .WithMass(mass)
             .WithBodyDict(body)
             .WithMesh(mesh)
-            .WithType(bodyType)
-            .WithSubtype(subtype!)
+            .WithClassification(classification)
             .WithName(name);
         CelestialBody celBody = celBodyBuilder.Build();
-
-        if (subtype != null)
-        {
-            celBody.Subtype = subtype;
-        }
 
         GetEffectiveContainer().AddChild(celBody);
         celBody.Position = position;
@@ -345,15 +340,15 @@ public partial class SystemGenerator : Node
         String name = (String)body["name"];
 
         // Select subtype for dominant body (stars, black holes, neutron stars)
-        object? manualSubtype = null;
+        BodyClassification? manualClassification = null;
         if (body.ContainsKey("subtype"))
         {
-            manualSubtype = SubtypeParser.Parse(bodyType, (String)body["subtype"]);
+            manualClassification = SubtypeParser.ParseClassification(bodyType, (String)body["subtype"]);
         }
 
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var auManager = new AUProbabilityManager(rng);
-        object? subtype = auManager.SelectSubtype(bodyType, 0f, manualSubtype);
+        BodyClassification classification = auManager.SelectClassification(bodyType, 0f, manualClassification);
 
         var mesh = new UnifiedCelestialMesh();
         CelestialBody.Builder celBodyBuilder = new CelestialBody.Builder();
@@ -362,8 +357,7 @@ public partial class SystemGenerator : Node
             .WithMass(mass)
             .WithBodyDict(body)
             .WithMesh(mesh)
-            .WithType(bodyType)
-            .WithSubtype(subtype!)
+            .WithClassification(classification)
             .WithName(name);
 
         var celBody = celBodyBuilder.Build();
@@ -443,8 +437,8 @@ public partial class SystemGenerator : Node
     )
     {
         if (
-            parentBody.Type == CelestialBodyType.Star
-            || parentBody.Type == CelestialBodyType.BlackHole
+            parentBody.Classification is BodyClassification.Star
+            or BodyClassification.BlackHole
         )
         {
             foreach (Godot.Collections.Dictionary satBelt in satellites)

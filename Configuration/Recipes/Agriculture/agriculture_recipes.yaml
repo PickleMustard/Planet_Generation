@@ -4,6 +4,8 @@ recipes:
     description: Cycles through different crops each season to maintain soil fertility and produce food.
     category: agriculture
     work_required: 30.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/agriculture/crop_rotation"
 
     input_resources:
       - water: 5
@@ -18,6 +20,8 @@ recipes:
     description: Processes organic waste into nutrient-rich fertilizer to boost crop yields.
     category: agriculture
     work_required: 20.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/agriculture/fertilizer_production"
 
     input_resources:
       - water: 3
@@ -31,6 +35,8 @@ recipes:
     description: Selectively breeds and propagates high-yield seed varieties.
     category: agriculture
     work_required: 45.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/agriculture/seed_propagation"
 
     input_resources:
       - water: 8
@@ -47,6 +53,8 @@ recipes:
     description: Advanced bioengineering to create optimized crop strains for harsh environments.
     category: agriculture
     work_required: 60.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/agriculture/genetic_modification"
 
     input_resources:
       - water: 10
@@ -61,6 +69,8 @@ recipes:
     description: Multi-story hydroponic growing systems for high-density food production.
     category: agriculture
     work_required: 25.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/agriculture/vertical_farming"
 
     input_resources:
       - water: 12
@@ -75,6 +85,8 @@ recipes:
     description: Combined fish and plant cultivation using a symbiotic nutrient cycle.
     category: agriculture
     work_required: 35.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/agriculture/aquaponics"
 
     input_resources:
       - water: 15

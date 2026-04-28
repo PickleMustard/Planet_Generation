@@ -5,6 +5,8 @@ resources:
       - 112
       - 128
       - 144
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/iron"
 
   - id_name: copper
     resource_tier: 0
@@ -12,6 +14,8 @@ resources:
       - 255
       - 140
       - 0
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/copper"
 
   - id_name: gold
     resource_tier: 0
@@ -20,6 +24,8 @@ resources:
       - 223
       - 0
     tags: [metal, valuables, conductive]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/gold"
 
   - id_name: nickel
     resource_tier: 0
@@ -28,6 +34,8 @@ resources:
       - 192
       - 203
     tags: [metal, valuables, conductive]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/nickel"
 
   - id_name: clay
     resource_tier: 0
@@ -36,6 +44,8 @@ resources:
       - 52
       - 0
     tags: [water, earth, mineral]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/clay"
 
   - id_name: silicon
     resource_tier: 0
@@ -43,6 +53,8 @@ resources:
       - 255
       - 255
       - 255
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/silicon"
 
   - id_name: plastic
     resource_tier: 1
@@ -51,6 +63,8 @@ resources:
       - 215
       - 0
     tags: [raw_material, synthetic]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/plastic"
 
   - id_name: titanium
     resource_tier: 2
@@ -59,6 +73,8 @@ resources:
       - 0
       - 255
     tags: [metal, high_metal]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/titanium"
 
   - id_name: tungsten
     resource_tier: 2
@@ -67,6 +83,8 @@ resources:
       - 255
       - 192
     tags: [metal, high_metal]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/tungsten"
 
   - id_name: aluminum
     resource_tier: 1
@@ -75,6 +93,8 @@ resources:
       - 255
       - 224
     tags: [metal, high_metal]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/aluminum"
 
   - id_name: silver
     resource_tier: 2
@@ -83,6 +103,8 @@ resources:
       - 255
       - 192
     tags: [metal, valuables, high_metal]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/silver"
 
   - id_name: wood
     resource_tier: 0
@@ -91,6 +113,8 @@ resources:
       - 255
       - 160
     tags: [timber, artisanal]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/wood"
 
   - id_name: lead
     resource_tier: 1
@@ -99,3 +123,5 @@ resources:
       - 255
       - 128
     tags: [metal, high_metal, toxic]
+    icon:
+      base_path: "res://Assets/Icons/Resources/raw_material/lead"

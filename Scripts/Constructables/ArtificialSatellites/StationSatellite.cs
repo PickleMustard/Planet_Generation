@@ -1,8 +1,11 @@
 using System;
 using Godot;
 using Godot.Collections;
+using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using Structures.GameState;
+using Structures.Logistics;
+using Structures.Resources;
 using UtilityLibrary;
 
 namespace Constructables;
@@ -44,9 +47,17 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         set => Position = value;
     }
 
+    public IOrbitalBody ParentBody
+    {
+        get => _parentBody;
+        set => _parentBody = value;
+    }
+
     // Visual components
     protected MeshInstance3D? _meshInstance;
+    protected Node3D? _modelRoot;
     private float _rotationSpeed = 0.5f;
+    protected IOrbitalBody? _parentBody;
 
     // Construction state
     protected ConstructionState? _constructionState;
@@ -71,7 +82,8 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     public StationEconomy? Economy { get; private set; }
 
     /// <summary>
-    /// Initializes the station economy if not already created, and registers it with EconomyManager.
+    /// Initializes the station economy if not already created, and registers it
+    /// with the parent body's per-body economy and transfer managers.
     /// </summary>
     public StationEconomy InitializeEconomy()
     {
@@ -79,7 +91,11 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
             return Economy;
 
         Economy = new StationEconomy(Id);
-        Constructables.EconomyManager.Instance?.RegisterStationEconomy(Economy);
+
+        var parentBody = GetParent()?.GetParent() as IOrbitalBody;
+        parentBody?.EconomyMgr?.RegisterStationEconomy(Economy);
+        parentBody?.TransferMgr?.RegisterStationEndpoint(Id, Economy);
+
         GameLogger.Info($"StationSatellite {Name}: Economy initialized");
         return Economy;
     }
@@ -87,19 +103,26 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     #region IConstructable
 
     [ExportGroup("Construction")]
-
     [Export]
     public float workRequired
     {
         get => _constructionState?.WorkRequired ?? 0f;
-        set { if (_constructionState != null) _constructionState.WorkRequired = value; }
+        set
+        {
+            if (_constructionState != null)
+                _constructionState.WorkRequired = value;
+        }
     }
 
     [Export]
     public float workDone
     {
         get => _constructionState?.WorkDone ?? 0f;
-        set { if (_constructionState != null) _constructionState.WorkDone = value; }
+        set
+        {
+            if (_constructionState != null)
+                _constructionState.WorkDone = value;
+        }
     }
 
     [Export]
@@ -167,7 +190,17 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     public IConstructable StartConstruction(Dictionary LocationDetails)
     {
-        if (_constructionState == null) return this;
+        if (_constructionState == null)
+            return this;
+
+        if (LocationDetails.TryGetValue("parent_body", out var parentBody))
+        {
+            LocationDetails.TryGetValue("parent_type", out var parentType);
+            if ((String)parentType == "CelestialBody")
+                _parentBody = (CelestialBody)parentBody;
+            else if ((String)parentBody == "SatelliteBody")
+                _parentBody = (SatelliteBody)parentBody;
+        }
 
         _isUnderConstruction = true;
         IsActive = false;
@@ -177,7 +210,9 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
         _constructionState.TryStart();
 
-        GameLogger.Info($"StationSatellite {Name}: Construction started ({_constructionState.WorkRequired}s)");
+        GameLogger.Info(
+            $"StationSatellite {Name}: Construction started ({_constructionState.WorkRequired}s)"
+        );
         return this;
     }
 
@@ -193,7 +228,8 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     public bool CancelConstruction()
     {
-        if (_constructionState == null) return false;
+        if (_constructionState == null)
+            return false;
 
         _constructionState.Cancel();
         _isUnderConstruction = false;
@@ -214,20 +250,25 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     public void UpdateProgress(float delta)
     {
-        if (_constructionState == null || !_isUnderConstruction) return;
+        if (_constructionState == null || !_isUnderConstruction)
+            return;
 
         var previousStatus = _constructionState.Status;
         _constructionState.UpdateProgress(delta);
 
         if (_constructionState.StatusChanged)
         {
-            if (_constructionState.Status == ConstructionStatus.Blocked
-                && previousStatus == ConstructionStatus.InProgress)
+            if (
+                _constructionState.Status == ConstructionStatus.Blocked
+                && previousStatus == ConstructionStatus.InProgress
+            )
             {
                 EmitSignal(SignalName.OnConstructionBlocked);
             }
-            else if (_constructionState.Status == ConstructionStatus.InProgress
-                && previousStatus == ConstructionStatus.Blocked)
+            else if (
+                _constructionState.Status == ConstructionStatus.InProgress
+                && previousStatus == ConstructionStatus.Blocked
+            )
             {
                 EmitSignal(SignalName.OnConstructionResumed);
             }
@@ -244,8 +285,11 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     }
 
     public bool CanDemolish() => !_isUnderConstruction;
+
     public bool DemolishConstructable() => false;
+
     public bool CanDestroy() => true;
+
     public bool DestroyConstructable()
     {
         QueueFree();
@@ -264,6 +308,10 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
             definition.ConstructionTime,
             definition.RequiredResources
         );
+
+        float bodyRadius = _parentBody?.Radius ?? 1.0f;
+        Node3D? model = definition.Visual?.CreateModelInstance(bodyRadius);
+        InstallModel(model, definition.Name);
     }
 
     /// <summary>
@@ -437,13 +485,6 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
             return;
         }
 
-        // Ensure we're parented to the body
-        if (GetParent() != parentBody)
-        {
-            GetParent()?.RemoveChild(this);
-            parentBody.AddChild(this);
-        }
-
         InitializeOrbit(orbitalBody, bandIndex);
     }
 
@@ -472,7 +513,9 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     {
         if (Economy != null)
         {
-            Constructables.EconomyManager.Instance?.UnregisterStationEconomy(Economy);
+            var parentBody = GetParent()?.GetParent() as IOrbitalBody;
+            parentBody?.EconomyMgr?.UnregisterStationEconomy(Economy);
+            parentBody?.TransferMgr?.UnregisterStationEndpoint(Id);
         }
 
         GameLogger.Debug($"StationSatellite destroying: {Name}");
@@ -484,8 +527,8 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     {
         base._Ready();
 
-        // Create visual representation
-        CreateVisualRepresentation();
+        if (_modelRoot == null)
+            InstallModel(null, Name);
     }
 
     public override void _PhysicsProcess(double delta)
@@ -543,7 +586,10 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         {
             _progressTimer = 0f;
             ConstructionManager.Instance?.NotifyProgressUpdate(
-                Name.ToString(), GetProgress(), GetStatus());
+                Name.ToString(),
+                GetProgress(),
+                GetStatus()
+            );
         }
 
         if (_constructionState?.Status == ConstructionStatus.Complete)
@@ -557,65 +603,51 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     /// Called each physics tick when the station is NOT under construction.
     /// Override in subclasses for operational behavior (e.g. ship build queues, building work budgets).
     /// </summary>
-    protected virtual void TickOperational(float delta)
-    {
-    }
+    protected virtual void TickOperational(float delta) { }
 
     #endregion
 
-    private void CreateVisualRepresentation()
+    /// <summary>
+    /// Installs a model node as the station's visual. If <paramref name="model"/> is null, the
+    /// generic station default prefab is used. Frees any previously installed model.
+    /// </summary>
+    private void InstallModel(Node3D? model, string? logLabel)
     {
-        // Create MeshInstance3D for visual representation
-        _meshInstance = new MeshInstance3D { Name = "StationMesh" };
-
-        // Create a cylinder mesh (stations look like cylinders)
-        var cylinderMesh = new CylinderMesh
+        if (_modelRoot != null)
         {
-            TopRadius = 0.3f,
-            BottomRadius = 0.5f,
-            Height = 1.0f,
-            RadialSegments = 16,
-            Rings = 4,
-        };
-        _meshInstance.Mesh = cylinderMesh;
+            _modelRoot.QueueFree();
+            _modelRoot = null;
+            _meshInstance = null;
+        }
 
-        // Create a blue/gray material for the station
-        var material = new StandardMaterial3D
+        model ??= DefaultModelRegistry.InstantiateStationDefault();
+        if (model == null)
         {
-            AlbedoColor = new Color(0.4f, 0.5f, 0.6f), // Blue-gray color
-            Metallic = 0.7f,
-            Roughness = 0.3f,
-        };
-        _meshInstance.MaterialOverride = material;
+            GameLogger.Error($"StationSatellite {Name}: Failed to obtain any model for '{logLabel}'");
+            return;
+        }
 
-        // Add mesh instance as child
-        AddChild(_meshInstance);
+        AddChild(model);
+        _modelRoot = model;
+        _meshInstance = NodeUtils.FindMeshInstanceRecursive(model);
 
-        // Add a second smaller cylinder on top for antenna/tower look
-        var topMesh = new MeshInstance3D { Name = "StationAntenna" };
-        var topCylinder = new CylinderMesh
+        if (_meshInstance != null)
         {
-            TopRadius = 0.1f,
-            BottomRadius = 0.2f,
-            Height = 0.5f,
-            RadialSegments = 12,
-            Rings = 2,
-        };
-        topMesh.Mesh = topCylinder;
-        topMesh.MaterialOverride = material;
-        topMesh.Position = new Vector3(0, 0.6f, 0);
+            _originalMaterial = _meshInstance.MaterialOverride?.Duplicate() as StandardMaterial3D;
+        }
+        else
+        {
+            GameLogger.Warning($"StationSatellite {Name}: No MeshInstance3D found in model for '{logLabel}'");
+        }
 
-        _meshInstance.AddChild(topMesh);
-
-        GameLogger.Debug($"StationSatellite visuals created for: {Name}");
+        GameLogger.Debug($"StationSatellite {Name}: Visual installed for '{logLabel}'");
     }
 
     public override void _Process(double delta)
     {
-        // Rotate the station for visual interest
-        if (_meshInstance != null && IsActive)
+        if (_modelRoot != null && IsActive)
         {
-            _meshInstance.RotateY(_rotationSpeed * (float)delta);
+            _modelRoot.RotateY(_rotationSpeed * (float)delta);
         }
     }
 }

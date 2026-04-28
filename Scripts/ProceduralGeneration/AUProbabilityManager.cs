@@ -2,6 +2,7 @@ using System.Linq;
 using Godot;
 using Godot.Collections;
 using ProceduralGeneration.Data;
+using Structures;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
 
@@ -16,10 +17,13 @@ public class AUProbabilityManager
         _rng = rng;
     }
 
-    public object? SelectSubtype(
+    /// <summary>
+    /// Selects a BodyClassification for a CelestialBodyType based on AU distance.
+    /// </summary>
+    public BodyClassification SelectClassification(
         CelestialBodyType bodyType,
         float distanceAU,
-        object? manualOverride = null
+        BodyClassification? manualOverride = null
     )
     {
         if (manualOverride != null)
@@ -31,10 +35,12 @@ public class AUProbabilityManager
         if (config.AURanges.Count == 0)
         {
             GD.PrintErr($"No subtype found for {bodyType}");
-            return config.DefaultSubtype ?? AUProbabilityLoader.GetDefaultSubtype(bodyType);
+            var defaultSubtype = config.DefaultSubtype ?? AUProbabilityLoader.GetDefaultSubtype(bodyType);
+            return BodyClassification.FromLegacy(bodyType, defaultSubtype);
         }
 
-        return SelectSubtypeFromConfig(config, distanceAU);
+        var subtype = SelectSubtypeFromConfig(config, distanceAU);
+        return BodyClassification.FromLegacy(bodyType, subtype);
     }
 
     public object? SelectSatelliteSubtype(

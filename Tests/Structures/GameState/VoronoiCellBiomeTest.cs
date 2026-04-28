@@ -15,14 +15,14 @@ public class VoronoiCellBiomeTest
     {
         // Arrange
         var cell = new VoronoiCell(0, new Point[0], new Triangle[0], new Edge[0]);
-        
+
         // Act
         cell.CalculateCellBiome();
-        
+
         // Assert
         AssertThat(cell.Biome).IsEqual(Biome.BiomeType.Grassland);
     }
-    
+
     [TestCase]
     public void CalculateCellBiome_SingleBiome_ReturnsThatBiome()
     {
@@ -34,14 +34,14 @@ public class VoronoiCellBiomeTest
             points[i].Biome = Biome.BiomeType.Forest;
         }
         var cell = new VoronoiCell(0, points, new Triangle[0], new Edge[0]);
-        
+
         // Act
         cell.CalculateCellBiome();
-        
+
         // Assert
         AssertThat(cell.Biome).IsEqual(Biome.BiomeType.Forest);
     }
-    
+
     [TestCase]
     public void CalculateCellBiome_MajorityBiome_ReturnsMajority()
     {
@@ -60,14 +60,14 @@ public class VoronoiCellBiomeTest
             points[i].Biome = Biome.BiomeType.Desert;
         }
         var cell = new VoronoiCell(0, points, new Triangle[0], new Edge[0]);
-        
+
         // Act
         cell.CalculateCellBiome();
-        
+
         // Assert
         AssertThat(cell.Biome).IsEqual(Biome.BiomeType.Forest);
     }
-    
+
     [TestCase]
     public void CalculateCellBiome_Tie_UsesPriority()
     {
@@ -78,22 +78,22 @@ public class VoronoiCellBiomeTest
         points[0].Biome = Biome.BiomeType.Forest;
         points[1] = new Point(Vector3.Zero);
         points[1].Biome = Biome.BiomeType.Forest;
-        
+
         // 2 Desert points (priority 40)
         points[2] = new Point(Vector3.Zero);
         points[2].Biome = Biome.BiomeType.Desert;
         points[3] = new Point(Vector3.Zero);
         points[3].Biome = Biome.BiomeType.Desert;
-        
+
         var cell = new VoronoiCell(0, points, new Triangle[0], new Edge[0]);
-        
+
         // Act
         cell.CalculateCellBiome();
-        
+
         // Assert - Forest should win due to higher priority
         AssertThat(cell.Biome).IsEqual(Biome.BiomeType.Forest);
     }
-    
+
     [TestCase]
     public void CalculateCellBiome_MultipleTies_UsesHighestPriority()
     {
@@ -104,28 +104,28 @@ public class VoronoiCellBiomeTest
         points[0].Biome = Biome.BiomeType.Forest;
         points[1] = new Point(Vector3.Zero);
         points[1].Biome = Biome.BiomeType.Forest;
-        
+
         // 2 Desert points (priority 40)
         points[2] = new Point(Vector3.Zero);
         points[2].Biome = Biome.BiomeType.Desert;
         points[3] = new Point(Vector3.Zero);
         points[3].Biome = Biome.BiomeType.Desert;
-        
+
         // 2 Grassland points (priority 70)
         points[4] = new Point(Vector3.Zero);
         points[4].Biome = Biome.BiomeType.Grassland;
         points[5] = new Point(Vector3.Zero);
         points[5].Biome = Biome.BiomeType.Grassland;
-        
+
         var cell = new VoronoiCell(0, points, new Triangle[0], new Edge[0]);
-        
+
         // Act
         cell.CalculateCellBiome();
-        
+
         // Assert - Forest should win due to highest priority
         AssertThat(cell.Biome).IsEqual(Biome.BiomeType.Forest);
     }
-    
+
     [TestCase]
     public void ToString_IncludesBiomeInformation()
     {
@@ -138,15 +138,15 @@ public class VoronoiCellBiomeTest
         }
         var cell = new VoronoiCell(42, points, new Triangle[0], new Edge[0]);
         cell.CalculateCellBiome();
-        
+
         // Act
         var result = cell.ToString();
-        
+
         // Assert
         AssertThat(result).Contains("Biome: Mountain");
         AssertThat(result).Contains("42"); // Cell index
     }
-    
+
     [TestCase]
     public void BiomeProperty_ImplementsInterface()
     {
@@ -158,11 +158,11 @@ public class VoronoiCellBiomeTest
             points[i].Biome = Biome.BiomeType.Ocean;
         }
         IVoronoiCell cell = new VoronoiCell(0, points, new Triangle[0], new Edge[0]);
-        
+
         // Act & Assert - Should compile and implement interface
         var biome = cell.Biome;
         AssertThat(biome).IsEqual(Biome.BiomeType.Grassland); // Default value before calculation
-        
+
         // Cast back to VoronoiCell to test calculation
         var voronoiCell = (VoronoiCell)cell;
         voronoiCell.CalculateCellBiome();

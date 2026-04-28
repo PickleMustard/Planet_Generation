@@ -2,17 +2,22 @@
 
 [ext_resource type="Script" uid="uid://8vn2yejbmcja" path="res://Scripts/UI/ToastSystem.cs" id="1_jxs8j"]
 
-[node name="ToastSystem" type="CanvasLayer" unique_id=2088252769]
-script = ExtResource("1_jxs8j")
-
-[node name="ToastContainer" type="VBoxContainer" parent="." unique_id=888344796]
-anchors_preset = -1
-anchor_left = 0.9
+[node name="ToastSystem" type="Control" unique_id=30436794 node_paths=PackedStringArray("_toastContainer")]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
-offset_left = -320.0
-offset_top = 8.0
-offset_right = -16.0
-offset_bottom = 28.0
-grow_horizontal = 0
+anchor_bottom = 1.0
+grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_jxs8j")
+_toastContainer = NodePath("ToastContainer")
+
+[node name="ToastContainer" type="VBoxContainer" parent="." unique_id=413469464]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+grow_horizontal = 0
 size_flags_vertical = 3
+mouse_filter = 2

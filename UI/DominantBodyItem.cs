@@ -300,7 +300,7 @@ public partial class DominantBodyItem : HBoxContainer
                 }
             }
         }
-        
+
         // Update header with new name
         if (OptionButton != null)
         {
@@ -348,7 +348,7 @@ public partial class DominantBodyItem : HBoxContainer
         }
     }
 
-    
+
 
     public void UpdateHeaderFromBodyType(string typeName)
     {

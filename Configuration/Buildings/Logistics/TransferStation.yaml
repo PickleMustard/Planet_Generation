@@ -7,7 +7,7 @@ buildings:
     work_required: 200.0
     building_limit: 3
     placement_requirements:
-      biomes: [Grassland, ScouredPlain, RustedPlain, StoneDesert]
+      biomes: ["*"]
       min_elevation: 0.2
       max_elevation: 0.7
       max_slope: 15.0
@@ -22,6 +22,9 @@ buildings:
       vehicle_speed: 50.0
       max_concurrent_transfers: 2
 
+    icon:
+      base_path: "res://Assets/Icons/Buildings/logistics/surface_transfer_station"
+
   - id_name: heavy_transfer_hub
     display_name: Heavy Transfer Hub
     description: High-capacity transfer hub for bulk resource shipments.
@@ -30,7 +33,7 @@ buildings:
     work_required: 400.0
     building_limit: 1
     placement_requirements:
-      biomes: [Grassland, ScouredPlain]
+      biomes: ["*"]
       min_elevation: 0.3
       max_elevation: 0.6
       max_slope: 10.0
@@ -44,3 +47,6 @@ buildings:
       cargo_capacity: 1500.0
       vehicle_speed: 30.0
       max_concurrent_transfers: 4
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/logistics/heavy_transfer_hub"

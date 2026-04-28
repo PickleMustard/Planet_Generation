@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3 uid="uid://recipe_display"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/RecipeDisplay.cs" id="1_recipe"]
+
+[node name="RecipeDisplay" type="HBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_recipe")
+
+[node name="RecipeIcon" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RecipeNameLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Recipe Name"
+vertical_alignment = 1

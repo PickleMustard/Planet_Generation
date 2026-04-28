@@ -1,11 +1,12 @@
-using Godot;
-using Structures.MeshGeneration;
-using Structures.GameState;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Godot;
+using Structures.GameState;
+using Structures.MeshGeneration;
 
 namespace ProceduralGeneration.MeshGeneration;
+
 /// <summary>
 /// Handles tectonic plate simulation and stress calculation for planetary terrain generation.
 /// This class simulates the interaction between continental plates, calculates boundary stresses,
@@ -86,7 +87,8 @@ public class TectonicGeneration
         float inactiveStressThreshold,
         float generalHeightScale,
         float generalShearScale,
-        float generalCompressionScale)
+        float generalCompressionScale
+    )
     {
         StrDb = strDb;
         rand = rng;
@@ -120,8 +122,8 @@ public class TectonicGeneration
     public void CalculateBoundaryStress(
         IReadOnlyDictionary<EdgeKey, HashSet<VoronoiCell>> edgeMap,
         HashSet<Point> points,
-        Dictionary<int, Continent> continents,
-        GenericPercent percent)
+        Dictionary<int, Continent> continents
+    )
     {
         GD.Print($"Calculating Boundary Stress\n{continents.Count}\n");
         // Calculate stress between neighboring continents
@@ -129,8 +131,26 @@ public class TectonicGeneration
         {
             int continentIndex = continentPair.Key;
             Continent continent = continentPair.Value;
-            Vector3 v1 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
-            Vector3 v2 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
+            Vector3 v1 = (
+                continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+                - continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+            );
+            Vector3 v2 = (
+                continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+                - continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+            );
             Vector3 UnitNorm = v1.Cross(v2);
             if (UnitNorm.Dot(continent.averagedCenter) < 0f)
             {
@@ -146,7 +166,8 @@ public class TectonicGeneration
                 List<VoronoiCell> neighbors = new List<VoronoiCell>(edgeMap[e.key]);
                 VoronoiCell? neighborCell = null;
                 VoronoiCell? borderCell = null;
-                if (neighbors.Count < 2) continue;
+                if (neighbors.Count < 2)
+                    continue;
                 if (neighbors[0].ContinentIndex == continent.StartingIndex)
                 {
                     borderCell = neighbors[0];
@@ -159,10 +180,24 @@ public class TectonicGeneration
                 }
                 if (neighborCell != null && neighborCell.ContinentIndex != continent.StartingIndex)
                 {
-                    Vector3 projectedBorderCellMovement = uAxis * (borderCell.MovementDirection.X * continent.velocity) + vAxis * (borderCell.MovementDirection.Y * continent.velocity);
-                    Vector3 projectedNeighborCellMovement = uAxis * (neighborCell.MovementDirection.X * continents[neighborCell.ContinentIndex].velocity) + vAxis * (neighborCell.MovementDirection.Y * continents[neighborCell.ContinentIndex].velocity);
+                    Vector3 projectedBorderCellMovement =
+                        uAxis * (borderCell.MovementDirection.X * continent.velocity)
+                        + vAxis * (borderCell.MovementDirection.Y * continent.velocity);
+                    Vector3 projectedNeighborCellMovement =
+                        uAxis
+                            * (
+                                neighborCell.MovementDirection.X
+                                * continents[neighborCell.ContinentIndex].velocity
+                            )
+                        + vAxis
+                            * (
+                                neighborCell.MovementDirection.Y
+                                * continents[neighborCell.ContinentIndex].velocity
+                            );
 
-                    Vector3 EdgeVector = (((Point)e.P).Position - ((Point)e.Q).Position).Normalized();
+                    Vector3 EdgeVector = (
+                        ((Point)e.P).Position - ((Point)e.Q).Position
+                    ).Normalized();
                     Vector3 EdgeNormal = EdgeVector.Cross(((Point)e.Q).Position.Normalized());
 
                     float bcVelNormal = projectedBorderCellMovement.Dot(EdgeNormal);
@@ -182,15 +217,24 @@ public class TectonicGeneration
                     {
                         CompressionStress = compressionStrength,
                         ShearStress = shearStrength,
-                        StressDirection = EdgeNormal
+                        StressDirection = EdgeNormal,
                     };
-                    if (float.IsNaN(calculatedStress.CompressionStress) || double.IsNaN(calculatedStress.CompressionStress) || float.IsNaN(calculatedStress.ShearStress) || double.IsNaN(calculatedStress.ShearStress))
-                        GD.Print($"Stress: {calculatedStress.CompressionStress} + {calculatedStress.ShearStress}");
+                    if (
+                        float.IsNaN(calculatedStress.CompressionStress)
+                        || double.IsNaN(calculatedStress.CompressionStress)
+                        || float.IsNaN(calculatedStress.ShearStress)
+                        || double.IsNaN(calculatedStress.ShearStress)
+                    )
+                        GD.Print(
+                            $"Stress: {calculatedStress.CompressionStress} + {calculatedStress.ShearStress}"
+                        );
                     e.Stress = calculatedStress;
                     e.Type = ClassifyBoundaryType(calculatedStress);
                     //var totalStress = calculatedStress.CompressionStress + calculatedStress.ShearStress;
                     //borderCell.Stress += totalStress;
-                    float totalStress = MathF.Abs(calculatedStress.CompressionStress) * .8f + MathF.Abs(calculatedStress.ShearStress) * .3f;
+                    float totalStress =
+                        MathF.Abs(calculatedStress.CompressionStress) * .8f
+                        + MathF.Abs(calculatedStress.ShearStress) * .3f;
                     borderCell.Stress += totalStress;
                     //switch (e.Type)
                     //{
@@ -262,13 +306,16 @@ public class TectonicGeneration
                 var neighbors = UnifiedCelestialMesh.GetCellNeighbors(cell, StrDb);
                 foreach (var neighbor in neighbors)
                 {
-                    neighbor.Stress = neighbor.Stress + (cell.Stress * Mathf.Pow(PropagationFalloff, (float)cell.Interiorness)) / (neighbor.Increment);
+                    neighbor.Stress =
+                        neighbor.Stress
+                        + (cell.Stress * Mathf.Pow(PropagationFalloff, (float)cell.Interiorness))
+                            / (neighbor.Increment);
                     neighbor.Increment++;
-                    if (!visited.Contains(neighbor) && neighbor.ContinentIndex == continentIndex) queue.Enqueue(neighbor);
+                    if (!visited.Contains(neighbor) && neighbor.ContinentIndex == continentIndex)
+                        queue.Enqueue(neighbor);
                 }
             }
             continents[continentIndex] = continent;
-            percent.PercentCurrent++;
         }
     }
 
@@ -362,7 +409,8 @@ public class TectonicGeneration
         {
             if (normalizedCompression > normalizedShear)
                 return es.CompressionStress >= 0.0f ? EdgeType.convergent : EdgeType.divergent;
-            else return EdgeType.transform;
+            else
+                return EdgeType.transform;
         }
     }
 
@@ -382,10 +430,16 @@ public class TectonicGeneration
     /// - Combined compression and shear stress (with shear weighted at 50%)
     /// - Directional factor based on alignment with stress direction
     /// </remarks>
-    private float CalculateStressAtDistance(EdgeStress edgeStress, float distance, Edge current, Edge origin)
+    private float CalculateStressAtDistance(
+        EdgeStress edgeStress,
+        float distance,
+        Edge current,
+        Edge origin
+    )
     {
         float decayFactor = MathF.Exp(-distance / PropagationFalloff);
-        float totalStress = MathF.Abs(edgeStress.CompressionStress) + MathF.Abs(edgeStress.ShearStress) * .5f;
+        float totalStress =
+            MathF.Abs(edgeStress.CompressionStress) + MathF.Abs(edgeStress.ShearStress) * .5f;
         Vector3 toEdge = (current.Midpoint - origin.Midpoint).Normalized();
         float directionalFactor = MathF.Abs(toEdge.Dot(edgeStress.StressDirection));
         return totalStress * decayFactor * directionalFactor;

@@ -7,7 +7,7 @@ buildings:
     work_required: 150.0
 
     placement_requirements:
-      biomes: [Grassland, Forest, StoneDesert, RustedPlain]
+      biomes: ["*"]
       min_elevation: 0.2
       max_elevation: 0.8
       max_slope: 10.0
@@ -33,6 +33,9 @@ buildings:
       scale: 2.0
       rotation_offset: [0, 0, 0]
 
+    icon:
+      base_path: "res://Assets/Icons/Buildings/power/fusion_reactor"
+
   - id_name: fission_reactor
     display_name: Fission Power Plant
     description: Fission reactors divide nuclear material to generate power
@@ -41,7 +44,7 @@ buildings:
     work_required: 150.0
 
     placement_requirements:
-      biomes: [Grassland, Forest, StoneDesert, RustedPlain]
+      biomes: ["*"]
       min_elevation: 0.2
       max_elevation: 0.8
       max_slope: 10.0
@@ -67,6 +70,9 @@ buildings:
       model_path: "res://Models/Buildings/power_plant.glb"
       scale: 2.0
       rotation_offset: [0, 0, 0]
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/power/fission_reactor"
 
   - id_name: antimatter_reactor
     display_name: Antimatter Reaction Plant
@@ -102,3 +108,6 @@ buildings:
       model_path: "res://Models/Buildings/power_plant.glb"
       scale: 2.0
       rotation_offset: [0, 0, 0]
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/power/antimatter_reactor"

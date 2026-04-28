@@ -1,17 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
-#if DEBUG
-using UI.Debug;
-#endif
-
 namespace Structures.Resources
 {
-#if DEBUG
-    [DebugData("Recipes", Category = "Game")]
-#endif
     public partial class RecipeDatabase : ILoadableDatabase
     {
         private static RecipeDatabase? _instance;
@@ -258,6 +252,36 @@ namespace Structures.Resources
         {
             EnsureLoaded();
             return !string.IsNullOrEmpty(recipeId) && _recipes.ContainsKey(recipeId);
+        }
+
+        /// <summary>
+        /// Gets the icon for a recipe at a specific size.
+        /// Always returns a valid texture (uses fallback if needed).
+        /// </summary>
+        public Texture2D GetRecipeIcon(string recipeId, IconSize size = IconSize.Medium)
+        {
+            EnsureLoaded();
+            if (TryGetRecipe(recipeId, out var recipe) && recipe != null)
+            {
+                var texture = recipe.Icon?.GetTexture(size);
+                if (texture != null)
+                    return texture;
+            }
+
+            return IconDataLoader.GetFallbackIcon(size);
+        }
+
+        /// <summary>
+        /// Gets the full IconDefinition for a recipe.
+        /// </summary>
+        public IconDefinition? GetRecipeIconDefinition(string recipeId)
+        {
+            EnsureLoaded();
+            if (TryGetRecipe(recipeId, out var recipe) && recipe != null)
+            {
+                return recipe.Icon;
+            }
+            return null;
         }
     }
 }

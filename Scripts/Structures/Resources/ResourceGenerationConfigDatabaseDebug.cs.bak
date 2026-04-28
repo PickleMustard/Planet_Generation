@@ -1,0 +1,130 @@
+#if DEBUG
+using System;
+using System.Collections.Generic;
+using UI.Debug.DatabaseViewer;
+
+namespace Structures.Resources
+{
+    public partial class ResourceGenerationConfigDatabase : IDebugDataProvider
+    {
+        string IDataProvider.Name => "ResourceGenConfig";
+        string IDataProvider.Category => "Game";
+        bool IDataProvider.NeedsRefresh => true;
+        object IDebugDataProvider.SourceObject => this;
+        string IDebugDataProvider.InstanceNamespace => "ResourceGenerationConfigDatabase";
+        bool IDebugDataProvider.IsSourceValid => IsLoaded;
+
+        DebugDataNode IDataProvider.GetData()
+        {
+            if (!IsLoaded)
+            {
+                var unloadedNode = new DebugDataNode("ResourceGenConfig");
+                unloadedNode.AddProperty("Status", "Not loaded");
+                unloadedNode.AddProperty("Load Progress", $"{LoadProgress:P0}");
+                return unloadedNode;
+            }
+
+            var node = new DebugDataNode("ResourceGenConfig");
+
+            // Planetary Resources Section
+            var planetaryNode = node.AddChild("Planetary Resources");
+            if (_planetaryResourceConfig != null)
+            {
+                planetaryNode.AddProperty("Default Abundance", _planetaryResourceConfig.DefaultAbundance);
+                planetaryNode.AddProperty("Default Density", _planetaryResourceConfig.DefaultDensity);
+
+                var planetTypesNode = planetaryNode.AddChild("Planet Types");
+                foreach (var planetType in _planetaryResourceConfig.PlanetTypeConfigs)
+                {
+                    var typeNode = planetTypesNode.AddChild(planetType.Key)
+                        .AddProperty("Abundance Multiplier", planetType.Value.AbundanceMultiplier)
+                        .AddProperty("Density Multiplier", planetType.Value.DensityMultiplier);
+
+                    var resourcesNode = typeNode.AddChild("Resources");
+                    foreach (var resource in planetType.Value.ResourceConfigs)
+                    {
+                        resourcesNode.AddChild(resource.Key)
+                            .AddProperty("Spawn Probability", resource.Value.SpawnProbability)
+                            .AddProperty("Abundance Multiplier", resource.Value.AbundanceMultiplier)
+                            .AddProperty("Density Multiplier", resource.Value.DensityMultiplier);
+                    }
+                }
+
+                var groupsNode = planetaryNode.AddChild("Resource Groups");
+                foreach (var group in _planetaryResourceConfig.ResourceGroups)
+                {
+                    var groupNode = groupsNode.AddChild(group.Key)
+                        .AddProperty("Selection Mode", group.Value.SelectionMode.ToString());
+
+                    var groupResourcesNode = groupNode.AddChild("Resources");
+                    foreach (var resourceId in group.Value.ResourceIds)
+                    {
+                        groupResourcesNode.AddProperty(resourceId, "✓");
+                    }
+                }
+            }
+
+            // Biome Resources Section
+            var biomeNode = node.AddChild("Biome Resources");
+            if (_biomeResourceConfig != null)
+            {
+                foreach (var biomeEntry in _biomeResourceConfig.BiomeConfigs)
+                {
+                    var biomeTypeNode = biomeNode.AddChild(biomeEntry.Key.ToString())
+                        .AddProperty("Abundance Multiplier", biomeEntry.Value.AbundanceMultiplier)
+                        .AddProperty("Density Multiplier", biomeEntry.Value.DensityMultiplier);
+
+                    var resourcesNode = biomeTypeNode.AddChild("Resources");
+                    foreach (var resource in biomeEntry.Value.ResourceConfigs)
+                    {
+                        resourcesNode.AddChild(resource.Key)
+                            .AddProperty("Spawn Probability", resource.Value.SpawnProbability)
+                            .AddProperty("Abundance Multiplier", resource.Value.AbundanceMultiplier)
+                            .AddProperty("Density Multiplier", resource.Value.DensityMultiplier);
+                    }
+                }
+            }
+
+            return node;
+        }
+
+        void IDataProvider.Refresh() { }
+
+        IEnumerable<string> IDataProvider.Search(string pattern)
+        {
+            if (!IsLoaded)
+            {
+                return Array.Empty<string>();
+            }
+
+            var results = new List<string>();
+
+            // Search planet types
+            if (_planetaryResourceConfig != null)
+            {
+                foreach (var planetType in _planetaryResourceConfig.PlanetTypeConfigs)
+                {
+                    if (planetType.Key.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                    {
+                        results.Add($"Planetary Resources/Planet Types/{planetType.Key}");
+                    }
+                }
+            }
+
+            // Search biomes
+            if (_biomeResourceConfig != null)
+            {
+                foreach (var biome in _biomeResourceConfig.BiomeConfigs)
+                {
+                    if (biome.Key.ToString().Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                    {
+                        results.Add($"Biome Resources/{biome.Key}");
+                    }
+                }
+            }
+
+            return results;
+        }
+    }
+}
+#endif

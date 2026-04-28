@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/TransferPlanning/CargoManifestItem.cs" id="1_item"]
+
+[node name="CargoManifestItem" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 36)
+theme_override_constants/separation = 6
+script = ExtResource("1_item")
+
+[node name="IconRect" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Resource"
+vertical_alignment = 1
+clip_text = true
+
+[node name="StockpileLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 2
+text = "0"
+vertical_alignment = 1
+
+[node name="RateLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(55, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 2
+text = "+0/s"
+vertical_alignment = 1
+
+[node name="AmountContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="AmountSlider" type="HSlider" parent="AmountContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+
+[node name="AmountSpinBox" type="SpinBox" parent="AmountContainer"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+rounded = true
+
+[node name="WeightLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(45, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 2
+text = "0.0"
+vertical_alignment = 1
+
+[node name="RemoveButton" type="Button" parent="."]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+size_flags_vertical = 4
+text = "X"

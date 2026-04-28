@@ -7,7 +7,7 @@ buildings:
     work_required: 1000.0
 
     placement_requirements:
-      biomes: [Ocean, Coastal, Abyssal]
+      biomes: [category:deep_ocean]
       min_elevation: 0.0
       max_elevation: 0.1
       max_slope: 5.0
@@ -32,3 +32,6 @@ buildings:
       model_path: "res://Models/Buildings/deep_sea_mine.glb"
       scale: 1.5
       rotation_offset: [0, 0, 180]
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/extraction/deep_sea_mine"

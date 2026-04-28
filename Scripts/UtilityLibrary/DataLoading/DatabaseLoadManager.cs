@@ -331,13 +331,13 @@ namespace UtilityLibrary.DataLoading
             GD.Print($"DatabaseLoadManager: Batch '{batchId}' completed with result code {resultCode}");
 
             // Check if all batches for the current batch are complete
-            bool allBatchesComplete = _batchIds.Values.All(bid => 
+            bool allBatchesComplete = _batchIds.Values.All(bid =>
             {
                 if (bid == null) return true;
                 // Check if any database still has this batchId
                 return !_batchIds.Any(kvp => kvp.Value == batchId);
             });
-            
+
             if (allBatchesComplete && batchId.StartsWith(_currentBatchId ?? ""))
             {
                 GD.Print($"DatabaseLoadManager: All batches for '{_currentBatchId}' are complete");

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Constructables;
 using Godot;
 using Structures.Enums;
 using Structures.MeshGeneration;
@@ -24,7 +25,7 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     public Vector3 Center { get; set; }
     public float Stress { get; set; } = 0.0f;
     public int Increment { get; set; } = 1;
-    
+
     /// <summary>
     /// The dominant biome type for this cell, calculated from its points.
     /// When points have multiple biomes assigned, this represents the most common biome.
@@ -32,10 +33,20 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     public Biome.BiomeType Biome { get; set; }
 
     /// <summary>
+    /// Cached slope value in degrees. Calculated on first access.
+    /// </summary>
+    private float? _cachedSlope;
+
+    /// <summary>
     /// Resources available in this cell.
     /// Key is the resource ID, value is the abundance (0-1).
     /// </summary>
     public Dictionary<string, float> Resources { get; set; } = new();
+
+    /// <summary>
+    /// The building constructed on this cell, if any.
+    /// </summary>
+    public BuildingConstruction? Building { get; set; }
 
     /// <summary>
     /// Priority order for biome tie-breaking. Higher values indicate higher priority.
@@ -133,7 +144,7 @@ public partial class VoronoiCell : Resource, IVoronoiCell
         }
 
         var biomeCounts = new Dictionary<Structures.Enums.Biome.BiomeType, int>();
-        
+
         foreach (Point p in Points)
         {
             var pointBiome = p.Biome;
@@ -150,10 +161,10 @@ public partial class VoronoiCell : Resource, IVoronoiCell
 
         // Find the maximum count
         int maxCount = biomeCounts.Values.Max();
-        
+
         // Get all biomes with the maximum count
         var topBiomes = biomeCounts.Where(kvp => kvp.Value == maxCount).Select(kvp => kvp.Key).ToList();
-        
+
         if (topBiomes.Count == 1)
         {
             // Single majority biome
@@ -182,5 +193,67 @@ public partial class VoronoiCell : Resource, IVoronoiCell
         output += $"Part of: {ContinentIndex}, Height: {Height}, Biome: {Biome}";
 
         return output;
+    }
+
+    /// <summary>
+    /// Calculates the average slope of this cell in degrees.
+    /// Slope is determined by the angle between each triangle's surface normal
+    /// and the vector from the cell center to the planet center (assumed at origin).
+    /// </summary>
+    /// <returns>Slope angle in degrees (0-90)</returns>
+    public float GetSlope()
+    {
+        if (_cachedSlope.HasValue)
+            return _cachedSlope.Value;
+
+        if (Triangles == null || Triangles.Length == 0 || Points == null || Points.Length < 3)
+        {
+            _cachedSlope = 0f;
+            return 0f;
+        }
+
+        float totalSlope = 0f;
+        int validTriangles = 0;
+
+        foreach (var triangle in Triangles)
+        {
+            // Get the three vertices of this triangle
+            if (triangle.Points == null || triangle.Points.Count < 3)
+                continue;
+
+            Vector3 p0 = triangle.Points[0].Position;
+            Vector3 p1 = triangle.Points[1].Position;
+            Vector3 p2 = triangle.Points[2].Position;
+
+            // Calculate triangle surface normal
+            Vector3 edge1 = p1 - p0;
+            Vector3 edge2 = p2 - p0;
+            Vector3 normal = edge1.Cross(edge2).Normalized();
+
+            // Calculate radial vector (from assumed planet center at origin to triangle centroid)
+            Vector3 centroid = (p0 + p1 + p2) / 3f;
+            Vector3 radial = centroid.Normalized();
+
+            // Calculate angle between normal and radial vector
+            // Flat terrain = normal parallel to radial (0° slope)
+            // Vertical cliff = normal perpendicular to radial (90° slope)
+            float dot = Mathf.Abs(normal.Dot(radial));
+            float angleRad = Mathf.Acos(Mathf.Clamp(dot, -1f, 1f));
+            float angleDeg = Mathf.RadToDeg(angleRad);
+
+            totalSlope += angleDeg;
+            validTriangles++;
+        }
+
+        _cachedSlope = validTriangles > 0 ? totalSlope / validTriangles : 0f;
+        return _cachedSlope.Value;
+    }
+
+    /// <summary>
+    /// Invalidates the cached slope value. Call this if the cell's geometry changes.
+    /// </summary>
+    public void InvalidateSlopeCache()
+    {
+        _cachedSlope = null;
     }
 }

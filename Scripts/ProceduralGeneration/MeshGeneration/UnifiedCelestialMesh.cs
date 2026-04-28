@@ -5,6 +5,8 @@ using Godot;
 using ProceduralGeneration.BiomeSystem;
 using ProceduralGeneration.ColorSystem;
 using ProceduralGeneration.MeshGeneration.ResourceGeneration;
+using ProceduralGeneration.TextureGeneration;
+using Structures;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
@@ -76,12 +78,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
     [Signal]
     public delegate void GeneratedVoronoiCellsEventHandler();
-
-    /// <summary>
-    /// Static progress tracking object for generation operations.
-    /// Used to monitor and report progress during the asynchronous mesh generation process.
-    /// </summary>
-    public static GenericPercent? percent;
 
     /// <summary>
     /// Maximum height value found during terrain generation.
@@ -193,11 +189,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     public bool UseCellBiomeForColoring = true;
 
     /// <summary>
-    /// The body type and subtype used to select biome and color assigners.
-    /// Set by CelestialBody after construction.
+    /// The body classification used to select biome, color, and resource assigners.
+    /// Set by CelestialBody/SatelliteBody after construction.
     /// </summary>
-    public CelestialBodyType? BodyType { get; set; }
-    public object? BodySubtype { get; set; }
+    public BodyClassification? Classification { get; set; }
     private IBiomeAssigner? _biomeAssigner;
     private IColorMapper? _colorMapper;
 
@@ -431,6 +426,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// uniform independently per body.
     /// </summary>
     private List<ShaderMaterial> _cellHighlightMaterials = new List<ShaderMaterial>();
+    private List<ShaderMaterial> _continentHighlightMaterials = new List<ShaderMaterial>();
 
     /// <summary>
     /// Gets the list of cell highlight shader materials for this mesh.
@@ -438,6 +434,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Use <see cref="SetSelectedCell"/> to update the selected cell across all surfaces.
     /// </summary>
     public IReadOnlyList<ShaderMaterial> CellHighlightMaterials => _cellHighlightMaterials;
+    public IReadOnlyList<ShaderMaterial> ContinentHighlightMaterials =>
+        _continentHighlightMaterials;
 
     /// <summary>
     /// Sets the selected cell ID on all cell highlight materials for this mesh.
@@ -478,6 +476,18 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     }
 
     /// <summary>
+    /// Enables or disables the pulse animation on the cell selection highlight.
+    /// Used by CellViewPanel to animate the selected cell while the info window is open.
+    /// </summary>
+    public void SetPulseEnabled(bool enabled)
+    {
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("pulse_enabled", enabled);
+        }
+    }
+
+    /// <summary>
     /// Clears placement highlighting, returning to normal selection mode.
     /// </summary>
     public void ClearPlacementHighlight()
@@ -488,10 +498,34 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
+    /// <summary>
+    /// Highlights the continent with the given continent index across all materials.
+    /// </summary>
+    /// <param name="continentIndex">The continent index to highlight (-1 to clear).</param>
+    public void SetSelectedContinent(int continentIndex)
+    {
+        foreach (var mat in _continentHighlightMaterials)
+        {
+            mat.SetShaderParameter("selected_continent_index", (float)continentIndex);
+        }
+    }
+
+    /// <summary>
+    /// Clears continent selection highlighting on all materials.
+    /// </summary>
+    public void ClearSelectedContinent()
+    {
+        foreach (var mat in _continentHighlightMaterials)
+        {
+            mat.SetShaderParameter("selected_continent_index", -1.0f);
+        }
+    }
+
     // Pre-loaded shader resources (loaded on main thread in constructor, safe for background use)
     private static Shader? _rockyPlanetShader;
     private static ShaderMaterial? _outlinerMaterialBase;
     private static ShaderMaterial? _cellHighlightMaterialBase;
+    private static ShaderMaterial? _continentHighlightMaterialBase;
 
     /// <summary>
     /// Ensures the shared shader resources are loaded (must be called on main thread).
@@ -505,6 +539,9 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         );
         _cellHighlightMaterialBase ??= GD.Load<ShaderMaterial>(
             "res://Materials/cell_selection_highlight_material.tres"
+        );
+        _continentHighlightMaterialBase ??= GD.Load<ShaderMaterial>(
+            "res://Materials/continent_selection_highlight_material.tres"
         );
     }
 
@@ -520,13 +557,19 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         var material = new ShaderMaterial();
         material.Shader = _rockyPlanetShader;
 
-        // Duplicate both materials so each body/surface has independent uniforms.
+        // Duplicate all overlay materials so each body/surface has independent uniforms.
         var outlinerInstance = (ShaderMaterial)_outlinerMaterialBase!.Duplicate();
         var cellHighlightInstance = (ShaderMaterial)_cellHighlightMaterialBase!.Duplicate();
         cellHighlightInstance.SetShaderParameter("selected_cell_id", -1.0f);
         _cellHighlightMaterials.Add(cellHighlightInstance);
 
-        // Chain: rocky_planet_shader -> voronoi_outliner -> cell_selection_highlight
+        var continentHighlightInstance = (ShaderMaterial)
+            _continentHighlightMaterialBase!.Duplicate();
+        continentHighlightInstance.SetShaderParameter("continent_selected", false);
+        _continentHighlightMaterials.Add(continentHighlightInstance);
+
+        // Chain: rocky_planet_shader -> voronoi_outliner -> cell_selection_highlight -> continent_selection_highlight
+        cellHighlightInstance.NextPass = continentHighlightInstance;
         outlinerInstance.NextPass = cellHighlightInstance;
         material.NextPass = outlinerInstance;
 
@@ -556,18 +599,13 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     }
 
     public void StartMeshGeneration(
+        IOrbitalBody parent,
         Octree<Point> oct,
         Action<UnifiedCelestialMesh> onCompleted,
         Action<UnifiedCelestialMesh, string> onFailed
     )
     {
         this.CallDeferred("set_mesh", new ArrayMesh());
-        percent = new GenericPercent();
-        if (Seed != 0)
-        {
-            rand.Seed = Seed;
-        }
-        GD.Print($"Rand Seed: {rand.Seed}\n");
 
         _octree = oct;
 
@@ -591,6 +629,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
 
         QueueMeshGenerationPackage(
+            parent,
             oct,
             () => OnMeshGenerationComplete(onCompleted),
             (error) => OnMeshGenerationFailed(onFailed, error)
@@ -598,6 +637,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     }
 
     private void QueueMeshGenerationPackage(
+        IOrbitalBody parent,
         Octree<Point> oct,
         Action onCompleted,
         Action<string> onFailed
@@ -617,6 +657,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             }
         );
         AddSecondPassSteps(builder, oct);
+        AddTexturePassSteps(builder, parent);
 
         builder.OnCompleted(name =>
         {
@@ -911,13 +952,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                             );
                             return 0;
                         }
-                        percent!.PercentTotal = Continents.Count;
-                        percent!.Reset();
                         tectonics!.CalculateBoundaryStress(
                             StrDb!.Dual.EdgeCells,
                             StrDb!.VoronoiCellVertices,
-                            Continents,
-                            percent
+                            Continents
                         );
                         GameLogger.ExitFunction(
                             "CalculateBoundaryStress",
@@ -1164,7 +1202,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         // Satellite pipeline - store at body level
                         _satelliteResources = SatelliteResourceGenerator.GenerateResources(
                             resDb.PlanetaryResources,
-                            BodySubtype,
+                            Classification,
                             rand
                         );
                         GameLogger.Info(
@@ -1175,15 +1213,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     else
                     {
                         // Cell-level pipeline - generates per VoronoiCell based on biome and tags
-                        if (Continents == null || Continents.Count == 0 || !BodyType.HasValue)
+                        if (Continents == null || Continents.Count == 0 || Classification == null)
                             return 1;
 
                         CellResourceGenerator.GenerateResources(
                             Continents,
                             resDb.PlanetaryResources,
                             resDb.BiomeResources,
-                            BodyType.Value,
-                            BodySubtype,
+                            Classification,
                             rand
                         );
                         GameLogger.Info(
@@ -1228,29 +1265,30 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 }
             }
         );
+    }
 
-        //builder.AddStep(
-        //    "CreateCollisions",
-        //    () =>
-        //    {
-        //        GameLogger.EnterFunction("CreateCollisions", "");
-        //        try
-        //        {
-        //            CreateCollisions(_octree!);
-        //            GameLogger.ExitFunction(
-        //                "CreateCollisions",
-        //                $"Vertices: {StrDb!.VoronoiCellVertices.Count}, Octree points: {_octree!.GetPoints().Count}"
-        //            );
-        //            return 0;
-        //        }
-        //        catch (Exception e)
-        //        {
-        //            GameLogger.Error($"CreateCollisions Error: {e.Message}\n{e.StackTrace}");
-        //            GD.PrintErr($"CreateCollisions Error: {e.Message}\n{e.StackTrace}");
-        //            return 1;
-        //        }
-        //    }
-        //);
+    private void AddTexturePassSteps(WorkPackageBuilder builder, IOrbitalBody parent)
+    {
+        builder.AddStep(
+            "GenerateBillboardTextures",
+            () =>
+            {
+                GameLogger.EnterFunction("GenerateBillboardTextures", "");
+                try
+                {
+                    var generator = TextureGeneratorFactory.GetGenerator(parent.Classification);
+                    parent.BillboardTextures.GenerateAllTextures(generator, parent);
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error(
+                        $"GenerateBillboardTextures Error: {e.Message}\n{e.StackTrace}"
+                    );
+                    return 1;
+                }
+            }
+        );
     }
 
     private void OnMeshGenerationComplete(Action<UnifiedCelestialMesh> callback)
@@ -1646,10 +1684,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     // Include all the helper methods from the original classes
     private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
-        // Use subtype-specific biome assigner if body type is set, else fall back to static
-        _biomeAssigner ??= BodyType.HasValue
-            ? BiomeAssignerFactory.GetAssigner(BodyType.Value, BodySubtype)
-            : new DefaultBiomeAssigner();
+        // Use subtype-specific biome assigner if classification is set, else fall back to static
+        _biomeAssigner ??=
+            Classification != null
+                ? BiomeAssignerFactory.GetAssigner(Classification)
+                : new DefaultBiomeAssigner();
 
         foreach (var continent in continents)
         {
@@ -1668,7 +1707,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
     private void AssignResources(Dictionary<int, Continent> continents)
     {
-        if (continents == null || continents.Count == 0 || !BodyType.HasValue)
+        if (continents == null || continents.Count == 0 || Classification == null)
             return;
 
         var resDb = ResourceGenerationConfigDatabase.Instance;
@@ -1682,8 +1721,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             continents,
             resDb.PlanetaryResources,
             resDb.BiomeResources,
-            BodyType.Value,
-            BodySubtype,
+            Classification,
             rand
         );
     }
@@ -2027,7 +2065,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         {
             GD.Print($"Generating continent {keyValuePair.Key} | {keyValuePair.Value.cells.Count}");
             GenerateSurfaceMesh(keyValuePair.Value.cells, oct);
-            percent!.PercentCurrent++;
         }
     }
 
@@ -2045,9 +2082,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
     private Color GetBiomeColor(Biome.BiomeType biome, float height)
     {
-        _colorMapper ??= BodyType.HasValue
-            ? ColorMapperFactory.GetMapper(BodyType.Value, BodySubtype)
-            : new DefaultColorMapper();
+        _colorMapper ??=
+            Classification != null
+                ? ColorMapperFactory.GetMapper(Classification)
+                : new DefaultColorMapper();
 
         return _colorMapper.GetBiomeColor(biome, height);
     }
@@ -2057,6 +2095,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
+        st.SetCustomFormat(0, SurfaceTool.CustomFormat.RgbFloat);
 
         // Create per-surface material instances using pre-loaded shader resources.
         // Resources are loaded on main thread in constructor; duplicates are safe to
@@ -2100,8 +2139,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         (v - min_v) / (max_v - min_v)
                     );
                     st.SetUV(uv);
-                    st.SetUV2(new Vector2(vor.Index, 0));
+                    float borderFlag = ((Point)vor.Points[3 * i + j]).isOnContinentBorder
+                        ? 1.0f
+                        : 0.0f;
                     st.SetNormal(tangent);
+                    st.SetCustom(0, new Color(vor.Index, borderFlag, vor.ContinentIndex));
                     if (ProjectToSphere)
                     {
                         // Check generation type to determine projection method
@@ -2171,13 +2213,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     private void GenerateVoronoiCellsInternal(Octree<Point> oct)
     {
         VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb!);
-        GenericPercent emptyPercent = new GenericPercent();
-        emptyPercent.PercentTotal = 0;
-        percent!.PercentTotal = StrDb!.BaseVertices.Count;
 
         try
         {
-            voronoiCellGeneration.GenerateVoronoiCells(percent, this, oct);
+            voronoiCellGeneration.GenerateVoronoiCells(this, oct);
             float sizeMultiplier = 2.5f * StrDb!.VoronoiCells.Count / 10000f;
             if (sizeMultiplier > 1.0f)
             {
@@ -2209,7 +2248,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             GD.PrintErr($"Flood Filling Error: {e.Message}\n{e.StackTrace}");
             throw;
         }
-        percent!.Reset();
         return continents;
     }
 
@@ -2263,7 +2301,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 }
                 vc.BoundingContinentIndex = BoundingContinentIndex.ToArray();
                 vc.OutsideEdges = OutsideEdges.ToArray();
-                percent!.PercentCurrent++;
             }
         }
         catch (Exception e)

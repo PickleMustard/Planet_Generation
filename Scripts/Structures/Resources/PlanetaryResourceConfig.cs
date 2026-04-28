@@ -361,44 +361,23 @@ public class PlanetaryResourceConfig
     /// <param name="bodyType">The celestial body type</param>
     /// <param name="subtype">The subtype enum value (cast to object)</param>
     /// <returns>The subtype resource config, or null if not found</returns>
-    public SubtypeResourceConfig? GetConfigForSubtype(CelestialBodyType bodyType, object? subtype)
+    public SubtypeResourceConfig? GetConfigForSubtype(BodyClassification classification)
     {
-        if (subtype == null)
-            return null;
-
-        return bodyType switch
+        return classification switch
         {
-            CelestialBodyType.RockyPlanet when subtype is RockyPlanetSubtype rps
-                => GetRockyPlanetConfig(rps),
-            CelestialBodyType.GasGiant when subtype is GasGiantSubtype ggs
-                => GetGasGiantConfig(ggs),
-            CelestialBodyType.IceGiant when subtype is IceGiantSubtype igs
-                => GetIceGiantConfig(igs),
-            CelestialBodyType.DwarfPlanet when subtype is DwarfPlanetSubtype dps
-                => GetDwarfPlanetConfig(dps),
-            CelestialBodyType.BlackHole when subtype is BlackHoleSubtype bhs
-                => GetBlackHoleConfig(bhs),
-            CelestialBodyType.NeutronStar when subtype is NeutronStarSubtype nss
-                => GetNeutronStarConfig(nss),
-            CelestialBodyType.Star when subtype is StarSubtype ss
-                => GetStarConfig(ss),
+            BodyClassification.RockyPlanet rp => GetRockyPlanetConfig(rp.Subtype),
+            BodyClassification.GasGiant gg => GetGasGiantConfig(gg.Subtype),
+            BodyClassification.IceGiant ig => GetIceGiantConfig(ig.Subtype),
+            BodyClassification.DwarfPlanet dp => GetDwarfPlanetConfig(dp.Subtype),
+            BodyClassification.BlackHole bh => GetBlackHoleConfig(bh.Subtype),
+            BodyClassification.NeutronStar ns => GetNeutronStarConfig(ns.Subtype),
+            BodyClassification.Star s => GetStarConfig(s.Subtype),
+            BodyClassification.Satellite sat when sat.Subtype.HasValue
+                => GetSatelliteConfig(sat.Subtype.Value),
+            BodyClassification.Belt b when b.Subtype.HasValue
+                => GetBeltConfig(b.Subtype.Value),
             _ => null,
         };
-    }
-
-    /// <summary>
-    /// Gets the resource config for a satellite subtype.
-    /// Satellites use a separate enum and are not part of CelestialBodyType.
-    /// </summary>
-    /// <param name="subtype">The satellite or belt subtype</param>
-    /// <returns>The subtype resource config, or null if not found</returns>
-    public SubtypeResourceConfig? GetConfigForSatelliteSubtype(object? subtype)
-    {
-        if (subtype is SatelliteSubtype ss)
-            return GetSatelliteConfig(ss);
-        if (subtype is BeltSubtype bs)
-            return GetBeltConfig(bs);
-        return null;
     }
 
     /// <summary>

@@ -1,0 +1,123 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/ConstructionYard/ConstructionYardWindow.cs" id="1_window"]
+[ext_resource type="PackedScene" path="res://UI/ConstructionYard/ActiveBuildRow.tscn" id="2_activerow"]
+[ext_resource type="PackedScene" path="res://UI/ConstructionYard/QueuedShipRow.tscn" id="3_queuerow"]
+[ext_resource type="PackedScene" path="res://UI/ConstructionYard/ShipPickerPanel.tscn" id="4_picker"]
+
+[node name="ConstructionYardWindow" type="Control" node_paths=PackedStringArray("_titleLabel", "_slotsLabel", "_backButton", "_startConstructionButton", "_activeList", "_queueList", "_shipPickerPanel")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_window")
+_titleLabel = NodePath("RootPanel/Margin/VBox/HeaderBar/TitleLabel")
+_slotsLabel = NodePath("RootPanel/Margin/VBox/HeaderBar/SlotsLabel")
+_backButton = NodePath("RootPanel/Margin/VBox/HeaderBar/BackButton")
+_startConstructionButton = NodePath("RootPanel/Margin/VBox/HSplit/RightColumn/QueueHeader/StartConstructionButton")
+_activeList = NodePath("RootPanel/Margin/VBox/HSplit/LeftColumn/ActiveScroll/ActiveList")
+_queueList = NodePath("RootPanel/Margin/VBox/HSplit/RightColumn/QueueScroll/QueueList")
+_shipPickerPanel = NodePath("ShipPickerPanel")
+_activeBuildRowScene = ExtResource("2_activerow")
+_queuedShipRowScene = ExtResource("3_queuerow")
+
+[node name="RootPanel" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -320.0
+offset_right = 420.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="RootPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="RootPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HeaderBar" type="HBoxContainer" parent="RootPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="RootPanel/Margin/VBox/HeaderBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Construction Yard"
+
+[node name="SlotsLabel" type="Label" parent="RootPanel/Margin/VBox/HeaderBar"]
+layout_mode = 2
+text = "Slots: 0/0"
+
+[node name="BackButton" type="Button" parent="RootPanel/Margin/VBox/HeaderBar"]
+layout_mode = 2
+text = "Back"
+
+[node name="HSplit" type="HSplitContainer" parent="RootPanel/Margin/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+split_offset = 0
+
+[node name="LeftColumn" type="VBoxContainer" parent="RootPanel/Margin/VBox/HSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ActiveHeader" type="Label" parent="RootPanel/Margin/VBox/HSplit/LeftColumn"]
+layout_mode = 2
+text = "Active Builds"
+
+[node name="ActiveScroll" type="ScrollContainer" parent="RootPanel/Margin/VBox/HSplit/LeftColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ActiveList" type="VBoxContainer" parent="RootPanel/Margin/VBox/HSplit/LeftColumn/ActiveScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="RightColumn" type="VBoxContainer" parent="RootPanel/Margin/VBox/HSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="QueueHeader" type="HBoxContainer" parent="RootPanel/Margin/VBox/HSplit/RightColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="QueueLabel" type="Label" parent="RootPanel/Margin/VBox/HSplit/RightColumn/QueueHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Queue"
+
+[node name="StartConstructionButton" type="Button" parent="RootPanel/Margin/VBox/HSplit/RightColumn/QueueHeader"]
+layout_mode = 2
+text = "+ Start Construction"
+
+[node name="QueueScroll" type="ScrollContainer" parent="RootPanel/Margin/VBox/HSplit/RightColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="QueueList" type="VBoxContainer" parent="RootPanel/Margin/VBox/HSplit/RightColumn/QueueScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="ShipPickerPanel" parent="." instance=ExtResource("4_picker")]
+visible = false

@@ -40,6 +40,12 @@ public interface ISelectableBody
     Vector3 GlobalPosition { get; set; }
 
     /// <summary>
+    /// The radius of this body in world units.
+    /// Used for building scaling and other size-dependent calculations.
+    /// </summary>
+    float Radius { get; }
+
+    /// <summary>
     /// Finds the nearest Voronoi cell to the given world-space position.
     /// </summary>
     /// <param name="position">World-space position (typically from a raycast hit).</param>
@@ -62,4 +68,46 @@ public interface ISelectableBody
     /// <param name="includeSameContinent">If true, includes neighbors from the same continent.</param>
     /// <returns>Array of neighboring Voronoi cells.</returns>
     VoronoiCell[] GetRuntimeCellNeighbors(VoronoiCell origin, bool includeSameContinent = true);
+
+    /// <summary>
+    /// The camera anchor (Node3D) attached to this body for positioning the camera.
+    /// Created on-demand via GetOrCreateCameraAnchor().
+    /// </summary>
+    Node3D? CameraAnchor { get; }
+
+    /// <summary>
+    /// Gets or creates the camera anchor for this body.
+    /// Anchor is created as a child Node3D named "CameraAnchor".
+    /// </summary>
+    /// <returns>The CameraAnchor node.</returns>
+    Node3D GetOrCreateCameraAnchor();
+
+    /// <summary>
+    /// Positions the camera anchor at a world-space position looking at an optional target.
+    /// </summary>
+    /// <param name="worldPosition">The world-space position for the anchor.</param>
+    /// <param name="lookAtTarget">Optional world-space target to look at. If null, looks at body center.</param>
+    void PositionCameraAnchor(Vector3 worldPosition, Vector3? lookAtTarget = null);
+
+    /// <summary>
+    /// Rotates the camera anchor around its current position using spherical coordinates.
+    /// </summary>
+    /// <param name="yaw">Yaw angle in radians (horizontal rotation around Y axis).</param>
+    /// <param name="pitch">Pitch angle in radians (vertical rotation around X axis).</param>
+    void UpdateCameraAnchorRotation(float yaw, float pitch);
+
+    /// <summary>
+    /// Positions the camera to focus on a specific cell.
+    /// Camera is placed along the cell normal at 1.5x body radius distance.
+    /// </summary>
+    /// <param name="cell">The VoronoiCell to focus on</param>
+    void FocusInspectionCameraOnCell(VoronoiCell cell);
+
+    /// <summary>
+    /// Positions the camera to focus on a specific continent.
+    /// Camera distance is calculated based on the continent's angular size to ensure
+    /// the entire continent is visible within the viewport.
+    /// </summary>
+    /// <param name="continent">The Continent to focus on</param>
+    void FocusInspectionCameraOnContinent(Continent continent);
 }

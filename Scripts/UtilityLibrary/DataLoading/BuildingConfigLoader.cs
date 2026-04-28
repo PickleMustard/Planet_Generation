@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Godot;
 using Structures.Enums;
 using Structures.Resources;
 using Structures.Transfers;
+using UtilityLibrary;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using SysDict = System.Collections.Generic.Dictionary<string, object>;
@@ -13,6 +15,18 @@ namespace UtilityLibrary.DataLoading;
 
 public static class BuildingConfigLoader
 {
+    public static int ModelsLoadedCount { get; private set; }
+    public static int ModelsFailedCount { get; private set; }
+    public static int IconsLoadedCount { get; private set; }
+    public static int IconsFailedCount { get; private set; }
+
+    public static void ResetLoadingStats()
+    {
+        ModelsLoadedCount = 0;
+        ModelsFailedCount = 0;
+        IconsLoadedCount = 0;
+        IconsFailedCount = 0;
+    }
     public static List<BuildingDefinition> LoadBuildingDefinitions(string filePath)
     {
         var definitions = new List<BuildingDefinition>();
@@ -70,24 +84,143 @@ public static class BuildingConfigLoader
 
     private static BuildingDefinition ParseBuildingDefinition(Dictionary<object, object> dict)
     {
+        string idName = ReadString(dict, "id_name", "");
+
         var definition = new BuildingDefinition
         {
-            IdName = ReadString(dict, "id_name", ""),
+            IdName = idName,
             DisplayName = ReadString(dict, "display_name", ""),
             Description = ReadString(dict, "description", ""),
             Category = ReadString(dict, "category", ""),
             BuildingLimit = ReadInt(dict, "building_limit", -1),
             BuildingTime = ReadFloat(dict, "building_time", 60.0f),
             WorkRequired = ReadFloat(dict, "work_required", 100.0f),
+            AllowedRecipeCategory = ReadString(dict, "allowed_recipe_category", ""),
             Placement = ParsePlacementRequirements(dict),
             RequiredResources = ParseRequiredResources(dict),
             Production = ParseProductionDefinition(dict),
             Visual = ParseVisualDefinition(dict),
+            Icon = ParseIconDefinition(dict, $"building:{idName}"),
             Sound = ParseSoundDefinition(dict),
             TransferStation = ParseTransferStationDefinition(dict),
+            StartingStockpiles = ParseStartingStockpiles(dict),
+            StartingStorageCapacity = ParseStartingStorageCapacity(dict),
         };
 
+        // Apply fallback if icon failed to load
+        if (!definition.Icon.IsValid)
+        {
+            definition.Icon = IconDataLoader.CreateFallbackIconDefinition();
+        }
+
         return definition;
+    }
+
+    private static IconDefinition ParseIconDefinition(Dictionary<object, object> dict, string context)
+    {
+        if (!dict.ContainsKey("icon"))
+        {
+            return new IconDefinition();
+        }
+
+        var iconDict = dict["icon"] as Dictionary<object, object>;
+        if (iconDict == null)
+            return new IconDefinition();
+
+        string? basePath = ReadString(iconDict, "base_path", "");
+        if (string.IsNullOrEmpty(basePath))
+        {
+            return new IconDefinition();
+        }
+
+        var icon = IconDataLoader.LoadIcon(basePath, context);
+
+        // Track stats
+        if (icon.IsValid)
+            IconsLoadedCount++;
+        else
+            IconsFailedCount++;
+
+        icon.Scale = ReadFloat(iconDict, "scale", 1.0f);
+        icon.Tint = ReadColor(iconDict, "tint", Colors.White);
+
+        return icon;
+    }
+
+    private static Dictionary<string, int> ParseStartingStockpiles(Dictionary<object, object> dict)
+    {
+        var stockpiles = new Dictionary<string, int>();
+
+        if (!dict.ContainsKey("starting_stockpiles"))
+            return stockpiles;
+
+        var stockpilesDict = dict["starting_stockpiles"] as Dictionary<object, object>;
+        if (stockpilesDict == null)
+            return stockpiles;
+
+        foreach (var kvp in stockpilesDict)
+        {
+            string resourceName = (string)kvp.Key;
+            int quantity = NodeToInt(kvp.Value, 0);
+            if (quantity > 0)
+                stockpiles[resourceName] = quantity;
+        }
+
+        return stockpiles;
+    }
+
+    private static Dictionary<string, float> ParseStartingStorageCapacity(Dictionary<object, object> dict)
+    {
+        var capacities = new Dictionary<string, float>();
+
+        if (!dict.ContainsKey("starting_storage_capacity"))
+            return capacities;
+
+        var capacityDict = dict["starting_storage_capacity"] as Dictionary<object, object>;
+        if (capacityDict == null)
+            return capacities;
+
+        foreach (var kvp in capacityDict)
+        {
+            string categoryName = (string)kvp.Key;
+            float amount = NodeToFloat(kvp.Value, 0f);
+            if (amount > 0)
+                capacities[categoryName] = amount;
+        }
+
+        return capacities;
+    }
+
+    // Cache for biome categories - loaded once and reused
+    private static BiomeCategoryConfig? _biomeCategoryCache;
+    private static readonly object _categoryLock = new object();
+
+    /// <summary>
+    /// Gets or loads the biome category configuration.
+    /// Uses lazy loading with caching for performance.
+    /// </summary>
+    private static BiomeCategoryConfig? GetBiomeCategoryConfig()
+    {
+        lock (_categoryLock)
+        {
+            if (_biomeCategoryCache == null)
+            {
+                _biomeCategoryCache = ResourceConfigLoader.LoadBiomeCategories();
+            }
+            return _biomeCategoryCache;
+        }
+    }
+
+    /// <summary>
+    /// Clears the cached biome category configuration.
+    /// Call this if biome categories are reloaded at runtime.
+    /// </summary>
+    public static void ClearBiomeCategoryCache()
+    {
+        lock (_categoryLock)
+        {
+            _biomeCategoryCache = null;
+        }
     }
 
     private static BuildingDefinition.PlacementRequirements ParsePlacementRequirements(
@@ -125,9 +258,9 @@ public static class BuildingConfigLoader
                 }
                 else
                 {
-                    // Check for wildcard operator
+                    // Collect all biome entries (including category: prefixes)
+                    var biomeEntries = new List<string>();
                     bool hasWildcard = false;
-                    var otherBiomes = new List<string>();
 
                     foreach (var biomeObj in biomesList)
                     {
@@ -139,7 +272,7 @@ public static class BuildingConfigLoader
                             }
                             else
                             {
-                                otherBiomes.Add(biomeName);
+                                biomeEntries.Add(biomeName);
                             }
                         }
                     }
@@ -148,29 +281,53 @@ public static class BuildingConfigLoader
                     {
                         placement.AllowAnyBiome = true;
 
-                        // Warn if other biomes are defined alongside wildcard
-                        if (otherBiomes.Count > 0)
+                        // Warn if other entries are defined alongside wildcard
+                        if (biomeEntries.Count > 0)
                         {
                             GD.PushWarning(
                                 $"BuildingConfigLoader: Wildcard '*' allows all biomes, " +
-                                $"but additional biomes were also specified: " +
-                                $"{string.Join(", ", otherBiomes)}. " +
-                                $"These additional biomes will be ignored."
+                                $"but additional entries were also specified: " +
+                                $"{string.Join(", ", biomeEntries)}. " +
+                                $"These additional entries will be ignored."
                             );
                         }
                     }
                     else
                     {
-                        // Parse normal biome names
-                        foreach (var biomeName in otherBiomes)
+                        // Resolve biome entries (handles both individual biomes and categories)
+                        var categoryConfig = GetBiomeCategoryConfig();
+                        if (categoryConfig != null)
                         {
-                            if (TryParseBiomeType(biomeName, out Biome.BiomeType biomeType))
+                            var resolvedBiomes = categoryConfig.ResolveBiomeEntries(
+                                biomeEntries,
+                                out bool _
+                            );
+                            placement.Biomes.AddRange(resolvedBiomes);
+                        }
+                        else
+                        {
+                            // Fallback: parse as individual biome names only
+                            GD.PushWarning(
+                                "BuildingConfigLoader: Could not load biome categories. " +
+                                "Category references will not be resolved."
+                            );
+                            foreach (var entry in biomeEntries)
                             {
-                                placement.Biomes.Add(biomeType);
-                            }
-                            else
-                            {
-                                GD.PrintErr($"Unknown biome type in building placement: {biomeName}");
+                                if (entry.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    GD.PrintErr(
+                                        $"BuildingConfigLoader: Cannot resolve category reference '{entry}' " +
+                                        $"- biome categories not loaded."
+                                    );
+                                }
+                                else if (TryParseBiomeType(entry, out Biome.BiomeType biomeType))
+                                {
+                                    placement.Biomes.Add(biomeType);
+                                }
+                                else
+                                {
+                                    GD.PrintErr($"Unknown biome type in building placement: {entry}");
+                                }
                             }
                         }
                     }
@@ -178,7 +335,136 @@ public static class BuildingConfigLoader
             }
         }
 
+        // Eagerly load and instantiate custom behavior
+        placement.ConfigurableBehavior = LoadPlacementBehavior(placementDict, placement);
+
         return placement;
+    }
+
+    /// <summary>
+    /// Loads and instantiates a custom placement behavior from the configuration.
+    /// Supports both file paths (res://) and fully qualified class names.
+    /// </summary>
+    private static IPlacementBehavior? LoadPlacementBehavior(
+        Dictionary<object, object> placementDict,
+        BuildingDefinition.PlacementRequirements requirements)
+    {
+        if (!placementDict.ContainsKey("configurable_behavior"))
+            return null;
+
+        var behaviorValue = placementDict["configurable_behavior"];
+        if (behaviorValue == null)
+            return null;
+
+        string? behaviorPath = behaviorValue.ToString();
+        if (string.IsNullOrWhiteSpace(behaviorPath))
+            return null;
+
+        try
+        {
+            // Check if it's a file path (starts with res://)
+            if (behaviorPath.StartsWith("res://", StringComparison.OrdinalIgnoreCase))
+            {
+                return LoadBehaviorFromFile(behaviorPath, requirements);
+            }
+            else
+            {
+                // It's a class name - try to find it in the current assembly
+                return InstantiateBehaviorByName(behaviorPath, requirements);
+            }
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"BuildingConfigLoader: Failed to load placement behavior '{behaviorPath}': {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Loads a behavior from a C# script file using Godot's CSharpScript.
+    /// </summary>
+    private static IPlacementBehavior? LoadBehaviorFromFile(string filePath, BuildingDefinition.PlacementRequirements requirements)
+    {
+        try
+        {
+            // Load the CSharpScript from file
+            var script = GD.Load<CSharpScript>(filePath);
+            if (script == null)
+            {
+                GD.PrintErr($"BuildingConfigLoader: Could not load script at '{filePath}'");
+                return null;
+            }
+
+            // Instantiate the script
+            var variant = script.New();
+            var godotObj = variant.AsGodotObject();
+
+            if (godotObj is not IPlacementBehavior behavior)
+            {
+                GD.PrintErr($"BuildingConfigLoader: Script '{filePath}' does not implement IPlacementBehavior");
+                godotObj.Free();
+                return null;
+            }
+
+            return behavior;
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"BuildingConfigLoader: Failed to load behavior from file '{filePath}': {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Instantiates a behavior by class name using reflection.
+    /// </summary>
+    private static IPlacementBehavior? InstantiateBehaviorByName(
+        string className,
+        BuildingDefinition.PlacementRequirements requirements)
+    {
+        try
+        {
+            var assembly = typeof(IPlacementBehavior).Assembly;
+
+            // Try various namespace prefixes
+            var type = assembly.GetType(className)
+                ?? assembly.GetType($"Structures.Resources.{className}")
+                ?? assembly.GetType($"Scripts.Structures.Resources.{className}");
+
+            if (type == null)
+            {
+                GD.PrintErr($"BuildingConfigLoader: Could not find type '{className}'");
+                return null;
+            }
+
+            if (!typeof(IPlacementBehavior).IsAssignableFrom(type))
+            {
+                GD.PrintErr($"BuildingConfigLoader: Type '{className}' does not implement IPlacementBehavior");
+                return null;
+            }
+
+            // Try constructor with PlacementRequirements parameter first
+            var constructor = type.GetConstructor(new[] { typeof(BuildingDefinition.PlacementRequirements) });
+            if (constructor != null)
+            {
+                return (IPlacementBehavior)constructor.Invoke(new object[] { requirements });
+            }
+
+            // Fall back to parameterless constructor
+            constructor = type.GetConstructor(Type.EmptyTypes);
+            if (constructor != null)
+            {
+                return (IPlacementBehavior)constructor.Invoke(null);
+            }
+
+            GD.PrintErr($"BuildingConfigLoader: Type '{className}' has no valid constructor");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"BuildingConfigLoader: Failed to instantiate '{className}': {ex.Message}");
+            return null;
+        }
     }
 
     private static Dictionary<string, int> ParseRequiredResources(Dictionary<object, object> dict)
@@ -224,11 +510,11 @@ public static class BuildingConfigLoader
         return production;
     }
 
-    private static BuildingDefinition.VisualDefinition ParseVisualDefinition(
+    private static VisualDefinition ParseVisualDefinition(
         Dictionary<object, object> dict
     )
     {
-        var visual = new BuildingDefinition.VisualDefinition();
+        var visual = new VisualDefinition();
 
         if (!dict.ContainsKey("visual"))
             return visual;
@@ -237,10 +523,37 @@ public static class BuildingConfigLoader
         if (visualDict == null)
             return visual;
 
-        visual.ModelPath = ValidateFilePath(
+        string? modelPath = ValidateFilePath(
             ReadString(visualDict, "model_path", ""),
             "visual.model_path"
         );
+        visual.ModelPath = modelPath;
+
+        // Eagerly load the PackedScene prototype
+        if (!string.IsNullOrEmpty(modelPath))
+        {
+            try
+            {
+                visual.ModelPrototype = GD.Load<PackedScene>(modelPath);
+                if (visual.ModelPrototype != null)
+                {
+                    GameLogger.Info($"BuildingConfigLoader: Loaded model prototype '{modelPath}'");
+                    ModelsLoadedCount++;
+                }
+                else
+                {
+                    GameLogger.Error($"BuildingConfigLoader: Failed to load model at '{modelPath}'");
+                    ModelsFailedCount++;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                GameLogger.Error($"BuildingConfigLoader: Exception loading model '{modelPath}': {ex.Message}");
+                visual.ModelPrototype = null;
+                ModelsFailedCount++;
+            }
+        }
+
         visual.ModelMaterial = ValidateFilePath(
             ReadString(visualDict, "model_material", ""),
             "visual.model_material"
@@ -426,6 +739,30 @@ public static class BuildingConfigLoader
         }
 
         return fallback;
+    }
+
+    private static Color ReadColor(Dictionary<object, object> dict, string key, Color fallback)
+    {
+        if (!dict.ContainsKey(key))
+            return fallback;
+
+        if (dict[key] is not System.Collections.Generic.List<object> arr || arr.Count < 3)
+            return fallback;
+
+        float r = NodeToFloat(arr[0], fallback.R);
+        float g = NodeToFloat(arr[1], fallback.G);
+        float b = NodeToFloat(arr[2], fallback.B);
+        float a = arr.Count >= 4 ? NodeToFloat(arr[3], fallback.A) : 1.0f;
+
+        if (r > 1.0f || g > 1.0f || b > 1.0f || a > 1.0f)
+        {
+            r /= 255.0f;
+            g /= 255.0f;
+            b /= 255.0f;
+            a = arr.Count >= 4 ? a / 255.0f : 1.0f;
+        }
+
+        return new Color(r, g, b, a);
     }
 
     private static int NodeToInt(object node, int fallback)

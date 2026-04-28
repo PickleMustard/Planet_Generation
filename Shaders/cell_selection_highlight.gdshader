@@ -14,6 +14,12 @@ uniform vec4 outline_color : source_color = vec4(1.0, 0.8, 0.0, 1.0);
 // Controls the threshold for edge detection sensitivity.
 uniform float outline_threshold : hint_range(0.001, 1.0) = 0.01;
 
+// Pulse effect parameters (toggled on when cell info window is open)
+uniform bool pulse_enabled = false;
+uniform float pulse_speed : hint_range(0.1, 10.0) = 2.0;
+uniform float pulse_min_alpha : hint_range(0.0, 1.0) = 0.15;
+uniform float pulse_max_alpha : hint_range(0.0, 1.0) = 0.4;
+
 // Building placement highlighting.
 // placement_cell_count > 0 activates placement mode (overrides normal selection).
 uniform int placement_cell_count = 0;
@@ -31,7 +37,7 @@ varying flat float cell_id;
 
 void vertex() {
     // UV2.x carries the Voronoi cell index set during mesh generation.
-    cell_id = UV2.x;
+    cell_id = CUSTOM0.r;
 }
 
 // Check if cell_id matches any placement cell. Returns index or -1.
@@ -100,12 +106,19 @@ void fragment() {
 
     bool is_selected = abs(cell_id - selected_cell_id) < 0.5;
 
+    // Calculate pulse alpha modulation
+    float current_fill_alpha = fill_color.a;
+    if (pulse_enabled) {
+        float pulse_factor = (sin(TIME * pulse_speed) + 1.0) * 0.5;
+        current_fill_alpha = mix(pulse_min_alpha, pulse_max_alpha, pulse_factor);
+    }
+
     if (is_selected && is_boundary) {
         ALBEDO = outline_color.rgb;
         ALPHA = outline_color.a;
     } else if (is_selected) {
         ALBEDO = fill_color.rgb;
-        ALPHA = fill_color.a;
+        ALPHA = current_fill_alpha;
     } else if (is_boundary) {
         float neighbor_estimate_x = cell_id - dcell_dx;
         float neighbor_estimate_y = cell_id - dcell_dy;

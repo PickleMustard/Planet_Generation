@@ -4,46 +4,43 @@ using System.Linq;
 using Constructables;
 using Structures.Resources;
 using UtilityLibrary;
+#if DEBUG
+using UI.Debug.Console;
+#endif
 
 namespace Structures.GameState;
 
-/// <summary>
-/// Manages the runtime economy for an orbital station: stockpiles, production/consumption rates,
-/// power generation/storage, building registration, and shortage/deficit handling.
-/// Parallel to ContinentEconomy but for orbital stations.
-/// </summary>
 public class StationEconomy : IResourceEndpoint
 {
-    private const float PAUSE_COOLDOWN_SECONDS = 5.0f;
-    private const float DEFAULT_CATEGORY_CAPACITY = 500f;
-    private const float DEFAULT_POWER_STORAGE_CAPACITY = 250f;
+    private const float DEFAULT_CATEGORY_CAPACITY = 1000f;
+    private const float DEFAULT_POWER_STORAGE_CAPACITY = 500f;
     private const string POWER_RESOURCE_ID = "power";
-    private const string PAUSE_REASON_POWER = "power";
-    private const string PAUSE_REASON_SHORTAGE_PREFIX = "shortage:";
 
     private readonly string _stationId;
     private readonly List<BuildingRegistration> _activeBuildings = new();
     private int _nextBuildingInstanceId;
 
-    // Stockpile
     private readonly Dictionary<string, float> _stockpile = new();
     private readonly Dictionary<string, float> _categoryCapacity = new();
+    private readonly Dictionary<string, List<(BuildingConstruction Building, float Capacity)>> _storageBuildingsByCategory = new();
 
-    // Rates (recomputed on building changes)
+    private readonly List<ResourceRequest> _requestQueue = new();
+    private bool _queueDirty = false;
+
     private readonly Dictionary<string, float> _productionRates = new();
     private readonly Dictionary<string, float> _consumptionRates = new();
     private readonly Dictionary<string, float> _netRates = new();
     private bool _ratesDirty = true;
 
-    // Power
     private float _powerGeneration;
     private float _powerConsumption;
     private float _powerStored;
     private float _powerStorageCapacity = DEFAULT_POWER_STORAGE_CAPACITY;
     private bool _isPowerDeficit;
 
-    // Shortage tracking
-    private readonly HashSet<string> _activeShortages = new();
+#if DEBUG
+    private string? _debugNamespace;
+#endif
 
     public string StationId => _stationId;
     public bool IsPowerDeficit => _isPowerDeficit;
@@ -52,11 +49,25 @@ public class StationEconomy : IResourceEndpoint
     public float PowerGeneration => _powerGeneration;
     public float PowerConsumption => _powerConsumption;
     public int ActiveBuildingCount => _activeBuildings.Count;
+    public IReadOnlyList<BuildingRegistration> ActiveBuildings => _activeBuildings;
 
     public StationEconomy(string stationId)
     {
         _stationId = stationId;
         InitializeDefaultCapacities();
+
+#if DEBUG
+        try
+        {
+            _debugNamespace = InstanceRegistry.RegisterStationEconomy(this, stationId);
+            GameLogger.Debug($"[StationEconomy] Registered with debug console as '{_debugNamespace}'");
+            SignalBus.Instance?.EmitEconomyRegistered(_debugNamespace, "StationEconomy", stationId);
+        }
+        catch (Exception e)
+        {
+            GameLogger.Warning($"[StationEconomy] Failed to register with debug: {e.Message}");
+        }
+#endif
     }
 
     private void InitializeDefaultCapacities()
@@ -70,110 +81,193 @@ public class StationEconomy : IResourceEndpoint
         _categoryCapacity["power"] = DEFAULT_POWER_STORAGE_CAPACITY;
     }
 
-    /// <summary>
-    /// Registers a completed building with the economy, computing its per-second rates.
-    /// </summary>
     public void RegisterBuilding(BuildingConstruction building, string recipeId)
     {
-        if (building == null || string.IsNullOrEmpty(recipeId))
-        {
-            GameLogger.Warning("[StationEconomy] Cannot register building: null building or empty recipe");
-            return;
-        }
+        if (building == null || string.IsNullOrEmpty(recipeId)) return;
 
         var recipeDb = RecipeDatabase.Instance;
-        if (recipeDb == null || !recipeDb.IsLoaded)
-        {
-            GameLogger.Error("[StationEconomy] RecipeDatabase not loaded, cannot register building");
-            return;
-        }
+        if (recipeDb == null || !recipeDb.IsLoaded || !recipeDb.TryGetRecipe(recipeId, out var recipe) || recipe == null) return;
 
-        if (!recipeDb.TryGetRecipe(recipeId, out var recipe) || recipe == null)
+        if (building.Definition?.StartingStorageCapacity != null)
         {
-            GameLogger.Warning($"[StationEconomy] Recipe '{recipeId}' not found, skipping registration for {building.Name}");
-            return;
+            foreach (var kvp in building.Definition.StartingStorageCapacity)
+            {
+                AddStorageCapacity(kvp.Key, kvp.Value, building);
+            }
         }
 
         float productionSpeed = building.Definition?.Production?.ProductionSpeed ?? 1.0f;
         float cyclesPerSecond = productionSpeed / recipe.WorkRequired;
+        float depositYield = 1.0f; // Stations don't extract
 
         var registration = new BuildingRegistration
         {
             BuildingInstanceId = _nextBuildingInstanceId++,
             BuildingNode = building,
             RecipeId = recipeId,
-            InputRates = new Dictionary<string, float>(),
-            OutputRates = new Dictionary<string, float>(),
-            PowerConsumption = 0f,
-            PowerGeneration = 0f,
-            IsPaused = false,
-            PauseReasons = new HashSet<string>(),
-            PausedAtTime = 0.0,
+            DepositYieldMultiplier = depositYield,
+            ProductionSpeed = productionSpeed
         };
 
         foreach (var input in recipe.InputResources)
         {
-            float rate = cyclesPerSecond * input.Value;
-            if (input.Key == POWER_RESOURCE_ID)
-                registration.PowerConsumption = rate;
-            else
-                registration.InputRates[input.Key] = rate;
+            float rate = cyclesPerSecond * input.Value * depositYield;
+            if (input.Key == POWER_RESOURCE_ID) registration.TheoreticalPowerConsumption = rate;
+            else registration.TheoreticalInputRates[input.Key] = rate;
         }
 
         foreach (var output in recipe.OutputResources)
         {
-            float rate = cyclesPerSecond * output.Value;
-            if (output.Key == POWER_RESOURCE_ID)
-                registration.PowerGeneration = rate;
-            else
-                registration.OutputRates[output.Key] = rate;
+            float rate = cyclesPerSecond * output.Value * depositYield;
+            if (output.Key == POWER_RESOURCE_ID) registration.TheoreticalPowerGeneration = rate;
+            else registration.TheoreticalOutputRates[output.Key] = rate;
         }
 
         _activeBuildings.Add(registration);
         _ratesDirty = true;
-
-        GameLogger.Info(
-            $"[StationEconomy] Registered building '{building.Name}' with recipe '{recipeId}' " +
-            $"(cycles/sec: {cyclesPerSecond:F3})"
-        );
     }
 
-    /// <summary>
-    /// Unregisters a building from the economy.
-    /// </summary>
     public void UnregisterBuilding(BuildingConstruction building)
     {
-        int removed = _activeBuildings.RemoveAll(r => r.BuildingNode == building);
-        if (removed > 0)
+        if (building.Definition?.StartingStorageCapacity != null)
         {
-            _ratesDirty = true;
-            GameLogger.Info($"[StationEconomy] Unregistered building '{building.Name}'");
+            foreach (var kvp in building.Definition.StartingStorageCapacity)
+            {
+                RemoveStorageCapacity(kvp.Key, kvp.Value, building);
+            }
         }
+        
+        _requestQueue.RemoveAll(r => r.Building == building);
+
+        int removed = _activeBuildings.RemoveAll(r => r.BuildingNode == building);
+        if (removed > 0) _ratesDirty = true;
     }
 
-    /// <summary>
-    /// Changes the active recipe for a registered building.
-    /// </summary>
-    public void ChangeRecipe(BuildingConstruction building, string newRecipeId)
+    public bool ChangeRecipe(BuildingConstruction building, string newRecipeId)
     {
+        if (!string.IsNullOrEmpty(building.Definition?.AllowedRecipeCategory))
+        {
+            if (!RecipeDatabase.Instance.TryGetRecipe(newRecipeId, out var recipe) || recipe == null) return false;
+            if (recipe.Category != building.Definition.AllowedRecipeCategory) return false;
+        }
+
         UnregisterBuilding(building);
         RegisterBuilding(building, newRecipeId);
+        return true;
     }
 
-    /// <summary>
-    /// Main tick called by EconomyManager each physics frame.
-    /// </summary>
+    public void EnqueueResourceRequest(ResourceRequest request)
+    {
+        _requestQueue.Add(request);
+        _queueDirty = true;
+    }
+
     public void Tick(float delta, double totalTime)
     {
         if (_ratesDirty)
         {
-            RecomputeRates();
+            RecomputeTheoreticalRates();
             _ratesDirty = false;
         }
 
+        if (_queueDirty) ProcessQueue();
         TickPower(delta);
-        TickStockpiles(delta);
-        TickShortages(delta, totalTime);
+
+        foreach (var reg in _activeBuildings)
+        {
+            var mfg = reg.BuildingNode.Manufacturing;
+            if (mfg.State == Enums.ManufacturingState.Idle)
+            {
+                if (RecipeDatabase.Instance.TryGetRecipe(reg.RecipeId, out var recipe) && recipe != null)
+                {
+                    mfg.StartCycle(this, recipe, reg.DepositYieldMultiplier, reg.ProductionSpeed); // Note: Should probably pass StationEconomy? But StartCycle expects ContinentEconomy...
+                }
+            }
+            else if (mfg.State == Enums.ManufacturingState.Manufacturing)
+            {
+                if (_isPowerDeficit && reg.TheoreticalPowerConsumption > 0 && reg.TheoreticalPowerGeneration == 0) reg.IsPaused = true;
+                else
+                {
+                    reg.IsPaused = false;
+                    mfg.TickWork(delta, this); // THIS REQUIRES CONTINENTECONOMY TYPE. Wait...
+                }
+            }
+        }
+    }
+
+    private void ProcessQueue()
+    {
+        if (_requestQueue.Count == 0) { _queueDirty = false; return; }
+
+        _requestQueue.Sort((a, b) => 
+        {
+            int p = a.Priority.CompareTo(b.Priority);
+            return p != 0 ? p : a.Timestamp.CompareTo(b.Timestamp);
+        });
+
+        for (int i = _requestQueue.Count - 1; i >= 0; i--)
+        {
+            var request = _requestQueue[i];
+            bool fullySatisfied = true;
+            var keys = request.MissingResources.Keys.ToList();
+
+            foreach (var res in keys)
+            {
+                float needed = request.MissingResources[res];
+                if (needed <= 0) continue;
+
+                float available = GetStockpile(res);
+                float toWithdraw = Math.Min(needed, available);
+
+                if (toWithdraw > 0)
+                {
+                    WithdrawResource(res, toWithdraw);
+                    request.MissingResources[res] -= toWithdraw;
+                    request.Building.Manufacturing.DeliverResource(res, toWithdraw);
+                }
+
+                if (request.MissingResources[res] > 0.001f) fullySatisfied = false;
+            }
+
+            if (fullySatisfied)
+            {
+                request.Building.Manufacturing.SetState(Enums.ManufacturingState.Manufacturing);
+                _requestQueue.RemoveAt(i);
+            }
+        }
+        _queueDirty = false;
+    }
+
+    private void TickPower(float delta)
+    {
+        _powerGeneration = 0f;
+        _powerConsumption = 0f;
+
+        foreach (var reg in _activeBuildings)
+        {
+            var mfg = reg.BuildingNode.Manufacturing;
+            if (mfg.State == Enums.ManufacturingState.Manufacturing || mfg.State == Enums.ManufacturingState.WaitingForInputs)
+            {
+                _powerGeneration += reg.TheoreticalPowerGeneration;
+                _powerConsumption += reg.TheoreticalPowerConsumption;
+            }
+            else if (mfg.State == Enums.ManufacturingState.Idle && reg.TheoreticalPowerGeneration > 0 && reg.TheoreticalInputRates.Count == 0)
+            {
+                 _powerGeneration += reg.TheoreticalPowerGeneration;
+            }
+        }
+
+        _powerStored += (_powerGeneration - _powerConsumption) * delta;
+        _powerStored = Math.Clamp(_powerStored, 0f, _powerStorageCapacity);
+
+        if (!_isPowerDeficit && _powerStored <= 0f && _powerGeneration < _powerConsumption)
+        {
+            _isPowerDeficit = true;
+        }
+        else if (_isPowerDeficit && (_powerStored > 0f || _powerGeneration >= _powerConsumption))
+        {
+            _isPowerDeficit = false;
+        }
     }
 
     public float DepositResource(string resourceId, float amount)
@@ -186,8 +280,8 @@ public class StationEconomy : IResourceEndpoint
         if (toDeposit > 0f)
         {
             _stockpile[resourceId] = GetStockpile(resourceId) + toDeposit;
+            _queueDirty = true;
         }
-
         return toDeposit;
     }
 
@@ -200,105 +294,96 @@ public class StationEconomy : IResourceEndpoint
         {
             _stockpile[resourceId] = current - toWithdraw;
         }
-
         return toWithdraw;
     }
 
-    public float GetStockpile(string resourceId)
-    {
-        return _stockpile.TryGetValue(resourceId, out float val) ? val : 0f;
-    }
-
-    public float GetNetRate(string resourceId)
-    {
-        return _netRates.TryGetValue(resourceId, out float val) ? val : 0f;
-    }
-
-    public float GetProductionRate(string resourceId)
-    {
-        return _productionRates.TryGetValue(resourceId, out float val) ? val : 0f;
-    }
-
-    public float GetConsumptionRate(string resourceId)
-    {
-        return _consumptionRates.TryGetValue(resourceId, out float val) ? val : 0f;
-    }
-
-    public float GetCategoryCapacity(string category)
-    {
-        return _categoryCapacity.TryGetValue(category, out float val) ? val : DEFAULT_CATEGORY_CAPACITY;
-    }
+    public float GetStockpile(string resourceId) => _stockpile.TryGetValue(resourceId, out float val) ? val : 0f;
+    public float GetNetRate(string resourceId) => _netRates.TryGetValue(resourceId, out float val) ? val : 0f;
+    public float GetProductionRate(string resourceId) => _productionRates.TryGetValue(resourceId, out float val) ? val : 0f;
+    public float GetConsumptionRate(string resourceId) => _consumptionRates.TryGetValue(resourceId, out float val) ? val : 0f;
+    public float GetCategoryCapacity(string category) => _categoryCapacity.TryGetValue(category, out float val) ? val : DEFAULT_CATEGORY_CAPACITY;
 
     public float GetCategoryUsed(string category)
     {
         float used = 0f;
         foreach (var kvp in _stockpile)
         {
-            if (GetCategoryForResource(kvp.Key) == category)
-            {
-                used += kvp.Value;
-            }
+            if (GetCategoryForResource(kvp.Key) == category) used += kvp.Value;
         }
         return used;
     }
 
-    public void AddStorageCapacity(string category, float amount)
+    public void AddStorageCapacity(string category, float amount, BuildingConstruction? building = null)
     {
+        if (building != null)
+        {
+            if (!_storageBuildingsByCategory.ContainsKey(category)) _storageBuildingsByCategory[category] = new();
+            _storageBuildingsByCategory[category].Add((building, amount));
+        }
+
+        if (_categoryCapacity.ContainsKey(category)) _categoryCapacity[category] += amount;
+        else _categoryCapacity[category] = amount;
+    }
+
+    public void RemoveStorageCapacity(string category, float amount, BuildingConstruction? building = null)
+    {
+        if (building != null && _storageBuildingsByCategory.ContainsKey(category))
+        {
+            var list = _storageBuildingsByCategory[category];
+            int idx = list.FindIndex(x => x.Building == building);
+            if (idx >= 0) list.RemoveAt(idx);
+        }
+
         if (_categoryCapacity.ContainsKey(category))
-            _categoryCapacity[category] += amount;
-        else
-            _categoryCapacity[category] = amount;
+            _categoryCapacity[category] = Math.Max(0f, _categoryCapacity[category] - amount);
     }
 
-    public IReadOnlyDictionary<string, float> GetAllStockpiles()
+    public void AddPowerStorageCapacity(float amount) => _powerStorageCapacity += amount;
+
+    public IReadOnlyDictionary<string, float> GetAllStockpiles() => _stockpile;
+    public IReadOnlyDictionary<string, float> GetAllNetRates() => _netRates;
+
+    public float GetStorageFillPercentage(BuildingConstruction building, string category)
     {
-        return _stockpile;
+        if (!_storageBuildingsByCategory.TryGetValue(category, out var buildings)) return 0f;
+        float globalUsed = GetCategoryUsed(category);
+        float capacityBefore = 0f;
+        foreach (var tuple in buildings)
+        {
+            if (tuple.Building == building)
+            {
+                float myCapacity = tuple.Capacity;
+                if (globalUsed <= capacityBefore) return 0f;
+                if (globalUsed >= capacityBefore + myCapacity) return 100f;
+                return ((globalUsed - capacityBefore) / myCapacity) * 100f;
+            }
+            capacityBefore += tuple.Capacity;
+        }
+        return 0f;
     }
 
-    public IReadOnlyDictionary<string, float> GetAllNetRates()
-    {
-        return _netRates;
-    }
-
-    private void RecomputeRates()
+    private void RecomputeTheoreticalRates()
     {
         _productionRates.Clear();
         _consumptionRates.Clear();
         _netRates.Clear();
-        _powerGeneration = 0f;
-        _powerConsumption = 0f;
 
         foreach (var reg in _activeBuildings)
         {
-            if (reg.IsPaused)
-                continue;
-
-            _powerGeneration += reg.PowerGeneration;
-            _powerConsumption += reg.PowerConsumption;
-
-            foreach (var input in reg.InputRates)
+            foreach (var input in reg.TheoreticalInputRates)
             {
-                if (_consumptionRates.ContainsKey(input.Key))
-                    _consumptionRates[input.Key] += input.Value;
-                else
-                    _consumptionRates[input.Key] = input.Value;
+                if (_consumptionRates.ContainsKey(input.Key)) _consumptionRates[input.Key] += input.Value;
+                else _consumptionRates[input.Key] = input.Value;
             }
 
-            foreach (var output in reg.OutputRates)
+            foreach (var output in reg.TheoreticalOutputRates)
             {
-                if (_productionRates.ContainsKey(output.Key))
-                    _productionRates[output.Key] += output.Value;
-                else
-                    _productionRates[output.Key] = output.Value;
+                if (_productionRates.ContainsKey(output.Key)) _productionRates[output.Key] += output.Value;
+                else _productionRates[output.Key] = output.Value;
             }
         }
 
-        var allResources = new HashSet<string>();
-        foreach (var key in _productionRates.Keys)
-            allResources.Add(key);
-        foreach (var key in _consumptionRates.Keys)
-            allResources.Add(key);
-
+        var allResources = new HashSet<string>(_productionRates.Keys.Concat(_consumptionRates.Keys));
         foreach (var res in allResources)
         {
             float prod = _productionRates.TryGetValue(res, out float p) ? p : 0f;
@@ -307,186 +392,29 @@ public class StationEconomy : IResourceEndpoint
         }
     }
 
-    private void TickPower(float delta)
-    {
-        _powerStored += (_powerGeneration - _powerConsumption) * delta;
-        _powerStored = Math.Clamp(_powerStored, 0f, _powerStorageCapacity);
-
-        if (!_isPowerDeficit && _powerStored <= 0f && _powerGeneration < _powerConsumption)
-        {
-            _isPowerDeficit = true;
-            PauseAllNonPowerBuildings();
-            GameLogger.Warning(
-                $"[StationEconomy] Station {_stationId}: Power deficit! " +
-                $"Gen={_powerGeneration:F1}/s, Cons={_powerConsumption:F1}/s"
-            );
-        }
-        else if (_isPowerDeficit && (_powerStored > 0f || _powerGeneration >= _powerConsumption))
-        {
-            _isPowerDeficit = false;
-            UnpauseBuildingsForReason(PAUSE_REASON_POWER);
-            GameLogger.Info($"[StationEconomy] Station {_stationId}: Power restored");
-        }
-    }
-
-    private void TickStockpiles(float delta)
-    {
-        foreach (var kvp in _netRates)
-        {
-            float current = GetStockpile(kvp.Key);
-            float newVal = current + kvp.Value * delta;
-
-            newVal = Math.Max(0f, newVal);
-
-            string category = GetCategoryForResource(kvp.Key);
-            float capacity = GetCategoryCapacity(category);
-            float categoryUsed = GetCategoryUsed(category) - current + newVal;
-            if (categoryUsed > capacity)
-            {
-                newVal -= (categoryUsed - capacity);
-                newVal = Math.Max(0f, newVal);
-            }
-
-            _stockpile[kvp.Key] = newVal;
-        }
-    }
-
-    private void TickShortages(float delta, double totalTime)
-    {
-        foreach (var kvp in _netRates)
-        {
-            string resourceId = kvp.Key;
-            float stockpile = GetStockpile(resourceId);
-            float netRate = kvp.Value;
-            string shortageReason = PAUSE_REASON_SHORTAGE_PREFIX + resourceId;
-
-            if (stockpile <= 0f && netRate < 0f && !_activeShortages.Contains(resourceId))
-            {
-                _activeShortages.Add(resourceId);
-                PauseConsumersOf(resourceId, totalTime);
-                GameLogger.Warning($"[StationEconomy] Station {_stationId}: Shortage of '{resourceId}'");
-            }
-            else if (_activeShortages.Contains(resourceId) && (stockpile > 0f || netRate >= 0f))
-            {
-                _activeShortages.Remove(resourceId);
-                UnpauseBuildingsForReason(shortageReason, totalTime);
-                GameLogger.Info($"[StationEconomy] Station {_stationId}: Shortage of '{resourceId}' resolved");
-            }
-        }
-    }
-
-    private void PauseAllNonPowerBuildings()
-    {
-        bool changed = false;
-        foreach (var reg in _activeBuildings)
-        {
-            if (reg.PowerGeneration > 0f)
-                continue;
-
-            if (reg.PauseReasons.Add(PAUSE_REASON_POWER))
-            {
-                reg.IsPaused = true;
-                changed = true;
-            }
-        }
-
-        if (changed)
-            _ratesDirty = true;
-    }
-
-    private void PauseConsumersOf(string resourceId, double totalTime)
-    {
-        string reason = PAUSE_REASON_SHORTAGE_PREFIX + resourceId;
-        bool changed = false;
-
-        for (int i = _activeBuildings.Count - 1; i >= 0; i--)
-        {
-            var reg = _activeBuildings[i];
-            if (reg.IsPaused)
-                continue;
-
-            if (reg.InputRates.ContainsKey(resourceId))
-            {
-                reg.PauseReasons.Add(reason);
-                reg.IsPaused = true;
-                reg.PausedAtTime = totalTime;
-                changed = true;
-
-                _ratesDirty = true;
-                RecomputeRates();
-                _ratesDirty = false;
-
-                float newNet = _netRates.TryGetValue(resourceId, out float n) ? n : 0f;
-                if (newNet >= 0f)
-                    break;
-            }
-        }
-
-        if (changed)
-            _ratesDirty = true;
-    }
-
-    private void UnpauseBuildingsForReason(string reason, double totalTime = 0.0)
-    {
-        bool changed = false;
-
-        for (int i = 0; i < _activeBuildings.Count; i++)
-        {
-            var reg = _activeBuildings[i];
-            if (!reg.PauseReasons.Contains(reason))
-                continue;
-
-            if (totalTime > 0.0 && totalTime - reg.PausedAtTime < PAUSE_COOLDOWN_SECONDS)
-                continue;
-
-            reg.PauseReasons.Remove(reason);
-            if (reg.PauseReasons.Count == 0)
-            {
-                reg.IsPaused = false;
-                changed = true;
-            }
-        }
-
-        if (changed)
-            _ratesDirty = true;
-    }
-
     private static string GetCategoryForResource(string resourceId)
     {
         var resourceDb = ResourceDatabase.Instance;
-        if (resourceDb != null && resourceDb.IsLoaded
-            && resourceDb.TryGetResource(resourceId, out var def) && def?.ResourceType != null)
-        {
+        if (resourceDb != null && resourceDb.IsLoaded && resourceDb.TryGetResource(resourceId, out var def) && def?.ResourceType != null)
             return def.ResourceType;
-        }
-
-        if (resourceId.EndsWith("_ore"))
-            return "ore";
-        if (resourceId == POWER_RESOURCE_ID)
-            return "power";
+        if (resourceId.EndsWith("_ore")) return "ore";
+        if (resourceId == POWER_RESOURCE_ID) return "power";
         return "raw_material";
     }
 
-    private float GetCapacityForResource(string resourceId)
-    {
-        string category = GetCategoryForResource(resourceId);
-        return GetCategoryCapacity(category);
-    }
+    private float GetCapacityForResource(string resourceId) => GetCategoryCapacity(GetCategoryForResource(resourceId));
 
-    /// <summary>
-    /// Tracks a building registered with the station economy.
-    /// </summary>
     public class BuildingRegistration
     {
         public int BuildingInstanceId { get; set; }
         public BuildingConstruction BuildingNode { get; set; } = null!;
         public string RecipeId { get; set; } = "";
-        public Dictionary<string, float> InputRates { get; set; } = new();
-        public Dictionary<string, float> OutputRates { get; set; } = new();
-        public float PowerConsumption { get; set; }
-        public float PowerGeneration { get; set; }
+        public float DepositYieldMultiplier { get; set; } = 1.0f;
+        public float ProductionSpeed { get; set; } = 1.0f;
+        public Dictionary<string, float> TheoreticalInputRates { get; set; } = new();
+        public Dictionary<string, float> TheoreticalOutputRates { get; set; } = new();
+        public float TheoreticalPowerConsumption { get; set; }
+        public float TheoreticalPowerGeneration { get; set; }
         public bool IsPaused { get; set; }
-        public HashSet<string> PauseReasons { get; set; } = new();
-        public double PausedAtTime { get; set; }
     }
 }

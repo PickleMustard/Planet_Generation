@@ -1,0 +1,168 @@
+# Biome Categories Configuration
+# Defines groups of biomes that can be referenced in building placement requirements
+# using the syntax: category:{category_name}
+#
+# Usage example in building configuration:
+#   biomes: [category:arable, category:temperate, Mountain]
+# This would allow the building in all arable biomes, all temperate biomes, AND Mountain specifically.
+
+categories:
+  - category_id: flat
+    display_name: Flat Terrain
+    description: Relatively flat biomes suitable for construction
+    biomes:
+      - Grassland
+      - Coastal
+      - Desert
+      - FrozenPlain
+      - ScouredPlain
+      - AshPlain
+      - VolcanicPlain
+      - RustedPlain
+
+  - category_id: mountain
+    display_name: Mountainous Terrain
+    description: Elevated terrain including mountains and peaks
+    biomes:
+      - Mountain
+      - VolcanicPeak
+      - RustedMountain
+
+  - category_id: rocky
+    display_name: Rocky Terrain
+    description: Stone and rocky terrain types
+    biomes:
+      - StoneDesert
+      - Mountain
+      - ObsidianField
+      - VolcanicPeak
+
+  - category_id: arable
+    display_name: Arable Land
+    description: Land suitable for agriculture and farming
+    biomes:
+      - Grassland
+      - Forest
+      - Rainforest
+      - Coastal
+      - Swamp
+
+  - category_id: temperate
+    display_name: Temperate Zones
+    description: Moderate climate biomes
+    biomes:
+      - Grassland
+      - Forest
+      - Coastal
+      - Mountain
+      - Swamp
+      - Taiga
+
+  - category_id: tropical
+    display_name: Tropical Zones
+    description: Warm and humid climate biomes
+    biomes:
+      - Rainforest
+      - Coastal
+      - Swamp
+      - Forest
+
+  - category_id: desert
+    display_name: Desert Types
+    description: Arid and dry biomes
+    biomes:
+      - Desert
+      - SandDesert
+      - StoneDesert
+      - RustedDesert
+
+  - category_id: ocean
+    display_name: Ocean Environments
+    description: Marine and aquatic biomes
+    biomes:
+      - Ocean
+      - Coastal
+      - ShallowOcean
+
+  - category_id: deep_ocean
+    display_name: Deep Ocean
+    description: Deep water biomes only
+    biomes:
+      - DeepOcean
+      - ShallowOcean
+
+  - category_id: frozen
+    display_name: Frozen Biomes
+    description: Cold and icy terrain
+    biomes:
+      - Icecap
+      - Tundra
+      - Glacier
+      - FrozenPlain
+
+  - category_id: terrestrial
+    display_name: Terrestrial Land
+    description: All solid ground biomes (non-ocean)
+    biomes:
+      - Grassland
+      - Forest
+      - Mountain
+      - Desert
+      - SandDesert
+      - StoneDesert
+      - Swamp
+      - Rainforest
+      - Taiga
+      - Tundra
+      - Icecap
+      - Glacier
+      - FrozenPlain
+      - RustedPlain
+      - RustedMountain
+      - RustedDesert
+      - ScouredPlain
+      - VolcanicPeak
+      - AshPlain
+      - ObsidianField
+      - VolcanicPlain
+
+  - category_id: volcanic
+    display_name: Volcanic Terrain
+    description: Active volcanic areas
+    biomes:
+      - VolcanicPeak
+      - AshPlain
+      - ObsidianField
+      - VolcanicPlain
+      - LavaOcean
+
+  - category_id: rusted
+    display_name: Rusted Terrain
+    description: Biomes characteristic of rusted/aged worlds
+    biomes:
+      - RustedPlain
+      - RustedMountain
+      - RustedDesert
+
+  - category_id: scoured
+    display_name: Scoured Terrain
+    description: Wind-eroded and blasted landscapes
+    biomes:
+      - ScouredPlain
+      - StoneDesert
+      - SandDesert
+
+  - category_id: coastal
+    display_name: Coastal Areas
+    description: Shoreline and coastal biomes
+    biomes:
+      - Coastal
+      - ShallowOcean
+
+  - category_id: forested
+    display_name: Forested Areas
+    description: Biomes with significant tree cover
+    biomes:
+      - Forest
+      - Rainforest
+      - Taiga

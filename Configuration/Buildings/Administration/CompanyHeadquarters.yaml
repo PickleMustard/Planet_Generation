@@ -1,0 +1,61 @@
+buildings:
+  - id_name: company_headquarters
+    display_name: Company Headquarters
+    description: The nerve center of your interstellar enterprise. Provides power, storage, extraction, and basic manufacturing capabilities.
+    category: administration
+    building_limit: 1
+    building_time: 0
+    work_required: 0
+
+    # Only headquarters-specific recipes allowed
+    allowed_recipe_category: headquarters
+
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0.0
+      max_elevation: 1.0
+      max_slope: 90.0
+      cell_count: 4
+      requires_adjacent: true
+
+    required_resources: {}
+
+    production:
+      default_recipe: "hq_all_in_one_operation"
+      alternative_recipes:
+        ["hq_power_focus", "hq_extraction_focus", "hq_fabrication_focus"]
+      input_storage_amount: 500
+      output_storage_amount: 500
+      production_speed: 1.0
+
+    # Starting resources - data driven
+    starting_stockpiles:
+      power: 250
+      concrete: 100
+      iron: 50
+      copper: 30
+      water: 200
+      grain: 50
+
+    # Storage capacity bonuses
+    starting_storage_capacity:
+      ore: 500
+      raw_material: 500
+      fuel: 500
+      food: 500
+      construction: 500
+      industrial: 500
+
+    # Headquarters doubles as a starter transfer station
+    transfer_station:
+      cargo_capacity: 500.0
+      vehicle_speed: 50.0
+      max_concurrent_transfers: 2
+
+    visual:
+      model_path: "res://Models/Buildings/headquarters.glb" # Placeholder - uses fallback box mesh
+      scale: 2.0
+      rotation_offset: [0, 0, 0]
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/headquarters/company_headquarters"

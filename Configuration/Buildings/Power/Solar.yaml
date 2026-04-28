@@ -7,7 +7,7 @@ buildings:
     work_required: 60.0
 
     placement_requirements:
-      biomes: [Desert, StoneDesert, RustedDesert, Grassland]
+      biomes: [category:desert, category:ocean, category:flat]
       min_elevation: 0.1
       max_elevation: 0.7
       max_slope: 5.0
@@ -32,3 +32,6 @@ buildings:
       model_path: "res://Models/Buildings/solar_array.glb"
       scale: 1.5
       rotation_offset: [0, 0, 0]
+
+    icon:
+      base_path: "res://Assets/Icons/Buildings/power/solar_array"

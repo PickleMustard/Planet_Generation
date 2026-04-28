@@ -29,4 +29,14 @@ public interface IResourceEndpoint
     /// Gets all current stockpile quantities.
     /// </summary>
     IReadOnlyDictionary<string, float> GetAllStockpiles();
+
+    /// <summary>
+    /// Queues a resource request for discrete manufacturing.
+    /// </summary>
+    void EnqueueResourceRequest(ResourceRequest request);
+
+    /// <summary>
+    /// Gets the visual fill percentage for a specific storage building and category.
+    /// </summary>
+    float GetStorageFillPercentage(Constructables.BuildingConstruction building, string category);
 }

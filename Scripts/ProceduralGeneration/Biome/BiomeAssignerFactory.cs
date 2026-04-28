@@ -1,19 +1,20 @@
+using Structures;
 using Structures.Enums;
 
 namespace ProceduralGeneration.BiomeSystem;
 
 public static class BiomeAssignerFactory
 {
-    public static IBiomeAssigner GetAssigner(CelestialBodyType type, object? subtype = null)
+    public static IBiomeAssigner GetAssigner(BodyClassification classification)
     {
-        return type switch
+        return classification switch
         {
-            CelestialBodyType.RockyPlanet => GetRockyPlanetAssigner(subtype as RockyPlanetSubtype?),
+            BodyClassification.RockyPlanet rp => GetRockyPlanetAssigner(rp.Subtype),
             _ => new DefaultBiomeAssigner()
         };
     }
 
-    private static IBiomeAssigner GetRockyPlanetAssigner(RockyPlanetSubtype? subtype)
+    private static IBiomeAssigner GetRockyPlanetAssigner(RockyPlanetSubtype subtype)
     {
         return subtype switch
         {

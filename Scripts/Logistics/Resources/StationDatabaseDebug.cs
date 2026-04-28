@@ -1,6 +1,7 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
+using Structures.Logistics;
 using UI.Debug.DatabaseViewer;
 
 namespace Logistics.Resources
@@ -30,14 +31,14 @@ namespace Logistics.Resources
             );
 
             var categoriesNode = node.AddChild("By Type");
-            var categories = new Dictionary<string, List<UtilityLibrary.StationDefinition>>();
+            var categories = new Dictionary<string, List<StationDefinition>>();
 
             foreach (var station in _stations.Values)
             {
                 var category = station.StationType ?? "Uncategorized";
                 if (!categories.ContainsKey(category))
                 {
-                    categories[category] = new List<UtilityLibrary.StationDefinition>();
+                    categories[category] = new List<StationDefinition>();
                 }
                 categories[category].Add(station);
             }

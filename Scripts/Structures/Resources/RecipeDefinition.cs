@@ -42,4 +42,15 @@ public class RecipeDefinition
     /// Resources produced per production cycle. Key is resource ID, value is amount.
     /// </summary>
     public Dictionary<string, float> OutputResources { get; set; } = new();
+
+    /// <summary>
+    /// Visual representation for UI display.
+    /// Recipes must explicitly define an icon_base_path.
+    /// </summary>
+    public IconDefinition Icon { get; set; } = new();
+
+    /// <summary>
+    /// Returns true if this recipe has an explicit icon configured.
+    /// </summary>
+    public bool HasIcon => Icon?.IsValid == true;
 }

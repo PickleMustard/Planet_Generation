@@ -31,7 +31,7 @@ namespace Structures.Resources
 
             var categoriesNode = node.AddChild("By Category");
             var categories = new Dictionary<string, List<BuildingDefinition>>();
-            
+
             foreach (var building in _buildings.Values)
             {
                 var category = building.Category ?? "Uncategorized";
@@ -46,7 +46,7 @@ namespace Structures.Resources
             {
                 var categoryNode = categoriesNode.AddChild(category.Key)
                     .AddProperty("Count", category.Value.Count);
-                
+
                 foreach (var building in category.Value)
                 {
                     var buildingNode = categoryNode.AddChild(building.IdName ?? "Unknown")
@@ -61,7 +61,25 @@ namespace Structures.Resources
                         .AddProperty("Max Elevation", building.Placement.MaxElevation)
                         .AddProperty("Max Slope", building.Placement.MaxSlope)
                         .AddProperty("Cell Count", building.Placement.CellCount)
-                        .AddProperty("Biomes", building.Placement.Biomes.Count);
+                        .AddProperty("Allow Any Biome", building.Placement.AllowAnyBiome);
+
+                    var biomesNode = placementNode.AddChild("Placeable Biomes");
+                    if (building.Placement.AllowAnyBiome)
+                    {
+                        biomesNode.AddProperty("Any", "All biomes allowed");
+                    }
+                    else if (building.Placement.Biomes.Count == 0)
+                    {
+                        biomesNode.AddProperty("None", "No specific biomes (may use default)");
+                    }
+                    else
+                    {
+                        biomesNode.AddProperty("Count", building.Placement.Biomes.Count);
+                        foreach (var biome in building.Placement.Biomes)
+                        {
+                            biomesNode.AddProperty(biome.ToString(), "✓");
+                        }
+                    }
 
                     var resourcesNode = buildingNode.AddChild("Required Resources");
                     foreach (var resource in building.RequiredResources)

@@ -15,7 +15,7 @@ public partial class Continent : Resource
 
     /// <summary>
     /// Initializes the economy for this continent if not already created,
-    /// and registers it with the EconomyManager for ticking.
+    /// Caller is responsible for registering the economy with the per-body BodyEconomyManager.
     /// </summary>
     public void InitializeEconomy()
     {
@@ -23,7 +23,6 @@ public partial class Continent : Resource
             return;
 
         Economy = new ContinentEconomy(this);
-        EconomyManager.Instance?.RegisterEconomy(Economy);
     }
 
     public enum CRUST_TYPE

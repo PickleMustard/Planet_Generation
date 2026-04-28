@@ -1,5 +1,6 @@
 using Godot;
 using Structures.GameState;
+using Structures.Resources;
 using UtilityLibrary;
 
 namespace Constructables;
@@ -194,6 +195,7 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
 
     // Visual components
     private MeshInstance3D? _meshInstance;
+    private Node3D? _modelRoot;
     private float _rotationSpeed = 1.0f;
 
     public void InitiateTravel(IOrbitalBody destinationBody, float speed)
@@ -324,62 +326,28 @@ public partial class ShipSatellite : Node3D, IArtificialSatellite
     public override void _Ready()
     {
         base._Ready();
-        CreateVisualRepresentation();
-    }
 
-    private void CreateVisualRepresentation()
-    {
-        // Create MeshInstance3D for visual representation
-        _meshInstance = new MeshInstance3D { Name = "ShipMesh" };
-
-        // Create a box mesh (ships look like elongated boxes)
-        var boxMesh = new BoxMesh
+        if (_modelRoot == null)
         {
-            Size = new Vector3(0.5f, 0.2f, 1.0f),
-            SubdivideWidth = 2,
-            SubdivideHeight = 1,
-            SubdivideDepth = 3,
-        };
-        _meshInstance.Mesh = boxMesh;
-
-        // Create a metallic material for the ship
-        var material = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(0.6f, 0.7f, 0.8f), // Silver/light gray
-            Metallic = 0.8f,
-            Roughness = 0.2f,
-        };
-        _meshInstance.MaterialOverride = material;
-
-        // Add mesh instance as child
-        AddChild(_meshInstance);
-
-        // Add a small cone at the front for a pointed nose
-        var noseMesh = new MeshInstance3D { Name = "ShipNose" };
-        var coneMesh = new CylinderMesh
-        {
-            TopRadius = 0f,
-            BottomRadius = 0.15f,
-            Height = 0.3f,
-            RadialSegments = 8,
-            Rings = 2,
-        };
-        noseMesh.Mesh = coneMesh;
-        noseMesh.MaterialOverride = material;
-        noseMesh.Position = new Vector3(0, 0, -0.6f);
-        noseMesh.RotationDegrees = new Vector3(90, 0, 0);
-
-        _meshInstance.AddChild(noseMesh);
-
-        GameLogger.Debug($"ShipSatellite visuals created for: {Name}");
+            var model = DefaultModelRegistry.InstantiateUnitDefault();
+            if (model != null)
+            {
+                AddChild(model);
+                _modelRoot = model;
+                _meshInstance = NodeUtils.FindMeshInstanceRecursive(model);
+            }
+            else
+            {
+                GameLogger.Error($"ShipSatellite {Name}: Failed to instantiate default unit model");
+            }
+        }
     }
 
     public override void _Process(double delta)
     {
-        // Rotate the ship for visual interest
-        if (_meshInstance != null && IsActive)
+        if (_modelRoot != null && IsActive)
         {
-            _meshInstance.RotateY(_rotationSpeed * (float)delta);
+            _modelRoot.RotateY(_rotationSpeed * (float)delta);
         }
     }
 }

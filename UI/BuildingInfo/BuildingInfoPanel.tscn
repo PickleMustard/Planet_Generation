@@ -1,0 +1,41 @@
+[gd_scene format=3 uid="uid://sn5ksr7arjsu"]
+
+[ext_resource type="Script" uid="uid://cmno6b51c0cri" path="res://Scripts/UI/BuildingInfo/BuildingInfoPanel.cs" id="1_panel"]
+[ext_resource type="PackedScene" path="res://UI/BuildingInfo/BuildingInfoHeader.tscn" id="2_header"]
+[ext_resource type="PackedScene" path="res://UI/BuildingInfo/ExtractionDetails.tscn" id="3_extraction"]
+[ext_resource type="PackedScene" path="res://UI/BuildingInfo/ManufacturingDetails.tscn" id="4_manufacturing"]
+[ext_resource type="PackedScene" path="res://UI/BuildingInfo/PowerDetails.tscn" id="5_power"]
+[ext_resource type="PackedScene" path="res://UI/BuildingInfo/StorageDetails.tscn" id="6_storage"]
+
+[node name="BuildingInfoPanel" type="PanelContainer" unique_id=822308389 node_paths=PackedStringArray("Header", "DetailsContainer")]
+custom_minimum_size = Vector2(350, 400)
+script = ExtResource("1_panel")
+Header = NodePath("MarginContainer/MainVBox/BuildingInfoHeader")
+DetailsContainer = NodePath("MarginContainer/MainVBox/DetailsContainer")
+ExtractionDetailsScene = ExtResource("3_extraction")
+ManufacturingDetailsScene = ExtResource("4_manufacturing")
+PowerDetailsScene = ExtResource("5_power")
+StorageDetailsScene = ExtResource("6_storage")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1791458449]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="MainVBox" type="VBoxContainer" parent="MarginContainer" unique_id=126088890]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="BuildingInfoHeader" parent="MarginContainer/MainVBox" unique_id=335754872 instance=ExtResource("2_header")]
+layout_mode = 2
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/MainVBox" unique_id=706570239]
+layout_mode = 2
+
+[node name="DetailsContainer" type="VBoxContainer" parent="MarginContainer/MainVBox" unique_id=1165924376]
+layout_mode = 2
+size_flags_vertical = 3

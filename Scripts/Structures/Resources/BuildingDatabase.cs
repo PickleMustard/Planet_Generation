@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
+using Structures.Enums;
 using Structures.GameState;
+using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
@@ -138,9 +140,9 @@ namespace Structures.Resources
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
                 OnLoadCompleted?.Invoke(DatabaseName, true);
 
-                GD.Print(
-                    $"BuildingDatabase: '{DatabaseName}' loaded successfully with {_buildings.Count} buildings"
-                );
+                GameLogger.Info($"BuildingDatabase: '{DatabaseName}' loaded successfully with {_buildings.Count} buildings, " +
+                                $"{BuildingConfigLoader.ModelsLoadedCount} models loaded, " +
+                                $"{BuildingConfigLoader.ModelsFailedCount} models failed");
             }
             catch (Exception ex)
             {
@@ -285,27 +287,99 @@ namespace Structures.Resources
 
             var placement = building.Placement;
 
-            // Check elevation using cell height (normalized to 0-1 range)
-            // Height is already normalized in VoronoiCell generation
-            if (cell.Height < placement.MinElevation || cell.Height > placement.MaxElevation)
+            // Use custom behavior if available, otherwise use default
+            IPlacementBehavior behavior = placement.ConfigurableBehavior
+                ?? new DefaultPlacementBehavior(placement);
+
+            return behavior.IsValidPlacement(cell);
+        }
+
+        // Count-based tracking for buildings with placement limits
+        private readonly Dictionary<string, int> _globalPlacementCounts = new();
+
+        /// <summary>
+        /// Checks if a building with a global limit has already been placed.
+        /// </summary>
+        public bool IsGloballyPlaced(string buildingId) =>
+            _globalPlacementCounts.TryGetValue(buildingId, out int count) && count > 0;
+
+        /// <summary>
+        /// Returns the current placement count for a building type.
+        /// </summary>
+        public int GetGlobalPlacementCount(string buildingId) =>
+            _globalPlacementCounts.TryGetValue(buildingId, out int count) ? count : 0;
+
+        /// <summary>
+        /// Increments the global placement count for a building type.
+        /// </summary>
+        public void MarkGloballyPlaced(string buildingId)
+        {
+            if (string.IsNullOrEmpty(buildingId))
+                return;
+
+            _globalPlacementCounts[buildingId] = GetGlobalPlacementCount(buildingId) + 1;
+        }
+
+        /// <summary>
+        /// Decrements the global placement count for a building type.
+        /// </summary>
+        public void DecrementGlobalPlacement(string buildingId)
+        {
+            if (string.IsNullOrEmpty(buildingId))
+                return;
+
+            int current = GetGlobalPlacementCount(buildingId);
+            if (current > 0)
+                _globalPlacementCounts[buildingId] = current - 1;
+        }
+
+        /// <summary>
+        /// Resets global placement tracking (for new game).
+        /// </summary>
+        public void ResetGlobalPlacements() => _globalPlacementCounts.Clear();
+
+        /// <summary>
+        /// Validates if placement is allowed considering global limits.
+        /// </summary>
+        public bool ValidateGlobalPlacement(string buildingId)
+        {
+            if (!TryGetBuilding(buildingId, out var def) || def == null)
                 return false;
 
-            // Check slope (placeholder - need actual slope calculation)
-            // For now, just check if max slope is reasonable
-            if (placement.MaxSlope < 0.0f || placement.MaxSlope > 90.0f)
+            if (def.BuildingLimit > 0 && GetGlobalPlacementCount(buildingId) >= def.BuildingLimit)
                 return false;
-
-            // Check biomes - skip if AllowAnyBiome is true
-            // Otherwise check if the cell's biome is in the allowed list
-            if (!placement.AllowAnyBiome && placement.Biomes.Count > 0)
-            {
-                // Biome validation would go here when VoronoiCell has Biome property
-                // For now, we can't validate biome since cell doesn't expose it
-                // if (!placement.Biomes.Contains(cell.Biome))
-                //     return false;
-            }
 
             return true;
+        }
+
+        /// <summary>
+        /// Gets the icon for a building at a specific size.
+        /// Always returns a valid texture (uses fallback if needed).
+        /// </summary>
+        public Texture2D GetBuildingIcon(string buildingId, IconSize size = IconSize.Medium)
+        {
+            EnsureLoaded();
+            if (TryGetBuilding(buildingId, out var building) && building != null)
+            {
+                var texture = building.Icon?.GetTexture(size);
+                if (texture != null)
+                    return texture;
+            }
+
+            return IconDataLoader.GetFallbackIcon(size);
+        }
+
+        /// <summary>
+        /// Gets the full IconDefinition for a building.
+        /// </summary>
+        public IconDefinition? GetBuildingIconDefinition(string buildingId)
+        {
+            EnsureLoaded();
+            if (TryGetBuilding(buildingId, out var building) && building != null)
+            {
+                return building.Icon;
+            }
+            return null;
         }
     }
 }
