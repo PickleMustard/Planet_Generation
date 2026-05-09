@@ -7,33 +7,31 @@ namespace UI.BuildingInfo;
 
 /// <summary>
 /// Main panel for displaying building information.
-/// Routes to appropriate detail views based on building category.
+/// Routes to bespoke per-type detail views by building category.
 /// </summary>
 public partial class BuildingInfoPanel : PanelContainer
 {
     [Export] public BuildingInfoHeader? Header;
     [Export] public VBoxContainer? DetailsContainer;
-    [Export] public PackedScene? ExtractionDetailsScene;
-    [Export] public PackedScene? ManufacturingDetailsScene;
-    [Export] public PackedScene? PowerDetailsScene;
-    [Export] public PackedScene? StorageDetailsScene;
+    [Export] public PackedScene? BuildingPanelDetailsScene;
+    [Export] public PackedScene? PowerPanelDetailsScene;
+    [Export] public PackedScene? HubPanelDetailsScene;
+    [Export] public Godot.Collections.Dictionary<string, PackedScene> AdminBuildingScenes = new();
+    [Export] public PackedScene? AdminFallbackDetailsScene;
 
-    private BuildingConstruction? _currentBuilding;
-    private ContinentEconomy? _currentEconomy;
+    private Building? _currentBuilding;
     private BaseBuildingDetails? _currentDetails;
 
     public override void _Ready()
     {
-        // Get node references if not already set via exports
         Header ??= GetNodeOrNull<BuildingInfoHeader>("MarginContainer/MainVBox/BuildingInfoHeader");
         DetailsContainer ??= GetNodeOrNull<VBoxContainer>("MarginContainer/MainVBox/DetailsContainer");
     }
 
     /// <summary>
     /// Sets the building to display in the panel.
-    /// This is the main public API for using this panel.
     /// </summary>
-    public void SetBuilding(BuildingConstruction building, ContinentEconomy economy)
+    public void SetBuilding(Building building)
     {
         if (building?.Definition == null)
         {
@@ -42,20 +40,16 @@ public partial class BuildingInfoPanel : PanelContainer
         }
 
         _currentBuilding = building;
-        _currentEconomy = economy;
 
-        // Get building instance ID from economy
-        int buildingInstanceId = GetBuildingInstanceId(building, economy);
+        int buildingInstanceId = GetBuildingInstanceId(building);
 
-        // Update header
         if (Header != null)
         {
-            Header.SetBuilding(building.Definition, buildingInstanceId);
+            Header.SetBuilding(building, buildingInstanceId);
         }
 
-        // Show appropriate details based on category
         string category = building.Definition.Category?.ToLowerInvariant() ?? "";
-        ShowDetailsForCategory(category);
+        ShowDetailsForCategory(category, building);
 
         GameLogger.Debug($"BuildingInfoPanel: Displaying building '{building.Name}' (category: {category})");
     }
@@ -66,13 +60,7 @@ public partial class BuildingInfoPanel : PanelContainer
     public void Clear()
     {
         _currentBuilding = null;
-        _currentEconomy = null;
-
-        if (Header != null)
-        {
-            Header.Clear();
-        }
-
+        Header?.Clear();
         ClearCurrentDetails();
     }
 
@@ -82,13 +70,8 @@ public partial class BuildingInfoPanel : PanelContainer
     public void ShowNoBuilding()
     {
         ClearCurrentDetails();
+        Header?.Clear();
 
-        if (Header != null)
-        {
-            Header.Clear();
-        }
-
-        // Add a "No Building" label to details container
         var label = new Label
         {
             Text = "No Building",
@@ -101,22 +84,19 @@ public partial class BuildingInfoPanel : PanelContainer
         DetailsContainer?.AddChild(label);
     }
 
-    private void ShowDetailsForCategory(string? category)
+    private void ShowDetailsForCategory(string? category, Building building)
     {
         ClearCurrentDetails();
 
-        if (_currentBuilding == null || _currentEconomy == null)
+        PackedScene? detailsScene = category switch
         {
-            return;
-        }
-
-        PackedScene? detailsScene = category?.ToLowerInvariant() switch
-        {
-            "extraction" => ExtractionDetailsScene,
-            "agriculture" => ExtractionDetailsScene, // Agriculture uses same view as extraction
-            "manufacturing" => ManufacturingDetailsScene,
-            "power" => PowerDetailsScene,
-            "storage" => StorageDetailsScene,
+            "extraction"     => BuildingPanelDetailsScene,
+            "agriculture"    => BuildingPanelDetailsScene,
+            "manufacturing"  => BuildingPanelDetailsScene,
+            "power"          => PowerPanelDetailsScene,
+            "storage"        => HubPanelDetailsScene,
+            "logistics"      => HubPanelDetailsScene,
+            "administration" => ResolveAdminScene(building),
             _ => null
         };
 
@@ -126,12 +106,11 @@ public partial class BuildingInfoPanel : PanelContainer
             return;
         }
 
-        // Instantiate the details view
         _currentDetails = detailsScene.Instantiate<BaseBuildingDetails>();
         if (_currentDetails != null)
         {
-            _currentDetails.SetBuilding(_currentBuilding, _currentEconomy);
             DetailsContainer?.AddChild(_currentDetails);
+            _currentDetails.SetBuilding(building);
         }
     }
 
@@ -144,7 +123,6 @@ public partial class BuildingInfoPanel : PanelContainer
             _currentDetails = null;
         }
 
-        // Clear any remaining children in details container
         if (DetailsContainer != null)
         {
             foreach (var child in DetailsContainer.GetChildren())
@@ -154,42 +132,20 @@ public partial class BuildingInfoPanel : PanelContainer
         }
     }
 
-    private int GetBuildingInstanceId(BuildingConstruction building, ContinentEconomy economy)
+    private int GetBuildingInstanceId(Building building)
     {
-        // Find the registration to get the instance ID
-        var buildings = economy.GetType()
-            .GetField("_activeBuildings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.GetValue(economy) as System.Collections.Generic.List<ContinentEconomy.BuildingRegistration>;
-
-        if (buildings != null)
-        {
-            foreach (var reg in buildings)
-            {
-                if (reg.BuildingNode == building)
-                {
-                    return reg.BuildingInstanceId;
-                }
-            }
-        }
-
-        return -1;
+        // TODO: Implement when building instance registry lands.
+        return 0;
     }
 
-    private void OnUpgradeRequested()
+    private PackedScene? ResolveAdminScene(Building building)
     {
-        if (_currentBuilding != null)
-        {
-            GameLogger.Info($"BuildingInfoPanel: Upgrade requested for '{_currentBuilding.Name}'");
-            // Additional logic can be added here if needed
-        }
-    }
-
-    private void OnDemolishRequested()
-    {
-        if (_currentBuilding != null)
-        {
-            GameLogger.Info($"BuildingInfoPanel: Demolish requested for '{_currentBuilding.Name}'");
-            // Additional logic can be added here if needed
-        }
+        var id = building.Definition?.IdName ?? "";
+        if (!string.IsNullOrEmpty(id) && AdminBuildingScenes.TryGetValue(id, out var scene))
+            return scene;
+        GameLogger.Warning(
+            $"BuildingInfoPanel: no admin scene registered for '{id}', using fallback"
+        );
+        return AdminFallbackDetailsScene;
     }
 }

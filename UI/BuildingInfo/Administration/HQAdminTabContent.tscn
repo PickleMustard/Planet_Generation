@@ -1,0 +1,119 @@
+[gd_scene load_steps=2 format=3 uid="uid://hq_admin_tab_content"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/Administration/HQAdminTabContent.cs" id="1_hqcontent"]
+
+[node name="HQAdminTabContent" type="Control" node_paths=PackedStringArray("BuildingNameValue", "TreasuryValue", "TreasuryDelta", "WorkforceValue", "ReputationValue", "ReputationScore", "ContractsList", "HeadlinesList")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_hqcontent")
+BuildingNameValue = NodePath("RootHBox/LeftCol/BuildingNameValue")
+TreasuryValue = NodePath("RootHBox/LeftCol/TreasuryValue")
+TreasuryDelta = NodePath("RootHBox/LeftCol/TreasuryDelta")
+WorkforceValue = NodePath("RootHBox/LeftCol/WorkforceValue")
+ReputationValue = NodePath("RootHBox/RightCol/ReputationValue")
+ReputationScore = NodePath("RootHBox/RightCol/ReputationScore")
+ContractsList = NodePath("RootHBox/MiddleCol/ContractsList")
+HeadlinesList = NodePath("RootHBox/RightCol/HeadlinesList")
+
+[node name="RootHBox" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="LeftCol" type="VBoxContainer" parent="RootHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="BuildingNameLabel" type="Label" parent="RootHBox/LeftCol"]
+layout_mode = 2
+text = "BUILDING"
+theme_type_variation = &"LabelMono"
+
+[node name="BuildingNameValue" type="Label" parent="RootHBox/LeftCol"]
+layout_mode = 2
+text = "Company Headquarters"
+
+[node name="HSep1" type="HSeparator" parent="RootHBox/LeftCol"]
+layout_mode = 2
+
+[node name="TreasuryLabel" type="Label" parent="RootHBox/LeftCol"]
+layout_mode = 2
+text = "TREASURY"
+theme_type_variation = &"LabelMono"
+
+[node name="TreasuryValue" type="Label" parent="RootHBox/LeftCol"]
+layout_mode = 2
+text = "§ 482,300"
+
+[node name="TreasuryDelta" type="Label" parent="RootHBox/LeftCol"]
+layout_mode = 2
+text = "+12.4k/min · runway 14h 22m"
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.29, 0.478, 0.227, 1)
+
+[node name="HSep2" type="HSeparator" parent="RootHBox/LeftCol"]
+layout_mode = 2
+
+[node name="WorkforceLabel" type="Label" parent="RootHBox/LeftCol"]
+layout_mode = 2
+text = "WORKFORCE"
+theme_type_variation = &"LabelMono"
+
+[node name="WorkforceValue" type="Label" parent="RootHBox/LeftCol"]
+layout_mode = 2
+text = "142 / 180 · morale fair"
+
+[node name="MiddleCol" type="VBoxContainer" parent="RootHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="ContractsHeader" type="Label" parent="RootHBox/MiddleCol"]
+layout_mode = 2
+text = "CONTRACTS · LEDGER"
+theme_type_variation = &"LabelMono"
+
+[node name="ContractsList" type="VBoxContainer" parent="RootHBox/MiddleCol"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="RightCol" type="VBoxContainer" parent="RootHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="ReputationLabel" type="Label" parent="RootHBox/RightCol"]
+layout_mode = 2
+text = "REPUTATION"
+theme_type_variation = &"LabelMono"
+
+[node name="ReputationValue" type="Label" parent="RootHBox/RightCol"]
+layout_mode = 2
+text = "B+"
+
+[node name="ReputationScore" type="Label" parent="RootHBox/RightCol"]
+layout_mode = 2
+text = "6,420 pts · +38 today"
+
+[node name="HSep3" type="HSeparator" parent="RootHBox/RightCol"]
+layout_mode = 2
+
+[node name="HeadlinesLabel" type="Label" parent="RootHBox/RightCol"]
+layout_mode = 2
+text = "HEADLINES"
+theme_type_variation = &"LabelMono"
+
+[node name="HeadlinesList" type="VBoxContainer" parent="RootHBox/RightCol"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4

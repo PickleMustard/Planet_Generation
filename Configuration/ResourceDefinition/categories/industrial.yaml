@@ -1,6 +1,8 @@
 resources:
   - id_name: ceramics
     resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
@@ -11,6 +13,8 @@ resources:
 
   - id_name: condensed_carbon
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 54
       - 69
@@ -21,6 +25,8 @@ resources:
 
   - id_name: steel
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 70
       - 70
@@ -31,6 +37,8 @@ resources:
 
   - id_name: fluid_barrel
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 50
     display_color:
       - 255
       - 255

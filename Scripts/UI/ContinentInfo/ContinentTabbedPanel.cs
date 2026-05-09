@@ -33,7 +33,6 @@ public partial class ContinentTabbedPanel : PanelContainer
     private StyleBox? _inactiveTabStyle;
 
     // Manufacturing grouping state (snapshot used by details panel)
-    private readonly List<List<ContinentEconomy.BuildingRegistration>> _manufacturingGroups = new();
     private readonly HashSet<string> _expandedManufacturingTypes = new();
 
     // Active transfers / schedules snapshots so details can resolve indices stably
@@ -41,8 +40,6 @@ public partial class ContinentTabbedPanel : PanelContainer
     private readonly List<TransferSchedule> _scheduleSnapshot = new();
 
     public int ActiveTabIndex => _activeTabIndex;
-    public IReadOnlyList<IReadOnlyList<ContinentEconomy.BuildingRegistration>> ManufacturingGroups
-        => _manufacturingGroups;
     public IReadOnlyList<BodyTransferManager.ActiveTransfer> ActiveTransferSnapshot
         => _activeTransferSnapshot;
     public IReadOnlyList<TransferSchedule> ScheduleSnapshot => _scheduleSnapshot;
@@ -82,7 +79,6 @@ public partial class ContinentTabbedPanel : PanelContainer
         _body = null;
         _continent = null;
         _continentIndex = -1;
-        _manufacturingGroups.Clear();
         _expandedManufacturingTypes.Clear();
         _activeTransferSnapshot.Clear();
         _scheduleSnapshot.Clear();
@@ -186,277 +182,19 @@ public partial class ContinentTabbedPanel : PanelContainer
     // ───────── Manufacturing Tab ─────────
 
     private void PopulateManufacturing()
-    {
-        if (_continent == null || _contentContainer == null) return;
-
-        _manufacturingGroups.Clear();
-
-        var economy = _continent.Economy;
-        if (economy == null || economy.ActiveBuildingCount == 0)
-        {
-            AddEmptyLabel("No buildings");
-            return;
-        }
-
-        var groups = new Dictionary<string, List<ContinentEconomy.BuildingRegistration>>();
-        foreach (var reg in economy.ActiveBuildings)
-        {
-            if (reg.TheoreticalPowerGeneration > 0f) continue;
-            if (IsBatteryBuilding(reg)) continue;
-
-            string id = reg.BuildingNode.Definition?.IdName ?? "unknown";
-            if (!groups.TryGetValue(id, out var list))
-            {
-                list = new List<ContinentEconomy.BuildingRegistration>();
-                groups[id] = list;
-            }
-            list.Add(reg);
-        }
-
-        if (groups.Count == 0)
-        {
-            AddEmptyLabel("No manufacturing buildings");
-            return;
-        }
-
-        foreach (var kvp in groups)
-        {
-            int groupIndex = _manufacturingGroups.Count;
-            _manufacturingGroups.Add(kvp.Value);
-
-            string idName = kvp.Key;
-            bool expanded = _expandedManufacturingTypes.Contains(idName);
-            string displayName = kvp.Value[0].BuildingNode.Definition?.DisplayName ?? idName;
-
-            var header = CreateClickableRow(groupIndex, "building_type");
-            var toggle = new Button
-            {
-                Text = expanded ? "-" : "+",
-                CustomMinimumSize = new Vector2(20, 0),
-            };
-            toggle.AddThemeFontSizeOverride("font_size", 13);
-            string capturedId = idName;
-            toggle.Pressed += () =>
-            {
-                if (_expandedManufacturingTypes.Contains(capturedId))
-                    _expandedManufacturingTypes.Remove(capturedId);
-                else
-                    _expandedManufacturingTypes.Add(capturedId);
-                RefreshCurrentTab();
-            };
-            header.AddChild(toggle);
-
-            var label = new Label { Text = $"{displayName}  ({kvp.Value.Count})" };
-            label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-            label.AddThemeFontSizeOverride("font_size", 14);
-            header.AddChild(label);
-
-            _contentContainer.AddChild(header);
-
-            if (expanded)
-            {
-                foreach (var reg in kvp.Value)
-                {
-                    var row = CreateClickableRow(reg.BuildingInstanceId, "building");
-                    var indent = new Control { CustomMinimumSize = new Vector2(24, 0) };
-                    row.AddChild(indent);
-
-                    string status = reg.IsPaused ? " [PAUSED]" : "";
-                    var childLabel = new Label
-                    {
-                        Text = $"{displayName} #{reg.BuildingInstanceId}{status}",
-                    };
-                    childLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.75f, 0.8f));
-                    childLabel.AddThemeFontSizeOverride("font_size", 13);
-                    row.AddChild(childLabel);
-
-                    _contentContainer.AddChild(row);
-                }
-            }
-        }
-    }
+    {}
 
     // ───────── Power Tab ─────────
 
     private void PopulatePower()
-    {
-        if (_continent == null || _contentContainer == null) return;
-
-        var economy = _continent.Economy;
-        if (economy == null)
-        {
-            AddEmptyLabel("No economy");
-            return;
-        }
-
-        AddSectionHeader("Summary");
-        AddInfoRow("Generation", $"{economy.PowerGeneration:F1} /s");
-        AddInfoRow("Consumption", $"{economy.PowerConsumption:F1} /s");
-        AddInfoRow("Net", $"{(economy.PowerGeneration - economy.PowerConsumption):F1} /s");
-        AddInfoRow("Stored", $"{economy.PowerStored:F1} / {economy.PowerStorageCapacity:F1}");
-
-        var generators = new List<ContinentEconomy.BuildingRegistration>();
-        var batteries = new List<ContinentEconomy.BuildingRegistration>();
-        foreach (var reg in economy.ActiveBuildings)
-        {
-            if (reg.TheoreticalPowerGeneration > 0f)
-                generators.Add(reg);
-            else if (IsBatteryBuilding(reg))
-                batteries.Add(reg);
-        }
-
-        AddSectionHeader($"Generators ({generators.Count})");
-        if (generators.Count == 0)
-        {
-            AddEmptyLabel("No generators");
-        }
-        else
-        {
-            foreach (var reg in generators)
-            {
-                var row = CreateClickableRow(reg.BuildingInstanceId, "power_generator");
-                string name = reg.BuildingNode.Definition?.DisplayName ?? "Generator";
-                string paused = reg.IsPaused ? " [PAUSED]" : "";
-                var label = new Label
-                {
-                    Text = $"{name} #{reg.BuildingInstanceId}  |  {reg.TheoreticalPowerGeneration:F1}/s{paused}",
-                };
-                label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                label.AddThemeFontSizeOverride("font_size", 13);
-                row.AddChild(label);
-                _contentContainer.AddChild(row);
-            }
-        }
-
-        AddSectionHeader($"Batteries ({batteries.Count})");
-        if (batteries.Count == 0)
-        {
-            AddEmptyLabel("No batteries");
-        }
-        else
-        {
-            foreach (var reg in batteries)
-            {
-                var row = CreateClickableRow(reg.BuildingInstanceId, "battery");
-                string name = reg.BuildingNode.Definition?.DisplayName ?? "Battery";
-                float cap = GetBatteryCapacity(reg);
-                var label = new Label
-                {
-                    Text = $"{name} #{reg.BuildingInstanceId}  |  cap {cap:F1}",
-                };
-                label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                label.AddThemeFontSizeOverride("font_size", 13);
-                row.AddChild(label);
-                _contentContainer.AddChild(row);
-            }
-        }
-    }
+    {}
 
     // ───────── Transfers Tab ─────────
 
     private void PopulateTransfers()
-    {
-        if (_body == null || _contentContainer == null) return;
-
-        var mgr = _body.TransferMgr;
-        var planBtn = new Button { Text = "+ Plan Transfer" };
-        planBtn.AddThemeFontSizeOverride("font_size", 13);
-        planBtn.Pressed += () => EmitSignal(SignalName.TransferPlanRequested);
-        _contentContainer.AddChild(planBtn);
-
-        _contentContainer.AddChild(new HSeparator());
-
-        _activeTransferSnapshot.Clear();
-        _scheduleSnapshot.Clear();
-
-        if (mgr == null)
-        {
-            AddEmptyLabel("Transfer system unavailable");
-            return;
-        }
-
-        foreach (var active in mgr.GetActiveTransfers())
-        {
-            var order = active.Order;
-            bool relevant = order.OriginContinentIndex == _continentIndex
-                || (order.Destination?.ContinentIndex == _continentIndex);
-            if (!relevant) continue;
-            _activeTransferSnapshot.Add(active);
-        }
-
-        _scheduleSnapshot.AddRange(mgr.GetSchedulesForContinent(_continentIndex));
-
-        AddSectionHeader($"Active Transfers ({_activeTransferSnapshot.Count})");
-        if (_activeTransferSnapshot.Count == 0)
-        {
-            AddEmptyLabel("No active transfers");
-        }
-        else
-        {
-            for (int i = 0; i < _activeTransferSnapshot.Count; i++)
-            {
-                var order = _activeTransferSnapshot[i].Order;
-                var row = CreateClickableRow(i, "transfer");
-
-                string dest = order.Destination.IsOrbitalStation
-                    ? $"Station {order.Destination.StationSatelliteId?[..8]}"
-                    : $"Continent {order.Destination.ContinentIndex}";
-                int pct = Mathf.RoundToInt(order.Progress * 100f);
-                var label = new Label
-                {
-                    Text = $"{order.OrderId[..8]}...  |  To: {dest}  |  {order.State}  |  {pct}%",
-                };
-                label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                label.AddThemeFontSizeOverride("font_size", 13);
-                row.AddChild(label);
-                _contentContainer.AddChild(row);
-            }
-        }
-
-        AddSectionHeader($"Schedules ({_scheduleSnapshot.Count})");
-        if (_scheduleSnapshot.Count == 0)
-        {
-            AddEmptyLabel("No schedules");
-        }
-        else
-        {
-            for (int i = 0; i < _scheduleSnapshot.Count; i++)
-            {
-                var schedule = _scheduleSnapshot[i];
-                var row = CreateClickableRow(i, "schedule");
-
-                string dest = schedule.Destination.IsOrbitalStation
-                    ? $"Station {schedule.Destination.StationSatelliteId?[..8]}"
-                    : $"Continent {schedule.Destination.ContinentIndex}";
-                var label = new Label
-                {
-                    Text = $"{schedule.ScheduleId[..8]}...  |  To: {dest}  |  {schedule.State}",
-                };
-                label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                label.AddThemeFontSizeOverride("font_size", 13);
-                row.AddChild(label);
-                _contentContainer.AddChild(row);
-            }
-        }
-    }
+    {}
 
     // ───────── Helpers ─────────
-
-    public static bool IsBatteryBuilding(ContinentEconomy.BuildingRegistration reg)
-    {
-        var dict = reg.BuildingNode.Definition?.StartingStorageCapacity;
-        return dict != null
-            && dict.TryGetValue("power", out float cap)
-            && cap > 0f;
-    }
-
-    public static float GetBatteryCapacity(ContinentEconomy.BuildingRegistration reg)
-    {
-        var dict = reg.BuildingNode.Definition?.StartingStorageCapacity;
-        if (dict != null && dict.TryGetValue("power", out float cap))
-            return cap;
-        return 0f;
-    }
 
     private HBoxContainer CreateClickableRow(int index, string itemType)
     {

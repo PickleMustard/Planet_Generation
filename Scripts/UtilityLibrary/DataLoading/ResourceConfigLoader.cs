@@ -208,6 +208,11 @@ public static class ResourceConfigLoader
                 }
             }
         }
+        catch (InvalidOperationException)
+        {
+            // Validation failures are fail-loud — propagate so callers see the bad config.
+            throw;
+        }
         catch (Exception e)
         {
             GD.PrintErr(
@@ -225,6 +230,14 @@ public static class ResourceConfigLoader
         string resourceType = ReadString(dict, "resource_type", "");
         string idName = ReadString(dict, "id_name", "");
 
+        if (!dict.ContainsKey("state_of_matter"))
+        {
+            throw new InvalidOperationException(
+                $"Resource '{idName}' is missing required field 'state_of_matter'. "
+                + "Every resource must declare 'solid' or 'fluid'."
+            );
+        }
+
         var definition = new ResourceDefinition
         {
             IdName = idName,
@@ -233,6 +246,8 @@ public static class ResourceConfigLoader
             DisplayColor = ReadColor(dict, "display_color", Colors.White),
             Tags = ReadTags(dict, "tags"),
             TransportWeight = ReadFloat(dict, "transport_weight", 1.0f),
+            MaxStackSize = ReadFloat(dict, "max_stack_size", 100f),
+            StateOfMatter = StateOfMatterExtensions.Parse(ReadString(dict, "state_of_matter", "")),
             Icon = ParseIconDefinition(dict, $"resource:{idName}"),
         };
 

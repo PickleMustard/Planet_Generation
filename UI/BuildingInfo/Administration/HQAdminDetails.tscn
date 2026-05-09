@@ -1,0 +1,9 @@
+[gd_scene load_steps=4 format=3 uid="uid://hq_admin_details"]
+
+[ext_resource type="PackedScene" uid="uid://administration_tabbed_panel" path="res://UI/BuildingInfo/Administration/AdministrationTabbedPanel.tscn" id="1_base"]
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/Administration/HQAdminDetails.cs" id="2_hq_script"]
+[ext_resource type="PackedScene" uid="uid://hq_admin_tab_content" path="res://UI/BuildingInfo/Administration/HQAdminTabContent.tscn" id="3_hq_content"]
+
+[node name="HQAdminDetails" instance=ExtResource("1_base")]
+script = ExtResource("2_hq_script")
+AdminTabScene = ExtResource("3_hq_content")

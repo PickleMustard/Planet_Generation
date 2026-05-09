@@ -1,6 +1,8 @@
 resources:
   - id_name: concrete
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 200
     display_color:
       - 255
       - 255
@@ -11,6 +13,8 @@ resources:
 
   - id_name: rebar
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 200
     display_color:
       - 255
       - 255
@@ -21,6 +25,8 @@ resources:
 
   - id_name: high_tensile_wire
     resource_tier: 3
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255

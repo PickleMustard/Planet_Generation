@@ -1,4 +1,7 @@
 using Godot;
+using PlayerInteraction.CellSelection;
+using ProceduralGeneration.PlanetGeneration;
+using UI.PlanetBoard;
 using UtilityLibrary;
 
 namespace UI;
@@ -37,6 +40,10 @@ public partial class MainGameUI : Control
 
     public override void _ExitTree()
     {
+        var bus = SignalBus.Instance;
+        if (bus != null)
+            bus.OpenPlanetBoardRequested -= OnOpenPlanetBoardRequested;
+
         if (Instance == this)
         {
             Instance = null;
@@ -59,6 +66,44 @@ public partial class MainGameUI : Control
         {
             GameLogger.Debug($"ToastSystem found and linked: {ToastSystem.Name}");
         }
+
+        var bus = SignalBus.Instance;
+        if (bus != null)
+            bus.OpenPlanetBoardRequested += OnOpenPlanetBoardRequested;
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.B)
+        {
+            var body = CellSelectionManager.Instance?.SelectedBody as CelestialBody;
+            if (body == null)
+            {
+                ShowWarningToast("PlanetBoard: select a planet first.");
+                return;
+            }
+            SignalBus.Instance?.EmitOpenPlanetBoardRequested(body, "ResourceLink");
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private PlanetBoardWindow? _planetBoardWindow;
+
+    private void OnOpenPlanetBoardRequested(CelestialBody body, string mode)
+    {
+        if (_planetBoardWindow == null)
+        {
+            var packed = GD.Load<PackedScene>("res://UI/PlanetBoard/PlanetBoard.tscn");
+            if (packed == null)
+            {
+                GameLogger.Error("MainGameUI: failed to load PlanetBoard.tscn");
+                return;
+            }
+            _planetBoardWindow = packed.Instantiate<PlanetBoardWindow>();
+            AddChild(_planetBoardWindow);
+            _planetBoardWindow.Closed += () => _planetBoardWindow!.Visible = false;
+        }
+        _planetBoardWindow.OpenForBody(body, mode);
     }
 
     /// <summary>

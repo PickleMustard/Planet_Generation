@@ -1,3 +1,4 @@
+using Constructables;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
@@ -24,6 +25,7 @@ public partial class VoronoiCellInfoWindow : Control
     [Export] private CellGeneralInfoPanel? _cellGeneralInfoPanel;
     [Export] private CellResourcePanel? _cellResourcePanel;
     [Export] private BuildingInfoPanel? _buildingInfoPanel;
+    [Export] private Button? _openBuildingDetailsButton;
 
     [Export] private Label? _noBuildingLabel; // Shown when cell has no building
 
@@ -38,6 +40,9 @@ public partial class VoronoiCellInfoWindow : Control
 
     [Signal]
     public delegate void ContinentViewRequestedEventHandler();
+
+    [Signal]
+    public delegate void BuildingDetailsRequestedEventHandler(Building building);
 
     public override void _EnterTree()
     {
@@ -61,6 +66,9 @@ public partial class VoronoiCellInfoWindow : Control
 
         if (_continentViewButton != null)
             _continentViewButton.Pressed += OnContinentViewPressed;
+
+        if (_openBuildingDetailsButton != null)
+            _openBuildingDetailsButton.Pressed += OnOpenBuildingDetailsPressed;
 
         // Block input backdrop
         if (_blockInput != null)
@@ -148,15 +156,17 @@ public partial class VoronoiCellInfoWindow : Control
     {
         var building = _currentCell?.Building;
 
-        if (building != null && _currentContinent?.Economy != null)
+        if (building != null)
         {
             _noBuildingLabel?.Hide();
-            _buildingInfoPanel?.SetBuilding(building, _currentContinent.Economy);
+            _buildingInfoPanel?.SetBuilding(building);
+            if (_openBuildingDetailsButton != null) _openBuildingDetailsButton.Visible = true;
         }
         else
         {
             _noBuildingLabel?.Show();
             _buildingInfoPanel?.Clear();
+            if (_openBuildingDetailsButton != null) _openBuildingDetailsButton.Visible = false;
         }
     }
 
@@ -168,6 +178,13 @@ public partial class VoronoiCellInfoWindow : Control
     private void OnContinentViewPressed()
     {
         EmitSignal(SignalName.ContinentViewRequested);
+    }
+
+    private void OnOpenBuildingDetailsPressed()
+    {
+        var building = _currentCell?.Building;
+        if (building == null) return;
+        EmitSignal(SignalName.BuildingDetailsRequested, building);
     }
 
     private void OnBackdropInput(InputEvent @event)

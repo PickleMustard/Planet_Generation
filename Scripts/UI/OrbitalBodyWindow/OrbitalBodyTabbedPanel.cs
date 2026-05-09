@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using Constructables;
 using Godot;
 using Structures.GameState;
+using Structures.Transfers;
 
 namespace UI;
 
@@ -17,6 +19,16 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
     private int _activeTabIndex = -1;
     private Button[]? _tabButtons;
 
+    // Flat index → Building map populated by PopulateBuildings; consumed by row click.
+    private readonly List<Building> _buildingIndexMap = new();
+
+    public Building? GetBuildingByIndex(int index)
+    {
+        if (index < 0 || index >= _buildingIndexMap.Count)
+            return null;
+        return _buildingIndexMap[index];
+    }
+
     public int ActiveTabIndex => _activeTabIndex;
     private VBoxContainer? _contentContainer;
 
@@ -31,10 +43,10 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
         _tabButtons = new Button[5];
         _tabButtons[0] = tabBar.GetNode<Button>("OverviewBtn");
-        _tabButtons[1] = tabBar.GetNode<Button>("ContinentsBtn");
-        _tabButtons[2] = tabBar.GetNode<Button>("StationsBtn");
-        _tabButtons[3] = tabBar.GetNode<Button>("EconomiesBtn");
-        _tabButtons[4] = tabBar.GetNode<Button>("TransfersBtn");
+        _tabButtons[1] = tabBar.GetNode<Button>("StationsBtn");
+        _tabButtons[2] = tabBar.GetNode<Button>("EconomiesBtn");
+        _tabButtons[3] = tabBar.GetNode<Button>("TransfersBtn");
+        _tabButtons[4] = tabBar.GetNode<Button>("BuildingsBtn");
 
         // Cache styles from the first two buttons
         _activeTabStyle = _tabButtons[0].GetThemeStylebox("normal");
@@ -74,11 +86,21 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
         switch (tabIndex)
         {
-            case 0: PopulateOverview(); break;
-            case 1: PopulateContinents(); break;
-            case 2: PopulateStations(); break;
-            case 3: PopulateEconomies(); break;
-            case 4: PopulateTransfers(); break;
+            case 0:
+                PopulateOverview();
+                break;
+            case 1:
+                PopulateBuildings();
+                break;
+            case 2:
+                PopulateStations();
+                break;
+            case 3:
+                PopulateEconomies();
+                break;
+            case 4:
+                PopulateTransfers();
+                break;
         }
 
         // Overview tab has no clickable rows — surface body-level details in
@@ -97,14 +119,18 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
         for (int i = 0; i < _tabButtons.Length; i++)
         {
-            _tabButtons[i].AddThemeStyleboxOverride("normal",
-                i == _activeTabIndex ? _activeTabStyle : _inactiveTabStyle);
+            _tabButtons[i]
+                .AddThemeStyleboxOverride(
+                    "normal",
+                    i == _activeTabIndex ? _activeTabStyle : _inactiveTabStyle
+                );
         }
     }
 
     private void ClearContent()
     {
-        if (_contentContainer == null) return;
+        if (_contentContainer == null)
+            return;
         foreach (var child in _contentContainer.GetChildren())
             child.QueueFree();
     }
@@ -113,7 +139,8 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
     private void PopulateOverview()
     {
-        if (_body == null || _contentContainer == null) return;
+        if (_body == null || _contentContainer == null)
+            return;
 
         AddSectionHeader("Physical Properties");
         AddInfoRow("Name", _body.BodyName);
@@ -160,8 +187,6 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
             foreach (var continent in _body.Mesh.Continents.Values)
             {
                 totalCells += continent.cells.Count;
-                if (continent.Economy != null)
-                    continentsWithEconomy++;
             }
             AddInfoRow("Continents", continentCount.ToString());
             AddInfoRow("Surface Cells", totalCells.ToString());
@@ -176,18 +201,6 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
             float totalPowerCon = 0;
             int totalBuildings = 0;
             int deficitContinents = 0;
-
-            foreach (var continent in _body.Mesh.Continents.Values)
-            {
-                if (continent.Economy != null)
-                {
-                    totalPowerGen += continent.Economy.PowerGeneration;
-                    totalPowerCon += continent.Economy.PowerConsumption;
-                    totalBuildings += continent.Economy.ActiveBuildingCount;
-                    if (continent.Economy.IsPowerDeficit)
-                        deficitContinents++;
-                }
-            }
 
             AddInfoRow("Total Buildings", totalBuildings.ToString());
             AddInfoRow("Power Gen", $"{totalPowerGen:F1}");
@@ -205,59 +218,12 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
         }
     }
 
-    // ───────── Continents Tab ─────────
-
-    private void PopulateContinents()
-    {
-        if (_body == null || _contentContainer == null) return;
-
-        if (_body.Mesh?.Continents == null || _body.Mesh.Continents.Count == 0)
-        {
-            AddEmptyLabel("No continents on this body");
-            return;
-        }
-
-        foreach (var kvp in _body.Mesh.Continents)
-        {
-            int index = kvp.Key;
-            var continent = kvp.Value;
-
-            var row = CreateClickableRow(index, "continent");
-
-            string elevation = continent.elevation.ToString();
-            int cellCount = continent.cells.Count;
-            int buildings = 0;
-            foreach (var cell in continent.cells)
-            {
-                if (cell.Building != null) buildings++;
-            }
-
-            var label = new Label
-            {
-                Text = $"Continent {index}  |  {elevation}  |  {cellCount} cells  |  {buildings} buildings",
-            };
-            label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-            label.AddThemeFontSizeOverride("font_size", 13);
-            row.AddChild(label);
-
-            bool hasEconomy = continent.Economy != null;
-            if (hasEconomy && continent.Economy!.IsPowerDeficit)
-            {
-                var warning = new Label { Text = " [POWER DEFICIT]" };
-                warning.AddThemeColorOverride("font_color", new Color(1f, 0.4f, 0.3f));
-                warning.AddThemeFontSizeOverride("font_size", 12);
-                row.AddChild(warning);
-            }
-
-            _contentContainer.AddChild(row);
-        }
-    }
-
     // ───────── Stations Tab ─────────
 
     private void PopulateStations()
     {
-        if (_body == null || _contentContainer == null) return;
+        if (_body == null || _contentContainer == null)
+            return;
 
         int stationIndex = 0;
         bool found = false;
@@ -271,10 +237,13 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
                     found = true;
                     var row = CreateClickableRow(stationIndex, "station");
 
-                    string status = station.IsUnderConstruction ? "Building..." : (station.IsActive ? "Active" : "Inactive");
+                    string status = station.IsUnderConstruction
+                        ? "Building..."
+                        : (station.IsActive ? "Active" : "Inactive");
                     var label = new Label
                     {
-                        Text = $"{station.Name}  |  {station.StationType}  |  Band {station.BandIndex}  |  {status}",
+                        Text =
+                            $"{station.Name}  |  {station.StationType}  |  Band {station.BandIndex}  |  {status}",
                     };
                     label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
                     label.AddThemeFontSizeOverride("font_size", 13);
@@ -309,10 +278,7 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
                     string state = unit.State.ToString();
                     string typeName = unit.ShipDef?.Name ?? "Ship";
-                    var label = new Label
-                    {
-                        Text = $"{unit.Name}  |  {typeName}  |  {state}",
-                    };
+                    var label = new Label { Text = $"{unit.Name}  |  {typeName}  |  {state}" };
                     label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
                     label.AddThemeFontSizeOverride("font_size", 13);
                     row.AddChild(label);
@@ -328,7 +294,8 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
     private void PopulateEconomies()
     {
-        if (_body == null || _contentContainer == null) return;
+        if (_body == null || _contentContainer == null)
+            return;
 
         // Body-level economy summary
         AddSectionHeader("Body Economy Summary");
@@ -341,8 +308,6 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
             int totalBuildings = economyMgr.GetTotalBuildingCount();
             int deficitCount = economyMgr.GetPowerDeficitCount();
 
-            AddInfoRow("Continent Economies", economyMgr.ActiveEconomyCount.ToString());
-            AddInfoRow("Station Economies", economyMgr.ActiveStationEconomyCount.ToString());
             AddInfoRow("Total Buildings", totalBuildings.ToString());
             AddInfoRow("Power Generation", $"{totalGen:F1}/s");
             AddInfoRow("Power Consumption", $"{totalUse:F1}/s");
@@ -350,7 +315,10 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
             if (deficitCount > 0)
             {
-                var deficitLabel = new Label { Text = $" [!] {deficitCount} continent(s) in power deficit" };
+                var deficitLabel = new Label
+                {
+                    Text = $" [!] {deficitCount} continent(s) in power deficit",
+                };
                 deficitLabel.AddThemeColorOverride("font_color", new Color(1f, 0.4f, 0.3f));
                 deficitLabel.AddThemeFontSizeOverride("font_size", 13);
                 _contentContainer.AddChild(deficitLabel);
@@ -377,28 +345,6 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
                 string status = "";
                 Color textColor = new Color(0.85f, 0.85f, 0.9f);
 
-                if (continent.Economy != null)
-                {
-                    int buildings = continent.Economy.ActiveBuildingCount;
-                    float netPower = continent.Economy.PowerGeneration - continent.Economy.PowerConsumption;
-                    string powerStr = netPower >= 0 ? $"+{netPower:F1}" : $"{netPower:F1}";
-
-                    status = $" | {buildings} buildings | {powerStr}/s";
-
-                    if (continent.Economy.IsPowerDeficit)
-                    {
-                        var warning = new Label { Text = " [POWER DEFICIT]" };
-                        warning.AddThemeColorOverride("font_color", new Color(1f, 0.4f, 0.3f));
-                        warning.AddThemeFontSizeOverride("font_size", 12);
-                        row.AddChild(warning);
-                    }
-                }
-                else
-                {
-                    status = " | No economy";
-                    textColor = new Color(0.5f, 0.5f, 0.5f);
-                }
-
                 var label = new Label { Text = name + status };
                 label.AddThemeColorOverride("font_color", textColor);
                 label.AddThemeFontSizeOverride("font_size", 13);
@@ -412,11 +358,6 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
         if (_body.SatellitesContainer != null)
         {
             int stationCount = 0;
-            foreach (var child in _body.SatellitesContainer.GetChildren())
-            {
-                if (child is StationSatellite station && station.Economy != null)
-                    stationCount++;
-            }
 
             if (stationCount > 0)
             {
@@ -425,29 +366,9 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
                 int stationIndex = 0;
                 foreach (var child in _body.SatellitesContainer.GetChildren())
                 {
-                    if (child is StationSatellite station && station.Economy != null)
+                    if (child is StationSatellite station)
                     {
                         var row = CreateClickableRow(stationIndex, "station_economy");
-
-                        var eco = station.Economy;
-                        float netPower = eco.PowerGeneration - eco.PowerConsumption;
-                        string powerStr = netPower >= 0 ? $"+{netPower:F1}" : $"{netPower:F1}";
-
-                        var label = new Label
-                        {
-                            Text = $"{station.Name}  |  {eco.ActiveBuildingCount} buildings  |  {powerStr}/s",
-                        };
-                        label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                        label.AddThemeFontSizeOverride("font_size", 13);
-                        row.AddChild(label);
-
-                        if (eco.IsPowerDeficit)
-                        {
-                            var warning = new Label { Text = " [DEFICIT]" };
-                            warning.AddThemeColorOverride("font_color", new Color(1f, 0.4f, 0.3f));
-                            warning.AddThemeFontSizeOverride("font_size", 12);
-                            row.AddChild(warning);
-                        }
 
                         _contentContainer.AddChild(row);
                         stationIndex++;
@@ -461,7 +382,8 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
     private void PopulateTransfers()
     {
-        if (_body == null || _contentContainer == null) return;
+        if (_body == null || _contentContainer == null)
+            return;
 
         var transferMgr = _body.TransferMgr;
         if (transferMgr == null)
@@ -477,13 +399,16 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
         if (activeCount == 0)
             AddEmptyLabel("No active transfers");
 
-        // Schedules per continent
+        // Schedules grouped by continent (rollup over hubs on that continent).
         if (_body.Mesh?.Continents != null)
         {
             bool hasSchedules = false;
             foreach (var kvp in _body.Mesh.Continents)
             {
-                var schedules = transferMgr.GetSchedulesForContinent(kvp.Key);
+                var hubIds = transferMgr.GetEndpointsOnContinent(kvp.Key);
+                var schedules = new List<TransferSchedule>();
+                foreach (var id in hubIds)
+                    schedules.AddRange(transferMgr.GetSchedulesForOrigin(id));
                 if (schedules.Count > 0)
                 {
                     hasSchedules = true;
@@ -495,8 +420,10 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
                         var row = CreateClickableRow(i, "schedule");
 
                         string dest = schedule.Destination.IsOrbitalStation
-                            ? $"Station {schedule.Destination.StationSatelliteId?[..8]}"
-                            : $"Continent {schedule.Destination.ContinentIndex}";
+                            ? $"Station {schedule.Destination.StationSatelliteId?[..System.Math.Min(8, schedule.Destination.StationSatelliteId.Length)]}"
+                            : !string.IsNullOrEmpty(schedule.Destination.BuildingId)
+                                ? $"Hub {schedule.Destination.BuildingId[..System.Math.Min(8, schedule.Destination.BuildingId.Length)]}"
+                                : "Unknown";
                         string state = schedule.State.ToString();
 
                         var label = new Label
@@ -526,12 +453,80 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
         switch (_activeTabIndex)
         {
-            case 0: PopulateOverview(); break;
-            case 1: PopulateContinents(); break;
-            case 2: PopulateStations(); break;
-            case 3: PopulateEconomies(); break;
-            case 4: PopulateTransfers(); break;
+            case 0:
+                PopulateOverview();
+                break;
+            case 1:
+                PopulateBuildings();
+                break;
+            case 2:
+                PopulateStations();
+                break;
+            case 3:
+                PopulateEconomies();
+                break;
+            case 4:
+                PopulateTransfers();
+                break;
         }
+    }
+
+    // ───────── Buildings Tab ─────────
+
+    private void PopulateBuildings()
+    {
+        if (_body == null || _contentContainer == null)
+            return;
+
+        _buildingIndexMap.Clear();
+
+        // Continent buildings
+        if (_body.Mesh?.Continents != null)
+        {
+            foreach (var kvp in _body.Mesh.Continents)
+            {
+                var continent = kvp.Value;
+
+                AddSectionHeader($"Continent {kvp.Key}");
+            }
+        }
+
+        // Station buildings
+        if (_body.SatellitesContainer != null) { }
+
+        if (_buildingIndexMap.Count == 0)
+            AddEmptyLabel("No active buildings on this body");
+    }
+
+    private void AppendBuildingRow(Building building, string recipeId)
+    {
+        if (_contentContainer == null)
+            return;
+
+        _buildingIndexMap.Add(building);
+
+        var row = new HBoxContainer();
+        row.MouseFilter = MouseFilterEnum.Stop;
+        row.AddThemeConstantOverride("separation", 4);
+        row.GuiInput += (InputEvent @event) =>
+        {
+            if (
+                @event is InputEventMouseButton btn
+                && btn.ButtonIndex == MouseButton.Left
+                && btn.Pressed
+            )
+            {
+                OrbitalBodyWindow.Instance?.RequestBuildingInspect(building);
+                row.GetViewport().SetInputAsHandled();
+            }
+        };
+
+        var label = new Label { Text = $"{building.Name}  |  {recipeId}" };
+        label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
+        label.AddThemeFontSizeOverride("font_size", 13);
+        row.AddChild(label);
+
+        _contentContainer.AddChild(row);
     }
 
     // ───────── Helpers ─────────
@@ -545,7 +540,11 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
         // Make the row clickable
         row.GuiInput += (InputEvent @event) =>
         {
-            if (@event is InputEventMouseButton btn && btn.ButtonIndex == MouseButton.Left && btn.Pressed)
+            if (
+                @event is InputEventMouseButton btn
+                && btn.ButtonIndex == MouseButton.Left
+                && btn.Pressed
+            )
             {
                 EmitSignal(SignalName.ItemSelected, itemType, index);
                 row.GetViewport().SetInputAsHandled();
@@ -557,7 +556,8 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
     private void AddSectionHeader(string text)
     {
-        if (_contentContainer == null) return;
+        if (_contentContainer == null)
+            return;
 
         var header = new Label { Text = text };
         header.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 0.95f));
@@ -570,7 +570,8 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
     private void AddInfoRow(string labelText, string value)
     {
-        if (_contentContainer == null) return;
+        if (_contentContainer == null)
+            return;
 
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 12);
@@ -590,7 +591,8 @@ public partial class OrbitalBodyTabbedPanel : PanelContainer
 
     private void AddEmptyLabel(string text)
     {
-        if (_contentContainer == null) return;
+        if (_contentContainer == null)
+            return;
 
         var label = new Label { Text = text };
         label.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f));

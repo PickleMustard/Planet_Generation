@@ -1,208 +1,202 @@
 using System.Collections.Generic;
+using Constructables;
 using Godot;
 using Structures.Enums;
+using Structures.GameState;
+using Structures.Logistics;
 using Structures.Transfers;
 
 namespace Structures.Resources;
 
 /// <summary>
 /// Defines a building type with construction requirements, placement constraints, and production capabilities.
-/// Follows data-driven design pattern similar to ResourceDefinition.
+/// Loaded from YAML at runtime; instances are kept in BuildingDatabase.
 /// </summary>
-public class BuildingDefinition
+public partial class BuildingDefinition : Resource
 {
-    /// <summary>
-    /// Unique identifier name for the building.
-    /// </summary>
     public string? IdName { get; set; }
-
-    /// <summary>
-    /// Display name shown to players in UI.
-    /// </summary>
     public string? DisplayName { get; set; }
-
-    /// <summary>
-    /// Description shown in building tooltips and UI.
-    /// </summary>
     public string? Description { get; set; }
-
-    /// <summary>
-    /// Building category (Agriculture, Extraction, Power, etc.)
-    /// </summary>
     public string? Category { get; set; }
 
-    /// <summary>
-    /// Time required to construct the building in seconds.
-    /// </summary>
     public float BuildingTime { get; set; } = 60.0f;
-
-    /// <summary>
-    /// Total work units required for construction.
-    /// </summary>
     public float WorkRequired { get; set; } = 100.0f;
-
-    /// <summary>
-    /// Maximum number of this building allowed. -1 for no limit.
-    /// </summary>
     public int BuildingLimit { get; set; } = -1;
 
-    /// <summary>
-    /// Placement requirements and constraints.
-    /// </summary>
     public PlacementRequirements Placement { get; set; } = new();
-
-    /// <summary>
-    /// Resources required for construction.
-    /// </summary>
     public Dictionary<string, int> RequiredResources { get; set; } = new();
-
-    /// <summary>
-    /// Production capabilities of the building.
-    /// </summary>
     public ProductionDefinition Production { get; set; } = new();
-
-    /// <summary>
-    /// Visual representation settings.
-    /// </summary>
+    public PowerDefinition Power { get; set; } = new();
+    public ExtractionDefinition Extraction { get; set; } = new();
     public VisualDefinition Visual { get; set; } = new();
-
-    /// <summary>
-    /// Separate Icon property for 2D icons (distinct from 3D Visual).
-    /// </summary>
     public IconDefinition Icon { get; set; } = new();
-
-    /// <summary>
-    /// Sound effect settings.
-    /// </summary>
     public SoundDefinition Sound { get; set; } = new();
-
-    /// <summary>
-    /// Transfer station capabilities. Null for non-logistics buildings.
-    /// </summary>
     public TransferStationDefinition? TransferStation { get; set; }
-
-    /// <summary>
-    /// If set, building can only use recipes in this category.
-    /// Null or empty means no restriction.
-    /// </summary>
     public string? AllowedRecipeCategory { get; set; }
-
-    /// <summary>
-    /// Resource stockpiles to initialize when building is placed (for starter buildings).
-    /// </summary>
     public Dictionary<string, int> StartingStockpiles { get; set; } = new();
 
     /// <summary>
-    /// Storage capacity bonuses to add per category.
+    /// Total number of bulk-storage slots this building exposes via
+    /// <see cref="Constructables.Buildings.Behaviors.StorageHubBehavior"/>.
     /// </summary>
-    public Dictionary<string, float> StartingStorageCapacity { get; set; } = new();
+    public int StorageCapacity { get; set; } = 0;
 
     /// <summary>
-    /// Defines placement requirements for a building.
+    /// Filter mix for the bulk-storage slots. The sum of <see cref="SlotFilterSpec.Count"/>
+    /// values must be ≤ <see cref="StorageCapacity"/>; any remaining slots default to
+    /// <see cref="SlotFilter.Any"/>.
     /// </summary>
-    public class PlacementRequirements
+    public List<SlotFilterSpec> SlotFilters { get; set; } = new();
+
+    public Godot.Collections.Array<NodeSpec> NodeLayout { get; set; } = new();
+    public Godot.Collections.Array<string> BehaviorRefs { get; set; } = new();
+
+    /// <summary>
+    /// Whether this building can be demolished after construction completes. Defaults to
+    /// true; set to false in YAML (<c>demolishable: false</c>) for buildings whose
+    /// removal would invalidate game state (e.g. the company headquarters, story
+    /// objectives).
+    /// </summary>
+    public bool Demolishable { get; set; } = true;
+
+    /// <summary>
+    /// Optional default link profile ID for this building's transfer nodes.
+    /// When null or empty, nodes will use the global default or per-node override.
+    /// </summary>
+    public string? DefaultLinkProfile { get; set; }
+
+    public int Footprint => Placement.CellCount;
+
+    /// <summary>
+    /// Creates a runtime Building instance configured from this definition.
+    /// Caller is responsible for placing it on a cell and attaching a visual proxy.
+    /// </summary>
+    public Building Instantiate()
     {
-        /// <summary>
-        /// Allowed biome types for placement.
-        /// Use empty list with AllowAnyBiome=true for any biome.
-        /// </summary>
-        public List<Biome.BiomeType> Biomes { get; set; } = new();
+        var building = new Building();
+        building.Id = System.Guid.NewGuid().ToString();
+        building.ApplyDefinition(this);
+        if (!string.IsNullOrEmpty(Production.DefaultRecipe))
+            building.ActiveRecipeId = Production.DefaultRecipe;
+        foreach (var spec in NodeLayout)
+            building.Nodes.Add(spec.Build(building));
+        foreach (var refName in BehaviorRefs)
+        {
+            var behavior = Constructables.Buildings.BehaviorFactory.Create(refName);
+            if (behavior == null)
+                continue;
+            ApplyPowerToBehavior(behavior);
+            building.Behaviors.Add(behavior);
+            behavior.OnAttach(building);
+        }
+        return building;
+    }
 
-        /// <summary>
-        /// When true, building can be placed in any biome.
-        /// Set to true when biomes list contains "*" wildcard.
-        /// </summary>
+    /// <summary>
+    /// Pushes power-related fields from this definition onto power behaviors right
+    /// after instantiation, before OnAttach runs. Keeps YAML the single source of
+    /// truth instead of embedding values in the behavior types.
+    /// </summary>
+    private void ApplyPowerToBehavior(Constructables.Buildings.IBuildingBehavior behavior)
+    {
+        switch (behavior)
+        {
+            case Constructables.Buildings.Behaviors.PowerProducerBehavior producer:
+                producer.Output = Power.Output;
+                producer.Radius = Power.GridRadius;
+                producer.IsRenewable = Power.IsRenewable;
+                break;
+            case Constructables.Buildings.Behaviors.BatteryBehavior battery:
+                battery.Capacity = Power.BatteryCapacity;
+                battery.Radius = Power.GridRadius;
+                break;
+            case Constructables.Buildings.Behaviors.PowerConsumerBehavior consumer:
+                consumer.BaseDraw = Power.BaseDraw;
+                break;
+            case Constructables.Buildings.Behaviors.ExtractionBehavior extraction:
+                extraction.ExtractTypes = Extraction.ExtractTypes;
+                extraction.RatePerTick = Extraction.RatePerTick;
+                extraction.WorkPerCycle = Extraction.WorkPerCycle;
+                break;
+            case Constructables.Buildings.Behaviors.StorageHubBehavior hub:
+                hub.StorageCapacity = StorageCapacity;
+                hub.SlotFilters = SlotFilters;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Validates whether the given cell satisfies this definition's placement constraints.
+    /// Uses the configured custom behavior if present, otherwise falls back to DefaultPlacementBehavior.
+    /// </summary>
+    public bool ValidatePlacement(VoronoiCell? cell)
+    {
+        if (cell == null)
+            return false;
+
+        IPlacementBehavior behavior =
+            Placement.ConfigurableBehavior ?? new DefaultPlacementBehavior(Placement);
+        return behavior.IsValidPlacement(cell);
+    }
+
+    public partial class PlacementRequirements : Resource
+    {
+        public Godot.Collections.Array<Biome.BiomeType> Biomes { get; set; } = new();
         public bool AllowAnyBiome { get; set; } = false;
-
-        /// <summary>
-        /// Minimum elevation (0-1) for placement.
-        /// </summary>
         public float MinElevation { get; set; } = 0.0f;
-
-        /// <summary>
-        /// Maximum elevation (0-1) for placement.
-        /// </summary>
         public float MaxElevation { get; set; } = 1.0f;
-
-        /// <summary>
-        /// Maximum slope angle in degrees for placement.
-        /// </summary>
         public float MaxSlope { get; set; } = 45.0f;
-
-        /// <summary>
-        /// Number of Voronoi cells required for building footprint.
-        /// </summary>
         public int CellCount { get; set; } = 1;
-
-        /// <summary>
-        /// Whether building requires adjacent cells to be available.
-        /// </summary>
         public bool RequiresAdjacent { get; set; } = false;
-
-        /// <summary>
-        /// Custom placement behavior instance for advanced validation logic.
-        /// Null to use the default behavior (biome/elevation/slope checks).
-        /// This is instantiated during configuration loading.
-        /// </summary>
         public IPlacementBehavior? ConfigurableBehavior { get; set; }
     }
 
-    /// <summary>
-    /// Defines production capabilities of a building.
-    /// </summary>
     public class ProductionDefinition
     {
-        /// <summary>
-        /// Default recipe ID used by this building.
-        /// </summary>
         public string? DefaultRecipe { get; set; }
-
-        /// <summary>
-        /// Alternative recipe IDs available for this building.
-        /// </summary>
         public List<string> AlternativeRecipes { get; set; } = new();
-
-        /// <summary>
-        /// Maximum input storage capacity.
-        /// </summary>
-        public int InputStorageAmount { get; set; } = 0;
-
-        /// <summary>
-        /// Maximum output storage capacity.
-        /// </summary>
-        public int OutputStorageAmount { get; set; } = 0;
-
-        /// <summary>
-        /// Production speed multiplier.
-        /// </summary>
         public float ProductionSpeed { get; set; } = 1.0f;
     }
 
-    // Note: VisualDefinition is now defined in Structures.Resources namespace (shared class)
+    /// <summary>
+    /// Power-grid parameters. Producers and batteries set <see cref="GridRadius"/> +
+    /// <see cref="Output"/> / <see cref="BatteryCapacity"/> to seed and extend a grid.
+    /// Consumers set <see cref="BaseDraw"/>. Buildings without a power role leave this
+    /// at its defaults and receive no PowerProducer/Consumer/Battery behavior.
+    /// </summary>
+    public class PowerDefinition
+    {
+        public int GridRadius { get; set; } = 0;
+        public float Output { get; set; } = 0f;
+        public float BaseDraw { get; set; } = 0f;
+        public float BatteryCapacity { get; set; } = 0f;
+
+        /// <summary>
+        /// Renewable producers generate continuously regardless of manufacturing state.
+        /// Defaults to false — fueled plants gate generation on active manufacturing.
+        /// </summary>
+        public bool IsRenewable { get; set; } = false;
+    }
 
     /// <summary>
-    /// Defines sound effects for a building.
+    /// Per-cycle extraction parameters. Buildings with an <c>ExtractionBehavior</c> sample up
+    /// to <see cref="ExtractTypes"/> resources from their occupied cells' resource mix and emit
+    /// <see cref="RatePerTick"/> units of each as the synthetic recipe's outputs every
+    /// <see cref="WorkPerCycle"/> seconds of work. Early-tier extractors set ExtractTypes=1
+    /// for narrow output; late-tier set higher values for parallel extraction.
     /// </summary>
+    public class ExtractionDefinition
+    {
+        public int ExtractTypes { get; set; } = 1;
+        public float RatePerTick { get; set; } = 1f;
+        public float WorkPerCycle { get; set; } = 1f;
+    }
+
     public class SoundDefinition
     {
-        /// <summary>
-        /// Sound played during construction.
-        /// </summary>
         public string? Building { get; set; }
-
-        /// <summary>
-        /// Sound played when construction finishes.
-        /// </summary>
         public string? Finished { get; set; }
-
-        /// <summary>
-        /// Sound played while building is idle.
-        /// </summary>
         public string? Idle { get; set; }
-
-        /// <summary>
-        /// Sound played while building is fabricating.
-        /// </summary>
         public string? Fabricating { get; set; }
     }
 }

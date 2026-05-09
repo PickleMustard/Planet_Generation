@@ -47,6 +47,20 @@ public class VisualDefinition
     /// <summary>Target display size category for this icon.</summary>
     public IconSize IconSize { get; set; } = IconSize.Medium;
 
+    // ========== 2D Board Shape Properties ==========
+
+    /// <summary>
+    /// Polygon shape used to render this entity on the 2D PlanetBoard.
+    /// One of: hexagon, square, rectangle, pentagon, triangle. Default: hexagon.
+    /// </summary>
+    public string Shape { get; set; } = "hexagon";
+
+    /// <summary>Board-space radius (circumscribed) of the shape in pixels.</summary>
+    public float ShapeSize { get; set; } = 64f;
+
+    /// <summary>Fill color of the shape on the board.</summary>
+    public Color ShapeColor { get; set; } = new Color(0.30f, 0.45f, 0.60f, 1f);
+
     // ========== Helper Properties ==========
 
     /// <summary>

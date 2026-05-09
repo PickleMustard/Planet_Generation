@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using UI.Debug.Console;
 using UI.Debug.Economy;
+using UI.Debug.ManufactureTick;
 using CellInfoModule = UI.Debug.CellInfo.CellInfo;
 using DatabaseViewerModule = UI.Debug.DatabaseViewer.DatabaseViewer;
 
@@ -93,6 +94,9 @@ public partial class DebugMenu : CanvasLayer
         var economyScene = GD.Load<PackedScene>("res://UI/Debug/Economy/EconomyDebugModule.tscn");
         var economyModule = economyScene.Instantiate<EconomyDebugModule>();
         RegisterModule(economyModule);
+
+        var manufactureTickModule = new ManufactureTickModule();
+        RegisterModule(manufactureTickModule);
 #endif
     }
 

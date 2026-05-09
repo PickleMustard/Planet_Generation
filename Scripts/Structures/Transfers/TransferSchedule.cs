@@ -16,9 +16,9 @@ public class TransferSchedule
     public string ScheduleId { get; set; } = Guid.NewGuid().ToString();
 
     /// <summary>
-    /// Index of the origin continent.
+    /// Building id of the origin transfer-station building.
     /// </summary>
-    public int OriginContinentIndex { get; set; }
+    public string OriginBuildingId { get; set; } = "";
 
     /// <summary>
     /// The destination for transfers created by this schedule.
@@ -52,4 +52,21 @@ public class TransferSchedule
     /// Null when no transfer is active.
     /// </summary>
     public string? ActiveTransferOrderId { get; set; }
+
+    /// <summary>
+    /// Player-defined priority. Lower values dispatch first when capacity is constrained.
+    /// </summary>
+    public int Priority { get; set; }
+
+    /// <summary>
+    /// If set, the schedule dispatches every <c>WaitSeconds</c> regardless of stockpile,
+    /// using <see cref="ResourceProportions"/> to size the load. Null means use the
+    /// fill-threshold condition instead.
+    /// </summary>
+    public float? WaitSeconds { get; set; }
+
+    /// <summary>
+    /// Game-time of the last successful dispatch. Used to gate <see cref="WaitSeconds"/>.
+    /// </summary>
+    public double LastDispatchTime { get; set; } = double.NegativeInfinity;
 }

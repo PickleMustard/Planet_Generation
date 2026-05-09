@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using Structures.Enums;
 
 namespace Structures.Resources;
 
@@ -42,6 +43,17 @@ public class ResourceDefinition
     /// Higher values mean each unit takes more cargo space.
     /// </summary>
     public float TransportWeight { get; set; } = 1.0f;
+
+    /// <summary>
+    /// Maximum amount of this resource that can occupy a single storage slot.
+    /// </summary>
+    public float MaxStackSize { get; set; } = 100f;
+
+    /// <summary>
+    /// Physical state. Storage slots enforce matter compatibility — fluids cannot
+    /// occupy solid-filtered slots and vice versa.
+    /// </summary>
+    public StateOfMatter StateOfMatter { get; set; }
 
     /// <summary>
     /// Gets whether this resource can generate naturally on celestial bodies.

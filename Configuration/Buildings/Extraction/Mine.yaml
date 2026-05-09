@@ -7,7 +7,7 @@ buildings:
     work_required: 120.0
 
     placement_requirements:
-      biomes: [category:mountain, category:rocky, volcanic]
+      biomes: [category:mountain, category:rocky, VolcanicPlain]
       min_elevation: 0.6
       max_elevation: 1.0
       max_slope: 30.0
@@ -24,9 +24,26 @@ buildings:
     production:
       default_recipe: "tunnel_boring"
       alternative_recipes: ["ore_processing", "smelting"]
-      input_storage_amount: 250
-      output_storage_amount: 250
       production_speed: 3
+
+    extraction:
+      extract_types: 2
+      rate_per_tick: 8
+      work_per_cycle: 5
+
+    power:
+      base_draw: 80
+
+    behaviors:
+      - ManufacturingBehavior
+      - ExtractionBehavior
+      - PowerConsumerBehavior
+
+    nodes:
+      - side: north
+        kind: export
+      - side: south
+        kind: export
 
     visual:
       model_path: "res://Models/Buildings/mountain_extractor.glb"
@@ -60,9 +77,24 @@ buildings:
     production:
       default_recipe: "excavation"
       alternative_recipes: ["crushing", "sorting"]
-      input_storage_amount: 300
-      output_storage_amount: 300
       production_speed: 4
+
+    extraction:
+      extract_types: 1
+      rate_per_tick: 12
+      work_per_cycle: 4
+
+    power:
+      base_draw: 60
+
+    behaviors:
+      - ManufacturingBehavior
+      - ExtractionBehavior
+      - PowerConsumerBehavior
+
+    nodes:
+      - side: east
+        kind: export
 
     visual:
       model_path: "res://Models/Buildings/surface_quarry.glb"

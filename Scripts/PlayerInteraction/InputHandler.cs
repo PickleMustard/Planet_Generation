@@ -43,18 +43,18 @@ public partial class InputHandler : Node
 
 #if DEBUG
         // Temporary: log which Control is consuming left-clicks
-         if (
-             @event is InputEventMouseButton debugMouse
-             && debugMouse.ButtonIndex == MouseButton.Left
-             && debugMouse.Pressed
-         )
-         {
-             var hovered = GetViewport().GuiGetHoveredControl();
-             var focus = GetViewport().GuiGetFocusOwner();
-             GD.Print(
-                 $"[InputDebug] Left-click in _Input. Hovered control: {hovered?.Name ?? "null"} ({hovered?.GetClass() ?? ""}), path: {hovered?.GetPath() ?? "N/A"}, MouseFilter: {(hovered as Control)?.MouseFilter}, Focus owner: {focus?.Name ?? "null"}"
-             );
-         }
+        if (
+            @event is InputEventMouseButton debugMouse
+            && debugMouse.ButtonIndex == MouseButton.Left
+            && debugMouse.Pressed
+        )
+        {
+            var hovered = GetViewport().GuiGetHoveredControl();
+            var focus = GetViewport().GuiGetFocusOwner();
+            GD.Print(
+                $"[InputDebug] Left-click in _Input. Hovered control: {hovered?.Name ?? "null"} ({hovered?.GetClass() ?? ""}), path: {hovered?.GetPath() ?? "N/A"}, MouseFilter: {(hovered as Control)?.MouseFilter}, Focus owner: {focus?.Name ?? "null"}"
+            );
+        }
 #endif
 
         if (@event is InputEventMouseButton mouseEvent)

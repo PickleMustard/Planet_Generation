@@ -119,12 +119,12 @@ theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_active")
 text = "Overview"
 
-[node name="ContinentsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar" unique_id=159784646]
+[node name="BuildingsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar" unique_id=884329276]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_tab_inactive")
-text = "Continents"
+text = "Buildings"
 
 [node name="StationsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar" unique_id=1112148320]
 layout_mode = 2

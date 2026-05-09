@@ -900,6 +900,33 @@ public static class YamlValidator
                             );
                         }
                     }
+                    if (visualMap.Children.ContainsKey("shape"))
+                    {
+                        if (visualMap.Children["shape"] is not YamlScalarNode)
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'visual.shape' must be a string"
+                            );
+                        }
+                    }
+                    if (visualMap.Children.ContainsKey("shape_size"))
+                    {
+                        if (!IsNumericNode(visualMap.Children["shape_size"]))
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'visual.shape_size' must be numeric"
+                            );
+                        }
+                    }
+                    if (visualMap.Children.ContainsKey("shape_color"))
+                    {
+                        if (visualMap.Children["shape_color"] is not YamlSequenceNode)
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: 'visual.shape_color' must be a sequence"
+                            );
+                        }
+                    }
                 }
                 else
                 {

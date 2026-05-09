@@ -1,6 +1,8 @@
 resources:
   - id_name: iron
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 112
       - 128
@@ -10,6 +12,8 @@ resources:
 
   - id_name: copper
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 140
@@ -19,6 +23,8 @@ resources:
 
   - id_name: gold
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 223
@@ -29,6 +35,8 @@ resources:
 
   - id_name: nickel
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 192
@@ -39,6 +47,8 @@ resources:
 
   - id_name: clay
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 127
       - 52
@@ -49,6 +59,8 @@ resources:
 
   - id_name: silicon
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
@@ -58,6 +70,8 @@ resources:
 
   - id_name: plastic
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 215
@@ -68,6 +82,8 @@ resources:
 
   - id_name: titanium
     resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 0
@@ -78,6 +94,8 @@ resources:
 
   - id_name: tungsten
     resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
@@ -88,6 +106,8 @@ resources:
 
   - id_name: aluminum
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
@@ -98,6 +118,8 @@ resources:
 
   - id_name: silver
     resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
@@ -108,6 +130,8 @@ resources:
 
   - id_name: wood
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
@@ -118,6 +142,8 @@ resources:
 
   - id_name: lead
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255

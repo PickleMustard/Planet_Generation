@@ -1,3 +1,4 @@
+using Constructables;
 using Godot;
 using UtilityLibrary;
 
@@ -12,9 +13,10 @@ public partial class GeneralInformationState : LimboState
     private OrbitalBodyWindow? _window;
 
     [Export]
-    public OrbitalBodyWindow? window {
-      get => _window;
-      set => _window = value;
+    public OrbitalBodyWindow? window
+    {
+        get => _window;
+        set => _window = value;
     }
 
     public override void _Enter()
@@ -66,6 +68,7 @@ public partial class GeneralInformationState : LimboState
         _window.WindowCloseRequested += OnWindowCloseRequested;
         _window.StationInspectRequested += OnStationInspectRequested;
         _window.LogisticsUnitInspectRequested += OnLogisticsUnitInspectRequested;
+        _window.BuildingInspectRequested += OnBuildingInspectRequested;
 
         GameLogger.ExitFunction(nameof(_Enter));
     }
@@ -80,6 +83,7 @@ public partial class GeneralInformationState : LimboState
             _window.WindowCloseRequested -= OnWindowCloseRequested;
             _window.StationInspectRequested -= OnStationInspectRequested;
             _window.LogisticsUnitInspectRequested -= OnLogisticsUnitInspectRequested;
+            _window.BuildingInspectRequested -= OnBuildingInspectRequested;
             _window.HideWindow();
         }
 
@@ -137,5 +141,14 @@ public partial class GeneralInformationState : LimboState
         }
 
         GameLogger.Warning($"GeneralInformationState: LogisticsUnit index {unitIndex} not found");
+    }
+
+    private void OnBuildingInspectRequested(Building building)
+    {
+        if (building == null) return;
+
+        Blackboard?.Top()?.SetVar("SelectedBuilding", building);
+        Blackboard?.Top()?.SetVar("BuildingReturnTo", "body");
+        Dispatch("building_details_opened");
     }
 }

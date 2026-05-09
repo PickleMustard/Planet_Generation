@@ -24,9 +24,19 @@ buildings:
     production:
       default_recipe: "tritium_fusion"
       alternative_recipes: ["hydrogen_fusion"]
-      input_storage_amount: 500
-      output_storage_amount: 500
       production_speed: 5
+
+    power:
+      grid_radius: 8
+      output: 1500
+
+    behaviors:
+      - ManufacturingBehavior
+      - PowerProducerBehavior
+
+    nodes:
+      - side: north
+        kind: import
 
     visual:
       model_path: "res://Models/Buildings/power_plant.glb"
@@ -62,9 +72,19 @@ buildings:
     production:
       default_recipe: "pressurized_water_reactor"
       alternative_recipes: ["molten_salt", "lmfbr"]
-      input_storage_amount: 500
-      output_storage_amount: 500
       production_speed: 5
+
+    power:
+      grid_radius: 8
+      output: 1200
+
+    behaviors:
+      - ManufacturingBehavior
+      - PowerProducerBehavior
+
+    nodes:
+      - side: north
+        kind: import
 
     visual:
       model_path: "res://Models/Buildings/power_plant.glb"
@@ -100,9 +120,19 @@ buildings:
     production:
       default_recipe: "antimatter_reaction"
       alternative_recipes: []
-      input_storage_amount: 500
-      output_storage_amount: 500
       production_speed: 5
+
+    power:
+      grid_radius: 10
+      output: 3000
+
+    behaviors:
+      - ManufacturingBehavior
+      - PowerProducerBehavior
+
+    nodes:
+      - side: north
+        kind: import
 
     visual:
       model_path: "res://Models/Buildings/power_plant.glb"

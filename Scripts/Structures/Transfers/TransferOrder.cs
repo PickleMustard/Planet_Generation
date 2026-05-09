@@ -16,9 +16,9 @@ public class TransferOrder
     public string OrderId { get; set; } = Guid.NewGuid().ToString();
 
     /// <summary>
-    /// Index of the origin continent.
+    /// Building id of the origin transfer-station building.
     /// </summary>
-    public int OriginContinentIndex { get; set; }
+    public string OriginBuildingId { get; set; } = "";
 
     /// <summary>
     /// The destination for this transfer.

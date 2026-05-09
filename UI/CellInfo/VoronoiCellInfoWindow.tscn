@@ -16,7 +16,7 @@ bg_color = Color(0.15, 0.15, 0.18, 1)
 [sub_resource type="CompressedTexture2D" id="CompressedTexture2D_mpewa"]
 load_path = "res://.godot/imported/xmark.svg-b28a3e46769c95399ae018f453096621.ctex"
 
-[node name="VoronoiCellInfoWindow" type="Control" unique_id=405348774 node_paths=PackedStringArray("_blockInput", "_panelContainer", "_closeButton", "_continentViewButton", "_cellViewPanel", "_cellGeneralInfoPanel", "_cellResourcePanel", "_buildingInfoPanel", "_noBuildingLabel")]
+[node name="VoronoiCellInfoWindow" type="Control" unique_id=405348774 node_paths=PackedStringArray("_blockInput", "_panelContainer", "_closeButton", "_continentViewButton", "_cellViewPanel", "_cellGeneralInfoPanel", "_cellResourcePanel", "_buildingInfoPanel", "_openBuildingDetailsButton", "_noBuildingLabel")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,6 +32,7 @@ _cellViewPanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/LeftC
 _cellGeneralInfoPanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/LeftColumn/CellGeneralInfoContainer/CellGeneralInfoPanel")
 _cellResourcePanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/CellResourceContainer/CellResourcePanel")
 _buildingInfoPanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer/BuildingInfoPanel")
+_openBuildingDetailsButton = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer/OpenBuildingDetailsButton")
 _noBuildingLabel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer/NoBuildingLabel")
 
 [node name="BlockInput" type="ColorRect" parent="." unique_id=1988298309]
@@ -157,3 +158,9 @@ layout_mode = 2
 text = "No Building"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="OpenBuildingDetailsButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 8
+text = "Open Building Details"

@@ -24,9 +24,16 @@ buildings:
     production:
       default_recipe: "wind_analysis"
       alternative_recipes: ["turbine_maintenance", "grid_synchronization"]
-      input_storage_amount: 50
-      output_storage_amount: 100
       production_speed: 2
+
+    power:
+      grid_radius: 3
+      output: 75
+      is_renewable: true
+
+    behaviors:
+      - ManufacturingBehavior
+      - PowerProducerBehavior
 
     visual:
       model_path: "res://Models/Buildings/wind_turbine.glb"
@@ -61,9 +68,16 @@ buildings:
     production:
       default_recipe: "geothermal_drilling"
       alternative_recipes: ["heat_exchange", "steam_management"]
-      input_storage_amount: 200
-      output_storage_amount: 300
       production_speed: 3
+
+    power:
+      grid_radius: 6
+      output: 600
+      is_renewable: true
+
+    behaviors:
+      - ManufacturingBehavior
+      - PowerProducerBehavior
 
     visual:
       model_path: "res://Models/Buildings/geothermal_plant.glb"

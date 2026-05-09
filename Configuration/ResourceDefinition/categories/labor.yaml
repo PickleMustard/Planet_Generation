@@ -1,24 +1,36 @@
 resources:
   - id_name: child
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 50
     tags: [human, unskilled, fragile]
 
   - id_name: adult
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 50
     tags: [human, unskilled]
 
   - id_name: scientist
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 25
     tags: [human, skilled, research]
 
   - id_name: robot
     resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 25
     tags: [robot, unskilled]
 
   - id_name: drone
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 50
     tags: [robot, unskilled, fragile]
 
   - id_name: android
     resource_tier: 3
+    state_of_matter: solid
+    max_stack_size: 25
     tags: [robot, skilled]

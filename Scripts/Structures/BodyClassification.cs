@@ -12,7 +12,7 @@ namespace Structures;
 public abstract record BodyClassification
 {
     public abstract string TypeName { get; }
-    public abstract string OrbitalType {get;}
+    public abstract string OrbitalType { get; }
     public abstract bool IsDominant { get; }
     public abstract bool UsesBandPlacement { get; }
 

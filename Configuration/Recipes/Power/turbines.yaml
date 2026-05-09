@@ -1,0 +1,29 @@
+recipes:
+  - recipe_id: "steam_turbine"
+    display_name: "Steam-driven Turbine"
+    description: Water is heated into steam and pressurized, then pumped through a turbine to generate power.
+    category: power
+    work_required: 2.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/turbine"
+
+    input_resources:
+      - water: 1
+      - category:flammable: 1
+
+    output_resources:
+      - power: 50
+
+  - recipe_id: "co2_turbine"
+    display_name: "Supercritical CO2 Turbine"
+    description: Supercritical CO2 is used to drive a turbine, generating power at a much higher efficiency than steam turbines.
+    category: power
+    work_required: 5.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/turbine"
+
+    input_resources:
+      - category:flammable: 3
+
+    output_resources:
+      - power: 150

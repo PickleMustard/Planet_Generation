@@ -24,8 +24,6 @@ buildings:
     production:
       default_recipe: "deep_core_drilling"
       alternative_recipes: ["underwater_extraction", "mineral_processing"]
-      input_storage_amount: 200
-      output_storage_amount: 200
       production_speed: 3
 
     visual:

@@ -63,6 +63,9 @@ namespace UtilityLibrary.DataLoading
                 float overallProgress = CalculateOverallProgress();
                 _overallProgressBar.Value = overallProgress * 100;
 
+                // Update each individual progress item to reflect waiting state
+                UpdateIndividualProgressItems();
+
                 // Update status label
                 if (_statusLabel != null)
                 {
@@ -77,6 +80,42 @@ namespace UtilityLibrary.DataLoading
                 {
                     OnAllDatabasesLoaded();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Updates each database progress item to show whether the database is
+        /// actively loading or waiting for its dependencies to finish.
+        /// </summary>
+        private void UpdateIndividualProgressItems()
+        {
+            if (_loadManager == null)
+                return;
+
+            foreach (var dbName in _loadManager.GetRegisteredDatabaseNames())
+            {
+                float progress = _loadManager.GetDatabaseProgress(dbName);
+                bool loaded = _loadManager.GetDatabaseLoaded(dbName);
+
+                string status;
+                if (loaded)
+                {
+                    status = "Complete";
+                }
+                else if (progress > 0f)
+                {
+                    status = $"Loading... {Math.Round(progress * 100)}%";
+                }
+                else if (_loadManager.IsDatabaseWaitingForDependencies(dbName))
+                {
+                    status = "Waiting for dependencies...";
+                }
+                else
+                {
+                    status = "Pending...";
+                }
+
+                UpdateProgressItem(dbName, progress, status);
             }
         }
 

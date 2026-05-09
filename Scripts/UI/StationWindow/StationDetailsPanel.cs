@@ -62,24 +62,8 @@ public partial class StationDetailsPanel : PanelContainer
 
     private void ShowResourceDetails(int resourceIndex)
     {
-        if (_station?.Economy == null || _titleLabel == null || _contentContainer == null)
+        if (_titleLabel == null || _contentContainer == null)
             return;
-
-        var stockpiles = _station.Economy.GetAllStockpiles();
-        int idx = 0;
-        foreach (var kvp in stockpiles)
-        {
-            if (idx == resourceIndex)
-            {
-                _titleLabel.Text = kvp.Key;
-                AddDetailRow("Stockpile", $"{kvp.Value:F1}");
-                AddDetailRow("Production", $"{_station.Economy.GetProductionRate(kvp.Key):F2}/s");
-                AddDetailRow("Consumption", $"{_station.Economy.GetConsumptionRate(kvp.Key):F2}/s");
-                AddDetailRow("Net Rate", $"{_station.Economy.GetNetRate(kvp.Key):F2}/s");
-                return;
-            }
-            idx++;
-        }
     }
 
     // ───────── Building Details ─────────

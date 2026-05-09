@@ -1,0 +1,258 @@
+[gd_scene load_steps=3 format=3 uid="uid://building_panel_details"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/BuildingPanelDetails.cs" id="1_buildingpanel"]
+[ext_resource type="PackedScene" uid="uid://recipe_display" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
+
+[node name="BuildingPanelDetails" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_buildingpanel")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="TopStrip" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.55
+theme_override_constants/separation = 12
+
+[node name="RenderTile" type="PanelContainer" parent="Layout/TopStrip"]
+custom_minimum_size = Vector2(220, 220)
+layout_mode = 2
+theme_type_variation = &"PaperPanel"
+
+[node name="RenderIcon" type="TextureRect" parent="Layout/TopStrip/RenderTile"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RightVBox" type="VBoxContainer" parent="Layout/TopStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Layout/TopStrip/RightVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StateTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.4
+theme_type_variation = &"PaperPanel"
+
+[node name="Row" type="HBoxContainer" parent="Layout/TopStrip/RightVBox/Header/StateTile"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
+layout_mode = 2
+text = "WORK · STATE"
+theme_type_variation = &"LabelMono"
+
+[node name="WorkLabel" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
+layout_mode = 2
+text = "0%"
+
+[node name="StateDot" type="ColorRect" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
+custom_minimum_size = Vector2(10, 10)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0.353, 0.314, 0.282, 1)
+
+[node name="StateLabel" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Idle"
+
+[node name="CycleTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/CycleTile"]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/CycleTile/VBox"]
+layout_mode = 2
+text = "CYCLE"
+theme_type_variation = &"LabelMono"
+
+[node name="CycleValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/CycleTile/VBox"]
+layout_mode = 2
+text = "—"
+
+[node name="EfficiencyTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/EfficiencyTile"]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/EfficiencyTile/VBox"]
+layout_mode = 2
+text = "EFFICIENCY"
+theme_type_variation = &"LabelMono"
+
+[node name="EfficiencyValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/EfficiencyTile/VBox"]
+layout_mode = 2
+text = "—"
+
+[node name="PowerTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/PowerTile"]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/PowerTile/VBox"]
+layout_mode = 2
+text = "POWER"
+theme_type_variation = &"LabelMono"
+
+[node name="PowerValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/PowerTile/VBox"]
+layout_mode = 2
+text = "—"
+
+[node name="AssemblyLine" type="HBoxContainer" parent="Layout/TopStrip/RightVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="InputLabel" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine"]
+layout_mode = 2
+text = "In"
+theme_type_variation = &"LabelMono"
+
+[node name="InputSlotsGrid" type="GridContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine"]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="FeedArrow" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine"]
+layout_mode = 2
+size_flags_vertical = 4
+text = "▶"
+
+[node name="ProgressBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+
+[node name="WorkProgressBar" type="ProgressBar" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+
+[node name="WorkLabels" type="HBoxContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox"]
+layout_mode = 2
+
+[node name="WorkNum" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox/WorkLabels"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "work · 0"
+
+[node name="WorkDenom" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox/WorkLabels"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "req · 0"
+horizontal_alignment = 2
+
+[node name="OutArrow" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine"]
+layout_mode = 2
+size_flags_vertical = 4
+text = "▶"
+
+[node name="OutputLabel" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine"]
+layout_mode = 2
+text = "Out"
+theme_type_variation = &"LabelMono"
+
+[node name="OutputSlotsGrid" type="GridContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine"]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="Bottom" type="HSplitContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.45
+
+[node name="RecipePane" type="VBoxContainer" parent="Layout/Bottom"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="RecipeHeader" type="Label" parent="Layout/Bottom/RecipePane"]
+layout_mode = 2
+text = "RECIPE"
+theme_type_variation = &"LabelMono"
+
+[node name="RecipeDisplay" parent="Layout/Bottom/RecipePane" instance=ExtResource("2_recipe")]
+layout_mode = 2
+
+[node name="Bus" type="HBoxContainer" parent="Layout/Bottom/RecipePane"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="InputsScroll" type="ScrollContainer" parent="Layout/Bottom/RecipePane/Bus"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+
+[node name="InputsList" type="VBoxContainer" parent="Layout/Bottom/RecipePane/Bus/InputsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="BusLine" type="ColorRect" parent="Layout/Bottom/RecipePane/Bus"]
+custom_minimum_size = Vector2(4, 0)
+layout_mode = 2
+color = Color(0.165, 0.145, 0.125, 1)
+
+[node name="OutputsScroll" type="ScrollContainer" parent="Layout/Bottom/RecipePane/Bus"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+
+[node name="OutputsList" type="VBoxContainer" parent="Layout/Bottom/RecipePane/Bus/OutputsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="NodesPane" type="VBoxContainer" parent="Layout/Bottom"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="NodesHeader" type="Label" parent="Layout/Bottom/NodesPane"]
+layout_mode = 2
+text = "RESOURCE NODES & LINKS"
+theme_type_variation = &"LabelMono"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Bottom/NodesPane"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NodesList" type="VBoxContainer" parent="Layout/Bottom/NodesPane/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6

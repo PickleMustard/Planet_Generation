@@ -102,20 +102,25 @@ dotnet build
 
 ## Running Tests
 
+For full details on the GDUnit4 command line tool, see the [official documentation](https://godot-gdunit-labs.github.io/gdUnit4/latest/advanced_testing/cmd/).
+
 ### Using Command Line
 
 ```bash
 # Set Godot binary path
-export GODOT_BIN=/path/to/godot
+export GODOT_BIN=/usr/bin/godot-limbo
 
-# Run all tests
+# Run all tests via dotnet CLI (pure C# tests only without GODOT_BIN)
 dotnet test
 
-# Run a specific test
+# Run a specific test by exact name
 dotnet test --filter "Name=DepositCreation"
 
-# Run with GDUnit4 CLI (requires Godot binary)
+# Run with GDUnit4 CLI runner (recommended for CI)
 ./addons/gdUnit4/runtest.sh --godot_binary "$GODOT_BIN" -a "res://Tests" -c -rd "./test-reports"
+
+# Run tests using GdUnitRunner.cfg (contains references to specific test suites)
+./addons/gdUnit4/runtest.sh --godot_binary "$GODOT_BIN" -conf GdUnitRunner.cfg -c -rd "./test-reports"
 ```
 
 ### Using Godot Editor

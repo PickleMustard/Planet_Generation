@@ -6,6 +6,7 @@ buildings:
     building_limit: 1
     building_time: 0
     work_required: 0
+    demolishable: false
 
     # Only headquarters-specific recipes allowed
     allowed_recipe_category: headquarters
@@ -24,27 +25,49 @@ buildings:
       default_recipe: "hq_all_in_one_operation"
       alternative_recipes:
         ["hq_power_focus", "hq_extraction_focus", "hq_fabrication_focus"]
-      input_storage_amount: 500
-      output_storage_amount: 500
       production_speed: 1.0
 
     # Starting resources - data driven
     starting_stockpiles:
-      power: 250
       concrete: 100
       iron: 50
       copper: 30
       water: 200
       grain: 50
 
-    # Storage capacity bonuses
-    starting_storage_capacity:
-      ore: 500
-      raw_material: 500
-      fuel: 500
-      food: 500
-      construction: 500
-      industrial: 500
+    # Bulk storage: total slot count, allocated across the filter mix below.
+    # Any leftover slots default to "any". Slot capacity = the occupant's max_stack_size.
+    storage_capacity: 30
+    slot_filters:
+      any: 12
+      category:ore: 3
+      category:raw_material: 3
+      category:fuel: 3
+      category:food: 3
+      category:construction: 3
+      category:industrial: 3
+
+    # Composed behaviors (per-tick capabilities)
+    # Order matters: StorageHubBehavior must register before InitialStockpileBehavior
+    # so BulkStorage slots exist when the stockpile is deposited.
+    behaviors:
+      - StorageHubBehavior
+      - TransferStationBehavior
+      - TransportHubBehavior
+      - InitialStockpileBehavior
+      - ManufacturingBehavior
+      - GameStartBehavior
+
+    # HQ uses Flex nodes so the player can wire it as either source or sink.
+    nodes:
+      - side: north
+        kind: flex
+      - side: south
+        kind: flex
+      - side: east
+        kind: flex
+      - side: west
+        kind: flex
 
     # Headquarters doubles as a starter transfer station
     transfer_station:

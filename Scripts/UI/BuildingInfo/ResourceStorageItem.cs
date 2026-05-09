@@ -7,7 +7,7 @@ namespace UI.BuildingInfo;
 
 /// <summary>
 /// Displays a single resource in storage with icon, name, amount, and mini donut chart.
-/// Used in the StorageDetails scrollable resource list.
+/// Used in scrollable resource lists inside the building info panels.
 /// </summary>
 public partial class ResourceStorageItem : HBoxContainer
 {

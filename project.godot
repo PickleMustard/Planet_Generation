@@ -50,6 +50,7 @@ import/blender/enabled=false
 settings/test/test_lookup_folder="Tests"
 settings/test/test_discovery=true
 ui/toolbar/run_overall=true
+report/godot/push_error=true
 
 [gui]
 

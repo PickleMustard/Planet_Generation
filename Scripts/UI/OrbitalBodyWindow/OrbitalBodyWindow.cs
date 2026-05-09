@@ -65,6 +65,9 @@ public partial class OrbitalBodyWindow : Control
     [Signal]
     public delegate void ContinentInspectRequestedEventHandler(int continentIndex);
 
+    [Signal]
+    public delegate void BuildingInspectRequestedEventHandler(Building building);
+
     public override void _Ready()
     {
         Instance = this;
@@ -334,6 +337,15 @@ public partial class OrbitalBodyWindow : Control
     public void RequestContinentInspect(int continentIndex)
     {
         EmitSignal(SignalName.ContinentInspectRequested, continentIndex);
+    }
+
+    /// <summary>
+    /// Called by OrbitalBodyTabbedPanel when the user clicks a building row in the
+    /// Buildings tab. Emits BuildingInspectRequested so the HSM transitions to BuildingHSM.
+    /// </summary>
+    public void RequestBuildingInspect(Building building)
+    {
+        EmitSignal(SignalName.BuildingInspectRequested, building);
     }
 
     // ───────── Callbacks ─────────

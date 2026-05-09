@@ -31,7 +31,7 @@ public partial class IdleState : LimboState
         // Hide info windows
         CellInfo.VoronoiCellInfoWindow.Instance?.Hide();
         ContinentInfo.ContinentInfoWindow.Instance?.Hide();
-        TransferPlanning.TransferPlanningWindow.Instance?.Hide();
+        TransferPlanning.DispatchSlipsWindow.Instance?.Hide();
         OrbitalBodyWindow.Instance?.HideWindow();
 
         GameLogger.Debug("IdleState: All GUI windows hidden");

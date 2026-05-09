@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using Godot;
 using Structures.Enums;
+using Structures.Logistics;
 using Structures.Resources;
 using Structures.Transfers;
 using UtilityLibrary;
@@ -99,13 +100,21 @@ public static class BuildingConfigLoader
             Placement = ParsePlacementRequirements(dict),
             RequiredResources = ParseRequiredResources(dict),
             Production = ParseProductionDefinition(dict),
+            Power = ParsePowerDefinition(dict),
+            Extraction = ParseExtractionDefinition(dict),
             Visual = ParseVisualDefinition(dict),
             Icon = ParseIconDefinition(dict, $"building:{idName}"),
             Sound = ParseSoundDefinition(dict),
             TransferStation = ParseTransferStationDefinition(dict),
             StartingStockpiles = ParseStartingStockpiles(dict),
-            StartingStorageCapacity = ParseStartingStorageCapacity(dict),
+            StorageCapacity = ParseStorageCapacity(dict),
+            SlotFilters = ParseSlotFilters(dict),
+            Demolishable = ReadBool(dict, "demolishable", true),
+            DefaultLinkProfile = ReadString(dict, "link_profile", ""),
         };
+
+        ParseNodeLayout(dict, definition);
+        ParseBehaviorRefs(dict, definition);
 
         // Apply fallback if icon failed to load
         if (!definition.Icon.IsValid)
@@ -147,6 +156,58 @@ public static class BuildingConfigLoader
         return icon;
     }
 
+    private static void ParseNodeLayout(Dictionary<object, object> dict, BuildingDefinition definition)
+    {
+        if (!dict.ContainsKey("nodes"))
+            return;
+
+        if (dict["nodes"] is not List<object> nodesList)
+            return;
+
+        foreach (var entry in nodesList)
+        {
+            if (entry is not Dictionary<object, object> nodeDict)
+                continue;
+
+            var spec = new NodeSpec
+            {
+                Side = ParseBuildingSide(ReadString(nodeDict, "side", "top")),
+                Position = ReadVector3(nodeDict, "position", Vector3.Zero),
+                Kind = ParseResourceNodeKind(ReadString(nodeDict, "kind", "flex")),
+            };
+            definition.NodeLayout.Add(spec);
+        }
+    }
+
+    private static void ParseBehaviorRefs(Dictionary<object, object> dict, BuildingDefinition definition)
+    {
+        if (!dict.ContainsKey("behaviors"))
+            return;
+
+        if (dict["behaviors"] is not List<object> behaviorList)
+            return;
+
+        foreach (var entry in behaviorList)
+        {
+            if (entry is string s && !string.IsNullOrEmpty(s))
+                definition.BehaviorRefs.Add(s);
+        }
+    }
+
+    private static BuildingSide ParseBuildingSide(string value)
+    {
+        if (Enum.TryParse<BuildingSide>(value, ignoreCase: true, out var side))
+            return side;
+        return BuildingSide.Top;
+    }
+
+    private static ResourceNodeKind ParseResourceNodeKind(string value)
+    {
+        if (Enum.TryParse<ResourceNodeKind>(value, ignoreCase: true, out var kind))
+            return kind;
+        return ResourceNodeKind.Flex;
+    }
+
     private static Dictionary<string, int> ParseStartingStockpiles(Dictionary<object, object> dict)
     {
         var stockpiles = new Dictionary<string, int>();
@@ -169,26 +230,61 @@ public static class BuildingConfigLoader
         return stockpiles;
     }
 
-    private static Dictionary<string, float> ParseStartingStorageCapacity(Dictionary<object, object> dict)
+    private static int ParseStorageCapacity(Dictionary<object, object> dict)
     {
-        var capacities = new Dictionary<string, float>();
+        return ReadInt(dict, "storage_capacity", 0);
+    }
 
-        if (!dict.ContainsKey("starting_storage_capacity"))
-            return capacities;
+    /// <summary>
+    /// Parses the slot_filters YAML block into a list of (filter, count) pairs.
+    /// Keys use prefix syntax: "any", "state:solid", "state:fluid", "category:&lt;name&gt;",
+    /// "resource:&lt;id&gt;". A bare key falls back to category lookup (legacy behavior).
+    /// </summary>
+    private static List<SlotFilterSpec> ParseSlotFilters(Dictionary<object, object> dict)
+    {
+        var specs = new List<SlotFilterSpec>();
 
-        var capacityDict = dict["starting_storage_capacity"] as Dictionary<object, object>;
-        if (capacityDict == null)
-            return capacities;
+        if (!dict.ContainsKey("slot_filters"))
+            return specs;
 
-        foreach (var kvp in capacityDict)
+        if (dict["slot_filters"] is not Dictionary<object, object> filtersDict)
+            return specs;
+
+        foreach (var kvp in filtersDict)
         {
-            string categoryName = (string)kvp.Key;
-            float amount = NodeToFloat(kvp.Value, 0f);
-            if (amount > 0)
-                capacities[categoryName] = amount;
+            string key = ((string)kvp.Key).Trim();
+            int count = NodeToInt(kvp.Value, 0);
+            if (count <= 0 || string.IsNullOrEmpty(key))
+                continue;
+
+            SlotFilter filter;
+            if (string.Equals(key, "any", StringComparison.OrdinalIgnoreCase))
+            {
+                filter = SlotFilter.Any();
+            }
+            else if (key.StartsWith("state:", StringComparison.OrdinalIgnoreCase))
+            {
+                string stateName = key.Substring("state:".Length);
+                filter = SlotFilter.ForState(StateOfMatterExtensions.Parse(stateName));
+            }
+            else if (key.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
+            {
+                filter = SlotFilter.ForCategory(key.Substring("category:".Length));
+            }
+            else if (key.StartsWith("resource:", StringComparison.OrdinalIgnoreCase))
+            {
+                filter = SlotFilter.ForResource(key.Substring("resource:".Length));
+            }
+            else
+            {
+                // Legacy bare key: treat as category name.
+                filter = SlotFilter.ForCategory(key);
+            }
+
+            specs.Add(new SlotFilterSpec(filter, count));
         }
 
-        return capacities;
+        return specs;
     }
 
     // Cache for biome categories - loaded once and reused
@@ -302,7 +398,8 @@ public static class BuildingConfigLoader
                                 biomeEntries,
                                 out bool _
                             );
-                            placement.Biomes.AddRange(resolvedBiomes);
+                            foreach (var biome in resolvedBiomes)
+                                placement.Biomes.Add(biome);
                         }
                         else
                         {
@@ -503,11 +600,51 @@ public static class BuildingConfigLoader
 
         production.DefaultRecipe = ReadString(productionDict, "default_recipe", "");
         production.AlternativeRecipes = ReadStringList(productionDict, "alternative_recipes");
-        production.InputStorageAmount = ReadInt(productionDict, "input_storage_amount", 0);
-        production.OutputStorageAmount = ReadInt(productionDict, "output_storage_amount", 0);
         production.ProductionSpeed = ReadFloat(productionDict, "production_speed", 1.0f);
 
         return production;
+    }
+
+    private static BuildingDefinition.PowerDefinition ParsePowerDefinition(
+        Dictionary<object, object> dict
+    )
+    {
+        var power = new BuildingDefinition.PowerDefinition();
+
+        if (!dict.ContainsKey("power"))
+            return power;
+
+        var powerDict = dict["power"] as Dictionary<object, object>;
+        if (powerDict == null)
+            return power;
+
+        power.GridRadius = ReadInt(powerDict, "grid_radius", 0);
+        power.Output = ReadFloat(powerDict, "output", 0f);
+        power.BaseDraw = ReadFloat(powerDict, "base_draw", 0f);
+        power.BatteryCapacity = ReadFloat(powerDict, "battery_capacity", 0f);
+        power.IsRenewable = ReadBool(powerDict, "is_renewable", false);
+
+        return power;
+    }
+
+    private static BuildingDefinition.ExtractionDefinition ParseExtractionDefinition(
+        Dictionary<object, object> dict
+    )
+    {
+        var extraction = new BuildingDefinition.ExtractionDefinition();
+
+        if (!dict.ContainsKey("extraction"))
+            return extraction;
+
+        var extractionDict = dict["extraction"] as Dictionary<object, object>;
+        if (extractionDict == null)
+            return extraction;
+
+        extraction.ExtractTypes = ReadInt(extractionDict, "extract_types", 1);
+        extraction.RatePerTick = ReadFloat(extractionDict, "rate_per_tick", 1f);
+        extraction.WorkPerCycle = ReadFloat(extractionDict, "work_per_cycle", 1f);
+
+        return extraction;
     }
 
     private static VisualDefinition ParseVisualDefinition(
@@ -564,8 +701,25 @@ public static class BuildingConfigLoader
         );
         visual.Scale = ReadFloat(visualDict, "scale", 1.0f);
         visual.RotationOffset = ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
+        visual.Shape = ParseShape(ReadString(visualDict, "shape", "hexagon"));
+        visual.ShapeSize = ReadFloat(visualDict, "shape_size", 64f);
+        visual.ShapeColor = ReadColor(visualDict, "shape_color", visual.ShapeColor);
 
         return visual;
+    }
+
+    private static readonly System.Collections.Generic.HashSet<string> AllowedShapes =
+        new() { "hexagon", "square", "rectangle", "pentagon", "triangle" };
+
+    private static string ParseShape(string raw)
+    {
+        string s = (raw ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(s))
+            return "hexagon";
+        if (AllowedShapes.Contains(s))
+            return s;
+        GameLogger.Warning($"BuildingConfigLoader: unknown visual.shape '{raw}', falling back to 'hexagon'");
+        return "hexagon";
     }
 
     private static BuildingDefinition.SoundDefinition ParseSoundDefinition(

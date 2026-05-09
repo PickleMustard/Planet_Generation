@@ -17,6 +17,7 @@ public partial class GUIControllerHSM : LimboHsm
     private LimboHsm? _constructionHSM;
     private LimboHsm? _stationHSM;
     private LimboHsm? _logisticsUnitHSM;
+    private LimboHsm? _buildingHSM;
     private LimboState? _gameStart;
     private LimboState? _pauseMenu;
 
@@ -70,6 +71,13 @@ public partial class GUIControllerHSM : LimboHsm
     }
 
     [Export]
+    public LimboHsm? Building
+    {
+        get => _buildingHSM;
+        set => _buildingHSM = value;
+    }
+
+    [Export]
     public LimboState? GameStart
     {
         get => _gameStart;
@@ -98,20 +106,16 @@ public partial class GUIControllerHSM : LimboHsm
         var mainGameUI = GetNode<Control>("..");
 
         AddTransition(_hud, _voronoiCell, new StringName("cell_selected"));
-        AddTransition(_hud, _continentHSM, new StringName("continent_selected"));
         AddTransition(_hud, _orbitalBodyHSM, new StringName("orbital_body_selected"));
         AddTransition(_hud, _constructionHSM, new StringName("construction_menu_opened"));
 
         AddTransition(_voronoiCell, _hud, "window_closed");
-        AddTransition(_continentHSM, _hud, "window_closed");
         AddTransition(_orbitalBodyHSM, _hud, "window_closed");
         AddTransition(_constructionHSM, _hud, "window_closed");
         AddTransition(_stationHSM, _hud, "window_closed");
 
         // Cross-window transitions
         AddTransition(_orbitalBodyHSM, _voronoiCell, "cell_selected");
-        AddTransition(_voronoiCell, _continentHSM, "continent_selected");
-        AddTransition(_continentHSM, _voronoiCell, "cell_selected");
 
         // Station cross-window transitions
         AddTransition(_orbitalBodyHSM, _stationHSM, "station_opened");
@@ -124,6 +128,14 @@ public partial class GUIControllerHSM : LimboHsm
         AddTransition(_logisticsUnitHSM, _orbitalBodyHSM, "back_to_orbital_body");
         AddTransition(_stationHSM, _logisticsUnitHSM, "logistics_unit_opened");
         AddTransition(_logisticsUnitHSM, _stationHSM, "back_to_station");
+
+        AddTransition(_voronoiCell, _buildingHSM, "building_details_opened");
+        AddTransition(_orbitalBodyHSM, _buildingHSM, "building_details_opened");
+        AddTransition(_stationHSM, _buildingHSM, "building_details_opened");
+        AddTransition(_buildingHSM, _hud, "window_closed");
+        AddTransition(_buildingHSM, _voronoiCell, "cell_selected");
+        AddTransition(_buildingHSM, _orbitalBodyHSM, "orbital_body_selected");
+        AddTransition(_buildingHSM, _stationHSM, "station_opened");
 
         // Game start flow: headquarters placement routes through dedicated state
         AddTransition(ANYSTATE, _gameStart, "headquarters_placed");

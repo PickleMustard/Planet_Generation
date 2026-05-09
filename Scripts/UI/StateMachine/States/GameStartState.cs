@@ -2,16 +2,19 @@ using Constructables;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
+using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.NameGeneration;
 
 namespace UI.StateMachine;
 
 /// <summary>
-/// State entered after the player places the company headquarters. Shows the
-/// naming dialogue, pauses gameplay, and releases the mouse. Confirming
-/// dispatches "game_started"; escape routes through the HSM's universal
-/// escape transition and rolls back the placed headquarters.
+/// State entered after the player places the company headquarters (any building
+/// carrying <see cref="Constructables.Buildings.Behaviors.GameStartBehavior"/>).
+/// Shows the naming dialogue, pauses gameplay, and releases the mouse.
+/// Confirming dispatches "game_started"; escape routes through the HSM's
+/// universal escape transition and rolls back the placed building via the
+/// generic teardown path (decrement limit count + DestroyConstructable).
 /// </summary>
 public partial class GameStartState : LimboState
 {
@@ -31,7 +34,7 @@ public partial class GameStartState : LimboState
     private LineEdit? _systemNameInput;
     private Button? _confirmButton;
     private Input.MouseModeEnum _previousMouseMode;
-    private HeadquartersBuilding? _placedHq;
+    private Building? _placedHq;
     private SystemData? _systemData;
     private bool _confirmed;
 
@@ -57,13 +60,13 @@ public partial class GameStartState : LimboState
         GameLogger.EnterFunction(nameof(_Enter), nameof(GameStartState));
 
         _confirmed = false;
-        _placedHq = ConstructionManager.Instance?.PendingHeadquarters;
+        _placedHq = Blackboard?.Top().GetVar("PlacedHq").As<Building>();
         _systemData = ResolveSystemData();
 
         if (_placedHq == null)
         {
             GameLogger.Warning(
-                "GameStartState: no pending headquarters found; aborting back to HUD"
+                "GameStartState: no placed headquarters on blackboard; aborting back to HUD"
             );
             Dispatch("escape_pressed");
             return;
@@ -97,10 +100,14 @@ public partial class GameStartState : LimboState
 
         if (!_confirmed && _placedHq != null)
         {
-            ConstructionManager.Instance?.CancelHeadquarters(_placedHq);
+            var def = _placedHq.Definition;
+            if (def?.BuildingLimit > 0 && !string.IsNullOrEmpty(def.IdName))
+                BuildingDatabase.Instance?.DecrementGlobalPlacement(def.IdName);
+            _placedHq.DestroyConstructable();
             ToastSystem.Instance?.Show("Headquarters placement cancelled");
         }
 
+        Blackboard?.Top().SetVar("PlacedHq", default(Variant));
         _placedHq = null;
         _systemData = null;
 
@@ -117,8 +124,9 @@ public partial class GameStartState : LimboState
         if (string.IsNullOrEmpty(companyName) || string.IsNullOrEmpty(systemName))
             return;
 
+        // Engine already running (booted by SystemData._Ready when GameScene loaded).
+        // StartGame here only commits the company/system names and flips IsGameStarted.
         _systemData?.StartGame(companyName, systemName);
-        ConstructionManager.Instance?.FinalizeHeadquarters(_placedHq);
 
         ToastSystem.Instance?.Show(
             $"Welcome to the {systemName} system, {companyName}!"

@@ -24,6 +24,11 @@ namespace UtilityLibrary.DataLoading
         private readonly ConcurrentDictionary<string, float> _loadProgress = new();
         private readonly ConcurrentDictionary<string, string?> _batchIds = new();
 
+        // Phase-gating state using TaskCompletionSource
+        private readonly ConcurrentDictionary<string, TaskCompletionSource<int>> _phaseCompletionSources = new();
+        private readonly object _phaseLock = new();
+        private List<List<ILoadableDatabase>>? _currentPhases;
+
         private bool _isInitialized;
         private int _maxConcurrentLoads = 2;
         private string? _currentBatchId;
@@ -105,6 +110,18 @@ namespace UtilityLibrary.DataLoading
                 return false;
             }
 
+            // Validate dependencies: warn if a dependency references an unregistered database
+            foreach (var dependency in database.Dependencies)
+            {
+                if (!_registeredDatabases.ContainsKey(dependency))
+                {
+                    GameLogger.Warning(
+                        $"DatabaseLoadManager: Database '{dbName}' declares dependency on '{dependency}' " +
+                        $"which is not yet registered. If '{dependency}' is external, this warning can be ignored."
+                    );
+                }
+            }
+
             _registeredDatabases[dbName] = database;
             _loadingStatus[dbName] = false;
             _loadProgress[dbName] = 0f;
@@ -162,7 +179,8 @@ namespace UtilityLibrary.DataLoading
         /// <summary>
         /// Initiates loading of all registered databases in dependency-ordered phases.
         /// Databases within the same phase (no inter-dependencies) load in parallel.
-        /// Phases execute sequentially to respect dependency ordering.
+        /// Phases execute sequentially: a phase only starts after every database
+        /// in the prior phase has completed loading (success or failure).
         /// </summary>
         /// <param name="batchId">Optional batch identifier for grouping loads.</param>
         /// <returns>True if loading was initiated, false otherwise.</returns>
@@ -181,17 +199,30 @@ namespace UtilityLibrary.DataLoading
             }
 
             _currentBatchId = batchId ?? Guid.NewGuid().ToString();
-            GD.Print($"DatabaseLoadManager: Starting batch load '{_currentBatchId}' for {_registeredDatabases.Count} databases");
+            _phaseCompletionSources.Clear();
 
             var phases = TopologicalSort(_registeredDatabases.Values.ToList());
+            _currentPhases = phases;
 
-            int phaseIndex = 0;
-            foreach (var phase in phases)
+            if (phases.Count == 0)
             {
-                string phaseBatchId = $"{_currentBatchId}_phase{phaseIndex++}";
-                LoadDatabaseGroup(phase, phaseBatchId);
+                GD.Print("DatabaseLoadManager: No phases to load after topological sort");
+                return true;
             }
 
+            // Prepare TaskCompletionSources for every phase so that later phases
+            // can logically await earlier ones.
+            int totalPhases = phases.Count;
+            for (int i = 0; i < totalPhases; i++)
+            {
+                string phaseId = $"{_currentBatchId}_phase{i}";
+                _phaseCompletionSources[phaseId] = new TaskCompletionSource<int>();
+            }
+
+            // Begin sequential execution by submitting Phase 0.
+            // Subsequent phases are submitted inside OnBatchCompleted only when
+            // the preceding phase finishes.
+            SubmitPhase(0);
             return true;
         }
 
@@ -255,31 +286,144 @@ namespace UtilityLibrary.DataLoading
         }
 
         /// <summary>
-        /// Loads a specific group of databases.
+        /// Loads a specific phase of databases via the ThreadPooler.
         /// </summary>
-        /// <param name="databases">The databases to load.</param>
-        /// <param name="batchId">Batch identifier for this group.</param>
-        private void LoadDatabaseGroup(List<ILoadableDatabase> databases, string batchId)
+        private void SubmitPhase(int phaseIndex)
         {
-            if (databases.Count == 0)
+            if (_currentPhases == null || phaseIndex >= _currentPhases.Count)
                 return;
 
-            var builder = new WorkPackageBuilder()
-                .WithName($"DatabaseBatch_{batchId}")
-                .WithBatchId(batchId);
-
-            foreach (var database in databases)
+            var phase = _currentPhases[phaseIndex];
+            if (phase.Count == 0)
             {
-                _batchIds[database.DatabaseName] = batchId;
-                builder.AddStep($"Load_{database.DatabaseName}", () => database.LoadData());
+                AdvanceToNextPhase(phaseIndex);
+                return;
             }
 
-            var package = builder.Build();
-            package.PackageCompleted += (name, resultCode) => OnBatchCompleted(name, resultCode, batchId);
-            package.PackageFailed += (name, error) => OnBatchFailed(name, error, batchId);
+            // Use 1 package per database within a phase so they execute in
+            // parallel across the thread pool.
+            string phaseBatchId = $"{_currentBatchId}_phase{phaseIndex}";
+            int packagesInPhase = phase.Count;
+            var completedPackages = new ConcurrentBag<int>();
+            bool failureDetected = false;
+            var failureLock = new object();
 
-            ThreadPooler.Instance?.EnqueuePackage(package);
-            GD.Print($"DatabaseLoadManager: Enqueued batch '{batchId}' with {databases.Count} databases");
+            foreach (var database in phase)
+            {
+                _batchIds[database.DatabaseName] = phaseBatchId;
+
+                var builder = new WorkPackageBuilder()
+                    .WithName($"DatabaseBatch_{phaseBatchId}_{database.DatabaseName}")
+                    .WithBatchId(phaseBatchId)
+                    .AddStep($"Load_{database.DatabaseName}", () => database.LoadData());
+
+                var package = builder.Build();
+                package.PackageCompleted += (_, resultCode) =>
+                {
+                    completedPackages.Add(resultCode);
+                    CheckPhaseCompletion(phaseIndex, packagesInPhase, completedPackages, ref failureDetected, failureLock);
+                };
+                package.PackageFailed += (_, error) =>
+                {
+                    lock (failureLock)
+                    {
+                        failureDetected = true;
+                    }
+                    completedPackages.Add(1); // treat failure as a completed attempt
+                    CheckPhaseCompletion(phaseIndex, packagesInPhase, completedPackages, ref failureDetected, failureLock);
+                };
+
+                ThreadPooler.Instance?.EnqueuePackage(package);
+            }
+
+            GD.Print($"DatabaseLoadManager: Enqueued phase '{phaseBatchId}' with {phase.Count} database(s)");
+        }
+
+        /// <summary>
+        /// Checks whether every package in the given phase has finished.
+        /// If so, the associated TaskCompletionSource is resolved and the
+        /// next phase is submitted (or all phases complete).
+        /// </summary>
+        private void CheckPhaseCompletion(
+            int phaseIndex,
+            int expectedPackages,
+            ConcurrentBag<int> completedPackages,
+            ref bool failureDetected,
+            object failureLock)
+        {
+            int completedCount = completedPackages.Count;
+            if (completedCount < expectedPackages)
+                return;
+
+            string phaseBatchId = $"{_currentBatchId}_phase{phaseIndex}";
+            int phaseResult;
+            lock (failureLock)
+            {
+                phaseResult = failureDetected ? 1 : 0;
+            }
+
+            if (_phaseCompletionSources.TryGetValue(phaseBatchId, out var tcs))
+            {
+                tcs.TrySetResult(phaseResult);
+            }
+
+            if (phaseResult == 0)
+            {
+                AdvanceToNextPhase(phaseIndex);
+            }
+            else
+            {
+                GD.PrintErr($"DatabaseLoadManager: Phase '{phaseBatchId}' failed. Halting downstream phase execution.");
+                SignalBatchCompletionIfAllResolved();
+            }
+        }
+
+        /// <summary>
+        /// Advances to the next phase, if any, by submitting it to the thread pool.
+        /// </summary>
+        private void AdvanceToNextPhase(int currentPhaseIndex)
+        {
+            int nextPhaseIndex = currentPhaseIndex + 1;
+            if (_currentPhases != null && nextPhaseIndex < _currentPhases.Count)
+            {
+                SubmitPhase(nextPhaseIndex);
+            }
+            else
+            {
+                // All phases complete
+                SignalBatchCompletionIfAllResolved();
+            }
+        }
+
+        /// <summary>
+        /// Signals overall completion when all phase TCS have been resolved.
+        /// </summary>
+        private void SignalBatchCompletionIfAllResolved()
+        {
+            bool allResolved = _phaseCompletionSources.Values.All(tcs => tcs.Task.IsCompleted);
+            if (allResolved)
+            {
+                int overallResult = _phaseCompletionSources.Values.Any(tcs => tcs.Task.Result != 0) ? 1 : 0;
+                OnAllPhasesCompleted(overallResult);
+            }
+        }
+
+        /// <summary>
+        /// Called once all database loading phases have resolved.
+        /// </summary>
+        private void OnAllPhasesCompleted(int overallResultCode)
+        {
+            if (overallResultCode == 0)
+            {
+                GD.Print($"DatabaseLoadManager: Batch '{_currentBatchId}' completed successfully");
+                // SignalBus.Instance?.EmitDatabaseBatchComplete(_currentBatchId, true);
+            }
+            else
+            {
+                GD.PrintErr($"DatabaseLoadManager: Batch '{_currentBatchId}' completed with errors");
+                // SignalBus.Instance?.EmitDatabaseBatchComplete(_currentBatchId, false);
+            }
+            _currentBatchId = null;
         }
 
         /// <summary>
@@ -324,38 +468,6 @@ namespace UtilityLibrary.DataLoading
         }
 
         /// <summary>
-        /// Handles batch completion.
-        /// </summary>
-        private void OnBatchCompleted(string packageName, int resultCode, string batchId)
-        {
-            GD.Print($"DatabaseLoadManager: Batch '{batchId}' completed with result code {resultCode}");
-
-            // Check if all batches for the current batch are complete
-            bool allBatchesComplete = _batchIds.Values.All(bid =>
-            {
-                if (bid == null) return true;
-                // Check if any database still has this batchId
-                return !_batchIds.Any(kvp => kvp.Value == batchId);
-            });
-
-            if (allBatchesComplete && batchId.StartsWith(_currentBatchId ?? ""))
-            {
-                GD.Print($"DatabaseLoadManager: All batches for '{_currentBatchId}' are complete");
-                // SignalBus.Instance?.EmitDatabaseBatchComplete(_currentBatchId, true);
-                _currentBatchId = null;
-            }
-        }
-
-        /// <summary>
-        /// Handles batch failure.
-        /// </summary>
-        private void OnBatchFailed(string packageName, string error, string batchId)
-        {
-            GD.PrintErr($"DatabaseLoadManager: Batch '{batchId}' failed: {error}");
-            // SignalBus.Instance?.EmitDatabaseBatchComplete(batchId, false);
-        }
-
-        /// <summary>
         /// Gets all registered database names.
         /// </summary>
         public IEnumerable<string> GetRegisteredDatabaseNames() => _registeredDatabases.Keys;
@@ -371,5 +483,55 @@ namespace UtilityLibrary.DataLoading
         /// </summary>
         public bool IsDatabaseRegistered(string databaseName) =>
             _registeredDatabases.ContainsKey(databaseName);
+
+        /// <summary>
+        /// Checks if a database is currently waiting for its dependencies to be satisfied
+        /// before it can begin loading.
+        /// </summary>
+        public bool IsDatabaseWaitingForDependencies(string databaseName)
+        {
+            if (_currentPhases == null || string.IsNullOrEmpty(_currentBatchId))
+                return false;
+
+            var db = GetDatabase(databaseName);
+            if (db == null)
+                return false;
+
+            // If already loaded or has progress, it's not waiting
+            if (db.IsLoaded || GetDatabaseProgress(databaseName) > 0f)
+                return false;
+
+            // Find which phase this database is in
+            int dbPhaseIndex = -1;
+            for (int i = 0; i < _currentPhases.Count; i++)
+            {
+                if (_currentPhases[i].Any(d => d.DatabaseName == databaseName))
+                {
+                    dbPhaseIndex = i;
+                    break;
+                }
+            }
+
+            if (dbPhaseIndex <= 0)
+                return false; // Phase 0 databases don't wait for registered deps
+
+            // Check if all prior phases have been resolved
+            for (int priorPhase = 0; priorPhase < dbPhaseIndex; priorPhase++)
+            {
+                string priorPhaseId = $"{_currentBatchId}_phase{priorPhase}";
+                if (_phaseCompletionSources.TryGetValue(priorPhaseId, out var tcs))
+                {
+                    if (!tcs.Task.IsCompleted)
+                        return true; // A prior phase is still running
+                }
+                else
+                {
+                    // TCS doesn't exist - phase hasn't even been started yet
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

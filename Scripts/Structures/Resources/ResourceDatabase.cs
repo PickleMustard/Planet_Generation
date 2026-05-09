@@ -190,6 +190,155 @@ namespace Structures.Resources
             return !string.IsNullOrEmpty(resourceId) && _resources.ContainsKey(resourceId);
         }
 
+        /// <summary>
+        /// Minimum similarity threshold (0-100) for fuzzy matching to consider a match valid.
+        /// </summary>
+        public const float DefaultSimilarityThreshold = 80f;
+
+        /// <summary>
+        /// Computes the Levenshtein distance between two strings.
+        /// Measures the minimum number of single-character edits required to change one string into another.
+        /// </summary>
+        private static int LevenshteinDistance(string source, string target)
+        {
+            if (string.IsNullOrEmpty(source))
+                return string.IsNullOrEmpty(target) ? 0 : target.Length;
+            if (string.IsNullOrEmpty(target))
+                return source.Length;
+
+            int sourceLength = source.Length;
+            int targetLength = target.Length;
+            var distance = new int[sourceLength + 1, targetLength + 1];
+
+            for (int i = 0; i <= sourceLength; i++)
+                distance[i, 0] = i;
+            for (int j = 0; j <= targetLength; j++)
+                distance[0, j] = j;
+
+            for (int i = 1; i <= sourceLength; i++)
+            {
+                for (int j = 1; j <= targetLength; j++)
+                {
+                    int cost = target[j - 1] == source[i - 1] ? 0 : 1;
+                    distance[i, j] = Math.Min(
+                        Math.Min(distance[i - 1, j] + 1, distance[i, j - 1] + 1),
+                        distance[i - 1, j - 1] + cost);
+                }
+            }
+
+            return distance[sourceLength, targetLength];
+        }
+
+        /// <summary>
+        /// Computes the similarity between two strings as a percentage (0-100).
+        /// 100 means identical, 0 means completely different.
+        /// Uses Levenshtein distance, case-insensitive.
+        /// </summary>
+        private static float ComputeSimilarity(string source, string target)
+        {
+            if (string.IsNullOrEmpty(source) && string.IsNullOrEmpty(target))
+                return 100f;
+            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(target))
+                return 0f;
+
+            string sourceLower = source.ToLowerInvariant();
+            string targetLower = target.ToLowerInvariant();
+
+            // Exact match
+            if (sourceLower == targetLower)
+                return 100f;
+
+            int distance = LevenshteinDistance(sourceLower, targetLower);
+            int maxLength = Math.Max(sourceLower.Length, targetLower.Length);
+            if (maxLength == 0)
+                return 100f;
+
+            return (1f - (float)distance / maxLength) * 100f;
+        }
+
+        /// <summary>
+        /// Gets a resource by ID with fuzzy matching support.
+        /// If the exact resource ID is found, returns it directly.
+        /// If not found, searches for the best matching resource using Levenshtein similarity
+        /// and returns that resource if the similarity is greater than or equal to the threshold.
+        /// </summary>
+        /// <param name="resourceId">The resource ID to look up (may be misspelled).</param>
+        /// <param name="similarityThreshold">Minimum similarity percentage (0-100) required for a fuzzy match. Default: 80.</param>
+        /// <returns>The matched ResourceDefinition.</returns>
+        /// <exception cref="ResourceValidationError">Thrown when no match above threshold is found.</exception>
+        public ResourceDefinition GetResourceWithFuzzyMatch(string resourceId, float similarityThreshold = DefaultSimilarityThreshold)
+        {
+            EnsureLoaded();
+
+            if (string.IsNullOrEmpty(resourceId))
+            {
+                throw ResourceValidationError.ResourceNotFound(resourceId ?? "null", "resource lookup");
+            }
+
+            // Try exact match first
+            if (_resources.TryGetValue(resourceId, out var exactMatch))
+            {
+                return exactMatch;
+            }
+
+            // Case-insensitive exact match
+            var caseInsensitiveKey = _resources.Keys.FirstOrDefault(k => k.Equals(resourceId, StringComparison.OrdinalIgnoreCase));
+            if (caseInsensitiveKey != null)
+            {
+                return _resources[caseInsensitiveKey];
+            }
+
+            // Fuzzy search: find best matching resource
+            string? bestMatch = null;
+            float bestSimilarity = 0f;
+
+            foreach (var knownResourceId in _resources.Keys)
+            {
+                float similarity = ComputeSimilarity(resourceId, knownResourceId);
+                if (similarity > bestSimilarity)
+                {
+                    bestSimilarity = similarity;
+                    bestMatch = knownResourceId;
+                }
+            }
+
+            if (bestMatch != null && bestSimilarity >= similarityThreshold)
+            {
+                GD.Print($"ResourceDatabase: Fuzzy match '{resourceId}' -> '{bestMatch}' ({bestSimilarity:F1}% similar)");
+                return _resources[bestMatch];
+            }
+
+            // No match found - build suggestion if we have any candidates
+            string suggestion = "";
+            if (bestMatch != null)
+            {
+                suggestion = $" Did you mean '{bestMatch}' ({bestSimilarity:F1}% similar)?";
+            }
+
+            throw ResourceValidationError.ResourceNotFoundWithSuggestion(
+                resourceId,
+                "resource lookup",
+                suggestion);
+        }
+
+        /// <summary>
+        /// Tries to get a resource with fuzzy matching support.
+        /// Returns true if a match was found (exact or fuzzy above threshold), false otherwise.
+        /// </summary>
+        public bool TryGetResourceWithFuzzyMatch(string resourceId, out ResourceDefinition? resource, float similarityThreshold = DefaultSimilarityThreshold)
+        {
+            try
+            {
+                resource = GetResourceWithFuzzyMatch(resourceId, similarityThreshold);
+                return true;
+            }
+            catch (ResourceValidationError)
+            {
+                resource = null;
+                return false;
+            }
+        }
+
         public void ValidateAllBodyConfigResources(
             string bodyConfigName,
             IEnumerable<string> resourceIds

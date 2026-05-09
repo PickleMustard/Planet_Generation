@@ -4,6 +4,9 @@ using Godot;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
+#if DEBUG
+using UI.Debug;
+#endif
 
 namespace Structures.Resources;
 
@@ -11,6 +14,9 @@ namespace Structures.Resources;
 /// Singleton database that loads and provides access to resource generation configurations
 /// for planetary types and biomes used in resource generation.
 /// </summary>
+#if DEBUG
+[DebugData("ResourceGenConfig", Category = "Game")]
+#endif
 public partial class ResourceGenerationConfigDatabase : ILoadableDatabase
 {
     private static ResourceGenerationConfigDatabase? _instance;

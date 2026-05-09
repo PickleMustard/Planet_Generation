@@ -11,20 +11,17 @@ dotnet build
 # Clean + rebuild
 dotnet clean && dotnet build
 
-# Format code
-dotnet format
-
-# Run ALL tests (requires GODOT_BIN env var for [RequireGodotRuntime] tests)
-GODOT_BIN=/path/to/godot dotnet test
-
-# Run a single test by exact method name (works without Godot for pure unit tests)
-dotnet test --filter "Name=DepositCreation"
-
-# Run multiple specific tests
-dotnet test --filter "Name=DepositCreation|Name=ValidationErrorHandling"
-
 # Run tests via gdUnit4 CLI runner (CI pipeline)
-./addons/gdUnit4/runtest.sh --godot_binary "$GODOT_BIN" -a "res://Tests" -c -rd "./test-reports"
+# See https://godot-gdunit-labs.github.io/gdUnit4/latest/advanced_testing/cmd/
+./addons/gdUnit4/runtest.sh --godot_binary "/usr/bin/godot-limbo" -a "res://Tests" -c -rd "./test-reports"
+
+# Run specific tests via gdUnit4 CLI runner (CI pipeline)
+./addons/gdUnit4/runtest.sh --godot_binary "/usr/bin/godot-limbo" -a "res://Tests/{test-suite-name} -c -rd "./test-reports"
+
+# Run tests using GdUnitRunner.cfg (contains references to specific test suites)
+./addons/gdUnit4/runtest.sh --godot_binary "/usr/bin/godot-limbo" -conf GdUnitRunner.cfg -c -rd "./test-reports"
+
+Tests output reports to `./test-reports/` by default.
 
 # Build for release (CI)
 dotnet build --configuration Release --no-restore
@@ -47,6 +44,7 @@ dotnet build --configuration Release --no-restore
 Resources are defined in category-based YAML files located in `Configuration/ResourceDefinition/categories/`.
 
 ### File Structure
+
 ```
 Configuration/ResourceDefinition/categories/
 ├── ore.yaml              # All ore resources (resource_type inferred from filename)
@@ -59,6 +57,7 @@ Configuration/ResourceDefinition/categories/
 ```
 
 ### File Format
+
 Each category file contains a `resources` list. Resource type is inferred from the filename (e.g., `ore.yaml` → `resource_type: "ore"`).
 
 ```yaml
@@ -101,9 +100,11 @@ resources:
    - `construction`: Construction materials (concrete, clay, etc.)
 
 ### Loading Resources
+
 Resources are loaded via `ResourceDatabase.Instance.LoadData()` which calls `ResourceConfigLoader.LoadResourceDefinitionsFromCategories()`.
 
 ### Adding New Resources
+
 1. Determine the appropriate category file based on resource type
 2. Add the resource definition to the corresponding YAML file
 3. Ensure `id_name` is unique across all categories
@@ -128,6 +129,7 @@ Resources are loaded via `ResourceDatabase.Instance.LoadData()` which calls `Res
 ### Import Organization
 
 Alphabetical within groups, separated by blank lines:
+
 1. `System` namespaces
 2. `Godot` namespaces
 3. Third-party (`GdUnit4`, `YamlDotNet`)
@@ -239,6 +241,7 @@ Access via `Instance`: `SignalBus.Instance?.EmitStartTimer(...)`, `ThreadPooler.
 ## Configuration System
 
 YAML files via YamlDotNet, loaded with validation:
+
 ```csharp
 var raw = TemplateLoader.Load("RockyPlanet", TemplateLoader.CelestialBodyValidator);
 var defaults = TemplateHelpers.GetCelestialBodyDefaults(CelestialBodyType.RockyPlanet);
@@ -247,4 +250,3 @@ var defaults = TemplateHelpers.GetCelestialBodyDefaults(CelestialBodyType.RockyP
 ## OpenProject Integration
 
 Project name: **Startreprenuer**. Hierarchy: EPIC > Feature > Task. All tasks/features must be placed under an existing EPIC. **All OpenProject API requests must be separated by a 1-second delay** to avoid rate limiting.
-

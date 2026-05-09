@@ -1,173 +1,117 @@
 using System.Collections.Generic;
 using Godot;
+using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
 using UtilityLibrary;
 
 namespace Constructables;
 
 /// <summary>
-/// Per-body manager that ticks all active ContinentEconomy and StationEconomy instances
-/// belonging to this orbital body each physics frame.
+/// Per-body registry of active ContinentEconomy and StationEconomy instances. Used by UI
+/// (HUD totals, body summaries) and resource transfers. Ticking is driven by the
+/// ManufactureTickEngine on a dedicated 60Hz thread — this class no longer drives ticks
+/// from _PhysicsProcess.
 /// Added as a child Node of IOrbitalBody implementations.
+///
+/// Power totals delegate to the parent body's <see cref="Power.BodyPowerGridManager"/>;
+/// power is no longer body-wide but per-grid, so these accessors aggregate over all grids
+/// on the parent.
 /// </summary>
 public partial class BodyEconomyManager : Node
 {
-    private readonly List<ContinentEconomy> _activeEconomies = new();
-    private readonly List<StationEconomy> _activeStationEconomies = new();
-    private double _totalTime;
-
-    public int ActiveEconomyCount => _activeEconomies.Count;
-    public int ActiveStationEconomyCount => _activeStationEconomies.Count;
+    private CelestialBody? GetParentBody() => GetParent() as CelestialBody;
 
     /// <summary>
-    /// Gets all active continent economies. Use for read-only access (e.g., UI display).
-    /// </summary>
-    public IReadOnlyList<ContinentEconomy> GetActiveEconomies() => _activeEconomies;
-
-    /// <summary>
-    /// Gets all active station economies. Use for read-only access (e.g., UI display).
-    /// </summary>
-    public IReadOnlyList<StationEconomy> GetActiveStationEconomies() => _activeStationEconomies;
-
-    /// <summary>
-    /// Gets the total power generation across all continent economies.
+    /// Sums <see cref="Power.PowerGrid.LastGeneration"/> across every grid on the parent body.
     /// </summary>
     public float GetTotalPowerGeneration()
     {
+        var pg = GetParentBody()?.PowerGridMgr;
+        if (pg == null)
+            return 0f;
         float total = 0f;
-        foreach (var eco in _activeEconomies)
-            total += eco.PowerGeneration;
+        foreach (var grid in pg.Grids)
+            total += grid.LastGeneration;
         return total;
     }
 
     /// <summary>
-    /// Gets the total power consumption across all continent economies.
+    /// Sums <see cref="Power.PowerGrid.LastDraw"/> across every grid on the parent body.
     /// </summary>
     public float GetTotalPowerConsumption()
     {
+        var pg = GetParentBody()?.PowerGridMgr;
+        if (pg == null)
+            return 0f;
         float total = 0f;
-        foreach (var eco in _activeEconomies)
-            total += eco.PowerConsumption;
+        foreach (var grid in pg.Grids)
+            total += grid.LastDraw;
         return total;
     }
 
-    /// <summary>
-    /// Gets the total number of buildings across all continent economies.
-    /// </summary>
     public int GetTotalBuildingCount()
     {
-        int total = 0;
-        foreach (var eco in _activeEconomies)
-            total += eco.ActiveBuildingCount;
-        return total;
-    }
+        var body = GetParentBody();
+        var continents = body?.Mesh?.Continents;
+        if (continents == null)
+            return 0;
 
-    /// <summary>
-    /// Gets the count of continents currently in power deficit.
-    /// </summary>
-    public int GetPowerDeficitCount()
-    {
         int count = 0;
-        foreach (var eco in _activeEconomies)
-            if (eco.IsPowerDeficit)
-                count++;
+        foreach (var kvp in continents)
+        {
+            foreach (var cell in kvp.Value.cells)
+            {
+                if (cell.Building != null)
+                    count++;
+            }
+        }
         return count;
     }
 
     /// <summary>
-    /// Gets a summary of all active resource shortages across all economies.
-    /// Returns a dictionary of resourceId -> count of economies with that shortage.
+    /// Sums a single resource across every building's input + output storage on this body.
     /// </summary>
-    public Dictionary<string, int> GetActiveShortageSummary()
+    public float GetTotalQuantity(string resourceId)
     {
-        var shortages = new Dictionary<string, int>();
-        foreach (var eco in _activeEconomies)
+        var body = GetParentBody();
+        var continents = body?.Mesh?.Continents;
+        if (continents == null || string.IsNullOrEmpty(resourceId))
+            return 0f;
+
+        float total = 0f;
+        var seen = new HashSet<Building>();
+        foreach (var kvp in continents)
         {
-            // Note: This relies on the economy exposing shortage info
-            // For now, we'll check stockpiles with negative net rates
-            var netRates = eco.GetAllNetRates();
-            var stockpiles = eco.GetAllStockpiles();
-            foreach (var kvp in netRates)
+            foreach (var cell in kvp.Value.cells)
             {
-                float stockpile = stockpiles.TryGetValue(kvp.Key, out float s) ? s : 0f;
-                if (stockpile <= 0f && kvp.Value < 0f)
-                {
-                    if (shortages.ContainsKey(kvp.Key))
-                        shortages[kvp.Key]++;
-                    else
-                        shortages[kvp.Key] = 1;
-                }
+                var b = cell.Building;
+                if (b == null || !seen.Add(b))
+                    continue;
+                total += b.InputStorage.GetQuantity(resourceId);
+                total += b.OutputStorage.GetQuantity(resourceId);
             }
         }
-        return shortages;
+        return total;
     }
 
-    public override void _PhysicsProcess(double delta)
+    /// <summary>
+    /// Counts grids that are currently in brownout.
+    /// </summary>
+    public int GetPowerDeficitCount()
     {
-        float dt = (float)delta;
-        _totalTime += delta;
-
-        for (int i = 0; i < _activeEconomies.Count; i++)
-        {
-            _activeEconomies[i].Tick(dt, _totalTime);
-        }
-
-        for (int i = 0; i < _activeStationEconomies.Count; i++)
-        {
-            _activeStationEconomies[i].Tick(dt, _totalTime);
-        }
+        var pg = GetParentBody()?.PowerGridMgr;
+        if (pg == null)
+            return 0;
+        int count = 0;
+        foreach (var grid in pg.Grids)
+            if (grid.IsBrownedOut)
+                count++;
+        return count;
     }
 
-    public void RegisterEconomy(ContinentEconomy economy)
+    public Dictionary<string, int> GetActiveShortageSummary()
     {
-        if (!_activeEconomies.Contains(economy))
-        {
-            _activeEconomies.Add(economy);
-            GameLogger.Info(
-                $"[BodyEconomyManager] Registered economy for continent {economy.Continent.StartingIndex} "
-                    + $"(total: {_activeEconomies.Count})"
-            );
-        }
-    }
-
-    public void UnregisterEconomy(ContinentEconomy economy)
-    {
-        if (_activeEconomies.Remove(economy))
-        {
-            GameLogger.Debug(
-                $"[BodyEconomyManager] Unregistered economy for continent {economy.Continent.StartingIndex} "
-                    + $"(total: {_activeEconomies.Count})"
-            );
-        }
-    }
-
-    public void RegisterStationEconomy(StationEconomy economy)
-    {
-        if (!_activeStationEconomies.Contains(economy))
-        {
-            _activeStationEconomies.Add(economy);
-            GameLogger.Debug(
-                $"[BodyEconomyManager] Registered station economy for {economy.StationId} "
-                    + $"(total stations: {_activeStationEconomies.Count})"
-            );
-        }
-    }
-
-    public void UnregisterStationEconomy(StationEconomy economy)
-    {
-        if (_activeStationEconomies.Remove(economy))
-        {
-            GameLogger.Debug(
-                $"[BodyEconomyManager] Unregistered station economy for {economy.StationId} "
-                    + $"(total stations: {_activeStationEconomies.Count})"
-            );
-        }
-    }
-
-    public void UnregisterAll()
-    {
-        _activeEconomies.Clear();
-        _activeStationEconomies.Clear();
-        GameLogger.Info("[BodyEconomyManager] Unregistered all economies");
+        //TODO: Implement shortage summary queries; should query the list of buildings that are stuck in resource input shortages
+        return new Dictionary<string, int>();
     }
 }

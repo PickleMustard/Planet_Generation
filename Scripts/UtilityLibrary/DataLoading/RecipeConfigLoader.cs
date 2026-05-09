@@ -95,10 +95,9 @@ public static class RecipeConfigLoader
     }
 
     /// <summary>
-    /// Parses a resource list in the YAML format of list-of-single-key-dicts:
-    /// input_resources:
-    ///   - iron: 10
-    ///   - carbon: 2
+    /// Parses a resource list. Accepts two YAML shapes:
+    ///   mapping form          ->  output_resources: { iron: 1, copper: 2 }
+    ///   list-of-mappings form ->  output_resources: [ - iron: 10, - carbon: 2 ]
     /// </summary>
     private static Dictionary<string, float> ParseResourceList(
         Dictionary<object, object> dict,
@@ -106,28 +105,44 @@ public static class RecipeConfigLoader
     {
         var resources = new Dictionary<string, float>();
 
-        if (!dict.ContainsKey(key))
+        if (!dict.ContainsKey(key) || dict[key] is null)
             return resources;
 
-        var resourceList = dict[key] as List<object>;
-        if (resourceList == null)
-            return resources;
+        var node = dict[key];
 
-        foreach (var item in resourceList)
+        if (node is Dictionary<object, object> mapping)
         {
-            if (item is Dictionary<object, object> resourceDict)
+            foreach (var kvp in mapping)
             {
-                foreach (var kvp in resourceDict)
+                string resourceName = kvp.Key?.ToString() ?? "";
+                if (!string.IsNullOrEmpty(resourceName))
                 {
-                    string resourceName = kvp.Key?.ToString() ?? "";
-                    if (!string.IsNullOrEmpty(resourceName))
+                    resources[resourceName] = NodeToFloat(kvp.Value, 0f);
+                }
+            }
+            return resources;
+        }
+
+        if (node is List<object> resourceList)
+        {
+            foreach (var item in resourceList)
+            {
+                if (item is Dictionary<object, object> resourceDict)
+                {
+                    foreach (var kvp in resourceDict)
                     {
-                        resources[resourceName] = NodeToFloat(kvp.Value, 0f);
+                        string resourceName = kvp.Key?.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(resourceName))
+                        {
+                            resources[resourceName] = NodeToFloat(kvp.Value, 0f);
+                        }
                     }
                 }
             }
+            return resources;
         }
 
+        GameLogger.Warning($"Unsupported '{key}' YAML form: {node.GetType().Name}");
         return resources;
     }
 

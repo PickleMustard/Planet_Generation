@@ -31,22 +31,6 @@ namespace UI.Debug.Console.Commands
             {
                 if (!InstanceRegistry.TryGetInstance(ns, out var instance))
                     continue;
-
-                string status = instance switch
-                {
-                    ContinentEconomy ce => $"Buildings: {ce.ActiveBuildingCount}, Power: {ce.PowerGeneration:F1}/{ce.PowerConsumption:F1}",
-                    StationEconomy se => $"Buildings: {se.ActiveBuildingCount}, Power: {se.PowerGeneration:F1}/{se.PowerConsumption:F1}",
-                    _ => "Unknown type"
-                };
-
-                string deficitWarning = instance switch
-                {
-                    ContinentEconomy ce => ce.IsPowerDeficit ? " [color=red][DEFICIT][/color]" : "",
-                    StationEconomy se => se.IsPowerDeficit ? " [color=red][DEFICIT][/color]" : "",
-                    _ => ""
-                };
-
-                ctx.WriteLine($"  {ns}: {status}{deficitWarning}");
             }
 
             return 0;
@@ -76,68 +60,7 @@ namespace UI.Debug.Console.Commands
 
             ctx.WriteLine($"[color=cyan]=== {ns} ===[/color]");
 
-            switch (instance)
-            {
-                case ContinentEconomy ce:
-                    ShowContinentEconomyInfo(ctx, ce);
-                    break;
-                case StationEconomy se:
-                    ShowStationEconomyInfo(ctx, se);
-                    break;
-                default:
-                    ctx.WriteError("Unknown economy type");
-                    return 1;
-            }
-
             return 0;
-        }
-
-        private static void ShowContinentEconomyInfo(CommandContext ctx, ContinentEconomy eco)
-        {
-            ctx.WriteLine($"Type: Continent");
-            ctx.WriteLine($"Continent Index: {eco.Continent.StartingIndex}");
-            ctx.WriteLine($"");
-            ctx.WriteLine($"[color=yellow]Power:[/color]");
-            ctx.WriteLine($"  Generation: {eco.PowerGeneration:F1}/s");
-            ctx.WriteLine($"  Consumption: {eco.PowerConsumption:F1}/s");
-            ctx.WriteLine($"  Stored: {eco.PowerStored:F1} / {eco.PowerStorageCapacity:F1}");
-            ctx.WriteLine($"  Deficit: {(eco.IsPowerDeficit ? "[color=red]YES[/color]" : "No")}");
-            ctx.WriteLine($"");
-            ctx.WriteLine($"[color=yellow]Buildings:[/color]");
-            ctx.WriteLine($"  Active: {eco.ActiveBuildingCount}");
-            ctx.WriteLine($"  Paused: {eco.ActiveBuildings.Count(b => b.IsPaused)}");
-            ctx.WriteLine($"");
-            ctx.WriteLine($"[color=yellow]Stockpiles:[/color]");
-            foreach (var kvp in eco.GetAllStockpiles().Where(s => s.Value > 0.01f).OrderBy(s => s.Key))
-            {
-                float netRate = eco.GetNetRate(kvp.Key);
-                string rateStr = $"({(netRate >= 0 ? "+" : "")}{netRate:F2}/s)";
-                ctx.WriteLine($"  {kvp.Key}: {kvp.Value:F1} {rateStr}");
-            }
-        }
-
-        private static void ShowStationEconomyInfo(CommandContext ctx, StationEconomy eco)
-        {
-            ctx.WriteLine($"Type: Station");
-            ctx.WriteLine($"Station ID: {eco.StationId}");
-            ctx.WriteLine($"");
-            ctx.WriteLine($"[color=yellow]Power:[/color]");
-            ctx.WriteLine($"  Generation: {eco.PowerGeneration:F1}/s");
-            ctx.WriteLine($"  Consumption: {eco.PowerConsumption:F1}/s");
-            ctx.WriteLine($"  Stored: {eco.PowerStored:F1} / {eco.PowerStorageCapacity:F1}");
-            ctx.WriteLine($"  Deficit: {(eco.IsPowerDeficit ? "[color=red]YES[/color]" : "No")}");
-            ctx.WriteLine($"");
-            ctx.WriteLine($"[color=yellow]Buildings:[/color]");
-            ctx.WriteLine($"  Active: {eco.ActiveBuildingCount}");
-            ctx.WriteLine($"  Paused: {eco.ActiveBuildings.Count(b => b.IsPaused)}");
-            ctx.WriteLine($"");
-            ctx.WriteLine($"[color=yellow]Stockpiles:[/color]");
-            foreach (var kvp in eco.GetAllStockpiles().Where(s => s.Value > 0.01f).OrderBy(s => s.Key))
-            {
-                float netRate = eco.GetNetRate(kvp.Key);
-                string rateStr = $"({(netRate >= 0 ? "+" : "")}{netRate:F2}/s)";
-                ctx.WriteLine($"  {kvp.Key}: {kvp.Value:F1} {rateStr}");
-            }
         }
 
         [DebugCommand(
@@ -168,14 +91,6 @@ namespace UI.Debug.Console.Commands
                 return 1;
             }
 
-            float deposited = instance switch
-            {
-                ContinentEconomy ce => ce.DepositResource(resourceId, amount),
-                StationEconomy se => se.DepositResource(resourceId, amount),
-                _ => 0f
-            };
-
-            ctx.WriteLine($"[color=green]Added {deposited:F1} {resourceId}[/color]");
             return 0;
         }
 
@@ -207,14 +122,6 @@ namespace UI.Debug.Console.Commands
                 return 1;
             }
 
-            float withdrawn = instance switch
-            {
-                ContinentEconomy ce => ce.WithdrawResource(resourceId, amount),
-                StationEconomy se => se.WithdrawResource(resourceId, amount),
-                _ => 0f
-            };
-
-            ctx.WriteLine($"[color=green]Removed {withdrawn:F1} {resourceId}[/color]");
             return 0;
         }
 
@@ -254,24 +161,6 @@ namespace UI.Debug.Console.Commands
             }
 
             int pausedCount = 0;
-            switch (instance)
-            {
-                case ContinentEconomy ce:
-                    foreach (var building in ce.ActiveBuildings.Where(b => b.TheoreticalPowerGeneration <= 0 && !b.IsPaused))
-                    {
-                        building.IsPaused = true;
-                        pausedCount++;
-                    }
-                    break;
-                case StationEconomy se:
-                    foreach (var building in se.ActiveBuildings.Where(b => b.TheoreticalPowerGeneration <= 0 && !b.IsPaused))
-                    {
-                        building.IsPaused = true;
-                        pausedCount++;
-                    }
-                    break;
-            }
-
             ctx.WriteLine($"[color=green]Paused {pausedCount} buildings[/color]");
             return 0;
         }
@@ -298,24 +187,6 @@ namespace UI.Debug.Console.Commands
             }
 
             int unpausedCount = 0;
-            switch (instance)
-            {
-                case ContinentEconomy ce:
-                    foreach (var building in ce.ActiveBuildings.Where(b => b.IsPaused))
-                    {
-                        building.IsPaused = false;
-                        unpausedCount++;
-                    }
-                    break;
-                case StationEconomy se:
-                    foreach (var building in se.ActiveBuildings.Where(b => b.IsPaused))
-                    {
-                        building.IsPaused = false;
-                        unpausedCount++;
-                    }
-                    break;
-            }
-
             ctx.WriteLine($"[color=green]Unpaused {unpausedCount} buildings[/color]");
             return 0;
         }

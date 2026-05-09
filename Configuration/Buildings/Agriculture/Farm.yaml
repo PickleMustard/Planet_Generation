@@ -23,8 +23,6 @@ buildings:
     production:
       default_recipe: "crop_rotation"
       alternative_recipes: ["fertilizer_production", "seed_propagation"]
-      input_storage_amount: 100
-      output_storage_amount: 100
       production_speed: 1
 
     visual:
@@ -60,8 +58,6 @@ buildings:
     production:
       default_recipe: "genetic_modification"
       alternative_recipes: ["vertical_farming", "aquaponics"]
-      input_storage_amount: 150
-      output_storage_amount: 150
       production_speed: 1
 
     visual:

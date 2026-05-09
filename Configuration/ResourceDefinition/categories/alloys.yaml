@@ -1,6 +1,8 @@
 resources:
   - id_name: stradium
     resource_tier: 3
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
@@ -9,8 +11,20 @@ resources:
 
   - id_name: electrum
     resource_tier: 3
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 255
       - 128
     tags: [metal, gold, copper, silver]
+
+  - id_name: ignicite
+    resource_tier: 4
+    state_of_matter: solid
+    max_stack_size: 100
+    display_color:
+      - 255
+      - 255
+      - 64
+    tags: [metal, tungsten, stradium, platinum, heatproof]

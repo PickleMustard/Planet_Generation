@@ -4,8 +4,14 @@ using Godot;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
+#if DEBUG
+using UI.Debug;
+#endif
 namespace Structures.Resources
 {
+#if DEBUG
+    [DebugData("Recipes", Category = "Game")]
+#endif
     public partial class RecipeDatabase : ILoadableDatabase
     {
         private static RecipeDatabase? _instance;

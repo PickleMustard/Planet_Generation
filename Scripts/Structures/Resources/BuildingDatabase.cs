@@ -282,16 +282,10 @@ namespace Structures.Resources
         public bool ValidatePlacement(string buildingId, VoronoiCell? cell)
         {
             EnsureLoaded();
-            if (!TryGetBuilding(buildingId, out var building) || building == null || cell == null)
+            if (!TryGetBuilding(buildingId, out var building) || building == null)
                 return false;
 
-            var placement = building.Placement;
-
-            // Use custom behavior if available, otherwise use default
-            IPlacementBehavior behavior = placement.ConfigurableBehavior
-                ?? new DefaultPlacementBehavior(placement);
-
-            return behavior.IsValidPlacement(cell);
+            return building.ValidatePlacement(cell);
         }
 
         // Count-based tracking for buildings with placement limits

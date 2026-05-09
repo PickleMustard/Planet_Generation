@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
 using UtilityLibrary.TaskSystem;
@@ -13,6 +14,7 @@ namespace UtilityLibrary.DataLoading
         public string DatabaseName { get; }
         public bool IsLoaded { get; private set; }
         public float LoadProgress { get; private set; }
+        public IReadOnlyList<string> Dependencies { get; }
 
         public event Action<string>? OnLoadStarted;
         public event Action<string, bool>? OnLoadCompleted;
@@ -21,18 +23,19 @@ namespace UtilityLibrary.DataLoading
         private readonly float _loadDurationMs;
         private readonly bool _shouldFail;
 
-        public TestDatabase(string name, float loadDurationMs = 1000f, bool shouldFail = false)
+        public TestDatabase(string name, float loadDurationMs = 1000f, bool shouldFail = false, string[]? dependencies = null)
         {
             DatabaseName = name ?? throw new ArgumentNullException(nameof(name));
             _loadDurationMs = loadDurationMs;
             _shouldFail = shouldFail;
+            Dependencies = dependencies ?? Array.Empty<string>();
             IsLoaded = false;
             LoadProgress = 0f;
         }
 
         public void LoadData()
         {
-            LoadAsync().Wait();
+            LoadAsync().GetAwaiter().GetResult();
         }
 
         public async Task LoadAsync()
