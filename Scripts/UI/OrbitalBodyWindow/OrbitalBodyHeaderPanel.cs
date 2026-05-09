@@ -61,8 +61,6 @@ public partial class OrbitalBodyHeaderPanel : PanelContainer
         {
             foreach (var continent in body.Mesh.Continents.Values)
             {
-                if (continent.Economy != null)
-                    buildingCount += continent.Economy.ActiveBuildingCount;
             }
         }
 

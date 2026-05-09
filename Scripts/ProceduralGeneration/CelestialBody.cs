@@ -137,6 +137,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     public BuildingConstructionManager? BuildingConstructionMgr { get; private set; }
     public BodyEconomyManager? EconomyMgr { get; private set; }
     public BodyTransferManager? TransferMgr { get; private set; }
+    public Constructables.Power.BodyPowerGridManager? PowerGridMgr { get; private set; }
     public Node ConstructionManager
     {
         get => BuildingConstructionMgr!;
@@ -338,6 +339,13 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
         TransferMgr = new BodyTransferManager { Name = "BodyTransferManager" };
         CallDeferred("add_child", TransferMgr);
+
+        PowerGridMgr = new Constructables.Power.BodyPowerGridManager
+        {
+            Name = "BodyPowerGridManager",
+            Body = this,
+        };
+        CallDeferred("add_child", PowerGridMgr);
 
         GameLogger.Debug(
             $"OrbitSystem initialized: {OrbitBands.Count} bands for mass {Mass}, UsesBandPlacement={UsesBandPlacement}"

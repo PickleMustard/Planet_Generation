@@ -36,6 +36,15 @@ public class ResourceValidationError : Exception
         return new ResourceValidationError($"Duplicate resource definition found: '{resourceId}'");
     }
 
+    public static ResourceValidationError ResourceNotFoundWithSuggestion(string resourceId, string context, string suggestion = "")
+    {
+        string message = string.IsNullOrEmpty(suggestion)
+            ? $"Resource '{resourceId}' does not exist in the resource database"
+            : $"Resource '{resourceId}' does not exist in the resource database.{suggestion}";
+
+        return new ResourceValidationError(resourceId, context, message);
+    }
+
     public static ResourceValidationError InvalidResourceDefinition(string resourceId, string reason)
     {
         return new ResourceValidationError($"Invalid resource definition for '{resourceId}': {reason}");

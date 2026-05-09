@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Constructables.Tick;
 using Godot;
 using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
@@ -71,13 +72,13 @@ public partial class ConstructionManager : Node
     public Array<LogisticsUnit> _shipsUnderConstruction;
 
     [Export]
-    public Array<BuildingConstruction> _buildingsUnderConstruction;
+    public Array<Building> _buildingsUnderConstruction;
 
     private ConstructionManager()
     {
         _stationsUnderConstruction = new Array<StationSatellite>();
         _shipsUnderConstruction = new Array<LogisticsUnit>();
-        _buildingsUnderConstruction = new Array<BuildingConstruction>();
+        _buildingsUnderConstruction = new Array<Building>();
         _instance = this;
     }
 
@@ -129,7 +130,7 @@ public partial class ConstructionManager : Node
                 new Dictionary { { "ship", ship }, { "name", ship.Name.ToString() } }
             );
         }
-        else if (entity is BuildingConstruction building)
+        else if (entity is Building building)
         {
             _buildingsUnderConstruction.Remove(building);
             FinalizeBuilding(building, new Dictionary());
@@ -164,7 +165,7 @@ public partial class ConstructionManager : Node
                 new Dictionary { { "ship", ship }, { "name", ship.Name.ToString() } }
             );
         }
-        else if (entity is BuildingConstruction building)
+        else if (entity is Building building)
         {
             _buildingsUnderConstruction.Remove(building);
             CancelBuilding(building, new Dictionary());
@@ -219,19 +220,19 @@ public partial class ConstructionManager : Node
         EmitSignal(SignalName.ShipConstructionCompleted, details);
     }
 
-    public void EmitBuildingConstruct(BuildingConstruction inConstruction, Dictionary details)
+    public void EmitBuildingConstruct(Building inConstruction, Dictionary details)
     {
         _buildingsUnderConstruction!.Add(inConstruction);
         EmitSignal(SignalName.BuildingConstructionInitialized, details);
     }
 
-    public void EmitBuildingCancel(BuildingConstruction cancelled, Dictionary details)
+    public void EmitBuildingCancel(Building cancelled, Dictionary details)
     {
         _buildingsUnderConstruction!.Remove(cancelled);
         EmitSignal(SignalName.BuildingConstructionCancelled, details);
     }
 
-    public void EmitBuildingComplete(BuildingConstruction completed, Dictionary details)
+    public void EmitBuildingComplete(Building completed, Dictionary details)
     {
         _buildingsUnderConstruction!.Remove(completed);
         EmitSignal(SignalName.BuildingConstructionCompleted, details);
@@ -438,7 +439,7 @@ public partial class ConstructionManager : Node
 
     private void OnBuildingConstructionInitialized(Dictionary details)
     {
-        var building = details["building"].As<BuildingConstruction>();
+        var building = details["building"].As<Building>();
         GameLogger.Info(
             $"[ConstructionManager] Building construction initialized: {building.Name}"
         );
@@ -446,21 +447,24 @@ public partial class ConstructionManager : Node
 
     private void OnBuildingConstructionCompleted(Dictionary details)
     {
-        var building = details["building"].As<BuildingConstruction>();
+        var building = details["building"].As<Building>();
         FinalizeBuilding(building, details);
     }
 
     private void OnBuildingConstructionCancelled(Dictionary details)
     {
-        var building = details["building"].As<BuildingConstruction>();
+        var building = details["building"].As<Building>();
         CancelBuilding(building, details);
     }
 
-    private void FinalizeBuilding(BuildingConstruction completed, Dictionary details)
+    private void FinalizeBuilding(Building completed, Dictionary details)
     {
-        completed.Visible = true;
-        completed.ProcessMode = ProcessModeEnum.Inherit;
-        SetChildrenVisible(completed, true);
+        if (completed.VisualNode != null)
+        {
+            completed.VisualNode.Visible = true;
+            completed.VisualNode.ProcessMode = ProcessModeEnum.Inherit;
+            SetChildrenVisible(completed.VisualNode, true);
+        }
 
         // Register building reference on all occupied cells
         foreach (var cell in completed.OccupiedCells)
@@ -472,9 +476,9 @@ public partial class ConstructionManager : Node
         GameLogger.Info($"[ConstructionManager] Building construction completed: {completed.Name}");
     }
 
-    private void RegisterBuildingWithEconomy(BuildingConstruction building)
+    private void RegisterBuildingWithEconomy(Building building)
     {
-        var parentBody = building.GetParent() as CelestialBody;
+        var parentBody = building.VisualNode?.GetParent() as CelestialBody;
         if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
             return;
 
@@ -485,29 +489,13 @@ public partial class ConstructionManager : Node
         if (!parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent))
             return;
 
-        continent.InitializeEconomy();
-
-        // Register continent economy with per-body managers
-        parentBody.EconomyMgr?.RegisterEconomy(continent.Economy!);
-        parentBody.TransferMgr?.RegisterContinentEndpoint(continentIdx, continent.Economy!);
-
-        string recipeId = building.Definition?.Production?.DefaultRecipe ?? "";
-        if (!string.IsNullOrEmpty(recipeId))
-        {
-            continent.Economy!.RegisterBuilding(building, recipeId);
-            building.ActiveRecipeId = recipeId;
-        }
-
-        // Notify per-body TransferManager if this is a transfer station
-        if (building.Definition?.TransferStation != null)
-        {
-            parentBody.TransferMgr?.OnTransferStationBuilt(continentIdx, building);
-        }
+        // Transfer-station endpoints register themselves via TransferStationBehavior.OnRegister.
+        parentBody.PowerGridMgr?.OnBuildingCompleted(building);
 
         SignalBus.Instance?.EmitBuildingConstructed(continentIdx);
     }
 
-    private void UnregisterBuildingFromEconomy(BuildingConstruction building)
+    private void UnregisterBuildingFromEconomy(Building building)
     {
         // Free up building limit slot
         if (building.Definition?.BuildingLimit > 0)
@@ -517,7 +505,7 @@ public partial class ConstructionManager : Node
         foreach (var cell in building.OccupiedCells)
             cell.Building = null;
 
-        var parentBody = building.GetParent() as CelestialBody;
+        var parentBody = building.VisualNode?.GetParent() as CelestialBody;
         if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
             return;
 
@@ -525,24 +513,13 @@ public partial class ConstructionManager : Node
         if (continentIdx < 0)
             return;
 
-        if (
-            parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
-            && continent.Economy != null
-        )
-        {
-            continent.Economy.UnregisterBuilding(building);
-        }
-
-        // Notify per-body TransferManager if this is a transfer station
-        if (building.Definition?.TransferStation != null)
-        {
-            parentBody?.TransferMgr?.OnTransferStationDestroyed(continentIdx, building);
-        }
+        // Transfer-station endpoints unregister themselves via TransferStationBehavior.OnUnregister.
+        parentBody?.PowerGridMgr?.OnBuildingRemoved(building);
 
         SignalBus.Instance?.EmitBuildingRemoved(continentIdx);
     }
 
-    private void CancelBuilding(BuildingConstruction cancelled, Dictionary details)
+    private void CancelBuilding(Building cancelled, Dictionary details)
     {
         GameLogger.Info($"[ConstructionManager] Building construction cancelled: {cancelled.Name}");
 
@@ -555,17 +532,19 @@ public partial class ConstructionManager : Node
 
         cancelled.CancelConstruction();
 
-        if (cancelled.GetParent() is Node parent)
-            parent.RemoveChild(cancelled);
-
-        cancelled.QueueFree();
+        if (cancelled.VisualNode != null)
+        {
+            if (cancelled.VisualNode.GetParent() is Node parent)
+                parent.RemoveChild(cancelled.VisualNode);
+            cancelled.VisualNode.QueueFree();
+        }
     }
 
     /// <summary>
     /// Creates a building on the surface of a celestial body at the specified Voronoi cell.
     /// When an architectStation is provided, the building is registered with the station's work budget.
     /// </summary>
-    public BuildingConstruction CreateBuilding(
+    public Building CreateBuilding(
         VoronoiCell primaryCell,
         Node3D parentBody,
         BuildingDefinition definition,
@@ -580,10 +559,6 @@ public partial class ConstructionManager : Node
         if (definition == null)
             throw new ArgumentNullException(nameof(definition));
 
-        var building = new BuildingConstruction();
-
-        parentBody.AddChild(building);
-
         // Get body radius for scaling (works with both CelestialBody and SatelliteBody)
         float bodyRadius = 1.0f;
         if (parentBody is IOrbitalBody orbitalBody)
@@ -595,10 +570,19 @@ public partial class ConstructionManager : Node
             bodyRadius = parentCelestialBody.Radius;
         }
 
-        building.SetBuildingDefinition(definition, bodyRadius);
-        building.SetPlacement(primaryCell, additionalCells, parentBody);
+        var building = definition.Instantiate();
+        building.SetPlacement(primaryCell, additionalCells);
+        building.Register();
+        foreach (var cell in building.OccupiedCells)
+            cell.Building = building;
+
+        var visual = new BuildingNode { Name = definition.DisplayName ?? definition.IdName ?? "Building" };
+        parentBody.AddChild(visual);
+        visual.Bind(building, parentBody, bodyRadius);
+
         building.StartConstruction(new Dictionary());
-        building.Visible = true;
+        visual.ApplyConstructionMaterial();
+        visual.Visible = true;
 
         // Emit signal to notify other systems
         EmitBuildingConstruct(
@@ -620,6 +604,16 @@ public partial class ConstructionManager : Node
             GameLogger.Debug(
                 $"Started construction of building '{definition.DisplayName ?? definition.IdName}' on cell {primaryCell.Index} ({definition.WorkRequired} work)"
             );
+
+            // Buildings with no work requirement (e.g. the headquarters) bypass the
+            // architect-gated work pool — without this they sit in _pendingBuildings
+            // forever and never reach the OnCompletion → ManufactureTickEngine.Register
+            // hand-off in Building.UpdateProgress.
+            if (definition.WorkRequired <= 0f)
+            {
+                building.UpdateProgress(0f);
+                celestialBody.BuildingConstructionMgr.UnregisterBuilding(building);
+            }
         }
         else
         {
@@ -655,7 +649,7 @@ public partial class ConstructionManager : Node
         {
             unit.DeliverResources(resourceId, amount);
         }
-        else if (target is BuildingConstruction building)
+        else if (target is Building building)
         {
             building.DeliverResources(resourceId, amount);
         }
@@ -947,141 +941,4 @@ public partial class ConstructionManager : Node
         return new StationSatellite { Name = name };
     }
 
-    /// <summary>
-    /// Creates the company headquarters building - can only be called once per game.
-    /// </summary>
-    public HeadquartersBuilding? CreateHeadquarters(
-        VoronoiCell primaryCell,
-        Node3D parentBody,
-        List<VoronoiCell>? additionalCells = null
-    )
-    {
-        if (BuildingDatabase.Instance?.IsGloballyPlaced("company_headquarters") == true)
-        {
-            GameLogger.Warning("[ConstructionManager] Headquarters already exists");
-            return null;
-        }
-
-        if (!BuildingDatabase.Instance.TryGetBuilding("company_headquarters", out var definition))
-        {
-            GameLogger.Error("[ConstructionManager] Headquarters definition not found");
-            return null;
-        }
-
-        var building = new HeadquartersBuilding();
-        parentBody.AddChild(building);
-
-        // Get body radius for scaling
-        float bodyRadius = 1.0f;
-        if (parentBody is IOrbitalBody orbitalBody)
-        {
-            bodyRadius = orbitalBody.Radius;
-        }
-        else if (parentBody is CelestialBody celestialBodyCheck)
-        {
-            bodyRadius = celestialBodyCheck.Radius;
-        }
-
-        building.SetBuildingDefinition(definition, bodyRadius);
-        building.SetPlacement(primaryCell, additionalCells, parentBody);
-        building.Visible = true;
-
-        // Register with economy
-        RegisterHeadquartersWithEconomy(building);
-
-        EmitBuildingConstruct(
-            building,
-            new Godot.Collections.Dictionary
-            {
-                { "building", building },
-                { "name", building.Name.ToString() },
-                { "is_headquarters", true },
-            }
-        );
-
-        _pendingHeadquarters = building;
-        return building;
-    }
-
-    private void RegisterHeadquartersWithEconomy(HeadquartersBuilding building)
-    {
-        var parentBody = building.GetParent() as CelestialBody;
-        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
-            return;
-
-        int continentIdx = building.PrimaryCell.ContinentIndex;
-        if (
-            continentIdx < 0
-            || !parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
-        )
-            return;
-
-        continent.InitializeEconomy();
-        parentBody.EconomyMgr?.RegisterEconomy(continent.Economy!);
-        parentBody.TransferMgr?.RegisterContinentEndpoint(continentIdx, continent.Economy!);
-    }
-
-    /// <summary>
-    /// Finalizes a headquarters after the player confirms the naming dialogue:
-    /// registers the building with its continent economy, binds the transfer
-    /// station (if any), and deposits starting stockpiles via InitializeHeadquarters.
-    /// </summary>
-    public void FinalizeHeadquarters(HeadquartersBuilding building)
-    {
-        var parentBody = building.GetParent() as CelestialBody;
-        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
-            return;
-
-        int continentIdx = building.PrimaryCell.ContinentIndex;
-        if (
-            continentIdx < 0
-            || !parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent)
-            || continent.Economy == null
-        )
-            return;
-
-        string recipeId = building.Definition?.Production?.DefaultRecipe ?? "";
-        GameLogger.Info(
-            $"[ConstructionManager] FinalizeHeadquarters recipeId: {recipeId}, Definition {building.Definition}, Production {building.Definition?.Production}"
-        );
-        if (!string.IsNullOrEmpty(recipeId))
-        {
-            continent.Economy.RegisterBuilding(building, recipeId);
-            building.ActiveRecipeId = recipeId;
-        }
-
-        if (building.Definition?.TransferStation != null)
-        {
-            parentBody.TransferMgr?.OnTransferStationBuilt(continentIdx, building);
-        }
-
-        building.InitializeHeadquarters(parentBody, continentIdx);
-        SignalBus.Instance?.EmitBuildingConstructed(continentIdx);
-
-        if (_pendingHeadquarters == building)
-            _pendingHeadquarters = null;
-    }
-
-    /// <summary>
-    /// Undoes a headquarters placement prior to finalization: frees the node
-    /// and releases the global placement slot so the player can re-place.
-    /// </summary>
-    public void CancelHeadquarters(HeadquartersBuilding building)
-    {
-        BuildingDatabase.Instance?.DecrementGlobalPlacement("company_headquarters");
-
-        if (_pendingHeadquarters == building)
-            _pendingHeadquarters = null;
-
-        if (GodotObject.IsInstanceValid(building))
-            building.QueueFree();
-    }
-
-    private HeadquartersBuilding? _pendingHeadquarters;
-
-    /// <summary>
-    /// The most recently placed headquarters awaiting naming confirmation.
-    /// Null once the placement is finalized or cancelled.
-    /// </summary>
-    public HeadquartersBuilding? PendingHeadquarters => _pendingHeadquarters;
 }

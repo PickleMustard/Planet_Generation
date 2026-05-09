@@ -1,3 +1,4 @@
+using Constructables;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
@@ -41,6 +42,7 @@ public partial class CellOverviewState : LimboState
         // Connect window signals
         _window.WindowCloseRequested += OnWindowCloseRequested;
         _window.ContinentViewRequested += OnContinentViewRequested;
+        _window.BuildingDetailsRequested += OnBuildingDetailsRequested;
 
         // Show window with data
         _window.ShowWindow(cell, body, continent);
@@ -57,6 +59,7 @@ public partial class CellOverviewState : LimboState
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
             _window.ContinentViewRequested -= OnContinentViewRequested;
+            _window.BuildingDetailsRequested -= OnBuildingDetailsRequested;
             _window.HideWindow();
             _window.Clear();
         }
@@ -95,5 +98,14 @@ public partial class CellOverviewState : LimboState
         }
 
         Dispatch("continent_selected");
+    }
+
+    private void OnBuildingDetailsRequested(Building building)
+    {
+        if (building == null) return;
+
+        Blackboard?.Top()?.SetVar("SelectedBuilding", building);
+        Blackboard?.Top()?.SetVar("BuildingReturnTo", "cell");
+        Dispatch("building_details_opened");
     }
 }

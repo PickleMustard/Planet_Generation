@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/RecipeDisplay.cs" id="1_recipe"]
 
 [node name="RecipeDisplay" type="HBoxContainer"]
+mouse_filter = 0
 theme_override_constants/separation = 8
 script = ExtResource("1_recipe")
 

@@ -102,24 +102,6 @@ public partial class ConstructionYardStation : StationSatellite
         if (delivered == null || delivered.Count == 0)
             return;
 
-        var economy = Economy ?? InitializeEconomy();
-
-        foreach (var kvp in delivered)
-        {
-            string resourceId = kvp.Key;
-            int amount = kvp.Value;
-            if (amount <= 0)
-                continue;
-
-            float deposited = economy.DepositResource(resourceId, amount);
-            if (deposited < amount)
-            {
-                GameLogger.Warning(
-                    $"ConstructionYardStation {Name}: Refund partial for '{ship.Name}' — " +
-                    $"{resourceId} {deposited}/{amount} (stockpile at capacity)");
-            }
-        }
-
         ship.availableResources = new Godot.Collections.Dictionary<string, int>();
     }
 }

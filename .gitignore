@@ -10,3 +10,6 @@
 /test-reports/
 /.godot-ci/
 *.zip
+
+# Temporary directory
+/temp/

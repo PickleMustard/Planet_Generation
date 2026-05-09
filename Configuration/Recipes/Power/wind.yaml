@@ -1,0 +1,12 @@
+recipes:
+  - recipe_id: "wind_harvesting"
+    display_name: "Wind Harvesting"
+    description: Wind turbines are used to harvest energy from the wind.
+    work_required: 1.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/power/wind"
+
+    input_resources: []
+
+    output_resources:
+      - power: 10

@@ -20,6 +20,7 @@ vertical_alignment = 1
 
 [node name="RateLabel" type="Label" type="Label" parent="."]
 layout_mode = 2
+theme_type_variation = &"LabelMono"
 text = "+0.0/s"
 horizontal_alignment = 2
 vertical_alignment = 1

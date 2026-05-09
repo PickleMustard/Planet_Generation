@@ -1,7 +1,7 @@
 buildings:
   - id_name: surface_transfer_station
     display_name: Continental Transfer Station
-    description: Enables resource transfers between continents and to orbiting stations.
+    description: Enables resource transfers between transfer stations and to orbiting stations.
     category: logistics
     building_time: 480.0
     work_required: 200.0
@@ -21,6 +21,17 @@ buildings:
       cargo_capacity: 500.0
       vehicle_speed: 50.0
       max_concurrent_transfers: 2
+
+    # Bulk storage backs the transfer endpoint. Order: StorageHubBehavior allocates
+    # slots first, then TransferStationBehavior registers the endpoint with the
+    # body's BodyTransferManager.
+    storage_capacity: 8
+    slot_filters:
+      any: 8
+
+    behaviors:
+      - StorageHubBehavior
+      - TransferStationBehavior
 
     icon:
       base_path: "res://Assets/Icons/Buildings/logistics/surface_transfer_station"
@@ -47,6 +58,14 @@ buildings:
       cargo_capacity: 1500.0
       vehicle_speed: 30.0
       max_concurrent_transfers: 4
+
+    storage_capacity: 24
+    slot_filters:
+      any: 24
+
+    behaviors:
+      - StorageHubBehavior
+      - TransferStationBehavior
 
     icon:
       base_path: "res://Assets/Icons/Buildings/logistics/heavy_transfer_hub"

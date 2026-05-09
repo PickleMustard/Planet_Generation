@@ -1,0 +1,204 @@
+[gd_scene load_steps=2 format=3 uid="uid://hub_panel_details"]
+
+[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/HubPanelDetails.cs" id="1_hubpanel"]
+
+[node name="HubPanelDetails" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_hubpanel")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RenderTile" type="PanelContainer" parent="Layout/Header"]
+custom_minimum_size = Vector2(160, 140)
+layout_mode = 2
+theme_type_variation = &"PaperPanel"
+
+[node name="RenderIcon" type="TextureRect" parent="Layout/Header/RenderTile"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stats" type="VBoxContainer" parent="Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="KindTag" type="Label" parent="Layout/Header/Stats"]
+layout_mode = 2
+text = "STORAGE HUB"
+theme_type_variation = &"LabelMono"
+
+[node name="Stats" type="HBoxContainer" parent="Layout/Header/Stats"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="UsedTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/UsedTile"]
+layout_mode = 2
+text = "USED"
+theme_type_variation = &"LabelMono"
+
+[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/UsedTile"]
+layout_mode = 2
+text = "0 / 0"
+
+[node name="FreeTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/FreeTile"]
+layout_mode = 2
+text = "FREE SLOTS"
+theme_type_variation = &"LabelMono"
+
+[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/FreeTile"]
+layout_mode = 2
+text = "0"
+
+[node name="CategoryTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/CategoryTile"]
+layout_mode = 2
+text = "CATEGORY"
+theme_type_variation = &"LabelMono"
+
+[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/CategoryTile"]
+layout_mode = 2
+text = "—"
+
+[node name="FillRow" type="HBoxContainer" parent="Layout/Header/Stats"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FillCaption" type="Label" parent="Layout/Header/Stats/FillRow"]
+layout_mode = 2
+text = "FILL"
+theme_type_variation = &"LabelMono"
+
+[node name="FillBar" type="ProgressBar" parent="Layout/Header/Stats/FillRow"]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+show_percentage = false
+
+[node name="FillPct" type="Label" parent="Layout/Header/Stats/FillRow"]
+layout_mode = 2
+text = "0%"
+
+[node name="Body" type="HSplitContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SlotsPane" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.65
+theme_override_constants/separation = 6
+
+[node name="SlotsHeader" type="Label" parent="Layout/Body/SlotsPane"]
+layout_mode = 2
+text = "BULK SLOTS"
+theme_type_variation = &"LabelMono"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/SlotsPane"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BulkSlotsGrid" type="GridContainer" parent="Layout/Body/SlotsPane/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 8
+
+[node name="IOPane" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.35
+theme_override_constants/separation = 6
+
+[node name="LinksHeader" type="Label" parent="Layout/Body/IOPane"]
+layout_mode = 2
+text = "HUB I/O"
+theme_type_variation = &"LabelMono"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/IOPane"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Sections" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Deposits" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Deposits"]
+layout_mode = 2
+text = "Deposits · in"
+
+[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Deposits"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Withdrawals" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Withdrawals"]
+layout_mode = 2
+text = "Withdrawals · out"
+
+[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Withdrawals"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Transfers" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HeaderRow" type="HBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Transfers"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Transfers/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "TRANSFERS"
+theme_type_variation = &"LabelMono"
+vertical_alignment = 1
+
+[node name="ManageRoutesButton" type="Button" parent="Layout/Body/IOPane/Scroll/Sections/Transfers/HeaderRow"]
+layout_mode = 2
+theme_type_variation = &"ButtonPrimary"
+text = "+ Manage Routes"
+
+[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Transfers"]
+layout_mode = 2
+theme_override_constants/separation = 2

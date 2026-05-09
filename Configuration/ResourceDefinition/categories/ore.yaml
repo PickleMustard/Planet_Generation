@@ -1,6 +1,8 @@
 resources:
   - id_name: iron_ore
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 139
       - 69
@@ -11,6 +13,8 @@ resources:
 
   - id_name: copper_ore
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 184
       - 115
@@ -21,6 +25,8 @@ resources:
 
   - id_name: gold_ore
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 215
@@ -31,6 +37,8 @@ resources:
 
   - id_name: water_ice
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 173
       - 216
@@ -41,6 +49,8 @@ resources:
 
   - id_name: uranium_ore
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 0
       - 255
@@ -51,6 +61,8 @@ resources:
 
   - id_name: platinum_ore
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 229
       - 228
@@ -61,6 +73,8 @@ resources:
 
   - id_name: cobalt_ore
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 0
       - 71
@@ -71,6 +85,8 @@ resources:
 
   - id_name: nickel_ore
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 121
       - 150
@@ -81,6 +97,8 @@ resources:
 
   - id_name: lithium_ore
     resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 27
       - 200
@@ -91,6 +109,8 @@ resources:
 
   - id_name: loadstone_ore
     resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 47
       - 79

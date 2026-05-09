@@ -1,16 +1,8 @@
 resources:
-  - id_name: water
-    resource_tier: 0
-    display_color:
-      - 30
-      - 144
-      - 255
-    tags: [aquatic, water_world, marine, water_needed]
-    icon:
-      base_path: "res://Assets/Icons/Resources/fuel/water"
-
   - id_name: uranium
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 50
     display_color:
       - 50
       - 205
@@ -20,6 +12,8 @@ resources:
 
   - id_name: hydrogen
     resource_tier: 2
+    state_of_matter: fluid
+    max_stack_size: 200
     display_color:
       - 255
       - 0
@@ -29,6 +23,8 @@ resources:
 
   - id_name: tritium
     resource_tier: 3
+    state_of_matter: fluid
+    max_stack_size: 100
     display_color:
       - 255
       - 0
@@ -38,6 +34,8 @@ resources:
 
   - id_name: liquid_uranium
     resource_tier: 2
+    state_of_matter: fluid
+    max_stack_size: 100
     display_color:
       - 127
       - 255
@@ -47,6 +45,8 @@ resources:
 
   - id_name: antimatter
     resource_tier: 3
+    state_of_matter: fluid
+    max_stack_size: 25
     display_color:
       - 255
       - 255
@@ -56,6 +56,8 @@ resources:
 
   - id_name: methane
     resource_tier: 1
+    state_of_matter: fluid
+    max_stack_size: 200
     display_color:
       - 255
       - 215
@@ -66,6 +68,8 @@ resources:
 
   - id_name: hydrazine
     resource_tier: 2
+    state_of_matter: fluid
+    max_stack_size: 100
     display_color:
       - 255
       - 215

@@ -33,20 +33,6 @@ public partial class ContinentHeaderPanel : PanelContainer
 
         if (_typeLabel != null)
             _typeLabel.Text = continent.elevation.ToString();
-
-        int buildings = continent.Economy?.ActiveBuildingCount ?? 0;
-        float gen = continent.Economy?.PowerGeneration ?? 0f;
-        float use = continent.Economy?.PowerConsumption ?? 0f;
-        int transfers = body.TransferMgr?.GetActiveTransferCountForContinent(continentIndex) ?? 0;
-
-        if (_buildingCountLabel != null)
-            _buildingCountLabel.Text = buildings.ToString();
-        if (_powerGenLabel != null)
-            _powerGenLabel.Text = $"{gen:F1}";
-        if (_powerUseLabel != null)
-            _powerUseLabel.Text = $"{use:F1}";
-        if (_transferCountLabel != null)
-            _transferCountLabel.Text = transfers.ToString();
     }
 
     public void Clear()

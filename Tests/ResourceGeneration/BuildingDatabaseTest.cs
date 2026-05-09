@@ -77,8 +77,6 @@ public class BuildingDatabaseTest
         // Test production
         AssertThat(exampleBuilding.Production.DefaultRecipe).IsEqual("recipe_id");
         AssertThat(exampleBuilding.Production.AlternativeRecipes.Count).IsEqual(1);
-        AssertThat(exampleBuilding.Production.InputStorageAmount).IsEqual(100);
-        AssertThat(exampleBuilding.Production.OutputStorageAmount).IsEqual(100);
         AssertThat(exampleBuilding.Production.ProductionSpeed).IsEqual(5.0f);
 
         // Test visual (model_path may be null if file doesn't exist on disk)
@@ -120,8 +118,6 @@ public class BuildingDatabaseTest
         // Production defaults
         AssertThat(universalBuilding.Production.DefaultRecipe ?? "").IsEqual("");
         AssertThat(universalBuilding.Production.AlternativeRecipes.Count).IsEqual(0);
-        AssertThat(universalBuilding.Production.InputStorageAmount).IsEqual(0);
-        AssertThat(universalBuilding.Production.OutputStorageAmount).IsEqual(0);
         AssertThat(universalBuilding.Production.ProductionSpeed).IsEqual(1.0f);
 
         // Visual defaults

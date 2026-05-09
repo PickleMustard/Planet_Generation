@@ -5,12 +5,12 @@ namespace Structures.GameState;
 
 public class ResourceRequest
 {
-    public Constructables.BuildingConstruction Building { get; }
+    public Constructables.Building Building { get; }
     public Dictionary<string, float> MissingResources { get; }
     public int Priority { get; set; }
     public double Timestamp { get; }
 
-    public ResourceRequest(Constructables.BuildingConstruction building, Dictionary<string, float> missing, int priority, double timestamp)
+    public ResourceRequest(Constructables.Building building, Dictionary<string, float> missing, int priority, double timestamp)
     {
         Building = building;
         MissingResources = missing;

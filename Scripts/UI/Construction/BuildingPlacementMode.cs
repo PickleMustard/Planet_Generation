@@ -29,6 +29,7 @@ public partial class BuildingPlacementMode : Node
     private List<VoronoiCell> _selectedCells = new();
     private List<bool> _cellValidity = new();
     private bool _allCellsValid;
+    private bool _globalLimitReached;
     private bool _isActive;
     private Transform3D _lastCameraTransform;
     private int _rotationOffset;
@@ -208,6 +209,8 @@ public partial class BuildingPlacementMode : Node
         if (_hoveredCell == null)
             return;
 
+        _globalLimitReached = !BuildingDatabase.Instance.ValidateGlobalPlacement(_definition.IdName!);
+
         _selectedCells.Add(_hoveredCell);
         bool primaryValid = BuildingDatabase.Instance.ValidatePlacement(
             _definition.IdName!,
@@ -238,6 +241,15 @@ public partial class BuildingPlacementMode : Node
                 for (int i = _cellValidity.Count - 1; i >= 0; i--)
                     _cellValidity[i] = false;
             }
+        }
+
+        // Hitting the global build cap forces every cell to invalid so the highlight
+        // matches the same "cannot construct" red the player sees for unmet placement
+        // requirements. Single source of visual truth = single source of confusion.
+        if (_globalLimitReached)
+        {
+            for (int i = 0; i < _cellValidity.Count; i++)
+                _cellValidity[i] = false;
         }
 
         _allCellsValid = !_cellValidity.Contains(false);
@@ -338,7 +350,11 @@ public partial class BuildingPlacementMode : Node
         string buildingId = _definition.IdName!;
         if (!BuildingDatabase.Instance.ValidateGlobalPlacement(buildingId))
         {
-            ToastSystem.Instance?.Show($"{_definition.DisplayName} has already been built");
+            int placed = BuildingDatabase.Instance.GetGlobalPlacementCount(buildingId);
+            int limit = _definition.BuildingLimit;
+            ToastSystem.Instance?.Show(
+                $"Building construction limit reached: {placed} / {limit}"
+            );
             return;
         }
 

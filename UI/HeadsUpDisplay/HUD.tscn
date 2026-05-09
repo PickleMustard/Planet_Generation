@@ -6,7 +6,6 @@
 [ext_resource type="Texture2D" uid="uid://b3bwxkni3fmx4" path="res://Materials/SVGs/hricon.svg" id="4_1pp8m"]
 [ext_resource type="Texture2D" uid="uid://b7srix5qtliwx" path="res://Materials/SVGs/constructionicon.svg" id="5_piogl"]
 [ext_resource type="Texture2D" uid="uid://cufjb43ieueus" path="res://Materials/SVGs/marketicon.svg" id="6_4kej0"]
-[ext_resource type="PackedScene" uid="uid://bm7pd4sh2v07a" path="res://UI/Toast/ToastSystem.tscn" id="7_phjdd"]
 [ext_resource type="Script" uid="uid://bakvbrf51lc60" path="res://Scripts/UI/FarFieldIndicators/FarFieldIndicatorManager.cs" id="8_wkukm"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_phjdd"]
@@ -342,11 +341,3 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("8_wkukm")
-
-[node name="ToastSystem" parent="." unique_id=30436794 instance=ExtResource("7_phjdd")]
-layout_mode = 1
-anchors_preset = -1
-anchor_left = 0.69600004
-anchor_bottom = 0.425
-grow_horizontal = 0
-grow_vertical = 1

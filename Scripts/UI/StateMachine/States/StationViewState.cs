@@ -48,6 +48,7 @@ public partial class StationViewState : LimboState
 
         _window.WindowCloseRequested += OnWindowCloseRequested;
         _window.BespokeFeatureRequested += OnBespokeFeatureRequested;
+        _window.BuildingInspectRequested += OnBuildingInspectRequested;
 
         _window.ShowWindow(station);
 
@@ -63,6 +64,7 @@ public partial class StationViewState : LimboState
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
             _window.BespokeFeatureRequested -= OnBespokeFeatureRequested;
+            _window.BuildingInspectRequested -= OnBuildingInspectRequested;
             _window.HideWindow();
         }
 
@@ -87,5 +89,13 @@ public partial class StationViewState : LimboState
                 GameLogger.Warning($"StationViewState: Unknown bespoke feature '{featureId}'");
                 break;
         }
+    }
+
+    private void OnBuildingInspectRequested(Building building)
+    {
+        if (building == null) return;
+        Blackboard?.Top()?.SetVar("SelectedBuilding", building);
+        Blackboard?.Top()?.SetVar("BuildingReturnTo", "station");
+        Dispatch("building_details_opened");
     }
 }

@@ -8,23 +8,6 @@ namespace Structures.GameState;
 
 public partial class Continent : Resource
 {
-    /// <summary>
-    /// Runtime economy for this continent. Lazily initialized when the first building is placed.
-    /// </summary>
-    public ContinentEconomy? Economy { get; set; }
-
-    /// <summary>
-    /// Initializes the economy for this continent if not already created,
-    /// Caller is responsible for registering the economy with the per-body BodyEconomyManager.
-    /// </summary>
-    public void InitializeEconomy()
-    {
-        if (Economy != null)
-            return;
-
-        Economy = new ContinentEconomy(this);
-    }
-
     public enum CRUST_TYPE
     {
         Continental = 0,

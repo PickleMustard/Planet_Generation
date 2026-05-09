@@ -46,7 +46,7 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     /// <summary>
     /// The building constructed on this cell, if any.
     /// </summary>
-    public BuildingConstruction? Building { get; set; }
+    public Building? Building { get; set; }
 
     /// <summary>
     /// Priority order for biome tie-breaking. Higher values indicate higher priority.

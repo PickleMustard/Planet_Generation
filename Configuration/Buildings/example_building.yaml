@@ -45,8 +45,6 @@ buildings:
     production:
       default_recipe: "recipe_id"
       alternative_recipes: ["recipe_id"]
-      input_storage_amount: 100
-      output_storage_amount: 100
       production_speed: 5
 
     # Visual representation settings
@@ -65,6 +63,13 @@ buildings:
 
       # Rotation offset in degrees (Euler angles: X, Y, Z)
       rotation_offset: [0, 90, 0]
+
+      # 2D PlanetBoard polygon: hexagon|square|rectangle|pentagon|triangle
+      shape: hexagon
+      # Board-space radius (px) of the shape
+      shape_size: 64
+      # Fill color [r, g, b] or [r, g, b, a]; values in [0,1] or [0,255]
+      shape_color: [0.30, 0.45, 0.60]
 
     sound:
       building: ""
@@ -101,8 +106,6 @@ buildings:
     production:
       default_recipe: "recipe_id"
       alternative_recipes: ["recipe_id"]
-      input_storage_amount: 100
-      output_storage_amount: 100
       production_speed: 5
 
     # Visual representation settings
@@ -180,8 +183,6 @@ buildings:
     production:
       default_recipe: "geothermal_drilling"
       alternative_recipes: ["heat_exchange", "steam_management"]
-      input_storage_amount: 200
-      output_storage_amount: 300
       production_speed: 3
 
     visual:

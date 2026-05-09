@@ -145,8 +145,8 @@ public partial class StationTabbedPanel : PanelContainer
         return tab switch
         {
             StationTab.Overview => true,
-            StationTab.Inventory => station.Economy != null,
-            StationTab.Buildings => station is OrbitalArchitectStation,
+            // Show Buildings tab when station has either a construction architect (in-progress)
+            // or any operational buildings registered with its economy.
             StationTab.Manufacturing => station.StationType == "Refinery",
             StationTab.ConstructionQueue => station is ConstructionYardStation,
             _ => false,
@@ -265,124 +265,104 @@ public partial class StationTabbedPanel : PanelContainer
         AddInfoRow("Radius", $"{_station.OrbitalRadius:F2}");
         AddInfoRow("Speed", $"{_station.OrbitalSpeed:F6} rad/s");
 
-        // Economy summary
-        if (_station.Economy != null)
-        {
-            var eco = _station.Economy;
-            AddSectionHeader("Economy Summary");
-            AddInfoRow("Power", $"{eco.PowerGeneration:F1} gen / {eco.PowerConsumption:F1} use");
-            AddInfoRow("Power Stored", $"{eco.PowerStored:F1} / {eco.PowerStorageCapacity:F1}");
-            AddInfoRow("Buildings", eco.ActiveBuildingCount.ToString());
-
-            if (eco.IsPowerDeficit)
-                AddAlertRow("POWER DEFICIT");
-        }
     }
 
     // ───────── Inventory Tab ─────────
 
     private void PopulateInventory()
     {
-        if (_station?.Economy == null || _contentContainer == null)
+        if (_contentContainer == null)
             return;
 
-        var eco = _station.Economy;
-        var stockpiles = eco.GetAllStockpiles();
-        var netRates = eco.GetAllNetRates();
+        //var stockpiles = eco.GetAllStockpiles();
+        //var netRates = eco.GetAllNetRates();
 
-        if (stockpiles.Count == 0)
-        {
-            AddEmptyLabel("No resources in inventory");
-            return;
-        }
+        //if (stockpiles.Count == 0)
+        //{
+        //    AddEmptyLabel("No resources in inventory");
+        //    return;
+        //}
 
-        AddSectionHeader("Stockpiles");
-        int index = 0;
-        foreach (var kvp in stockpiles)
-        {
-            if (kvp.Value <= 0 && (!netRates.TryGetValue(kvp.Key, out float rate) || rate == 0))
-                continue;
+        //AddSectionHeader("Stockpiles");
+        //int index = 0;
+        //foreach (var kvp in stockpiles)
+        //{
+        //    if (kvp.Value <= 0 && (!netRates.TryGetValue(kvp.Key, out float rate) || rate == 0))
+        //        continue;
 
-            var row = CreateClickableRow(index, "resource");
+        //    var row = CreateClickableRow(index, "resource");
 
-            float netRate = netRates.TryGetValue(kvp.Key, out float nr) ? nr : 0f;
-            string rateStr = netRate >= 0 ? $"+{netRate:F2}" : $"{netRate:F2}";
+        //    float netRate = netRates.TryGetValue(kvp.Key, out float nr) ? nr : 0f;
+        //    string rateStr = netRate >= 0 ? $"+{netRate:F2}" : $"{netRate:F2}";
 
-            var label = new Label
-            {
-                Text = $"{kvp.Key}:  {kvp.Value:F1}  ({rateStr}/s)",
-            };
-            label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-            label.AddThemeFontSizeOverride("font_size", 13);
-            row.AddChild(label);
+        //    var label = new Label
+        //    {
+        //        Text = $"{kvp.Key}:  {kvp.Value:F1}  ({rateStr}/s)",
+        //    };
+        //    label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
+        //    label.AddThemeFontSizeOverride("font_size", 13);
+        //    row.AddChild(label);
 
-            _contentContainer.AddChild(row);
-            index++;
-        }
+        //    _contentContainer.AddChild(row);
+        //    index++;
+        //}
 
         // Power section
         AddSectionHeader("Power");
-        AddInfoRow("Generation", $"{eco.PowerGeneration:F1}/s");
-        AddInfoRow("Consumption", $"{eco.PowerConsumption:F1}/s");
-        AddInfoRow("Stored", $"{eco.PowerStored:F1} / {eco.PowerStorageCapacity:F1}");
-
-        if (eco.IsPowerDeficit)
-            AddAlertRow("POWER DEFICIT");
     }
 
-    // ───────── Buildings Tab (Orbital Architect) ─────────
+    // ───────── Buildings Tab (Orbital Architect + station operational buildings) ─────────
 
     private void PopulateBuildings()
     {
         if (_station == null || _contentContainer == null)
             return;
 
+        // OrbitalArchitectStation: building construction queue.
         var parentBody = _station.ParentBody;
         var constructionMgr = parentBody?.BuildingConstructionMgr;
 
-        if (constructionMgr == null)
+        if (constructionMgr != null)
         {
-            AddEmptyLabel("No building construction manager available");
-            return;
-        }
+            var activeBuildings = constructionMgr.GetActiveBuildings();
+            int pendingCount = constructionMgr.PendingBuildingCount;
 
-        var activeBuildings = constructionMgr.GetActiveBuildings();
-        int pendingCount = constructionMgr.PendingBuildingCount;
-
-        if (activeBuildings.Count == 0 && pendingCount == 0)
-        {
-            AddEmptyLabel("No buildings under construction");
-            return;
-        }
-
-        AddInfoRow("Architects", constructionMgr.ArchitectCount.ToString());
-
-        if (activeBuildings.Count > 0)
-        {
-            AddSectionHeader($"Active Construction ({activeBuildings.Count})");
-            for (int i = 0; i < activeBuildings.Count; i++)
+            if (activeBuildings.Count > 0 || pendingCount > 0)
             {
-                var building = activeBuildings[i];
-                var row = CreateClickableRow(i, "active_building");
+                AddInfoRow("Architects", constructionMgr.ArchitectCount.ToString());
+            }
 
-                float progress = building.GetProgress();
-                var label = new Label
+            if (activeBuildings.Count > 0)
+            {
+                AddSectionHeader($"Active Construction ({activeBuildings.Count})");
+                for (int i = 0; i < activeBuildings.Count; i++)
                 {
-                    Text = $"{building.Name}  |  {progress * 100:F0}%",
-                };
-                label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                label.AddThemeFontSizeOverride("font_size", 13);
-                row.AddChild(label);
+                    var building = activeBuildings[i];
+                    var row = CreateClickableRow(i, "active_building");
 
-                _contentContainer.AddChild(row);
+                    float progress = building.GetProgress();
+                    var label = new Label
+                    {
+                        Text = $"{building.Name}  |  {progress * 100:F0}%",
+                    };
+                    label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
+                    label.AddThemeFontSizeOverride("font_size", 13);
+                    row.AddChild(label);
+
+                    _contentContainer.AddChild(row);
+                }
+            }
+
+            if (pendingCount > 0)
+            {
+                AddSectionHeader($"Pending ({pendingCount})");
+                AddEmptyLabel($"{pendingCount} building(s) waiting for architect assignment");
             }
         }
 
-        if (pendingCount > 0)
-        {
-            AddSectionHeader($"Pending ({pendingCount})");
-            AddEmptyLabel($"{pendingCount} building(s) waiting for architect assignment");
-        }
+        // Operational buildings registered with the station's own economy.
+        if (_contentContainer.GetChildCount() == 0)
+            AddEmptyLabel("No buildings on this station");
     }
 
     // ───────── Manufacturing Tab (Refinery) ─────────

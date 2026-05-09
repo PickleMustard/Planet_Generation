@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Godot;
 using Logistics.Resources;
 using Structures.Resources;
+using UtilityLibrary;
 
 namespace UI.Construction;
 
@@ -46,11 +47,31 @@ public partial class ConstructionMenu : PanelContainer
         _buildButton.Pressed += OnBuildPressed;
         _cancelButton.Pressed += OnCancelPressed;
 
+        // Refresh per-building enabled state when the placement count changes,
+        // so a building hitting its limit grays out without reopening the menu.
+        if (SignalBus.Instance != null)
+        {
+            SignalBus.Instance.BuildingConstructed += OnPlacementCountChanged;
+            SignalBus.Instance.BuildingRemoved += OnPlacementCountChanged;
+        }
+
         // Populate the lists
         PopulateStations();
         PopulateShips();
         PopulateBuildings();
     }
+
+    public override void _ExitTree()
+    {
+        if (SignalBus.Instance != null)
+        {
+            SignalBus.Instance.BuildingConstructed -= OnPlacementCountChanged;
+            SignalBus.Instance.BuildingRemoved -= OnPlacementCountChanged;
+        }
+        base._ExitTree();
+    }
+
+    private void OnPlacementCountChanged(int _) => RefreshBuildingsListEnabledState();
 
     private void PopulateStations()
     {
@@ -84,6 +105,24 @@ public partial class ConstructionMenu : PanelContainer
             int idx = _buildingsList.AddItem(displayName);
             _buildingsList.SetItemMetadata(idx, building.IdName ?? "");
         }
+        RefreshBuildingsListEnabledState();
+    }
+
+    /// <summary>
+    /// Re-evaluates the buildings list against the current placement counts and
+    /// disables any entry whose <see cref="BuildingDefinition.BuildingLimit"/>
+    /// has been reached. Cheap; no list rebuild.
+    /// </summary>
+    private void RefreshBuildingsListEnabledState()
+    {
+        for (int i = 0; i < _buildingsList.ItemCount; i++)
+        {
+            string id = _buildingsList.GetItemMetadata(i).AsString();
+            if (string.IsNullOrEmpty(id))
+                continue;
+            bool enabled = BuildingDatabase.Instance.ValidateGlobalPlacement(id);
+            _buildingsList.SetItemDisabled(i, !enabled);
+        }
     }
 
     private void OnStationItemSelected(long index)
@@ -115,7 +154,7 @@ public partial class ConstructionMenu : PanelContainer
         string name = _buildingsList.GetItemMetadata((int)index).AsString();
         _selectedItemType = "Building";
         _selectedDefinitionName = name;
-        _buildButton.Disabled = false;
+        _buildButton.Disabled = !BuildingDatabase.Instance.ValidateGlobalPlacement(name);
         ShowBuildingDetails(name);
     }
 
@@ -178,6 +217,13 @@ public partial class ConstructionMenu : PanelContainer
         if (!string.IsNullOrEmpty(def.Category))
             text += $"  ({def.Category})";
         text += $"\nBuild Time: {def.BuildingTime}s  |  Cells: {def.Placement.CellCount}";
+        if (def.BuildingLimit > 0)
+        {
+            int placed = BuildingDatabase.Instance.GetGlobalPlacementCount(def.IdName ?? "");
+            text += $"\nConstructed: {placed} / {def.BuildingLimit}";
+            if (placed >= def.BuildingLimit)
+                text += "  [color=red](limit reached)[/color]";
+        }
         if (def.RequiredResources.Count > 0)
         {
             text += "\nResources: ";

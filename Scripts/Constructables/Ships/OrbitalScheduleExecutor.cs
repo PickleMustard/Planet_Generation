@@ -235,14 +235,13 @@ public partial class OrbitalScheduleExecutor : Node
     {
         var endpoint = atOrigin ? leg.Origin : leg.Destination;
 
-        if (!endpoint.IsStation || endpoint.Station?.Economy == null)
+        if (!endpoint.IsStation)
         {
             GameLogger.Warning($"OrbitalScheduleExecutor [{_unit!.Name}]: Cannot refuel — endpoint is not a station with economy");
             AdvanceRefuelState(leg, atOrigin);
             return;
         }
 
-        var economy = endpoint.Station.Economy;
         string fuelId = leg.RefuelInstructions.FuelResourceId;
 
         float fuelNeeded = leg.RefuelInstructions.Amount;
@@ -257,12 +256,6 @@ public partial class OrbitalScheduleExecutor : Node
             return;
         }
 
-        float withdrawn = economy.WithdrawResource(fuelId, fuelNeeded);
-        if (withdrawn > 0f)
-        {
-            _unit!.Refuel(withdrawn);
-            GameLogger.Info($"OrbitalScheduleExecutor [{_unit.Name}]: Refueled {withdrawn:F2} of {fuelId} at {endpoint.Station.Name}");
-        }
         else
         {
             GameLogger.Warning($"OrbitalScheduleExecutor [{_unit!.Name}]: No {fuelId} available at {endpoint.Station.Name}");
@@ -301,28 +294,17 @@ public partial class OrbitalScheduleExecutor : Node
 
     private void HandleLoadingCargo(Leg leg)
     {
-        if (!leg.Origin.IsStation || leg.Origin.Station?.Economy == null || leg.PickupOrder == null)
+        if (!leg.Origin.IsStation || leg.PickupOrder == null)
         {
             leg.State = LegState.PlanningTrajectory;
             return;
         }
 
-        var economy = leg.Origin.Station.Economy;
-
         foreach (var kvp in leg.PickupOrder.Resources)
         {
             string resourceId = kvp.Key;
             float requested = kvp.Value;
-
-            float withdrawn = economy.WithdrawResource(resourceId, requested);
-            if (withdrawn > 0f)
-            {
-                _unit!.LoadCargo(resourceId, withdrawn);
-            }
         }
-
-        GameLogger.Info($"OrbitalScheduleExecutor [{_unit!.Name}]: Loaded cargo at {leg.Origin.Station.Name}");
-        SignalBus.Instance?.EmitOrbitalCargoTransferCompleted(_unit.Id, leg.Origin.Station.Id, true);
 
         leg.State = LegState.PlanningTrajectory;
     }
@@ -456,14 +438,13 @@ public partial class OrbitalScheduleExecutor : Node
 
     private void HandleUnloadingCargo(Leg leg)
     {
-        if (!leg.Destination.IsStation || leg.Destination.Station?.Economy == null || leg.DropoffOrder == null)
+        if (!leg.Destination.IsStation || leg.DropoffOrder == null)
         {
             leg.State = LegState.Complete;
             EmitLegCompleted();
             return;
         }
 
-        var economy = leg.Destination.Station.Economy;
 
         foreach (var kvp in leg.DropoffOrder.Resources)
         {
@@ -476,7 +457,6 @@ public partial class OrbitalScheduleExecutor : Node
             if (toUnload > 0f)
             {
                 _unit.UnloadCargo(resourceId, toUnload);
-                economy.DepositResource(resourceId, toUnload);
             }
         }
 

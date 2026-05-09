@@ -18,20 +18,23 @@ dotnet clean && dotnet build
 # Format code
 dotnet format
 
-# Run ALL tests (requires GODOT_BIN env var for [RequireGodotRuntime] tests)
-GODOT_BIN=/path/to/godot dotnet test
+# Build for release (CI)
+dotnet build --configuration Release --no-restore
 
-# Run a single test by exact method name
-dotnet test --filter "Name=DepositCreation"
+# Run ALL tests via gdUnit4 CLI runner
+# See https://godot-gdunit-labs.github.io/gdUnit4/latest/advanced_testing/cmd/
+./addons/gdUnit4/runtest.sh --godot_binary "/usr/bin/godot-limbo" -a "res://Tests" -c -rd "./test-reports"
 
-# Run multiple specific tests
-dotnet test --filter "Name=DepositCreation|Name=ValidationErrorHandling"
+# Run a specific test suite/folder
+./addons/gdUnit4/runtest.sh --godot_binary "/usr/bin/godot-limbo" -a "res://Tests/{test-suite-name}" -c -rd "./test-reports"
 
-# Run tests via gdUnit4 CLI runner (CI pipeline)
-./addons/gdUnit4/runtest.sh --godot_binary "$GODOT_BIN" -a "res://Tests" -c -rd "./test-reports"
+# Run tests defined in GdUnitRunner.cfg (curated test-suite list)
+./addons/gdUnit4/runtest.sh --godot_binary "/usr/bin/godot-limbo" -conf GdUnitRunner.cfg -c -rd "./test-reports"
 ```
 
-Tests marked `[RequireGodotRuntime]` need a running Godot engine. Without `GODOT_BIN`, only pure unit tests run. Use exact `Name=` matching — the `~` (contains) operator may fail for gdUnit4 without Godot.
+Reports land in `./test-reports/` by default. Replace `/usr/bin/godot-limbo` with the local Godot binary path if different.
+
+Tests marked `[RequireGodotRuntime]` need a running Godot engine — the gdUnit4 runner provides this via `--godot_binary`.
 
 ## Architecture
 

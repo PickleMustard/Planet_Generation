@@ -42,6 +42,14 @@ public partial class StationWindow : Control
     [Signal]
     public delegate void BespokeFeatureRequestedEventHandler(string featureId);
 
+    [Signal]
+    public delegate void BuildingInspectRequestedEventHandler(Building building);
+
+    public void RequestBuildingInspect(Building building)
+    {
+        EmitSignal(SignalName.BuildingInspectRequested, building);
+    }
+
     public override void _Ready()
     {
         Instance = this;

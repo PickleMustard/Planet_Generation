@@ -412,6 +412,45 @@ namespace UtilityLibrary
             EmitSignal(SignalName.BuildingRemoved, continentIndex);
 
         /// <summary>
+        /// Fired when a <see cref="Structures.Logistics.ResourceLink"/> is created or
+        /// removed. PlanetBoard and any other interested UI rebuild their link views
+        /// in response. No payload — listeners refresh from current state.
+        /// </summary>
+        [Signal]
+        public delegate void ResourceLinkChangedEventHandler();
+
+        public void EmitResourceLinkChanged() =>
+            EmitSignal(SignalName.ResourceLinkChanged);
+
+        /// <summary>
+        /// Fired when a UI component requests the PlanetBoard window be opened on a
+        /// specific body in a specific mode (e.g. "ResourceLink", "TransferRoute",
+        /// "Overview"). MainGameUI listens and routes the request to the board.
+        /// </summary>
+        [Signal]
+        public delegate void OpenPlanetBoardRequestedEventHandler(
+            ProceduralGeneration.PlanetGeneration.CelestialBody body,
+            string mode);
+
+        public void EmitOpenPlanetBoardRequested(
+            ProceduralGeneration.PlanetGeneration.CelestialBody body,
+            string mode) =>
+            EmitSignal(SignalName.OpenPlanetBoardRequested, body, mode);
+
+        /// <summary>
+        /// Fired exactly once per game instance, when the player places the building
+        /// that carries <c>GameStartBehavior</c> (currently the company headquarters).
+        /// This is the commit point for the procedurally generated system: subscribers
+        /// (e.g. lazy serialization) should treat this as "the player chose to keep
+        /// this generated world." Parameters: the placed Building.
+        /// </summary>
+        [Signal]
+        public delegate void GameStartedEventHandler(Building hq);
+
+        public void EmitGameStarted(Building hq) =>
+            EmitSignal(SignalName.GameStarted, hq);
+
+        /// <summary>
         /// Fired when an economy is registered with the debug console.
         /// Parameters: economyNamespace, economyType, parentName.
         /// </summary>

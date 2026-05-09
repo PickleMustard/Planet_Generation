@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-05-05" name="report_1" tests="18" failures="10" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="BuildingLinkFlowTest" package="Tests/Constructables/Buildings" timestamp="2026-05-06T03:16:08" hostname="localhost" tests="18" failures="10" errors="0" skipped="0" flaky="0" time="0.095">
+		<testcase name="EndToEnd_ResourceFlowsFromA_Output_ToB_Input" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.016">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:35" type="FAILURE">
+<![CDATA[
+Object reference not set to an instance of an object.
+]]>
+			</failure>
+		</testcase>
+		<testcase name="EndToEnd_UsingTickEngine_ResourceFlowsFromA_ToB" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.006">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:62" type="FAILURE">
+<![CDATA[
+Expecting be equal:
+    '10' but is '0'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="EndToEnd_ManufacturingCycle_ProducesAndDelivers" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.034">
+		</testcase>
+		<testcase name="EndToEnd_ManufacturingCycle_RequestsMissingInputsFromEconomy" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.003">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:131" type="FAILURE">
+<![CDATA[
+Expecting size:
+    '1' but is '0'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="EndToEnd_ManufacturingCycle_MissingInputsArriveViaLink" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:173" type="FAILURE">
+<![CDATA[
+Expecting size:
+    '1' but is '0'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="StorageHubBehavior_AllocatesAndReleasesBulkSlots" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.002">
+		</testcase>
+		<testcase name="TransportHubBehavior_DrainsBulkBufferThroughLinks" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.002">
+		</testcase>
+		<testcase name="TransportHubBehavior_PartialDrain_WhenLinkCapacityLimited" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+		</testcase>
+		<testcase name="BulkRouting_PureBulk_LinkDeliversToBulk" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.001">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:288" type="FAILURE">
+<![CDATA[
+Object reference not set to an instance of an object.
+]]>
+			</failure>
+		</testcase>
+		<testcase name="BulkRouting_PureBulk_LinkDrainsBulk" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.001">
+		</testcase>
+		<testcase name="BulkRouting_Hybrid_DeliveryFillsBulkNotInput" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:342" type="FAILURE">
+<![CDATA[
+Object reference not set to an instance of an object.
+]]>
+			</failure>
+		</testcase>
+		<testcase name="BulkRouting_Hybrid_PullsFromBulkViaInput" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:380" type="FAILURE">
+<![CDATA[
+Expecting be equal:
+    '5' but is '0'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="BulkRouting_Hybrid_OutputsFlowOutputBulkLink" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+		</testcase>
+		<testcase name="BulkRouting_Fallback_BulkRejectsButRecipeSlotAccepts" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:428" type="FAILURE">
+<![CDATA[
+Expecting be equal:
+    '12' but is '0'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="BulkRouting_Reject_BulkFullNoFallback_LinkBuffers" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:446" type="FAILURE">
+<![CDATA[
+Expecting: 'False' but is 'True'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="BulkRouting_PartialBulkSpace_AllOrNothing" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+		</testcase>
+		<testcase name="BulkRouting_LegacyPath_NoBulkBehavior" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+		</testcase>
+		<testcase name="BulkRouting_ManufacturingPushOutputs_GatedWhenBulkActive" classname="Tests.Constructables.Buildings.BuildingLinkFlowTest" time="0.000">
+			<failure message="FAILED: res://Tests/Constructables/Buildings/BuildingLinkFlowTest.cs:511" type="FAILURE">
+<![CDATA[
+Object reference not set to an instance of an object.
+]]>
+			</failure>
+		</testcase>
+	</testsuite>
+</testsuites>

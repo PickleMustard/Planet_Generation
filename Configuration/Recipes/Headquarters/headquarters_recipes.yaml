@@ -4,12 +4,11 @@ recipes:
     display_name: "Emergency Operations"
     description: "Combines power generation, material gathering, and basic fabrication using scavenged equipment."
     category: headquarters
-    work_required: 10.0
+    work_required: 1.0
     icon:
       base_path: "res://Assets/Icons/Recipes/headquarters/hq_all_in_one_operation"
-    input_resources: {}  # No inputs needed
+    input_resources: {} # No inputs needed
     output_resources:
-      power: 20
       concrete: 2
       iron: 1
       copper: 1
@@ -19,7 +18,7 @@ recipes:
     display_name: "Emergency Power Focus"
     description: "Diverts all resources to power generation."
     category: headquarters
-    work_required: 10.0
+    work_required: 1.0
     icon:
       base_path: "res://Assets/Icons/Recipes/headquarters/hq_power_focus"
     input_resources: {}
@@ -31,7 +30,7 @@ recipes:
     display_name: "Material Salvage"
     description: "Focuses on gathering loose materials from the surrounding area."
     category: headquarters
-    work_required: 12.0
+    work_required: 2.0
     icon:
       base_path: "res://Assets/Icons/Recipes/headquarters/hq_extraction_focus"
     input_resources:
@@ -46,7 +45,7 @@ recipes:
     display_name: "Basic Fabrication"
     description: "Processes raw materials into construction supplies."
     category: headquarters
-    work_required: 15.0
+    work_required: 2.0
     icon:
       base_path: "res://Assets/Icons/Recipes/headquarters/hq_fabrication_focus"
     input_resources:

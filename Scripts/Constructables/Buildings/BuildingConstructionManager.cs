@@ -24,8 +24,8 @@ public partial class BuildingConstructionManager : Node
     }
 
     private readonly List<ArchitectRegistration> _architects = new();
-    private readonly List<BuildingConstruction> _activeBuildings = new();
-    private readonly List<BuildingConstruction> _pendingBuildings = new();
+    private readonly List<Building> _activeBuildings = new();
+    private readonly List<Building> _pendingBuildings = new();
 
     private float _progressTimer;
     private const float PROGRESS_SIGNAL_INTERVAL = 0.5f;
@@ -34,7 +34,7 @@ public partial class BuildingConstructionManager : Node
     public int ActiveBuildingCount => _activeBuildings.Count;
     public int PendingBuildingCount => _pendingBuildings.Count;
 
-    public IReadOnlyList<BuildingConstruction> GetActiveBuildings() => _activeBuildings;
+    public IReadOnlyList<Building> GetActiveBuildings() => _activeBuildings;
 
     /// <summary>
     /// Registers an orbital architect station, contributing its work budget to the aggregated pool.
@@ -103,7 +103,7 @@ public partial class BuildingConstructionManager : Node
     /// Registers a building for construction. If architects are available it becomes
     /// active immediately; otherwise it queues as pending.
     /// </summary>
-    public void RegisterBuilding(BuildingConstruction building)
+    public void RegisterBuilding(Building building)
     {
         if (_activeBuildings.Contains(building) || _pendingBuildings.Contains(building))
             return;
@@ -128,7 +128,7 @@ public partial class BuildingConstructionManager : Node
     /// <summary>
     /// Removes a building from tracking (on completion or cancellation).
     /// </summary>
-    public void UnregisterBuilding(BuildingConstruction building)
+    public void UnregisterBuilding(Building building)
     {
         if (!_activeBuildings.Remove(building))
             _pendingBuildings.Remove(building);
@@ -214,7 +214,7 @@ public partial class BuildingConstructionManager : Node
     /// <summary>
     /// Applies the worst waste factor among registered architects to a building's work required.
     /// </summary>
-    private void ApplyWasteFactor(BuildingConstruction building)
+    private void ApplyWasteFactor(Building building)
     {
         float worstWaste = 1.0f;
         foreach (var arch in _architects)

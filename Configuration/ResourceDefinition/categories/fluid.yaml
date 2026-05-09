@@ -1,6 +1,20 @@
 resources:
+  - id_name: water
+    resource_tier: 0
+    state_of_matter: fluid
+    max_stack_size: 200
+    display_color:
+      - 30
+      - 144
+      - 255
+    tags: [aquatic, water_world, marine, water_needed]
+    icon:
+      base_path: "res://Assets/Icons/Resources/fuel/water"
+
   - id_name: sulfuric_acid
     resource_tier: 1
+    state_of_matter: fluid
+    max_stack_size: 100
     display_color:
       - 255
       - 255

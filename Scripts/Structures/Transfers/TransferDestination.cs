@@ -7,28 +7,28 @@ namespace Structures.Transfers;
 public class TransferDestination
 {
     /// <summary>
-    /// Continent index for continent-to-continent transfers.
+    /// Surface transfer-station building id for surface-to-surface transfers.
     /// Null when targeting an orbital station.
     /// </summary>
-    public int? ContinentIndex { get; set; }
+    public string? BuildingId { get; set; }
 
     /// <summary>
-    /// Station satellite identifier for continent-to-orbit transfers.
-    /// Null when targeting a continent.
+    /// Station satellite identifier for surface-to-orbit transfers.
+    /// Null when targeting a surface building.
     /// </summary>
     public string? StationSatelliteId { get; set; }
 
     /// <summary>
-    /// Whether this destination targets an orbital station rather than a continent.
+    /// Whether this destination targets an orbital station rather than a surface building.
     /// </summary>
     public bool IsOrbitalStation => !string.IsNullOrEmpty(StationSatelliteId);
 
     /// <summary>
-    /// Creates a destination targeting a continent.
+    /// Creates a destination targeting a surface transfer-station building.
     /// </summary>
-    public static TransferDestination ForContinent(int continentIndex)
+    public static TransferDestination ForBuilding(string buildingId)
     {
-        return new TransferDestination { ContinentIndex = continentIndex };
+        return new TransferDestination { BuildingId = buildingId };
     }
 
     /// <summary>
@@ -43,6 +43,6 @@ public class TransferDestination
     {
         if (IsOrbitalStation)
             return $"Station({StationSatelliteId})";
-        return $"Continent({ContinentIndex})";
+        return $"Building({BuildingId})";
     }
 }

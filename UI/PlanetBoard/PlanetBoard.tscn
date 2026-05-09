@@ -1,0 +1,49 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/PlanetBoard/PlanetBoardWindow.cs" id="1_window"]
+[ext_resource type="Script" path="res://Scripts/UI/PlanetBoard/PlanetBoardView.cs" id="2_view"]
+
+[node name="PlanetBoardWindow" type="PanelContainer" node_paths=PackedStringArray("_viewPath", "_modeSwitcherPath", "_titleLabelPath", "_closeButtonPath")]
+custom_minimum_size = Vector2(900, 700)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -350.0
+offset_right = 450.0
+offset_bottom = 350.0
+script = ExtResource("1_window")
+_viewPath = NodePath("MainVBox/BoardView")
+_modeSwitcherPath = NodePath("MainVBox/TitleBar/ModeSwitcher")
+_titleLabelPath = NodePath("MainVBox/TitleBar/TitleLabel")
+_closeButtonPath = NodePath("MainVBox/TitleBar/CloseButton")
+
+[node name="MainVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TitleBar" type="HBoxContainer" parent="MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TitleLabel" type="Label" parent="MainVBox/TitleBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "Planet Board"
+
+[node name="ModeSwitcher" type="OptionButton" parent="MainVBox/TitleBar"]
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="MainVBox/TitleBar"]
+layout_mode = 2
+text = "X"
+
+[node name="BoardView" type="Control" parent="MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_view")

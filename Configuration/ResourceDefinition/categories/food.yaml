@@ -1,6 +1,8 @@
 resources:
   - id_name: grain
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 200
     display_color:
       - 244
       - 164
@@ -11,6 +13,8 @@ resources:
 
   - id_name: vegetable
     resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 200
     display_color:
       - 34
       - 139
@@ -21,6 +25,8 @@ resources:
 
   - id_name: protein
     resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 182
@@ -31,6 +37,8 @@ resources:
 
   - id_name: mre
     resource_tier: 3
+    state_of_matter: solid
+    max_stack_size: 100
     display_color:
       - 255
       - 0

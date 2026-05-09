@@ -38,5 +38,5 @@ public interface IResourceEndpoint
     /// <summary>
     /// Gets the visual fill percentage for a specific storage building and category.
     /// </summary>
-    float GetStorageFillPercentage(Constructables.BuildingConstruction building, string category);
+    float GetStorageFillPercentage(Constructables.Building building, string category);
 }

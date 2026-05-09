@@ -75,30 +75,6 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     /// <summary>The station type from the definition.</summary>
     public string StationType => _stationDefinition?.StationType ?? "";
 
-    /// <summary>
-    /// Runtime economy for this station. Lazily initialized on first building placement
-    /// or when transfer operations require it.
-    /// </summary>
-    public StationEconomy? Economy { get; private set; }
-
-    /// <summary>
-    /// Initializes the station economy if not already created, and registers it
-    /// with the parent body's per-body economy and transfer managers.
-    /// </summary>
-    public StationEconomy InitializeEconomy()
-    {
-        if (Economy != null)
-            return Economy;
-
-        Economy = new StationEconomy(Id);
-
-        var parentBody = GetParent()?.GetParent() as IOrbitalBody;
-        parentBody?.EconomyMgr?.RegisterStationEconomy(Economy);
-        parentBody?.TransferMgr?.RegisterStationEndpoint(Id, Economy);
-
-        GameLogger.Info($"StationSatellite {Name}: Economy initialized");
-        return Economy;
-    }
 
     #region IConstructable
 
@@ -511,13 +487,6 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     public override void _ExitTree()
     {
-        if (Economy != null)
-        {
-            var parentBody = GetParent()?.GetParent() as IOrbitalBody;
-            parentBody?.EconomyMgr?.UnregisterStationEconomy(Economy);
-            parentBody?.TransferMgr?.UnregisterStationEndpoint(Id);
-        }
-
         GameLogger.Debug($"StationSatellite destroying: {Name}");
         _isInitialized = false;
         base._ExitTree();

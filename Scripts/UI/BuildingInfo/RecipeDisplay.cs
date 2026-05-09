@@ -10,13 +10,42 @@ namespace UI.BuildingInfo;
 /// </summary>
 public partial class RecipeDisplay : HBoxContainer
 {
+    [Signal]
+    public delegate void RecipeClickedEventHandler();
+
     private TextureRect? _iconRect;
     private Label? _nameLabel;
+    private bool _enabled = true;
 
     public override void _Ready()
     {
         _iconRect = GetNodeOrNull<TextureRect>("RecipeIcon");
         _nameLabel = GetNodeOrNull<Label>("RecipeNameLabel");
+        MouseFilter = MouseFilterEnum.Stop;
+    }
+
+    public override void _GuiInput(InputEvent @event)
+    {
+        if (!_enabled) return;
+        if (@event is InputEventMouseButton mb
+            && mb.Pressed
+            && mb.ButtonIndex == MouseButton.Left)
+        {
+            EmitSignal(SignalName.RecipeClicked);
+            AcceptEvent();
+        }
+    }
+
+    /// <summary>
+    /// Toggles click handling and visually dims the row when disabled.
+    /// Used to disable recipe-swap UI for buildings whose recipe is not user-selectable
+    /// (e.g., extraction buildings using a synthetic cell-derived recipe).
+    /// </summary>
+    public void SetEnabled(bool enabled)
+    {
+        _enabled = enabled;
+        MouseFilter = enabled ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        Modulate = enabled ? Colors.White : new Color(1f, 1f, 1f, 0.5f);
     }
 
     /// <summary>

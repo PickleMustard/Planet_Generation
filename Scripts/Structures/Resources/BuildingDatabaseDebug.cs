@@ -94,8 +94,7 @@ namespace Structures.Resources
                             "Alternative Recipes",
                             building.Production.AlternativeRecipes.Count
                         )
-                        .AddProperty("Input Storage", building.Production.InputStorageAmount)
-                        .AddProperty("Output Storage", building.Production.OutputStorageAmount)
+                        .AddProperty("Storage Capacity (slots)", building.StorageCapacity)
                         .AddProperty("Production Speed", building.Production.ProductionSpeed);
 
                     var visualNode = buildingNode.AddChild("Visual");

@@ -154,39 +154,6 @@ namespace UI.Debug.Economy
             {
                 if (body.EconomyMgr == null)
                     continue;
-
-                foreach (var eco in body.EconomyMgr.GetActiveEconomies())
-                {
-                    if (eco.ActiveBuildingCount > 0)
-                    {
-                        var idx = eco.Continent.StartingIndex;
-                        var display = $"Continent {idx} ({eco.ActiveBuildingCount} buildings)";
-                        _economyList?.AddItem(display);
-
-                        // Color code based on status
-                        if (eco.IsPowerDeficit)
-                            _economyList?.SetItemCustomFgColor(
-                                _economyList.ItemCount - 1,
-                                new Color(1, 0.5f, 0.5f)
-                            );
-                    }
-                }
-
-                foreach (var eco in body.EconomyMgr.GetActiveStationEconomies())
-                {
-                    if (eco.ActiveBuildingCount > 0)
-                    {
-                        var display =
-                            $"Station {eco.StationId} ({eco.ActiveBuildingCount} buildings)";
-                        _economyList?.AddItem(display);
-
-                        if (eco.IsPowerDeficit)
-                            _economyList?.SetItemCustomFgColor(
-                                _economyList.ItemCount - 1,
-                                new Color(1, 0.5f, 0.5f)
-                            );
-                    }
-                }
             }
         }
 
@@ -203,82 +170,6 @@ namespace UI.Debug.Economy
                 ClearDetails();
                 return;
             }
-
-            switch (instance)
-            {
-                case ContinentEconomy continentEco:
-                    UpdateContinentEconomyDetails(continentEco);
-                    break;
-                case StationEconomy stationEco:
-                    UpdateStationEconomyDetails(stationEco);
-                    break;
-            }
-        }
-
-        private void UpdateContinentEconomyDetails(ContinentEconomy eco)
-        {
-            if (_headerTypeLabel != null)
-                _headerTypeLabel.Text = "Continent";
-            if (_headerIdLabel != null)
-                _headerIdLabel.Text = eco.Continent.StartingIndex.ToString();
-
-            if (_powerGenLabel != null)
-                _powerGenLabel.Text = $"{eco.PowerGeneration:F1}/s";
-            if (_powerConLabel != null)
-                _powerConLabel.Text = $"{eco.PowerConsumption:F1}/s";
-            if (_powerStoredLabel != null)
-                _powerStoredLabel.Text = $"{eco.PowerStored:F1} / {eco.PowerStorageCapacity:F1}";
-            if (_powerDeficitLabel != null)
-            {
-                _powerDeficitLabel.Text = eco.IsPowerDeficit ? "YES" : "No";
-                _powerDeficitLabel.AddThemeColorOverride(
-                    "font_color",
-                    eco.IsPowerDeficit ? new Color(1, 0.3f, 0.3f) : new Color(0.3f, 1, 0.3f)
-                );
-            }
-
-            if (_buildingsActiveLabel != null)
-                _buildingsActiveLabel.Text = eco.ActiveBuildingCount.ToString();
-
-            int pausedCount = eco.ActiveBuildings.Count(b => b.IsPaused);
-            if (_buildingsPausedLabel != null)
-                _buildingsPausedLabel.Text = pausedCount.ToString();
-
-            UpdateStockpiles(eco.GetAllStockpiles(), eco.GetAllNetRates());
-            UpdateShortages(eco);
-        }
-
-        private void UpdateStationEconomyDetails(StationEconomy eco)
-        {
-            if (_headerTypeLabel != null)
-                _headerTypeLabel.Text = "Station";
-            if (_headerIdLabel != null)
-                _headerIdLabel.Text = eco.StationId;
-
-            if (_powerGenLabel != null)
-                _powerGenLabel.Text = $"{eco.PowerGeneration:F1}/s";
-            if (_powerConLabel != null)
-                _powerConLabel.Text = $"{eco.PowerConsumption:F1}/s";
-            if (_powerStoredLabel != null)
-                _powerStoredLabel.Text = $"{eco.PowerStored:F1} / {eco.PowerStorageCapacity:F1}";
-            if (_powerDeficitLabel != null)
-            {
-                _powerDeficitLabel.Text = eco.IsPowerDeficit ? "YES" : "No";
-                _powerDeficitLabel.AddThemeColorOverride(
-                    "font_color",
-                    eco.IsPowerDeficit ? new Color(1, 0.3f, 0.3f) : new Color(0.3f, 1, 0.3f)
-                );
-            }
-
-            if (_buildingsActiveLabel != null)
-                _buildingsActiveLabel.Text = eco.ActiveBuildingCount.ToString();
-
-            int pausedCount = eco.ActiveBuildings.Count(b => b.IsPaused);
-            if (_buildingsPausedLabel != null)
-                _buildingsPausedLabel.Text = pausedCount.ToString();
-
-            UpdateStockpiles(eco.GetAllStockpiles(), eco.GetAllNetRates());
-            UpdateShortages(eco);
         }
 
         private void UpdateStockpiles(
@@ -348,78 +239,6 @@ namespace UI.Debug.Economy
                 var emptyLabel = new Label { Text = "No stockpiled resources" };
                 emptyLabel.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f));
                 _stockpilesContainer.AddChild(emptyLabel);
-            }
-        }
-
-        private void UpdateShortages(ContinentEconomy eco)
-        {
-            if (_shortagesContainer == null)
-                return;
-
-            foreach (var child in _shortagesContainer.GetChildren())
-                child.QueueFree();
-
-            var shortages = new List<string>();
-            var stockpiles = eco.GetAllStockpiles();
-            var netRates = eco.GetAllNetRates();
-
-            foreach (var kvp in netRates)
-            {
-                float stock = stockpiles.TryGetValue(kvp.Key, out var s) ? s : 0f;
-                if (stock <= 0 && kvp.Value < 0)
-                    shortages.Add(kvp.Key);
-            }
-
-            if (shortages.Count == 0)
-            {
-                var okLabel = new Label { Text = "No active shortages" };
-                okLabel.AddThemeColorOverride("font_color", new Color(0.3f, 1, 0.3f));
-                _shortagesContainer.AddChild(okLabel);
-            }
-            else
-            {
-                foreach (var shortage in shortages)
-                {
-                    var label = new Label { Text = $"⚠ {shortage}" };
-                    label.AddThemeColorOverride("font_color", new Color(1, 0.5f, 0.3f));
-                    _shortagesContainer.AddChild(label);
-                }
-            }
-        }
-
-        private void UpdateShortages(StationEconomy eco)
-        {
-            if (_shortagesContainer == null)
-                return;
-
-            foreach (var child in _shortagesContainer.GetChildren())
-                child.QueueFree();
-
-            var shortages = new List<string>();
-            var stockpiles = eco.GetAllStockpiles();
-            var netRates = eco.GetAllNetRates();
-
-            foreach (var kvp in netRates)
-            {
-                float stock = stockpiles.TryGetValue(kvp.Key, out var s) ? s : 0f;
-                if (stock <= 0 && kvp.Value < 0)
-                    shortages.Add(kvp.Key);
-            }
-
-            if (shortages.Count == 0)
-            {
-                var okLabel = new Label { Text = "No active shortages" };
-                okLabel.AddThemeColorOverride("font_color", new Color(0.3f, 1, 0.3f));
-                _shortagesContainer.AddChild(okLabel);
-            }
-            else
-            {
-                foreach (var shortage in shortages)
-                {
-                    var label = new Label { Text = $"⚠ {shortage}" };
-                    label.AddThemeColorOverride("font_color", new Color(1, 0.5f, 0.3f));
-                    _shortagesContainer.AddChild(label);
-                }
             }
         }
 

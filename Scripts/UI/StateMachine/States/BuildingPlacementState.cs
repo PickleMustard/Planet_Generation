@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using Constructables;
+using Constructables.Buildings.Behaviors;
 using Godot;
 using Structures.GameState;
 using Structures.Resources;
@@ -77,25 +79,23 @@ public partial class BuildingPlacementState : LimboState
                     extraCells.Add(cell);
             }
 
-            if (_buildingDef.IdName == "company_headquarters")
-            {
-                var hq = ConstructionManager.Instance.CreateHeadquarters(primaryCell, body, extraCells);
-                if (hq == null)
-                {
-                    Dispatch("placement_cancelled");
-                    return;
-                }
-
-                Dispatch("headquarters_placed");
-                return;
-            }
-
-            ConstructionManager.Instance.CreateBuilding(
+            var building = ConstructionManager.Instance.CreateBuilding(
                 primaryCell,
                 body,
                 _buildingDef,
                 extraCells
             );
+
+            // Buildings carrying GameStartBehavior (the company HQ) divert into the
+            // GameStartState naming dialog instead of the normal HUD return path.
+            // The behavior already fired SignalBus.GameStarted from Building.Register;
+            // we hand the placed building to the state via the blackboard.
+            if (building.Behaviors.OfType<GameStartBehavior>().Any())
+            {
+                Blackboard?.Top().SetVar("PlacedHq", Variant.From(building));
+                Dispatch("headquarters_placed");
+                return;
+            }
 
             ToastSystem.Instance?.Show(
                 $"Construction started: {_buildingDef.DisplayName ?? _buildingDef.IdName}"

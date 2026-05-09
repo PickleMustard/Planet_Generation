@@ -1,3 +1,4 @@
+using Constructables;
 using Godot;
 using Structures.Resources;
 using UtilityLibrary;
@@ -6,39 +7,36 @@ namespace UI.BuildingInfo;
 
 /// <summary>
 /// Header for the Building Info Panel displaying building icon, name,
-/// and action buttons (upgrade, demolish).
+/// and an edit-name button.
 /// </summary>
 public partial class BuildingInfoHeader : HBoxContainer
 {
     private TextureRect? _buildingIcon;
     private Label? _buildingNameLabel;
-    private Button? _upgradeButton;
-    private Button? _demolishButton;
+    private LineEdit? _buildingNameEdit;
+    private Button? _editNameButton;
 
+    private Building? _building;
     private int _buildingInstanceId = -1;
 
     [Signal]
-    public delegate void UpgradeRequestedEventHandler();
-
-    [Signal]
-    public delegate void DemolishRequestedEventHandler();
+    public delegate void NameChangedEventHandler(string newName);
 
     public override void _Ready()
     {
         _buildingIcon = GetNodeOrNull<TextureRect>("BuildingIcon");
         _buildingNameLabel = GetNodeOrNull<Label>("BuildingNameLabel");
-        _upgradeButton = GetNodeOrNull<Button>("UpgradeButton");
-        _demolishButton = GetNodeOrNull<Button>("DemolishButton");
+        _buildingNameEdit = GetNodeOrNull<LineEdit>("BuildingNameEdit");
+        _editNameButton = GetNodeOrNull<Button>("EditNameButton");
 
-        // Connect button signals
-        if (_upgradeButton != null)
-        {
-            _upgradeButton.Pressed += OnUpgradePressed;
-        }
+        if (_editNameButton != null)
+            _editNameButton.Pressed += BeginEdit;
 
-        if (_demolishButton != null)
+        if (_buildingNameEdit != null)
         {
-            _demolishButton.Pressed += OnDemolishPressed;
+            _buildingNameEdit.Hide();
+            _buildingNameEdit.TextSubmitted += OnNameSubmitted;
+            _buildingNameEdit.FocusExited += CommitOrCancelEdit;
         }
     }
 
@@ -49,21 +47,32 @@ public partial class BuildingInfoHeader : HBoxContainer
     {
         _buildingInstanceId = buildingInstanceId;
 
-        // Set building name
         if (_buildingNameLabel != null)
         {
             _buildingNameLabel.Text = definition?.DisplayName ?? definition?.IdName ?? "Unknown Building";
         }
 
-        // Load and set icon
         if (_buildingIcon != null)
         {
-            Texture2D? icon = LoadBuildingIcon(definition);
-            _buildingIcon.Texture = icon;
+            _buildingIcon.Texture = LoadBuildingIcon(definition);
         }
 
-        // Update button states based on building
-        UpdateButtonStates(definition);
+        if (_editNameButton != null)
+            _editNameButton.Disabled = _building == null;
+    }
+
+    /// <summary>
+    /// Sets the runtime building for live name editing. Header still works without it
+    /// (read-only display) when only the definition is provided.
+    /// </summary>
+    public void SetBuilding(Building? building, int buildingInstanceId)
+    {
+        _building = building;
+        SetBuilding(building?.Definition, buildingInstanceId);
+        if (_buildingNameLabel != null && building != null && !string.IsNullOrEmpty(building.Name))
+        {
+            _buildingNameLabel.Text = building.Name;
+        }
     }
 
     /// <summary>
@@ -71,45 +80,55 @@ public partial class BuildingInfoHeader : HBoxContainer
     /// </summary>
     public void Clear()
     {
+        _building = null;
         _buildingInstanceId = -1;
 
         if (_buildingNameLabel != null)
-        {
             _buildingNameLabel.Text = "No Building Selected";
-        }
 
         if (_buildingIcon != null)
-        {
             _buildingIcon.Texture = null;
-        }
 
-        if (_upgradeButton != null)
-        {
-            _upgradeButton.Disabled = true;
-        }
+        if (_editNameButton != null)
+            _editNameButton.Disabled = true;
 
-        if (_demolishButton != null)
-        {
-            _demolishButton.Disabled = true;
-        }
+        if (_buildingNameEdit != null)
+            _buildingNameEdit.Hide();
     }
 
-    private void OnUpgradePressed()
+    private void BeginEdit()
     {
-        if (_buildingInstanceId >= 0)
-        {
-            SignalBus.Instance?.EmitBuildingUpgradeRequested(_buildingInstanceId);
-            EmitSignal(SignalName.UpgradeRequested);
-        }
+        if (_building == null || _buildingNameEdit == null || _buildingNameLabel == null)
+            return;
+        _buildingNameEdit.Text = _building.Name;
+        _buildingNameLabel.Hide();
+        _buildingNameEdit.Show();
+        _buildingNameEdit.GrabFocus();
+        _buildingNameEdit.SelectAll();
     }
 
-    private void OnDemolishPressed()
+    private void OnNameSubmitted(string newName) => Commit(newName);
+
+    private void CommitOrCancelEdit()
     {
-        if (_buildingInstanceId >= 0)
+        if (_buildingNameEdit == null) return;
+        Commit(_buildingNameEdit.Text);
+    }
+
+    private void Commit(string newName)
+    {
+        if (_buildingNameEdit == null || _buildingNameLabel == null)
+            return;
+
+        newName = newName?.Trim() ?? "";
+        if (_building != null && !string.IsNullOrEmpty(newName))
         {
-            SignalBus.Instance?.EmitBuildingDemolishRequested(_buildingInstanceId);
-            EmitSignal(SignalName.DemolishRequested);
+            _building.Name = newName;
+            _buildingNameLabel.Text = newName;
+            EmitSignal(SignalName.NameChanged, newName);
         }
+        _buildingNameEdit.Hide();
+        _buildingNameLabel.Show();
     }
 
     private Texture2D? LoadBuildingIcon(BuildingDefinition? definition)
@@ -119,7 +138,6 @@ public partial class BuildingInfoHeader : HBoxContainer
             return definition.Icon.MediumTexture ?? definition.Icon.SmallTexture;
         }
 
-        // Fallback: try to load from base path if defined
         if (!string.IsNullOrEmpty(definition?.Icon?.BasePath))
         {
             try
@@ -134,23 +152,5 @@ public partial class BuildingInfoHeader : HBoxContainer
         }
 
         return null;
-    }
-
-    private void UpdateButtonStates(BuildingDefinition? definition)
-    {
-        // Enable/disable buttons based on building capabilities
-        // TODO: Check if building can be upgraded
-        bool canUpgrade = definition != null && _buildingInstanceId >= 0;
-        bool canDemolish = definition != null && _buildingInstanceId >= 0;
-
-        if (_upgradeButton != null)
-        {
-            _upgradeButton.Disabled = !canUpgrade;
-        }
-
-        if (_demolishButton != null)
-        {
-            _demolishButton.Disabled = !canDemolish;
-        }
     }
 }

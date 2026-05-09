@@ -13,7 +13,6 @@ namespace UI.StateMachine;
 public partial class VoronoiCellHSM : LimboHsm
 {
     private LimboState? _cellOverview;
-    private LimboState? _buildingDetails;
 
     [Export]
     public LimboState? CellOverview
@@ -22,19 +21,8 @@ public partial class VoronoiCellHSM : LimboHsm
         set => _cellOverview = value;
     }
 
-    [Export]
-    public LimboState? BuildingDetails
-    {
-        get => _buildingDetails;
-        set => _buildingDetails = value;
-    }
-
     public override void _Ready()
     {
-        // Future transitions
-        AddTransition(_cellOverview, _buildingDetails, "building_details_opened");
-        AddTransition(_buildingDetails, _cellOverview, "back_to_overview");
-
         InitialState = _cellOverview;
 
         GameLogger.Info("VoronoiCellHSM initialized");

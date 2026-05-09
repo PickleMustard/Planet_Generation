@@ -1,9 +1,8 @@
-using Godot;
+using System.Collections.Generic;
 using Constructables;
-using Structures.GameState;
+using Godot;
+using Structures.Logistics;
 using Structures.Resources;
-using UtilityLibrary;
-using System.Linq;
 
 namespace UI.BuildingInfo;
 
@@ -13,19 +12,15 @@ namespace UI.BuildingInfo;
 /// </summary>
 public abstract partial class BaseBuildingDetails : Control
 {
-    protected BuildingConstruction? _building;
-    protected ContinentEconomy? _economy;
-    protected ContinentEconomy.BuildingRegistration? _registration;
+    protected Building? _building;
 
     /// <summary>
     /// Sets the building and economy to display details for.
     /// Must be called before the view is shown.
     /// </summary>
-    public virtual void SetBuilding(BuildingConstruction building, ContinentEconomy economy)
+    public virtual void SetBuilding(Building building)
     {
         _building = building;
-        _economy = economy;
-        _registration = GetBuildingRegistration();
 
         UpdateDisplay();
     }
@@ -36,8 +31,6 @@ public abstract partial class BaseBuildingDetails : Control
     public virtual void Clear()
     {
         _building = null;
-        _economy = null;
-        _registration = null;
     }
 
     /// <summary>
@@ -48,89 +41,68 @@ public abstract partial class BaseBuildingDetails : Control
     protected abstract void UpdateDisplay();
 
     /// <summary>
-    /// Gets the BuildingRegistration for the current building from the economy.
-    /// </summary>
-    protected ContinentEconomy.BuildingRegistration? GetBuildingRegistration()
-    {
-        if (_building == null || _economy == null)
-        {
-            return null;
-        }
-
-        // Find the registration by matching the building node
-        var buildings = _economy.GetType()
-            .GetField("_activeBuildings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.GetValue(_economy) as System.Collections.Generic.List<ContinentEconomy.BuildingRegistration>;
-
-        if (buildings != null)
-        {
-            return buildings.FirstOrDefault(b => b.BuildingNode == _building);
-        }
-
-        return null;
-    }
-
-    /// <summary>
     /// Gets the active recipe for the current building.
     /// </summary>
     protected RecipeDefinition? GetActiveRecipe()
     {
-        if (_registration == null)
-        {
-            return null;
-        }
-
         var recipeDb = RecipeDatabase.Instance;
-        if (recipeDb?.IsLoaded != true)
-        {
+        if (recipeDb?.IsLoaded != true || _building == null)
             return null;
-        }
-
-        if (recipeDb.TryGetRecipe(_registration.RecipeId, out var recipe))
-        {
-            return recipe;
-        }
-
-        return null;
+        string? recipeId = _building.ActiveRecipeId ?? _building.Definition?.Production?.DefaultRecipe;
+        if (string.IsNullOrEmpty(recipeId))
+            return null;
+        recipeDb.TryGetRecipe(recipeId, out var recipe);
+        return recipe;
     }
 
-    /// <summary>
-    /// Gets the stockpile amount for a specific resource.
-    /// </summary>
-    protected float GetResourceStockpile(string resourceId)
+    protected float GetBuildingResourceQuantity(string resourceId)
     {
-        if (_economy == null)
-        {
-            return 0f;
-        }
-
-        return _economy.GetStockpile(resourceId);
+        if (_building == null || string.IsNullOrEmpty(resourceId)) return 0f;
+        return _building.InputStorage.GetQuantity(resourceId)
+             + _building.OutputStorage.GetQuantity(resourceId);
     }
 
-    /// <summary>
-    /// Gets the storage capacity for a resource category.
-    /// </summary>
-    protected float GetCategoryCapacity(string category)
+    protected float GetBuildingResourceCapacity(string resourceId)
     {
-        if (_economy == null)
-        {
-            return 1000f; // Default capacity
-        }
-
-        return _economy.GetCategoryCapacity(category);
+        if (_building == null || string.IsNullOrEmpty(resourceId)) return 0f;
+        return _building.InputStorage.GetCapacity(resourceId)
+             + _building.OutputStorage.GetCapacity(resourceId);
     }
 
-    /// <summary>
-    /// Gets the total amount stored in a category.
-    /// </summary>
-    protected float GetCategoryUsed(string category)
+    protected float GetStorageTotalUsed(Storage? storage)
     {
-        if (_economy == null)
+        if (storage == null) return 0f;
+        float total = 0f;
+        foreach (var kvp in storage.GetAllQuantities()) total += kvp.Value;
+        return total;
+    }
+
+    protected float GetStorageTotalCapacity(Storage? storage)
+    {
+        if (storage == null) return 0f;
+        float total = 0f;
+        foreach (var slot in storage.Slots) total += slot.Capacity;
+        return total;
+    }
+
+    protected void PopulateSlotGrid(GridContainer? grid, Storage? storage, PackedScene? slotScene)
+    {
+        if (grid == null) return;
+
+        foreach (var child in grid.GetChildren())
         {
-            return 0f;
+            child.QueueFree();
         }
 
-        return _economy.GetCategoryUsed(category);
+        if (storage == null || slotScene == null) return;
+
+        foreach (var slot in storage.Slots)
+        {
+            var item = slotScene.Instantiate<ResourceSlotItem>();
+            if (item == null) continue;
+            grid.AddChild(item);
+            item.SetSlot(slot);
+        }
     }
 
     /// <summary>
@@ -150,6 +122,28 @@ public abstract partial class BaseBuildingDetails : Control
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Per-second input/output rates for the active recipe at the building's production speed.
+    /// "power" entries are excluded so callers can render resource flows directly.
+    /// </summary>
+    public static (Dictionary<string, float> inputs, Dictionary<string, float> outputs)
+        ComputeRecipeRates(RecipeDefinition? recipe, BuildingDefinition? definition)
+    {
+        var inputs = new Dictionary<string, float>();
+        var outputs = new Dictionary<string, float>();
+        if (recipe == null || definition?.Production == null)
+            return (inputs, outputs);
+        float speed = definition.Production.ProductionSpeed;
+        float cycleTime = recipe.WorkRequired / Mathf.Max(speed, 0.001f);
+        if (cycleTime <= 0f)
+            return (inputs, outputs);
+        foreach (var kvp in recipe.InputResources)
+            if (kvp.Key != "power") inputs[kvp.Key] = kvp.Value / cycleTime;
+        foreach (var kvp in recipe.OutputResources)
+            if (kvp.Key != "power") outputs[kvp.Key] = kvp.Value / cycleTime;
+        return (inputs, outputs);
     }
 
     /// <summary>
@@ -173,7 +167,8 @@ public abstract partial class BaseBuildingDetails : Control
         {
             if (!string.IsNullOrEmpty(words[i]) && words[i].Length > 0)
             {
-                words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1).ToLowerInvariant();
+                words[i] =
+                    char.ToUpperInvariant(words[i][0]) + words[i].Substring(1).ToLowerInvariant();
             }
         }
         return string.Join(" ", words);

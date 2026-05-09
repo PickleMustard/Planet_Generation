@@ -143,15 +143,6 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
             foreach (var continent in _body.Mesh.Continents.Values)
             {
                 totalCells += continent.cells.Count;
-                if (continent.Economy != null)
-                {
-                    activeEco++;
-                    totalBuildings += continent.Economy.ActiveBuildingCount;
-                    totalGen += continent.Economy.PowerGeneration;
-                    totalUse += continent.Economy.PowerConsumption;
-                    if (continent.Economy.IsPowerDeficit)
-                        deficitCount++;
-                }
             }
             AddDetailRow("Continents", continentCount.ToString());
             AddDetailRow("Surface Cells", totalCells.ToString());
@@ -189,49 +180,24 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
         AddDetailRow("Avg Height", $"{continent.averageHeight:F2}");
         AddDetailRow("Avg Moisture", $"{continent.averageMoisture:F2}");
 
-        // Economy
-        if (continent.Economy != null)
-        {
-            var eco = continent.Economy;
-            AddSeparator();
-            AddDetailHeader("Economy");
-            AddDetailRow("Power", $"{eco.PowerGeneration:F1} gen / {eco.PowerConsumption:F1} use");
-            AddPercentRow("Power Stored", eco.PowerStored, eco.PowerStorageCapacity, mode: DonutChart.ColorMode.RedToGreen);
-            AddDetailRow("Buildings", eco.ActiveBuildingCount.ToString());
-
-            if (eco.IsPowerDeficit)
-                AddAlertRow("POWER DEFICIT");
-
-            // Top stockpiled resources
-            var stockpiles = eco.GetAllStockpiles();
-            if (stockpiles.Count > 0)
-            {
-                AddDetailHeader("Top Resources");
-                int shown = 0;
-                foreach (var kvp in stockpiles)
-                {
-                    if (kvp.Value > 0 && shown < 5)
-                    {
-                        AddDetailRow(kvp.Key, $"{kvp.Value:F1}");
-                        shown++;
-                    }
-                }
-            }
-        }
-
-        // Transfers from this continent
+        // Transfers from hubs on this continent (per-building rollup).
         if (_body.TransferMgr != null)
         {
-            int activeFromHere = _body.TransferMgr.GetActiveTransferCountForContinent(continentIndex);
+            var hubIds = _body.TransferMgr.GetEndpointsOnContinent(continentIndex);
+            int activeFromHere = 0;
+            int scheduleCount = 0;
+            foreach (var id in hubIds)
+            {
+                activeFromHere += _body.TransferMgr.GetActiveTransferCountForOrigin(id);
+                scheduleCount += _body.TransferMgr.GetSchedulesForOrigin(id).Count;
+            }
             if (activeFromHere > 0)
             {
                 AddSeparator();
                 AddDetailRow("Active Transfers", activeFromHere.ToString());
             }
-
-            var schedules = _body.TransferMgr.GetSchedulesForContinent(continentIndex);
-            if (schedules.Count > 0)
-                AddDetailRow("Schedules", schedules.Count.ToString());
+            if (scheduleCount > 0)
+                AddDetailRow("Schedules", scheduleCount.ToString());
         }
     }
 
@@ -262,14 +228,6 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
                         AddDetailHeader("Construction");
                         float progress = station.workDone / Mathf.Max(station.workRequired, 1f);
                         AddDetailRow("Progress", $"{progress * 100:F0}%");
-                    }
-
-                    if (station.Economy != null)
-                    {
-                        AddSeparator();
-                        AddDetailHeader("Economy");
-                        AddDetailRow("Power", $"{station.Economy.PowerGeneration:F1} / {station.Economy.PowerConsumption:F1}");
-                        AddDetailRow("Buildings", station.Economy.ActiveBuildingCount.ToString());
                     }
 
                     // Open Station button for cross-window transition
@@ -349,7 +307,6 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
         }
 
         AddDetailHeader("Continent Economies");
-        AddDetailRow("Active Economies", economyMgr.ActiveEconomyCount.ToString());
         AddDetailRow("Total Buildings", economyMgr.GetTotalBuildingCount().ToString());
         AddDetailRow("Power Generation", $"{economyMgr.GetTotalPowerGeneration():F1}/s");
         AddDetailRow("Power Consumption", $"{economyMgr.GetTotalPowerConsumption():F1}/s");
@@ -361,7 +318,6 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
 
         AddSeparator();
         AddDetailHeader("Station Economies");
-        AddDetailRow("Active Economies", economyMgr.ActiveStationEconomyCount.ToString());
 
         // Count station buildings and power
         int stationBuildings = 0;
@@ -373,15 +329,6 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
         {
             foreach (var child in _body.SatellitesContainer.GetChildren())
             {
-                if (child is StationSatellite station && station.Economy != null)
-                {
-                    var eco = station.Economy;
-                    stationBuildings += eco.ActiveBuildingCount;
-                    stationPowerGen += eco.PowerGeneration;
-                    stationPowerUse += eco.PowerConsumption;
-                    if (eco.IsPowerDeficit)
-                        stationDeficits++;
-                }
             }
         }
 
@@ -402,16 +349,6 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
         {
             foreach (var continent in _body.Mesh.Continents.Values)
             {
-                if (continent.Economy != null)
-                {
-                    foreach (var kvp in continent.Economy.GetAllStockpiles())
-                    {
-                        if (aggregatedStockpiles.ContainsKey(kvp.Key))
-                            aggregatedStockpiles[kvp.Key] += kvp.Value;
-                        else
-                            aggregatedStockpiles[kvp.Key] = kvp.Value;
-                    }
-                }
             }
         }
 
@@ -445,43 +382,12 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
 
         _titleLabel.Text = $"Continent {continentIndex} Economy";
 
-        if (continent.Economy == null)
-        {
-            AddDetailRow("Status", "No economy initialized");
-            AddDetailRow("Cells", continent.cells.Count.ToString());
-            return;
-        }
-
-        var eco = continent.Economy;
-
-        AddDetailHeader("Power");
-        AddDetailRow("Generation", $"{eco.PowerGeneration:F1}/s");
-        AddDetailRow("Consumption", $"{eco.PowerConsumption:F1}/s");
-        AddDetailRow("Net", $"{(eco.PowerGeneration - eco.PowerConsumption):F1}/s");
-        AddPercentRow("Stored", eco.PowerStored, eco.PowerStorageCapacity, mode: DonutChart.ColorMode.RedToGreen);
-
-        if (eco.IsPowerDeficit)
-            AddAlertRow("POWER DEFICIT - Buildings paused");
-
         AddSeparator();
         AddDetailHeader("Buildings");
-        AddDetailRow("Active Buildings", eco.ActiveBuildingCount.ToString());
 
         // Group buildings by type
         var buildingGroups = new System.Collections.Generic.Dictionary<string, int>();
         int pausedCount = 0;
-        foreach (var reg in eco.ActiveBuildings)
-        {
-            string typeName = reg.BuildingNode.Definition?.DisplayName ?? "Unknown";
-            if (buildingGroups.ContainsKey(typeName))
-                buildingGroups[typeName]++;
-            else
-                buildingGroups[typeName] = 1;
-
-            if (reg.IsPaused)
-                pausedCount++;
-        }
-
         if (pausedCount > 0)
             AddDetailRow("Paused Buildings", pausedCount.ToString());
 
@@ -495,55 +401,26 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
             }
         }
 
-        // Stockpiles
-        var stockpiles = eco.GetAllStockpiles();
-        if (stockpiles.Count > 0)
-        {
-            AddSeparator();
-            AddDetailHeader("Resource Stockpiles");
-
-            int shown = 0;
-            foreach (var kvp in stockpiles.OrderByDescending(k => k.Value))
-            {
-                if (kvp.Value > 0 && shown < 10)
-                {
-                    AddDetailRow(kvp.Key, $"{kvp.Value:F1}");
-                    shown++;
-                }
-            }
-        }
-
-        // Production rates
-        var netRates = eco.GetAllNetRates();
-        if (netRates.Count > 0)
-        {
-            AddSeparator();
-            AddDetailHeader("Production Rates");
-
-            foreach (var kvp in netRates.OrderByDescending(k => k.Value))
-            {
-                if (System.MathF.Abs(kvp.Value) > 0.01f)
-                {
-                    string rateStr = kvp.Value >= 0 ? $"+{kvp.Value:F2}/s" : $"{kvp.Value:F2}/s";
-                    AddDetailRow(kvp.Key, rateStr);
-                }
-            }
-        }
-
-        // Transfers
+        // Transfers (per-building rollup across hubs on this continent).
         if (_body.TransferMgr != null)
         {
-            int activeTransfers = _body.TransferMgr.GetActiveTransferCountForContinent(continentIndex);
-            var schedules = _body.TransferMgr.GetSchedulesForContinent(continentIndex);
+            var hubIds = _body.TransferMgr.GetEndpointsOnContinent(continentIndex);
+            int activeTransfers = 0;
+            int scheduleCount = 0;
+            foreach (var id in hubIds)
+            {
+                activeTransfers += _body.TransferMgr.GetActiveTransferCountForOrigin(id);
+                scheduleCount += _body.TransferMgr.GetSchedulesForOrigin(id).Count;
+            }
 
-            if (activeTransfers > 0 || schedules.Count > 0)
+            if (activeTransfers > 0 || scheduleCount > 0)
             {
                 AddSeparator();
                 AddDetailHeader("Logistics");
                 if (activeTransfers > 0)
                     AddDetailRow("Active Transfers", activeTransfers.ToString());
-                if (schedules.Count > 0)
-                    AddDetailRow("Schedules", schedules.Count.ToString());
+                if (scheduleCount > 0)
+                    AddDetailRow("Schedules", scheduleCount.ToString());
             }
         }
 
@@ -568,41 +445,18 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
         int idx = 0;
         foreach (var child in _body.SatellitesContainer.GetChildren())
         {
-            if (child is StationSatellite station && station.Economy != null)
+            if (child is StationSatellite station)
             {
                 if (idx == stationIndex)
                 {
                     _titleLabel.Text = $"{station.Name} Economy";
 
-                    var eco = station.Economy;
-
-                    AddDetailHeader("Power");
-                    AddDetailRow("Generation", $"{eco.PowerGeneration:F1}/s");
-                    AddDetailRow("Consumption", $"{eco.PowerConsumption:F1}/s");
-                    AddDetailRow("Net", $"{(eco.PowerGeneration - eco.PowerConsumption):F1}/s");
-                    AddPercentRow("Stored", eco.PowerStored, eco.PowerStorageCapacity, mode: DonutChart.ColorMode.RedToGreen);
-
-                    if (eco.IsPowerDeficit)
-                        AddAlertRow("POWER DEFICIT - Buildings paused");
-
                     AddSeparator();
                     AddDetailHeader("Buildings");
-                    AddDetailRow("Active Buildings", eco.ActiveBuildingCount.ToString());
 
                     // Group buildings by type
                     var buildingGroups = new System.Collections.Generic.Dictionary<string, int>();
                     int pausedCount = 0;
-                    foreach (var reg in eco.ActiveBuildings)
-                    {
-                        string typeName = reg.BuildingNode.Definition?.DisplayName ?? "Unknown";
-                        if (buildingGroups.ContainsKey(typeName))
-                            buildingGroups[typeName]++;
-                        else
-                            buildingGroups[typeName] = 1;
-
-                        if (reg.IsPaused)
-                            pausedCount++;
-                    }
 
                     if (pausedCount > 0)
                         AddDetailRow("Paused Buildings", pausedCount.ToString());
@@ -618,22 +472,6 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
                     }
 
                     // Stockpiles
-                    var stockpiles = eco.GetAllStockpiles();
-                    if (stockpiles.Count > 0)
-                    {
-                        AddSeparator();
-                        AddDetailHeader("Resource Stockpiles");
-
-                        int shown = 0;
-                        foreach (var kvp in stockpiles.OrderByDescending(k => k.Value))
-                        {
-                            if (kvp.Value > 0 && shown < 8)
-                            {
-                                AddDetailRow(kvp.Key, $"{kvp.Value:F1}");
-                                shown++;
-                            }
-                        }
-                    }
 
                     // Button to open full station window
                     AddSeparator();

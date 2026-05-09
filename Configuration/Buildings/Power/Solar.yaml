@@ -24,9 +24,16 @@ buildings:
     production:
       default_recipe: "photovoltaic_capture"
       alternative_recipes: []
-      input_storage_amount: 100
-      output_storage_amount: 200
       production_speed: 2
+
+    power:
+      grid_radius: 4
+      output: 100
+      is_renewable: true
+
+    behaviors:
+      - ManufacturingBehavior
+      - PowerProducerBehavior
 
     visual:
       model_path: "res://Models/Buildings/solar_array.glb"
