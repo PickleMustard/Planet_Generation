@@ -1,0 +1,168 @@
+# Biome assigner config — drives ConfigurableBiomeAssigner per RockyPlanetSubtype.
+#
+# Schema:
+#   assigners:
+#     <SubtypeName>:
+#       moisture:
+#         mode: whittaker | uniform_random   # default: whittaker
+#         # whittaker fields:
+#         base_offset: float                 # added to baseMoisture before formula
+#         latitude_factor_divisor: float     # continent.averagedCenter.Y / divisor
+#         size_factor_divisor: float         # continent.cells.Count / divisor
+#         random_min: float                  # rng range min
+#         random_max: float                  # rng range max
+#         max_moisture: float                # MAX_MOISTURE constant
+#         constant_offset: float             # extra addend (e.g. Cool's +0.3)
+#         # uniform_random fields:
+#         random_min: float
+#         random_max: float
+#       rules:
+#         - { biome: <BiomeType>, when: { ... } }
+#         # Rules evaluated top-to-bottom; first match wins.
+#         # Empty `when: {}` is the default fallthrough.
+#       when keys (all optional, AND-combined):
+#         height_above: float
+#         height_below: float
+#         moisture_above: float
+#         moisture_below: float
+#         abs_latitude_above: float
+#         abs_latitude_below: float
+#
+# Note: latitude is currently always 0f at runtime (UnifiedCelestialMesh callsite passes no latitude).
+# The Whittaker preview tab varies latitude to visualize what would happen if latitude were supplied.
+
+assigners:
+  Temperate:
+    moisture:
+      mode: whittaker
+      base_offset: 0.0
+      latitude_factor_divisor: 9.0
+      size_factor_divisor: 100.0
+      random_min: -0.4
+      random_max: 0.2
+      max_moisture: 2.7
+      constant_offset: 0.0
+    rules:
+      - { biome: Icecap,     when: { height_above: 0.9 } }
+      - { biome: Mountain,   when: { height_above: 0.68 } }
+      - { biome: Tundra,     when: { height_above: 0.4, abs_latitude_above: 0.8 } }
+      - { biome: Taiga,      when: { height_above: 0.4, abs_latitude_above: 0.7 } }
+      - { biome: Ocean,      when: { height_below: 0.05 } }
+      - { biome: Coastal,    when: { height_below: 0.07 } }
+      - { biome: Desert,     when: { height_below: 0.3, moisture_below: 0.2 } }
+      - { biome: Grassland,  when: { height_below: 0.3, moisture_below: 0.5 } }
+      - { biome: Forest,     when: { height_above: 0.3, moisture_below: 0.7 } }
+      - { biome: Rainforest, when: {} }
+
+  Scoured:
+    moisture:
+      mode: uniform_random
+      random_min: 0.0
+      random_max: 0.1
+    rules:
+      - { biome: Mountain,     when: { height_above: 0.8 } }
+      - { biome: StoneDesert,  when: { height_above: 0.4 } }
+      - { biome: SandDesert,   when: { height_above: 0.1 } }
+      - { biome: ScouredPlain, when: {} }
+
+  Desert:
+    moisture:
+      mode: uniform_random
+      random_min: 0.0
+      random_max: 0.15
+    rules:
+      - { biome: Mountain,    when: { height_above: 0.8 } }
+      - { biome: StoneDesert, when: { height_above: 0.5 } }
+      - { biome: SandDesert,  when: { height_above: 0.2 } }
+      - { biome: Desert,      when: { height_above: 0.05 } }
+      - { biome: StoneDesert, when: {} }
+
+  Ice:
+    moisture:
+      mode: uniform_random
+      random_min: 0.7
+      random_max: 0.9
+    rules:
+      - { biome: Mountain,    when: { height_above: 0.8 } }
+      - { biome: Icecap,      when: { height_above: 0.6 } }
+      - { biome: Glacier,     when: { height_above: 0.4 } }
+      - { biome: Desert,      when: { height_above: 0.2, moisture_below: 0.3 } }
+      - { biome: Tundra,      when: { height_above: 0.2 } }
+      - { biome: FrozenPlain, when: {} }
+
+  Cool:
+    moisture:
+      mode: whittaker
+      base_offset: 0.0
+      latitude_factor_divisor: 9.0
+      size_factor_divisor: 100.0
+      random_min: -0.4
+      random_max: 0.2
+      max_moisture: 2.7
+      constant_offset: 0.3
+    rules:
+      - { biome: Icecap,      when: { height_above: 0.85 } }
+      - { biome: Mountain,    when: { height_above: 0.65 } }
+      - { biome: Glacier,     when: { height_above: 0.4, abs_latitude_above: 0.6 } }
+      - { biome: Tundra,      when: { height_above: 0.4, abs_latitude_above: 0.4 } }
+      - { biome: Ocean,       when: { height_below: 0.05 } }
+      - { biome: Coastal,     when: { height_below: 0.07 } }
+      - { biome: FrozenPlain, when: { moisture_below: 0.3 } }
+      - { biome: Tundra,      when: { moisture_below: 0.6 } }
+      - { biome: Taiga,       when: {} }
+
+  Tropical:
+    moisture:
+      mode: whittaker
+      base_offset: 0.0
+      latitude_factor_divisor: 9.0
+      size_factor_divisor: 100.0
+      random_min: -0.2
+      random_max: 0.3
+      max_moisture: 2.7
+      constant_offset: 0.0
+    rules:
+      - { biome: Mountain,   when: { height_above: 0.7 } }
+      - { biome: Ocean,      when: { height_below: 0.05 } }
+      - { biome: Coastal,    when: { height_below: 0.08 } }
+      - { biome: Desert,     when: { moisture_below: 0.15 } }
+      - { biome: Rainforest, when: { moisture_above: 0.6 } }
+      - { biome: Forest,     when: { moisture_above: 0.35 } }
+      - { biome: Swamp,      when: { moisture_above: 0.15 } }
+      - { biome: Grassland,  when: {} }
+
+  Ocean:
+    moisture:
+      mode: uniform_random
+      random_min: 0.8
+      random_max: 1.0
+    rules:
+      - { biome: Mountain,     when: { height_above: 0.85 } }
+      - { biome: Grassland,    when: { height_above: 0.75 } }
+      - { biome: Coastal,      when: { height_above: 0.65 } }
+      - { biome: ShallowOcean, when: { height_above: 0.35 } }
+      - { biome: DeepOcean,    when: {} }
+
+  Rusted:
+    moisture:
+      mode: uniform_random
+      random_min: 0.0
+      random_max: 0.2
+    rules:
+      - { biome: RustedMountain, when: { height_above: 0.8 } }
+      - { biome: RustedDesert,   when: { height_above: 0.55 } }
+      - { biome: RustedPlain,    when: { height_above: 0.3 } }
+      - { biome: SandDesert,     when: { height_above: 0.1 } }
+      - { biome: RustedPlain,    when: {} }
+
+  Volcanic:
+    moisture:
+      mode: uniform_random
+      random_min: 0.0
+      random_max: 0.1
+    rules:
+      - { biome: VolcanicPeak,   when: { height_above: 0.8 } }
+      - { biome: ObsidianField,  when: { height_above: 0.55 } }
+      - { biome: AshPlain,       when: { height_above: 0.3 } }
+      - { biome: VolcanicPlain,  when: { height_above: 0.1 } }
+      - { biome: LavaOcean,      when: {} }
