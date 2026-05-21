@@ -1,0 +1,159 @@
+[gd_scene format=3 uid="uid://cm8lsa7708mrq"]
+
+[ext_resource type="Script" uid="uid://bwj28fv20r5lw" path="res://DeveloperTools/ResourceEditor/ResourceCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.15, 0.15, 0.18, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.3, 1)
+
+[node name="ResourceCard" type="PanelContainer" unique_id=1669964216]
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("1_card")
+
+[node name="CardMainVBox" type="VBoxContainer" parent="." unique_id=1338067909]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderHBox" type="HBoxContainer" parent="CardMainVBox" unique_id=111973535]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IconRect" type="TextureRect" parent="CardMainVBox/HeaderHBox" unique_id=607235021]
+unique_name_in_owner = true
+texture_filter = 3
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 2
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="CardMainVBox/HeaderHBox" unique_id=317950324]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="NameEdit" type="LineEdit" parent="CardMainVBox/HeaderHBox" unique_id=1750979858]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="FieldsGrid" type="GridContainer" parent="CardMainVBox" unique_id=404843929]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="TierLabel" type="Label" parent="CardMainVBox/FieldsGrid" unique_id=548609250]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Tier:"
+
+[node name="TierSpinBox" type="SpinBox" parent="CardMainVBox/FieldsGrid" unique_id=1425848054]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 4.0
+
+[node name="StackLabel" type="Label" parent="CardMainVBox/FieldsGrid" unique_id=1674983485]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Stack Size:"
+
+[node name="StackHBox" type="HBoxContainer" parent="CardMainVBox/FieldsGrid" unique_id=870169223]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StackSlider" type="HSlider" parent="CardMainVBox/FieldsGrid/StackHBox" unique_id=1863681710]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 25.0
+max_value = 999.0
+value = 25.0
+
+[node name="StackValueLabel" type="Label" parent="CardMainVBox/FieldsGrid/StackHBox" unique_id=272477200]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+horizontal_alignment = 2
+
+[node name="WeightLabel" type="Label" parent="CardMainVBox/FieldsGrid" unique_id=244255662]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Trans. Weight:"
+
+[node name="WeightHBox" type="HBoxContainer" parent="CardMainVBox/FieldsGrid" unique_id=1854961731]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WeightSlider" type="HSlider" parent="CardMainVBox/FieldsGrid/WeightHBox" unique_id=486621499]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 10.0
+step = 0.1
+value = 0.1
+
+[node name="WeightValueLabel" type="Label" parent="CardMainVBox/FieldsGrid/WeightHBox" unique_id=1480992228]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+horizontal_alignment = 2
+
+[node name="StateLabel" type="Label" parent="CardMainVBox/FieldsGrid" unique_id=96093288]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "State:"
+
+[node name="StateOption" type="OptionButton" parent="CardMainVBox/FieldsGrid" unique_id=1771226497]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TagsHBox" type="HBoxContainer" parent="CardMainVBox" unique_id=92277965]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TagsButton" type="Button" parent="CardMainVBox/TagsHBox" unique_id=420941743]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ActionHBox" type="HBoxContainer" parent="CardMainVBox" unique_id=31928212]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActionSpacer" type="Control" parent="CardMainVBox/ActionHBox" unique_id=450963013]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MoveUpButton" type="Button" parent="CardMainVBox/ActionHBox" unique_id=1059547505]
+unique_name_in_owner = true
+layout_mode = 2
+text = "▲"
+
+[node name="MoveDownButton" type="Button" parent="CardMainVBox/ActionHBox" unique_id=656097617]
+unique_name_in_owner = true
+layout_mode = 2
+text = "▼"
+
+[node name="DeleteButton" type="Button" parent="CardMainVBox/ActionHBox" unique_id=822092609]
+unique_name_in_owner = true
+layout_mode = 2
+text = "✕"

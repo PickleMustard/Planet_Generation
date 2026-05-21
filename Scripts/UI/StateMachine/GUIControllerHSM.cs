@@ -1,4 +1,5 @@
 using Godot;
+using ProceduralGeneration.PlanetGeneration;
 using UtilityLibrary;
 
 namespace UI.StateMachine;
@@ -12,12 +13,12 @@ public partial class GUIControllerHSM : LimboHsm
 {
     private LimboState? _hud;
     private LimboHsm? _voronoiCell;
-    private LimboHsm? _continentHSM;
     private LimboHsm? _orbitalBodyHSM;
     private LimboHsm? _constructionHSM;
     private LimboHsm? _stationHSM;
     private LimboHsm? _logisticsUnitHSM;
     private LimboHsm? _buildingHSM;
+    private LimboState? _planetBoard;
     private LimboState? _gameStart;
     private LimboState? _pauseMenu;
 
@@ -33,13 +34,6 @@ public partial class GUIControllerHSM : LimboHsm
     {
         get => _voronoiCell;
         set => _voronoiCell = value;
-    }
-
-    [Export]
-    public LimboHsm? Continent
-    {
-        get => _continentHSM;
-        set => _continentHSM = value;
     }
 
     [Export]
@@ -91,6 +85,13 @@ public partial class GUIControllerHSM : LimboHsm
         set => _pauseMenu = value;
     }
 
+    [Export]
+    public LimboState? PlanetBoard
+    {
+        get => _planetBoard;
+        set => _planetBoard = value;
+    }
+
     /// <summary>
     /// Called when the node enters the scene tree for the first time.
     /// Resolves child state references, registers transitions, and initializes the HSM.
@@ -99,6 +100,7 @@ public partial class GUIControllerHSM : LimboHsm
     {
         Camera3D playerCamera = GetViewport().GetCamera3D();
         Blackboard.Top().SetVar("PlayerCamera", playerCamera);
+        Blackboard.Top().SetVar(InteractionStack.BB_KEY, Blackboard.Top());
 
         // Call base._Ready() after setting up blackboard but before AddTransition
         // This ensures child HSMs get their blackboard before they initialize
@@ -116,6 +118,7 @@ public partial class GUIControllerHSM : LimboHsm
 
         // Cross-window transitions
         AddTransition(_orbitalBodyHSM, _voronoiCell, "cell_selected");
+        AddTransition(_voronoiCell, _orbitalBodyHSM, "orbital_body_selected");
 
         // Station cross-window transitions
         AddTransition(_orbitalBodyHSM, _stationHSM, "station_opened");
@@ -145,6 +148,17 @@ public partial class GUIControllerHSM : LimboHsm
         AddTransition(_hud, _pauseMenu, "pause_requested");
         AddTransition(_pauseMenu, _hud, "resume_requested");
 
+        // PlanetBoard transitions — forward from any state (B-key works everywhere)
+        AddTransition(ANYSTATE, _planetBoard, "planet_board_opened");
+
+        // PlanetBoard back — return to the state that opened it
+        AddTransition(_planetBoard, _orbitalBodyHSM, "back_to_orbital_body");
+        AddTransition(_planetBoard, _buildingHSM, "back_to_building");
+        AddTransition(_planetBoard, _stationHSM, "back_to_station");
+
+        // PlanetBoard close → HUD
+        AddTransition(_planetBoard, _hud, "window_closed");
+
         // Universal placement confirmation still routes anywhere back to HUD
         AddTransition(ANYSTATE, _hud, "placement_confirmed");
 
@@ -152,12 +166,29 @@ public partial class GUIControllerHSM : LimboHsm
         Initialize(this);
         SetActive(true);
 
+        // Subscribe to SignalBus for PlanetBoard requests
+        var bus = SignalBus.Instance;
+        if (bus != null)
+        {
+            bus.OpenPlanetBoardRequested += OnOpenPlanetBoardRequested;
+            bus.PlanetBoardCloseRequested += OnPlanetBoardCloseRequested;
+            bus.PlanetBoardBackRequested += OnPlanetBoardBackRequested;
+        }
+
         GameLogger.Info("GUIControllerHSM initialized");
     }
 
     public override void _ExitTree()
     {
         base._ExitTree();
+
+        var bus = SignalBus.Instance;
+        if (bus != null)
+        {
+            bus.OpenPlanetBoardRequested -= OnOpenPlanetBoardRequested;
+            bus.PlanetBoardCloseRequested -= OnPlanetBoardCloseRequested;
+            bus.PlanetBoardBackRequested -= OnPlanetBoardBackRequested;
+        }
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -181,9 +212,94 @@ public partial class GUIControllerHSM : LimboHsm
         }
         else
         {
+            InteractionStack.Clear(Blackboard?.Top());
             Dispatch("window_closed");
         }
 
         GetViewport().SetInputAsHandled();
+    }
+
+    // ───────── PlanetBoard Signal Handlers ─────────
+
+    /// <summary>
+    /// Routes <c>SignalBus.OpenPlanetBoardRequested</c> into the HSM.
+    /// Sets blackboard vars, pushes InteractionStack for return navigation,
+    /// and dispatches <c>"planet_board_opened"</c>.
+    /// </summary>
+    private void OnOpenPlanetBoardRequested(CelestialBody body, string mode)
+    {
+        var bb = Blackboard?.Top();
+        if (bb == null) return;
+
+        var active = GetActiveState();
+        string? returnEvent = DeterminePlanetBoardReturnEvent(active, bb, out var snapshot);
+
+        if (returnEvent != null)
+            InteractionStack.Push(bb, returnEvent, snapshot);
+
+        bb.SetVar("SelectedBody", (Node3D)body);
+        bb.SetVar("PlanetBoardMode", mode);
+
+        Dispatch("planet_board_opened");
+    }
+
+    /// <summary>
+    /// Close (✕ button, backdrop click): clear stack → HUD.
+    /// </summary>
+    private void OnPlanetBoardCloseRequested()
+    {
+        var bb = Blackboard?.Top();
+        InteractionStack.Clear(bb);
+        Dispatch("window_closed");
+    }
+
+    /// <summary>
+    /// Back (← button): pop stack → return to previous panel (or HUD if stack empty).
+    /// </summary>
+    private void OnPlanetBoardBackRequested()
+    {
+        var bb = Blackboard?.Top();
+        var returnEvent = InteractionStack.Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
+        {
+            InteractionStack.Clear(bb);
+            Dispatch("window_closed");
+        }
+        else
+        {
+            Dispatch(returnEvent);
+        }
+    }
+
+    /// <summary>
+    /// Determines the InteractionStack return event and snapshot based on
+    /// the currently active HSM state. Returns null for states that should
+    /// not push a return entry (i.e. close goes straight to HUD).
+    /// </summary>
+    private string? DeterminePlanetBoardReturnEvent(
+        LimboState? active,
+        Blackboard bb,
+        out Godot.Collections.Dictionary snapshot)
+    {
+        if (active == _orbitalBodyHSM)
+        {
+            snapshot = InteractionStack.SnapshotVars(bb, "SelectedBody");
+            return "back_to_orbital_body";
+        }
+        if (active == _buildingHSM)
+        {
+            snapshot = InteractionStack.SnapshotVars(bb,
+                "SelectedBuilding", "SelectedBody");
+            return "back_to_building";
+        }
+        if (active == _stationHSM)
+        {
+            snapshot = InteractionStack.SnapshotVars(bb,
+                "SelectedStation", "SelectedBody");
+            return "back_to_station";
+        }
+        // Cell, LogisticsUnit, HUD, etc. → back goes to HUD
+        snapshot = new Godot.Collections.Dictionary();
+        return null;
     }
 }

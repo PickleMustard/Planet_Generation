@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Godot;
 using Structures.GameState;
 
 namespace Constructables.Buildings;
@@ -6,8 +7,8 @@ namespace Constructables.Buildings;
 /// <summary>
 /// Adapter that exposes a <see cref="Building"/>'s <see cref="Building.BulkStorage"/>
 /// through the <see cref="IResourceEndpoint"/> contract used by
-/// <see cref="BodyTransferManager"/>. Transfer-station buildings register one of these
-/// via <see cref="Behaviors.TransferStationBehavior"/>.
+/// <see cref="TransferStationBehavior"/>. Transfer-station buildings create one of these
+/// inside their <see cref="TransferStationBehavior"/>.
 /// </summary>
 public sealed class BuildingResourceEndpoint : IResourceEndpoint
 {
@@ -46,9 +47,9 @@ public sealed class BuildingResourceEndpoint : IResourceEndpoint
         // bulk pass-throughs. Requests are silently ignored.
     }
 
-    public float GetStorageFillPercentage(Building building, string category)
+    public float GetStorageFillPercentage(GodotObject? owner, string category)
     {
-        if (building != _owner)
+        if (owner != _owner)
             return 0f;
 
         var bulk = _owner.BulkStorage;

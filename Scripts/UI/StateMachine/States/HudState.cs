@@ -2,6 +2,7 @@ using Godot;
 using Godot.Collections;
 using PlayerInteraction.CellSelection;
 using Structures.GameState;
+using UI.StateMachine;
 using UtilityLibrary;
 
 public partial class HudState : LimboState
@@ -60,6 +61,7 @@ public partial class HudState : LimboState
 
     public void ConstructionButtonPressed()
     {
+        InteractionStack.Push(Blackboard.Top(), "window_closed", new Godot.Collections.Dictionary());
         GD.Print(Dispatch(new StringName("construction_menu_opened")));
     }
 
@@ -114,7 +116,7 @@ public partial class HudState : LimboState
             {
                 var unit = (Node)results["logistics_unit"];
                 Blackboard.Top().SetVar("SelectedLogisticsUnit", unit);
-                Blackboard.Top().SetVar("LogisticsUnitSource", "hud");
+                InteractionStack.Push(Blackboard.Top(), "window_closed", new Godot.Collections.Dictionary());
                 Dispatch("logistics_unit_selected");
             }
             _clickEvent = ClickEvent.IDLE;
@@ -123,7 +125,6 @@ public partial class HudState : LimboState
 
         var bodyNode = (Node)results["selectable_body"];
         var cell = results["cell"].As<VoronoiCell>();
-        var continent = results["cell_continent"].As<Continent>();
 
         switch (_clickEvent)
         {
@@ -137,26 +138,13 @@ public partial class HudState : LimboState
                         orbitalBody
                     );
                     Blackboard.Top().SetVar("PlayerCamera", camera);
+                    InteractionStack.Push(Blackboard.Top(), "window_closed", new Godot.Collections.Dictionary());
                     Dispatch("orbital_body_selected");
                 }
                 _clickEvent = ClickEvent.IDLE;
                 break;
 
             case ClickEvent.RIGHT_CLICK:
-                if (cell != null)
-                {
-                    int continentIndex = cell.ContinentIndex;
-                    CellSelectionManager.Instance?.SelectContinent(
-                        continentIndex,
-                        (Node3D)bodyNode
-                    );
-
-                    Blackboard.Top().SetVar("SelectedContinentIndex", continentIndex);
-                    Blackboard.Top().SetVar("SelectedContinent", continent);
-                    Blackboard.Top().SetVar("SelectedBody", bodyNode);
-                    Blackboard.Top().SetVar("BodyType", bodyNode.GetType().Name);
-                    Dispatch("continent_selected");
-                }
                 _clickEvent = ClickEvent.IDLE;
                 break;
 
@@ -166,7 +154,7 @@ public partial class HudState : LimboState
                     Blackboard.Top().SetVar("SelectedCell", cell);
                     Blackboard.Top().SetVar("SelectedBody", bodyNode);
                     Blackboard.Top().SetVar("BodyType", bodyNode.GetType().Name);
-                    Blackboard.Top().SetVar("SelectedContinent", continent);
+                    InteractionStack.Push(Blackboard.Top(), "window_closed", new Godot.Collections.Dictionary());
                     Dispatch("cell_selected");
                 }
                 _clickEvent = ClickEvent.IDLE;

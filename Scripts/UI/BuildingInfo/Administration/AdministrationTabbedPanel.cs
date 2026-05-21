@@ -189,7 +189,7 @@ public partial class AdministrationTabbedPanel : BaseBuildingDetails
             PowerConsumerBehavior => TabKind.Power,
             BatteryBehavior => TabKind.Power,
             StorageHubBehavior => TabKind.Storage,
-            TransportHubBehavior => TabKind.Storage,
+            TransferStationBehavior => TabKind.Storage,
             ResearchBehavior => TabKind.Research,
             _ => null,
         };
@@ -289,10 +289,10 @@ public partial class AdministrationTabbedPanel : BaseBuildingDetails
         }
 
         string recipeText = "—";
-        var def = _building?.Definition;
         if (hasManufacturing)
         {
-            string? recipeId = _building?.ActiveRecipeId ?? def?.Production?.DefaultRecipe;
+            var mfg = _building?.GetBehavior<Constructables.Buildings.Behaviors.ManufacturingBehavior>();
+            string? recipeId = _building?.ActiveRecipeId ?? mfg?.DefaultRecipe;
             recipeText = string.IsNullOrEmpty(recipeId) ? "—" : recipeId;
         }
 
@@ -305,7 +305,7 @@ public partial class AdministrationTabbedPanel : BaseBuildingDetails
         }
 
         AddStatCell("BUILDING", _building?.Name ?? "—");
-        AddStatCell("CATEGORY", def?.Category ?? "—");
+        AddStatCell("CATEGORY", _building?.Definition?.Category ?? "—");
         AddStatCell("BEHAVIORS", $"★ + {behaviorTabCount}");
         AddStatCell("POWER", powerCount > 0 ? powerCount.ToString() : "—");
         AddStatCell("RECIPE", recipeText);
@@ -359,6 +359,9 @@ public partial class AdministrationTabbedPanel : BaseBuildingDetails
             spec.CachedInstance = spec.Scene.Instantiate<BaseBuildingDetails>();
             if (spec.CachedInstance == null)
                 return;
+
+            if (spec.CachedInstance is HubPanelDetails hub)
+                hub.ManageRoutesRequested += OnNestedManageRoutesRequested;
         }
 
         spec.CachedInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -366,6 +369,11 @@ public partial class AdministrationTabbedPanel : BaseBuildingDetails
         TabBodyContainer.AddChild(spec.CachedInstance);
         if (_building != null)
             spec.CachedInstance.SetBuilding(_building);
+    }
+
+    private static void OnNestedManageRoutesRequested()
+    {
+        BuildingInfoWindow.Instance?.EmitSignal(BuildingInfoWindow.SignalName.ManageRoutesRequested);
     }
 
     private void UpdateTabButtonStyles()

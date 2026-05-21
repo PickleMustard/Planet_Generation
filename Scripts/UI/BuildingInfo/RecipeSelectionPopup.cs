@@ -51,7 +51,8 @@ public partial class RecipeSelectionPopup : PanelContainer
     }
 
     /// <summary>
-    /// Fills the list from the building's <see cref="BuildingDefinition.ProductionDefinition"/>.
+    /// Fills the list from the building's <see cref="Constructables.Buildings.Behaviors.ManufacturingBehavior"/>
+    /// and/or <see cref="Constructables.Buildings.Behaviors.ExtractionBehavior"/>.
     /// Each row stores its recipe id in metadata; the active recipe is marked and disabled.
     /// </summary>
     public void Populate(Building building)
@@ -61,21 +62,33 @@ public partial class RecipeSelectionPopup : PanelContainer
         _selectButton.Disabled = true;
         _activeRecipeId = building.ActiveRecipeId;
 
-        var production = building.Definition?.Production;
-        if (production == null)
-        {
-            _emptyLabel.Visible = true;
-            _recipeList.Visible = false;
-            return;
-        }
+        var mfg = building.GetBehavior<Constructables.Buildings.Behaviors.ManufacturingBehavior>();
+        var ext = building.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>();
 
         var ordered = new List<string>();
-        if (!string.IsNullOrEmpty(production.DefaultRecipe))
-            ordered.Add(production.DefaultRecipe!);
-        foreach (var alt in production.AlternativeRecipes)
+
+        // Collect from ManufacturingBehavior
+        if (mfg != null)
         {
-            if (!string.IsNullOrEmpty(alt) && !ordered.Contains(alt))
-                ordered.Add(alt);
+            if (!string.IsNullOrEmpty(mfg.DefaultRecipe))
+                ordered.Add(mfg.DefaultRecipe!);
+            foreach (var alt in mfg.AlternativeRecipes)
+            {
+                if (!string.IsNullOrEmpty(alt) && !ordered.Contains(alt))
+                    ordered.Add(alt);
+            }
+        }
+
+        // Collect from ExtractionBehavior
+        if (ext != null)
+        {
+            if (!string.IsNullOrEmpty(ext.DefaultRecipe) && !ordered.Contains(ext.DefaultRecipe))
+                ordered.Add(ext.DefaultRecipe!);
+            foreach (var alt in ext.AlternativeRecipes)
+            {
+                if (!string.IsNullOrEmpty(alt) && !ordered.Contains(alt))
+                    ordered.Add(alt);
+            }
         }
 
         if (ordered.Count == 0)

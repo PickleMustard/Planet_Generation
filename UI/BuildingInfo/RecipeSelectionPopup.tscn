@@ -1,10 +1,12 @@
-[gd_scene load_steps=2 format=3 uid="uid://recipe_selection_popup"]
+[gd_scene format=3 uid="uid://bybc75cgcmlht"]
 
-[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/RecipeSelectionPopup.cs" id="1_recipesel"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_n21xv"]
+[ext_resource type="Script" uid="uid://dnp5r5drpaj3v" path="res://Scripts/UI/BuildingInfo/RecipeSelectionPopup.cs" id="1_recipesel"]
 
-[node name="RecipeSelectionPopup" type="PanelContainer" node_paths=PackedStringArray("_recipeList", "_selectButton", "_cancelButton", "_emptyLabel")]
-top_level = true
+[node name="RecipeSelectionPopup" type="PanelContainer" unique_id=1899086565 node_paths=PackedStringArray("_recipeList", "_selectButton", "_cancelButton", "_emptyLabel")]
 visible = false
+top_level = true
+theme = ExtResource("1_n21xv")
 theme_type_variation = &"PaperPanel"
 script = ExtResource("1_recipesel")
 _recipeList = NodePath("VBoxContainer/ScrollContainer/RecipeList")
@@ -12,57 +14,66 @@ _selectButton = NodePath("VBoxContainer/ButtonBar/SelectButton")
 _cancelButton = NodePath("VBoxContainer/ButtonBar/CancelButton")
 _emptyLabel = NodePath("VBoxContainer/EmptyLabel")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=512495689]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="VBoxContainer" unique_id=814659646]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
 theme_type_variation = &"LabelHand"
 text = "Select Recipe"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="EmptyLabel" type="Label" parent="VBoxContainer"]
+[node name="EmptyLabel" type="Label" parent="VBoxContainer" unique_id=1814512624]
 visible = false
+custom_minimum_size = Vector2(30, 10)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
 text = "No alternative recipes defined for this building."
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer" unique_id=1971621432]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
 
-[node name="RecipeList" type="ItemList" parent="VBoxContainer/ScrollContainer"]
+[node name="RecipeList" type="ItemList" parent="VBoxContainer/ScrollContainer" unique_id=1756644550]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
 auto_height = true
 
-[node name="ButtonBar" type="HBoxContainer" parent="VBoxContainer"]
+[node name="ButtonBar" type="HBoxContainer" parent="VBoxContainer" unique_id=686101603]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
 alignment = 2
 
-[node name="SelectButton" type="Button" parent="VBoxContainer/ButtonBar"]
+[node name="SelectButton" type="Button" parent="VBoxContainer/ButtonBar" unique_id=1708230749]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
 theme_type_variation = &"ButtonPrimary"
 disabled = true
 text = "Select"
 
-[node name="CancelButton" type="Button" parent="VBoxContainer/ButtonBar"]
+[node name="CancelButton" type="Button" parent="VBoxContainer/ButtonBar" unique_id=667243796]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
 text = "Cancel"

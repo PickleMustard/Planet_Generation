@@ -15,7 +15,7 @@ namespace Tests.Constructables.Power;
 /// attached behaviors — no Godot scene tree required.
 /// </summary>
 [TestSuite]
-public class PowerGridTest
+public partial class PowerGridTest
 {
     [TestCase]
     public void Grid_NoMembers_TicksWithoutCrash()
@@ -127,8 +127,8 @@ public class PowerGridTest
         AssertThat(grid.IsBrownedOut).IsTrue();
 
         // Bump output above demand, re-arm power, tick again.
-        var producer = producerBuilding.GetBehavior<PowerProducerBehavior>()!;
-        producer.Output = 200f;
+        var producer = (StubPowerProducer)producerBuilding.GetBehavior<PowerProducerBehavior>()!;
+        producer.StubOutput = 200f;
         producerBuilding.PoweredOn = true;
         StartProducing(producerBuilding);
 
@@ -160,7 +160,7 @@ public class PowerGridTest
     private static Building MakeBuildingWithProducer(float output, bool manufacturing)
     {
         var building = MakeBuilding();
-        var producer = new PowerProducerBehavior { Output = output, Radius = 1 };
+        var producer = new StubPowerProducer { StubOutput = output, Radius = 1 };
         building.Behaviors.Add(producer);
         producer.OnAttach(building);
 
@@ -211,15 +211,25 @@ public class PowerGridTest
     private static Building MakeBuilding()
     {
         // Construct a Building with the minimum surface needed by the grid's tick.
-        // Definition.Production is read by manufacturing but not by the power flow.
+        // ManufacturingBehavior config lives in BehaviorEntries; power flow ignores it.
         var def = new BuildingDefinition
         {
             IdName = "test_building",
             DisplayName = "Test",
-            Production = new BuildingDefinition.ProductionDefinition(),
         };
         var building = new Building();
         // Defer the full ApplyDefinition path (it pokes Storage); we only need behaviors.
         return building;
+    }
+
+    /// <summary>
+    /// Test stub overriding Output/EffectiveOutput so tests can supply a magnitude directly
+    /// without spinning up a RecipeDatabase + active recipe cycle.
+    /// </summary>
+    private sealed partial class StubPowerProducer : PowerProducerBehavior
+    {
+        public float StubOutput { get; set; }
+        public override float Output => StubOutput;
+        public override float EffectiveOutput => StubOutput;
     }
 }

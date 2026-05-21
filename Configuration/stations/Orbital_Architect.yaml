@@ -5,7 +5,13 @@ stations:
     can_build_ships: false
     can_build_buildings: true
     building_work_budget_per_tick: 1.0
-    building_scaling_penalty: 0.1
+    regular_slots: 1
+    overtime_slots: 1
+    overtime_cost_percent: 0.10
+    behaviors:
+      - StorageHubBehavior
+      - OrbitalConstructorBehavior
+    storage_capacity: 10
     required_resources:
       Steel: 800
       Electronics: 200
@@ -18,7 +24,13 @@ stations:
     can_build_ships: false
     can_build_buildings: true
     building_work_budget_per_tick: 3.0
-    building_scaling_penalty: 0.07
+    regular_slots: 3
+    overtime_slots: 2
+    overtime_cost_percent: 0.10
+    behaviors:
+      - StorageHubBehavior
+      - OrbitalConstructorBehavior
+    storage_capacity: 10
     required_resources:
       Steel: 3000
       Electronics: 800
@@ -32,7 +44,13 @@ stations:
     can_build_ships: false
     can_build_buildings: true
     building_work_budget_per_tick: 10.0
-    building_scaling_penalty: 0.05
+    regular_slots: 6
+    overtime_slots: 4
+    overtime_cost_percent: 0.10
+    behaviors:
+      - StorageHubBehavior
+      - OrbitalConstructorBehavior
+    storage_capacity: 10
     required_resources:
       stradium: 5000
       microchip: 1000

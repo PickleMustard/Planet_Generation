@@ -13,6 +13,8 @@ celestial:
     vertical_offset: 0
     mass: 200
     size: 30
+    # Dwarf planets effectively have no atmosphere — wind power disabled here.
+    atmosphere: [0.0, 0.05]
 
   mesh:
     base_mesh:

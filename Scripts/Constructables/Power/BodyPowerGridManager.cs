@@ -32,7 +32,14 @@ public partial class BodyPowerGridManager : Node
     public PowerGrid? GetGridForBuilding(Building b) =>
         _gridByBuilding.TryGetValue(b, out var g) ? g : null;
 
-    public void OnBuildingCompleted(Building building)
+    /// <summary>
+    /// Called at placement (during construction). Creates / joins / merges the grid for
+    /// the building's coverage area so the grid exists from the moment the building is
+    /// placed. The contributor's <see cref="PowerProducerBehavior.IsProducing"/> remains
+    /// false while <see cref="Building.IsUnderConstruction"/> is true, so capacity stays
+    /// at zero until <see cref="OnBuildingCompleted"/> fires.
+    /// </summary>
+    public void OnBuildingPlaced(Building building)
     {
         if (Body == null || building.PrimaryCell == null)
             return;
@@ -49,6 +56,18 @@ public partial class BodyPowerGridManager : Node
         {
             HandleConsumerPlaced(building, consumer);
         }
+    }
+
+    /// <summary>
+    /// Called when construction finishes. Forces an immediate supply/demand recompute on
+    /// the building's grid so a freshly-completed producer flips brownout state and
+    /// powers on its consumers without waiting for the next manufacture tick.
+    /// </summary>
+    public void OnBuildingCompleted(Building building)
+    {
+        if (!_gridByBuilding.TryGetValue(building, out var grid))
+            return;
+        grid.OnManufactureTick(0f);
     }
 
     public void OnBuildingRemoved(Building building)
@@ -331,17 +350,30 @@ public partial class BodyPowerGridManager : Node
         }
     }
 
-    private HashSet<VoronoiCell> ComputeCoverage(Building building, IGridContributor contributor)
+    private HashSet<VoronoiCell> ComputeCoverage(Building building, IGridContributor contributor) =>
+        ComputeCoverageCore(building.OccupiedCells, contributor.Radius);
+
+    /// <summary>
+    /// BFS over the body's cell adjacency graph that grows outward from
+    /// <paramref name="seedCells"/> for <c>radius + 1</c> hops. Used by both the
+    /// canonical contributor-placement path and the placement-preview UI.
+    /// </summary>
+    public HashSet<VoronoiCell> ComputeCoverageCore(
+        IEnumerable<VoronoiCell> seedCells,
+        int radius
+    )
     {
         var coverage = new HashSet<VoronoiCell>();
-        if (Body == null || building.OccupiedCells.Count == 0)
+        if (Body == null)
             return coverage;
 
-        int hops = contributor.Radius + 1;
+        int hops = radius + 1;
         if (hops < 1)
             hops = 1;
 
-        var frontier = new HashSet<VoronoiCell>(building.OccupiedCells);
+        var frontier = new HashSet<VoronoiCell>(seedCells);
+        if (frontier.Count == 0)
+            return coverage;
         foreach (var c in frontier)
             coverage.Add(c);
 
@@ -361,6 +393,43 @@ public partial class BodyPowerGridManager : Node
             frontier = next;
         }
         return coverage;
+    }
+
+    /// <summary>
+    /// Read-only preview of what would happen if a contributor with the given seed
+    /// cells and radius were placed. Returns the merged-coverage cells, the
+    /// dominant grid (largest by membership) and any grids that would be absorbed.
+    /// Does not mutate manager state.
+    /// </summary>
+    public sealed record GridPreview(
+        PowerGrid? Dominant,
+        IReadOnlyList<PowerGrid> Absorbed,
+        IReadOnlyCollection<VoronoiCell> Coverage
+    );
+
+    public GridPreview PreviewPlacement(IEnumerable<VoronoiCell> seedCells, int radius)
+    {
+        var coverage = ComputeCoverageCore(seedCells, radius);
+        var touched = new HashSet<PowerGrid>();
+        foreach (var cell in coverage)
+        {
+            if (_gridByCell.TryGetValue(cell, out var existing))
+                touched.Add(existing);
+        }
+
+        if (touched.Count == 0)
+            return new GridPreview(null, System.Array.Empty<PowerGrid>(), coverage);
+
+        PowerGrid dominant = touched
+            .OrderByDescending(g => g.Contributors.Count + g.Consumers.Count)
+            .First();
+        var absorbed = new List<PowerGrid>(touched.Count - 1);
+        foreach (var g in touched)
+        {
+            if (g != dominant)
+                absorbed.Add(g);
+        }
+        return new GridPreview(dominant, absorbed, coverage);
     }
 
     private static IGridContributor? GetContributor(Building b)

@@ -1,5 +1,6 @@
 using Constructables;
 using Godot;
+using UI.StateMachine;
 using UtilityLibrary;
 
 namespace UI.StateMachine.States;
@@ -47,6 +48,7 @@ public partial class LogisticsUnitViewState : LimboState
         }
 
         _window.WindowCloseRequested += OnWindowCloseRequested;
+        _window.BackRequested += OnBackRequested;
 
         _window.ShowWindow(unit);
 
@@ -61,6 +63,7 @@ public partial class LogisticsUnitViewState : LimboState
         if (_window != null)
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
+            _window.BackRequested -= OnBackRequested;
             _window.HideWindow();
         }
 
@@ -71,23 +74,20 @@ public partial class LogisticsUnitViewState : LimboState
 
     private void OnWindowCloseRequested()
     {
-        // Determine return destination based on source
-        var sourceVariant = Blackboard?.Top()?.GetVar("LogisticsUnitSource");
-        string source = sourceVariant?.VariantType == Variant.Type.String
-            ? sourceVariant.Value.AsString()
-            : "";
+        InteractionStack.Clear(Blackboard?.Top());
+        Dispatch("window_closed");
+    }
 
-        switch (source)
+    private void OnBackRequested()
+    {
+        var bb = Blackboard?.Top();
+        var returnEvent = InteractionStack.Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
         {
-            case "orbital_body":
-                Dispatch("back_to_orbital_body");
-                break;
-            case "station":
-                Dispatch("back_to_station");
-                break;
-            default:
-                Dispatch("window_closed");
-                break;
+            InteractionStack.Clear(bb);
+            Dispatch("window_closed");
+            return;
         }
+        Dispatch(returnEvent);
     }
 }

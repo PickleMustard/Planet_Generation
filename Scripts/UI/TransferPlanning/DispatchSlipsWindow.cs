@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Buildings.Behaviors;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
@@ -20,6 +21,7 @@ public partial class DispatchSlipsWindow : Control
     public static DispatchSlipsWindow? Instance { get; private set; }
 
     [Signal] public delegate void WindowCloseRequestedEventHandler();
+    [Signal] public delegate void HudCloseRequestedEventHandler();
 
     private enum ViewKind { Slips, Priority, PickDest, Manifest }
 
@@ -43,7 +45,7 @@ public partial class DispatchSlipsWindow : Control
     private Building? _originBuilding;
     private string _originBuildingId = "";
     private int _originContinentIndex = -1;
-    private BodyTransferManager? _mgr;
+    private TransferStationBehavior? _behavior;
     private TransferDestination? _draftDestination;
     private ViewKind _activeView = ViewKind.Slips;
 
@@ -105,7 +107,7 @@ public partial class DispatchSlipsWindow : Control
         _panel.AddChild(col);
 
         _topBar = new TransferTopBar();
-        _topBar.HudCloseRequested += RequestClose;
+        _topBar.HudCloseRequested += OnHudCloseRequested;
         _topBar.BackRequested += OnBackRequested;
         col.AddChild(_topBar);
 
@@ -152,23 +154,18 @@ public partial class DispatchSlipsWindow : Control
         _currentBody = body;
         _currentContinent = continent;
         _draftDestination = null;
-        _mgr = body switch
-        {
-            CelestialBody cb => cb.TransferMgr,
-            SatelliteBody sb => sb.TransferMgr,
-            _ => null,
-        };
 
-        if (_mgr == null || string.IsNullOrEmpty(_originBuildingId) || !_mgr.HasEndpoint(_originBuildingId))
+        _behavior = originBuilding?.GetBehavior<TransferStationBehavior>();
+        if (_behavior == null || string.IsNullOrEmpty(_originBuildingId) || !_behavior.HasEndpoint(_originBuildingId))
         {
             ToastSystem.Instance?.ShowError("Origin has no transfer station");
             return;
         }
 
-        _slipsView?.Bind(_mgr, _originBuildingId);
-        _priorityView?.Bind(_mgr, _originBuildingId);
-        _pickDestView?.Bind(_mgr, _originBuildingId, body);
-        _manifestView?.Bind(_mgr, _originBuildingId, ResourceLoader.Load<Theme>(
+        _slipsView?.Bind(_behavior, _originBuildingId);
+        _priorityView?.Bind(_behavior, _originBuildingId);
+        _pickDestView?.Bind(_behavior, _originBuildingId, body);
+        _manifestView?.Bind(_behavior, _originBuildingId, ResourceLoader.Load<Theme>(
             "res://UI/Theme/wireframe_paper/wireframe_paper.tres"));
 
         SwitchView(ViewKind.Slips);
@@ -185,7 +182,7 @@ public partial class DispatchSlipsWindow : Control
         _originContinentIndex = -1;
         _currentBody = null;
         _currentContinent = null;
-        _mgr = null;
+        _behavior = null;
         _draftDestination = null;
         GameLogger.Info("DispatchSlipsWindow hidden");
     }
@@ -204,6 +201,11 @@ public partial class DispatchSlipsWindow : Control
     {
         if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
             RequestClose();
+    }
+
+    private void OnHudCloseRequested()
+    {
+        EmitSignal(SignalName.HudCloseRequested);
     }
 
     private void OnBackRequested()
@@ -274,9 +276,9 @@ public partial class DispatchSlipsWindow : Control
     private void OnEditSlipRequested(string scheduleId)
     {
         // Re-open manifest editor against the selected schedule's destination.
-        if (_mgr == null) return;
+        if (_behavior == null) return;
         TransferSchedule? target = null;
-        foreach (var s in _mgr.GetSchedulesForOrigin(_originBuildingId))
+        foreach (var s in _behavior.GetSchedulesForOrigin(_originBuildingId))
             if (s.ScheduleId == scheduleId) { target = s; break; }
         if (target == null) return;
         _draftDestination = target.Destination;
@@ -286,7 +288,7 @@ public partial class DispatchSlipsWindow : Control
 
     private void OnDeleteSlipRequested(string scheduleId)
     {
-        _mgr?.RemoveSchedule(scheduleId);
+        _behavior?.RemoveSchedule(scheduleId);
         if (_activeView == ViewKind.Slips) _slipsView?.Refresh();
     }
 

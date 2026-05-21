@@ -31,6 +31,36 @@ public static class TemplateHelpers
         }
     }
 
+    /// <summary>
+    /// Reads the atmospheric pressure range for a celestial body type from its
+    /// SystemGen YAML. Returns (min, max) in atmospheres. Returns (0, 0) if the
+    /// YAML omits the atmosphere block — small/dwarf bodies and dominant bodies
+    /// default to no atmosphere.
+    /// </summary>
+    public static (float min, float max) GetAtmosphereRange(CelestialBodyType type)
+    {
+        var path = GetYamlPath(type);
+        try
+        {
+            var raw = TemplateLoader.Load(path, TemplateLoader.CelestialBodyValidator);
+            if (!raw.TryGetValue("celestial", out var celestialVariant))
+                return (0f, 0f);
+            var celestial = celestialVariant.AsGodotDictionary();
+            if (!celestial.TryGetValue("template", out var templateVariant))
+                return (0f, 0f);
+            var template = templateVariant.AsGodotDictionary();
+            if (!template.TryGetValue("atmosphere", out _))
+                return (0f, 0f);
+            var range = ReadFloatRange(template, "atmosphere", (0f, 0f));
+            return (range.Item1, range.Item2);
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"GetAtmosphereRange failed for {type}: {e.Message}");
+            return (0f, 0f);
+        }
+    }
+
     public static Dictionary GetSatelliteBodyDefaults(SatelliteBodyType type)
     {
         var path = GetYamlPath(type);

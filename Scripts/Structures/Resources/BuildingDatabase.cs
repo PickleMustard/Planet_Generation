@@ -8,7 +8,7 @@ using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 
 namespace Structures.Resources
@@ -38,6 +38,7 @@ namespace Structures.Resources
         private Dictionary<string, BuildingDefinition> _buildings = new();
 
         public string DatabaseName => "BuildingDatabase";
+        public IReadOnlyList<string> Dependencies { get; } = new[] { "BuildingShape2DDatabase" };
         public bool IsLoaded { get; private set; } = false;
         public float LoadProgress { get; private set; } = 0f;
 
@@ -281,11 +282,16 @@ namespace Structures.Resources
 
         public bool ValidatePlacement(string buildingId, VoronoiCell? cell)
         {
+            return ValidatePlacement(buildingId, cell, null);
+        }
+
+        public bool ValidatePlacement(string buildingId, VoronoiCell? cell, IOrbitalBody? body)
+        {
             EnsureLoaded();
             if (!TryGetBuilding(buildingId, out var building) || building == null)
                 return false;
 
-            return building.ValidatePlacement(cell);
+            return building.ValidatePlacement(cell, body);
         }
 
         // Count-based tracking for buildings with placement limits
@@ -350,7 +356,7 @@ namespace Structures.Resources
         /// Gets the icon for a building at a specific size.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetBuildingIcon(string buildingId, IconSize size = IconSize.Medium)
+        public Texture2D GetBuildingIcon(string buildingId, IconSize size = IconSize.Large)
         {
             EnsureLoaded();
             if (TryGetBuilding(buildingId, out var building) && building != null)

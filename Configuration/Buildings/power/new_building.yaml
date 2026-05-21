@@ -1,0 +1,29 @@
+buildings:
+  - id_name: wind_turbine
+    display_name: Wind Turbine
+    category: power
+    max_resource_tier: 1
+    work_required: 20
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+      configurable_behavior:
+        behavior_class: AtmospherePlacementBehavior
+        min_atmosphere: 0
+        max_atmosphere: 100
+    required_resources:
+      concrete: 20
+      aluminum: 20
+    behaviors:
+      - behavior_id: PowerProducerBehavior
+        grid_radius: 4
+        is_renewable: true
+        default_recipe: "wind_harvesting"
+        production_speed: 1.0
+        environmental_modifier:
+          type: ATMOSPHERE_LINEAR
+          reference_atmosphere: 1.0
+          max_scale: 4.0

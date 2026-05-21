@@ -12,6 +12,7 @@ using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
 using Structures.Resources;
+using Structures.Transfers;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
@@ -70,6 +71,17 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
     public Sprite3D? BillboardSprite { get; private set; }
 
     /// <summary>
+    /// Satellite bodies (asteroids, comets, moons, dwarf planets) have no atmosphere.
+    /// Hardcoded to 0 — wind power placement is disabled on these.
+    /// </summary>
+    public float Atmosphere => 0f;
+
+    /// <summary>
+    /// The body this satellite orbits. Wired by <see cref="SystemGenerator"/>.
+    /// </summary>
+    public IOrbitalBody? OrbitalParent { get; set; }
+
+    /// <summary>
     /// Backward-compat computed property. Returns the SatelliteBodyType from Classification.
     /// </summary>
     public SatelliteBodyType SatelliteType =>
@@ -114,7 +126,6 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
     public Node3D SatellitesContainer { get; private set; } = null!;
     public BuildingConstructionManager? BuildingConstructionMgr { get; private set; }
     public BodyEconomyManager? EconomyMgr { get; private set; }
-    public BodyTransferManager? TransferMgr { get; private set; }
     public Node ConstructionManager
     {
         get => BuildingConstructionMgr!;
@@ -122,6 +133,10 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
 
     private Dictionary<int, int> _bandSatelliteCounts = new();
 
+    // Transfer endpoint registry (lightweight — no transfer state)
+    private readonly Dictionary<string, TransferStationDefinition> _endpointDefs = new();
+
+    private readonly Dictionary<string, GodotObject> _endpointOwners = new();
     #region OrbitalParameters
 
     /// <summary>
@@ -547,12 +562,9 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         SatellitesContainer = new Node3D { Name = "SatellitesContainer" };
         AddChild(SatellitesContainer);
 
-        // Create per-body economy and transfer managers
+        // Create per-body economy manager
         EconomyMgr = new BodyEconomyManager { Name = "BodyEconomyManager" };
         AddChild(EconomyMgr);
-
-        TransferMgr = new BodyTransferManager { Name = "BodyTransferManager" };
-        AddChild(TransferMgr);
 
         GameLogger.Debug(
             $"SatelliteBody OrbitSystem initialized: {OrbitBands.Count} bands for mass {Mass}"
@@ -1167,4 +1179,106 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         }
         meshParams.Add("noise_settings", noiseDict);
     }
+
+    #region TransferEndpointRegistry
+
+    public void RegisterTransferEndpoint(string endpointId, TransferStationDefinition def, GodotObject owner)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return;
+
+        _endpointDefs[endpointId] = def;
+        _endpointOwners[endpointId] = owner;
+
+        int continentIdx = owner is Building b ? b.PrimaryCell?.ContinentIndex ?? -1 : -1;
+        SignalBus.Instance?.EmitContinentTransferCapacityChanged(
+            continentIdx,
+            GetTotalTransferCapacityOnContinent(continentIdx)
+        );
+
+        GameLogger.Info(
+            $"[SatelliteBody] Endpoint '{endpointId[..System.Math.Min(8, endpointId.Length)]}' "
+                + $"registered (capacity: {def.CargoCapacity:F0})"
+        );
+    }
+
+    public void UnregisterTransferEndpoint(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return;
+
+        int? continentIdx = _endpointOwners.TryGetValue(endpointId, out var owner)
+            ? (owner as Building)?.PrimaryCell?.ContinentIndex
+            : null;
+
+        _endpointDefs.Remove(endpointId);
+        _endpointOwners.Remove(endpointId);
+
+        if (continentIdx.HasValue)
+            SignalBus.Instance?.EmitContinentTransferCapacityChanged(
+                continentIdx.Value,
+                GetTotalTransferCapacityOnContinent(continentIdx.Value)
+            );
+    }
+
+    public bool HasTransferEndpoint(string endpointId)
+    {
+        return !string.IsNullOrEmpty(endpointId) && _endpointDefs.ContainsKey(endpointId);
+    }
+
+    public TransferStationDefinition? GetTransferEndpointDef(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return null;
+        _endpointDefs.TryGetValue(endpointId, out var def);
+        return def;
+    }
+
+    [Obsolete("Use GetTransferEndpointOwner instead")]
+    public Building? GetTransferEndpointBuilding(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return null;
+        _endpointOwners.TryGetValue(endpointId, out var owner);
+        return owner as Building;
+    }
+
+    public GodotObject? GetTransferEndpointOwner(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return null;
+        _endpointOwners.TryGetValue(endpointId, out var owner);
+        return owner;
+    }
+
+    public IReadOnlyList<string> GetAllTransferEndpoints()
+    {
+        return new List<string>(_endpointDefs.Keys);
+    }
+
+    public IReadOnlyList<string> GetTransferEndpointsOnContinent(int continentIndex)
+    {
+        var list = new List<string>();
+        foreach (var kvp in _endpointOwners)
+        {
+            if (kvp.Value is Building b && b.PrimaryCell?.ContinentIndex == continentIndex)
+                list.Add(kvp.Key);
+        }
+        return list;
+    }
+
+    public float GetTotalTransferCapacityOnContinent(int continentIndex)
+    {
+        if (continentIndex < 0)
+            return 0f;
+        float total = 0f;
+        foreach (var id in GetTransferEndpointsOnContinent(continentIndex))
+        {
+            if (_endpointDefs.TryGetValue(id, out var def))
+                total += def.CargoCapacity;
+        }
+        return total;
+    }
+
+    #endregion
 }

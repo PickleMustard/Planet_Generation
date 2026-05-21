@@ -44,6 +44,11 @@ layout_mode = 2
 size_flags_vertical = 0
 text = "Debug"
 
+[node name="DeveloperToolsButton" type="Button" parent="VBoxContainer" unique_id=1234567893]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Developer Tools"
+
 [node name="ExitButton" type="Button" parent="VBoxContainer" unique_id=1870627271]
 layout_mode = 2
 size_flags_vertical = 0

@@ -83,69 +83,38 @@ public class PlacementBehaviorTest
     }
 
     [TestCase]
-    public void GeothermalVentPlacementBehavior_VolcanicBiomeHighStress_ReturnsTrue()
+    public void GeothermalVentPlacementBehavior_CellWithVent_ReturnsTrue()
     {
         var behavior = new GeothermalVentPlacementBehavior();
-        var cell = CreateTestCell(
-            height: 0.6f,
-            biome: Biome.BiomeType.VolcanicPeak,
-            stress: 0.7f
-        );
+        var cell = CreateTestCell();
+        cell.HasGeothermalVent = true;
 
         AssertThat(behavior.IsValidPlacement(cell)).IsTrue();
     }
 
     [TestCase]
-    public void GeothermalVentPlacementBehavior_NonVolcanicBiome_ReturnsFalse()
+    public void GeothermalVentPlacementBehavior_CellWithoutVent_ReturnsFalse()
     {
         var behavior = new GeothermalVentPlacementBehavior();
-        var cell = CreateTestCell(
-            height: 0.6f,
-            biome: Biome.BiomeType.Grassland,
-            stress: 0.7f
-        );
+        var cell = CreateTestCell();
+        // Default HasGeothermalVent == false
 
         AssertThat(behavior.IsValidPlacement(cell)).IsFalse();
     }
 
     [TestCase]
-    public void GeothermalVentPlacementBehavior_LowStress_ReturnsFalse()
+    public void GeothermalVentPlacementBehavior_VolcanicWithoutVent_ReturnsFalse()
     {
-        var behavior = new GeothermalVentPlacementBehavior();
-        var cell = CreateTestCell(
-            height: 0.6f,
-            biome: Biome.BiomeType.VolcanicPeak,
-            stress: 0.3f // Below threshold
-        );
-
-        AssertThat(behavior.IsValidPlacement(cell)).IsFalse();
-    }
-
-    [TestCase]
-    public void GeothermalVentPlacementBehavior_LowElevation_ReturnsFalse()
-    {
-        var behavior = new GeothermalVentPlacementBehavior();
-        var cell = CreateTestCell(
-            height: 0.3f, // Below threshold
-            biome: Biome.BiomeType.VolcanicPeak,
-            stress: 0.7f
-        );
-
-        AssertThat(behavior.IsValidPlacement(cell)).IsFalse();
-    }
-
-    [TestCase]
-    public void GeothermalVentPlacementBehavior_WithGeothermalResource_ReturnsTrue()
-    {
+        // Volcanic biome alone is no longer sufficient — placement gates on the
+        // procedurally-generated HasGeothermalVent flag.
         var behavior = new GeothermalVentPlacementBehavior();
         var cell = CreateTestCell(
             height: 0.6f,
             biome: Biome.BiomeType.VolcanicPeak,
             stress: 0.7f
         );
-        cell.Resources["geothermal_energy"] = 0.8f;
 
-        AssertThat(behavior.IsValidPlacement(cell)).IsTrue();
+        AssertThat(behavior.IsValidPlacement(cell)).IsFalse();
     }
 
     [TestCase]

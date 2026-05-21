@@ -3,95 +3,35 @@ recipes:
     display_name: "Crop Rotation"
     description: Cycles through different crops each season to maintain soil fertility and produce food.
     category: agriculture
-    work_required: 30.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/agriculture/crop_rotation"
-
+    work_required: 30
     input_resources:
       - water: 5
-      - power: 2
-
     output_resources:
-      - grain: 8
-      - vegetable: 4
-
-  - recipe_id: "fertilizer_production"
-    display_name: "Fertilizer Production"
-    description: Processes organic waste into nutrient-rich fertilizer to boost crop yields.
+      - vegetable: 10
+  - recipe_id: "pesticides"
+    display_name: "Pesticide Spraying"
+    description: Liberal application of pesticides helps to stem losses from local fauna
     category: agriculture
-    work_required: 20.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/agriculture/fertilizer_production"
-
+    work_required: 30
     input_resources:
-      - water: 3
-      - power: 1
-
+      - water: 5
+      - pesticide: 3
     output_resources:
-      - grain: 12
-
-  - recipe_id: "seed_propagation"
-    display_name: "Seed Propagation"
-    description: Selectively breeds and propagates high-yield seed varieties.
-    category: agriculture
-    work_required: 45.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/agriculture/seed_propagation"
-
-    input_resources:
-      - water: 8
-      - grain: 2
-      - power: 3
-
-    output_resources:
-      - grain: 6
-      - vegetable: 6
-      - protein: 2
-
-  - recipe_id: "genetic_modification"
-    display_name: "Genetic Modification"
-    description: Advanced bioengineering to create optimized crop strains for harsh environments.
-    category: agriculture
-    work_required: 60.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/agriculture/genetic_modification"
-
-    input_resources:
-      - water: 10
-      - power: 8
-
-    output_resources:
-      - grain: 15
-      - protein: 5
-
-  - recipe_id: "vertical_farming"
-    display_name: "Vertical Farming"
-    description: Multi-story hydroponic growing systems for high-density food production.
-    category: agriculture
-    work_required: 25.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/agriculture/vertical_farming"
-
-    input_resources:
-      - water: 12
-      - power: 6
-
-    output_resources:
-      - grain: 10
-      - vegetable: 8
-
+      - adult: 20
   - recipe_id: "aquaponics"
     display_name: "Aquaponics"
     description: Combined fish and plant cultivation using a symbiotic nutrient cycle.
     category: agriculture
-    work_required: 35.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/agriculture/aquaponics"
-
+    work_required: 35
     input_resources:
       - water: 15
       - power: 4
-
     output_resources:
       - protein: 8
       - vegetable: 6
+  - recipe_id: "trawl_fishing"
+    display_name: "Trawl Fishing"
+    category: agriculture
+    work_required: 20
+    output_resources:
+      - fish: 20

@@ -243,7 +243,6 @@ public static class ResourceConfigLoader
             IdName = idName,
             ResourceTier = ReadInt(dict, "resource_tier", 0),
             ResourceType = resourceType, // May be overridden later
-            DisplayColor = ReadColor(dict, "display_color", Colors.White),
             Tags = ReadTags(dict, "tags"),
             TransportWeight = ReadFloat(dict, "transport_weight", 1.0f),
             MaxStackSize = ReadFloat(dict, "max_stack_size", 100f),
@@ -255,12 +254,6 @@ public static class ResourceConfigLoader
         if (!definition.Icon.IsValid)
         {
             definition.Icon = IconDataLoader.CreateFallbackIconDefinition();
-        }
-
-        // If no tint specified, inherit from DisplayColor
-        if (definition.Icon.Tint == Colors.White)
-        {
-            definition.Icon.Tint = definition.DisplayColor;
         }
 
         return definition;

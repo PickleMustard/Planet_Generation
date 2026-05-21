@@ -1,5 +1,8 @@
 using Constructables;
 using Godot;
+using ProceduralGeneration;
+using Structures.GameState;
+using UI.StateMachine;
 using UtilityLibrary;
 
 namespace UI.StateMachine.States;
@@ -66,6 +69,7 @@ public partial class GeneralInformationState : LimboState
         }
 
         _window.WindowCloseRequested += OnWindowCloseRequested;
+        _window.BackRequested += OnBackRequested;
         _window.StationInspectRequested += OnStationInspectRequested;
         _window.LogisticsUnitInspectRequested += OnLogisticsUnitInspectRequested;
         _window.BuildingInspectRequested += OnBuildingInspectRequested;
@@ -81,6 +85,7 @@ public partial class GeneralInformationState : LimboState
         if (_window != null)
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
+            _window.BackRequested -= OnBackRequested;
             _window.StationInspectRequested -= OnStationInspectRequested;
             _window.LogisticsUnitInspectRequested -= OnLogisticsUnitInspectRequested;
             _window.BuildingInspectRequested -= OnBuildingInspectRequested;
@@ -90,10 +95,40 @@ public partial class GeneralInformationState : LimboState
         GameLogger.ExitFunction(nameof(_Exit));
     }
 
+    /// <summary>
+    /// Ensures SelectedBody is in blackboard as a raw Node3D (the form downstream
+    /// states like BuildingDetailsState expect). The orbital body state itself reads
+    /// via OrbitalBodyConverter (Dictionary form), so this is invariant-correcting
+    /// before a cross-window transition.
+    /// </summary>
+    private void EnsureSelectedBody()
+    {
+        var bb = Blackboard?.Top();
+        var body = _window?.CurrentBody;
+        if (bb == null || body is not Node3D node3D)
+            return;
+        bb.SetVar("SelectedBody", node3D);
+        bb.SetVar("BodyType", node3D.GetType().Name);
+    }
+
     private void OnWindowCloseRequested()
     {
         GameLogger.Debug("GeneralInformationState: Window close requested");
+        InteractionStack.Clear(Blackboard?.Top());
         Dispatch("window_closed");
+    }
+
+    private void OnBackRequested()
+    {
+        var bb = Blackboard?.Top();
+        var returnEvent = InteractionStack.Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
+        {
+            InteractionStack.Clear(bb);
+            Dispatch("window_closed");
+            return;
+        }
+        Dispatch(returnEvent);
     }
 
     private void OnStationInspectRequested(int stationIndex)
@@ -108,7 +143,12 @@ public partial class GeneralInformationState : LimboState
             {
                 if (idx == stationIndex)
                 {
+                    EnsureSelectedBody();
                     Blackboard?.Top()?.SetVar("SelectedStation", (Node)station);
+                    var bb = Blackboard?.Top();
+                    if (bb != null)
+                        InteractionStack.Push(bb, "back_to_orbital_body",
+                            InteractionStack.SnapshotVars(bb, "SelectedBody"));
                     Dispatch("station_opened");
                     return;
                 }
@@ -131,8 +171,12 @@ public partial class GeneralInformationState : LimboState
             {
                 if (idx == unitIndex)
                 {
+                    EnsureSelectedBody();
                     Blackboard?.Top()?.SetVar("SelectedLogisticsUnit", (Node)unit);
-                    Blackboard?.Top()?.SetVar("LogisticsUnitSource", "orbital_body");
+                    var bb = Blackboard?.Top();
+                    if (bb != null)
+                        InteractionStack.Push(bb, "back_to_orbital_body",
+                            InteractionStack.SnapshotVars(bb, "SelectedBody"));
                     Dispatch("logistics_unit_opened");
                     return;
                 }
@@ -147,8 +191,12 @@ public partial class GeneralInformationState : LimboState
     {
         if (building == null) return;
 
+        EnsureSelectedBody();
         Blackboard?.Top()?.SetVar("SelectedBuilding", building);
-        Blackboard?.Top()?.SetVar("BuildingReturnTo", "body");
+        var bb = Blackboard?.Top();
+        if (bb != null)
+            InteractionStack.Push(bb, "back_to_orbital_body",
+                InteractionStack.SnapshotVars(bb, "SelectedBody"));
         Dispatch("building_details_opened");
     }
 }

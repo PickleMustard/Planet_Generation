@@ -1,20 +1,19 @@
 using System;
-using System;
 using Godot;
+using Structures.Enums;
 using Structures.Logistics;
 
 namespace Structures.Resources;
 
 public enum ResourceNodeKind { Import, Export, Flex }
 
-public enum BuildingSide { Top, Bottom, North, South, East, West }
-
 public partial class ResourceNode : Resource
 {
     public Constructables.Building? Owner { get; set; }
-    public BuildingSide Side { get; set; }
-    public Vector3 Position { get; set; }
+    public int SideIndex { get; set; }
+    public int SlotIndex { get; set; }
     public ResourceNodeKind Kind { get; set; }
+    public StateOfMatter StateOfMatter { get; set; }
 
     private readonly object _linkLock = new();
     private ResourceLink? _link;

@@ -1,33 +1,39 @@
-[gd_scene load_steps=3 format=3 uid="uid://resource_storage_item"]
+[gd_scene format=3 uid="uid://cqa5ekaeqma4w"]
 
-[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/ResourceStorageItem.cs" id="1_storage"]
-[ext_resource type="PackedScene" uid="uid://donut_chart_component" path="res://UI/Components/DonutChart.tscn" id="2_donut"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_214r0"]
+[ext_resource type="Script" uid="uid://wxbaqggwvbfk" path="res://Scripts/UI/BuildingInfo/ResourceStorageItem.cs" id="1_storage"]
+[ext_resource type="PackedScene" path="res://UI/Components/DonutChart.tscn" id="2_donut"]
 
-[node name="ResourceStorageItem" type="HBoxContainer"]
+[node name="ResourceStorageItem" type="HBoxContainer" unique_id=1609073728]
+theme = ExtResource("1_214r0")
 theme_override_constants/separation = 8
 script = ExtResource("1_storage")
 
-[node name="ResourceIcon" type="TextureRect" parent="."]
+[node name="ResourceIcon" type="TextureRect" parent="." unique_id=2047191086]
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
+theme = ExtResource("1_214r0")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="ResourceNameLabel" type="Label" parent="."]
+[node name="ResourceNameLabel" type="Label" parent="." unique_id=1044281502]
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
-clip_contents = true
+theme = ExtResource("1_214r0")
 text = "Resource Name"
 vertical_alignment = 1
 
-[node name="AmountLabel" type="Label" parent="."]
+[node name="AmountLabel" type="Label" parent="." unique_id=558562389]
 layout_mode = 2
+theme = ExtResource("1_214r0")
 theme_type_variation = &"LabelMono"
 text = "0/0"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="FillChart" parent="." instance=ExtResource("2_donut")]
+[node name="FillChart" parent="." unique_id=1551739700 instance=ExtResource("2_donut")]
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
 size_flags_vertical = 4
+theme = ExtResource("1_214r0")

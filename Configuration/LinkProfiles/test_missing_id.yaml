@@ -1,0 +1,12 @@
+link_profiles:
+  - id_name: valid_profile
+    tier: 0
+    transport_speed: 0.01
+    package_size: 1
+    bundle_time: 1
+    slot_capacity: 1
+  - tier: 1
+    transport_speed: 0.99
+    package_size: 99
+    bundle_time: 99
+    slot_capacity: 99

@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://vwv1c1tmxeib" path="res://Scripts/UI/Wireframe/TransferActionBar.cs" id="1_script"]
+
+[node name="TransferActionBar" type="PanelContainer" node_paths=PackedStringArray("LeftSlot", "RightSlot")]
+script = ExtResource("1_script")
+LeftSlot = NodePath("Root/LeftSlot")
+RightSlot = NodePath("Root/RightSlot")
+
+[node name="Root" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="LeftSlot" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="RightSlot" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+theme_override_constants/separation = 10

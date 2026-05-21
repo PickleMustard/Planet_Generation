@@ -2,9 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UI.Debug;
-using UI.Debug.Console;
-using UI.Debug.DatabaseViewer;
+using Debug;
+using Debug.Console;
+using Debug.DatabaseViewer;
 
 namespace ProceduralGeneration.PlanetGeneration;
 

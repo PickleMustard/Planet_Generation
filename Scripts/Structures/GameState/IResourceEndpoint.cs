@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Godot;
 
 namespace Structures.GameState;
 
@@ -36,7 +37,8 @@ public interface IResourceEndpoint
     void EnqueueResourceRequest(ResourceRequest request);
 
     /// <summary>
-    /// Gets the visual fill percentage for a specific storage building and category.
+    /// Gets the visual fill percentage for a specific storage owner and category.
+    /// Owner may be a Building, StationSatellite, or any other GodotObject-backed entity.
     /// </summary>
-    float GetStorageFillPercentage(Constructables.Building building, string category);
+    float GetStorageFillPercentage(GodotObject? owner, string category);
 }

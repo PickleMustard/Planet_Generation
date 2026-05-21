@@ -1,16 +1,20 @@
 using Constructables;
 using Godot;
+using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
 using UI.BuildingInfo;
+using UI.StateMachine;
 using UtilityLibrary;
 
 namespace UI.StateMachine.States;
 
 /// <summary>
 /// Shows the BuildingInfoWindow for the building stored in blackboard
-/// at "SelectedBuilding". Back button reads "BuildingReturnTo" and dispatches
-/// the matching transition (cell_selected / orbital_body_selected / station_opened)
-/// so existing parent-chain transitions handle the actual back navigation.
+/// at "SelectedBuilding". Back button pops the InteractionStack and
+/// dispatches the return event to navigate to the previous panel.
+/// Close-to-HUD clears the stack and dispatches "window_closed".
+/// Also listens for BuildingInfoWindow.ManageRoutesRequested to transition to
+/// TransferPlanning.
 /// </summary>
 public partial class BuildingDetailsState : LimboState
 {
@@ -46,6 +50,7 @@ public partial class BuildingDetailsState : LimboState
 
         _window.WindowCloseRequested += OnWindowCloseRequested;
         _window.BackRequested += OnBackRequested;
+        _window.ManageRoutesRequested += OnManageRoutesRequested;
 
         _window.ShowWindow(building);
 
@@ -61,6 +66,7 @@ public partial class BuildingDetailsState : LimboState
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
             _window.BackRequested -= OnBackRequested;
+            _window.ManageRoutesRequested -= OnManageRoutesRequested;
             _window.HideWindow();
             _window.Clear();
         }
@@ -71,26 +77,65 @@ public partial class BuildingDetailsState : LimboState
 
     private void OnWindowCloseRequested()
     {
+        InteractionStack.Clear(Blackboard?.Top());
         Dispatch("window_closed");
     }
 
     private void OnBackRequested()
     {
-        var ret = Blackboard?.Top()?.GetVar("BuildingReturnTo").AsString();
-        switch (ret)
+        var bb = Blackboard?.Top();
+        var returnEvent = InteractionStack.Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
         {
-            case "cell":
-                Dispatch("cell_selected");
-                break;
-            case "body":
-                Dispatch("orbital_body_selected");
-                break;
-            case "station":
-                Dispatch("station_opened");
-                break;
-            default:
-                Dispatch("window_closed");
-                break;
+            InteractionStack.Clear(bb);
+            Dispatch("window_closed");
+            return;
         }
+        Dispatch(returnEvent);
+    }
+
+    private void OnManageRoutesRequested()
+    {
+        var bb = Blackboard?.Top();
+        if (bb == null) return;
+
+        var buildingVariant = bb.GetVar("SelectedBuilding");
+        if (buildingVariant.VariantType == Variant.Type.Nil) return;
+        var building = buildingVariant.As<Building>();
+        if (building == null) return;
+
+        int continentIndex = building.PrimaryCell?.ContinentIndex ?? -1;
+        bb.SetVar("SelectedContinentIndex", continentIndex);
+
+        // Ensure SelectedBody and SelectedContinent are available for TransferPlanningState
+        if (bb.GetVar("SelectedBody").VariantType == Variant.Type.Nil)
+        {
+            Node? cursor = building.VisualNode;
+            while (cursor != null)
+            {
+                if (cursor is Node3D body3D)
+                {
+                    bb.SetVar("SelectedBody", body3D);
+                    break;
+                }
+                cursor = cursor.GetParent();
+            }
+        }
+        if (bb.GetVar("SelectedContinent").VariantType == Variant.Type.Nil && continentIndex >= 0)
+        {
+            var bodyVariant = bb.GetVar("SelectedBody");
+            if (bodyVariant.VariantType != Variant.Type.Nil)
+            {
+                var body = bodyVariant.As<Node3D>();
+                if (body is ProceduralGeneration.PlanetGeneration.CelestialBody cb)
+                    bb.SetVar("SelectedContinent", cb.Mesh?.GetContinent(continentIndex) ?? default(Variant));
+                else if (body is ProceduralGeneration.PlanetGeneration.SatelliteBody sb)
+                    bb.SetVar("SelectedContinent", sb.Mesh?.GetContinent(continentIndex) ?? default(Variant));
+            }
+        }
+
+        InteractionStack.Push(bb, "transfer_closed",
+            InteractionStack.SnapshotVars(bb, "SelectedBuilding", "SelectedBody", "SelectedContinent", "SelectedContinentIndex"));
+        Dispatch("transfer_opened");
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Constructables.Power;
 using Godot;
 
@@ -10,7 +11,7 @@ namespace Constructables.Buildings.Behaviors;
 /// charge. The grid's resolveTick reads <see cref="Stored"/> / <see cref="Capacity"/>
 /// directly.
 /// </summary>
-public partial class BatteryBehavior : RefCounted, IBuildingBehavior, IGridContributor
+public partial class BatteryBehavior : RefCounted, IBuildingBehavior, IGridContributor, IBehaviorConfigurable
 {
     private Building? _owner;
 
@@ -37,4 +38,10 @@ public partial class BatteryBehavior : RefCounted, IBuildingBehavior, IGridContr
     public void OnDetach() => _owner = null;
 
     public void OnManufactureTick(float delta, Building owner) { }
+
+    public void Configure(Dictionary<string, object> config)
+    {
+        Capacity = BehaviorConfigHelper.ReadFloat(config, "capacity", 0f);
+        Radius = BehaviorConfigHelper.ReadInt(config, "grid_radius", 0);
+    }
 }

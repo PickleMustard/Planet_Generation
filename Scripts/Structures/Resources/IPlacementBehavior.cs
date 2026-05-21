@@ -14,4 +14,13 @@ public interface IPlacementBehavior
     /// <param name="cell">The Voronoi cell to validate.</param>
     /// <returns>True if the cell is valid for placement; otherwise false.</returns>
     bool IsValidPlacement(VoronoiCell cell);
+
+    /// <summary>
+    /// Body-aware overload. Default implementation delegates to the cell-only overload.
+    /// Behaviors that need to inspect body-level properties (atmosphere, parent star
+    /// distance, classification) should override this and ignore the cell-only path.
+    /// </summary>
+    /// <param name="cell">The Voronoi cell to validate.</param>
+    /// <param name="body">The body that owns the cell, or null when the caller can't resolve it.</param>
+    bool IsValidPlacement(VoronoiCell cell, IOrbitalBody? body) => IsValidPlacement(cell);
 }

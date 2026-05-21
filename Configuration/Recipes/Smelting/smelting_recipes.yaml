@@ -1,0 +1,20 @@
+recipes:
+  - recipe_id: "blast_furnace"
+    display_name: "Blast Furnace"
+    description: Ores are smelted by blasting them inside a crucible
+    category: smelting
+    work_required: 10
+    input_resources:
+      - tag:ore: 1
+    output_resources:
+      - tag:metal: 1
+  - recipe_id: "arc_furnace"
+    display_name: "Arc Furnace"
+    description: The heat required to liquefy the metal is generated through a powerful electric arc between two anodes
+    category: smelting
+    work_required: 8
+    input_resources:
+      - condensed_carbon: 2
+      - tag:ore: 1
+    output_resources:
+      - tag:metal: 2

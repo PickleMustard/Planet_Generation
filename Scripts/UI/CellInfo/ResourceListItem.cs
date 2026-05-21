@@ -53,7 +53,7 @@ public partial class ResourceListItem : HBoxContainer
             {
                 // Fallback: create a solid color texture
                 _iconRect.Texture = null;
-                _iconRect.Modulate = definition?.DisplayColor ?? Colors.Gray;
+                _iconRect.Modulate = Colors.Gray;
             }
         }
 

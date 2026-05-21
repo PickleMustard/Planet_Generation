@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Buildings.Behaviors;
 using Structures.Enums;
 using Structures.Resources;
 using Structures.Transfers;
@@ -13,9 +14,12 @@ namespace UI.TransferPlanning;
 /// </summary>
 internal static class SlipDataBuilder
 {
+    /// <summary>Seconds without an accumulating-progress advance before the slip is marked Blocked.</summary>
+    public const double BlockedStallSeconds = 5.0;
+
     public static SlipCardData BuildFromSchedule(
         TransferSchedule schedule,
-        BodyTransferManager? mgr,
+        TransferStationBehavior? behavior,
         ResourceDatabase? resources)
     {
         var data = new SlipCardData
@@ -25,12 +29,12 @@ internal static class SlipDataBuilder
             DestinationName = DescribeDestination(schedule.Destination),
             DestinationCode = ShortDestinationCode(schedule.Destination),
             DestinationVia = "rail",
-            DestinationDistance = mgr != null
-                ? $"{mgr.ComputeTravelTime(schedule.OriginBuildingId, schedule.Destination):0.#}s ETA"
+            DestinationDistance = behavior != null
+                ? $"{behavior.ComputeTravelTime(schedule.OriginBuildingId, schedule.Destination):0.#}s ETA"
                 : "—",
         };
 
-        float totalCapacity = mgr?.GetCapacity(schedule.OriginBuildingId) ?? 0f;
+        float totalCapacity = behavior?.GetCapacity(schedule.OriginBuildingId) ?? 0f;
         float weight = 0f;
         foreach (var kvp in schedule.ResourceProportions)
         {
@@ -58,9 +62,143 @@ internal static class SlipDataBuilder
         }
         data.WeightTons = weight;
         (data.ConditionLabel, data.ConditionShort) = DescribeCondition(schedule);
-        data.State = MapState(schedule.State);
+        ApplyRuntime(data, schedule, behavior);
         data.LastRun = "—";
         return data;
+    }
+
+    /// <summary>
+    /// Cheap update path used by the per-card tick: refreshes only Status,
+    /// ProgressFraction, ProgressLabel, StatusLabel, and the legacy StateDot field.
+    /// Does not touch manifest, destination, or condition labels.
+    /// </summary>
+    public static void ApplyRuntime(
+        SlipCardData data,
+        TransferSchedule schedule,
+        TransferStationBehavior? behavior)
+    {
+        var order = behavior?.GetActiveOrder(schedule.ScheduleId);
+
+        if (schedule.State == TransferScheduleState.Dispatched && order != null)
+        {
+            if (order.State == SurfaceTransferState.InTransit)
+            {
+                float remaining = System.Math.Max(0f, order.TravelTimeSeconds - order.ElapsedTimeSeconds);
+                data.Status = SlipStatus.InTransit;
+                data.ProgressFraction = order.Progress;
+                data.ProgressLabel = $"{remaining:0.#}s left";
+                data.StatusLabel = "in transit";
+            }
+            else
+            {
+                // Loading / Unloading / Reverting — transient at endpoints.
+                data.Status = SlipStatus.Loading;
+                data.ProgressFraction = -1f;
+                data.ProgressLabel = order.State == SurfaceTransferState.Unloading ? "unloading" : "loading";
+                data.StatusLabel = data.ProgressLabel;
+            }
+        }
+        else if (schedule.State == TransferScheduleState.Stopped)
+        {
+            data.Status = SlipStatus.Blocked;
+            data.ProgressFraction = 0f;
+            data.ProgressLabel = "stopped";
+            data.StatusLabel = "blocked";
+        }
+        else if (schedule.State == TransferScheduleState.Accumulating && behavior != null)
+        {
+            (float prog, string label) = ComputeAccumulatingProgress(schedule, behavior);
+            data.ProgressFraction = prog;
+            data.ProgressLabel = label;
+
+            // Wait-seconds schedules advance with wall clock; never flag as Blocked.
+            bool stalled = false;
+            if (!schedule.WaitSeconds.HasValue)
+            {
+                double stall = behavior.TotalTime - behavior.GetLastProgressTime(schedule.ScheduleId);
+                stalled = stall > BlockedStallSeconds;
+            }
+
+            if (stalled)
+            {
+                data.Status = SlipStatus.Blocked;
+                data.StatusLabel = "blocked";
+                data.ProgressLabel = "stalled";
+            }
+            else
+            {
+                data.Status = SlipStatus.Waiting;
+                data.StatusLabel = "waiting";
+            }
+        }
+        else
+        {
+            data.Status = SlipStatus.Waiting;
+            data.ProgressFraction = 0f;
+            data.ProgressLabel = "idle";
+            data.StatusLabel = "idle";
+        }
+
+        data.State = MapDotState(data.Status, schedule.State);
+    }
+
+    private static (float progress, string label) ComputeAccumulatingProgress(
+        TransferSchedule schedule,
+        TransferStationBehavior behavior)
+    {
+        if (schedule.WaitSeconds.HasValue)
+        {
+            float wait = schedule.WaitSeconds.Value;
+            if (wait <= 0f) return (1f, "ready");
+            double elapsed = behavior.TotalTime - schedule.LastDispatchTime;
+            float frac = (float)System.Math.Clamp(elapsed / wait, 0.0, 1.0);
+            float remaining = System.Math.Max(0f, wait - (float)elapsed);
+            return (frac, $"{remaining:0.#}s to dispatch");
+        }
+
+        float totalCapacity = behavior.GetCapacity(schedule.OriginBuildingId);
+        if (totalCapacity <= 0f || schedule.ResourceProportions.Count == 0)
+            return (0f, "no capacity");
+
+        float thresholdFraction = schedule.Threshold.ToFraction();
+        bool anyMode = schedule.DepartureMode == DepartureConditionMode.AnyResource;
+        float best = anyMode ? 0f : 1f;
+        bool sawTarget = false;
+        foreach (var kvp in schedule.ResourceProportions)
+        {
+            string id = kvp.Key;
+            float perUnitWeight = behavior != null ? 1f : 1f; // placeholder; see below
+            float weightDb = LookupTransportWeight(ResourceDatabase.Instance, id);
+            if (weightDb > 0f) perUnitWeight = weightDb;
+
+            float capacityForResource = totalCapacity * kvp.Value;
+            float targetUnits = perUnitWeight > 0f ? capacityForResource / perUnitWeight : 0f;
+            float required = targetUnits * thresholdFraction;
+            if (required <= 0f) continue;
+
+            float stockpile = behavior.GetCurrentStockpile(id);
+            float ratio = System.Math.Clamp(stockpile / required, 0f, 1f);
+            sawTarget = true;
+            if (anyMode)
+            {
+                if (ratio > best) best = ratio;
+            }
+            else
+            {
+                if (ratio < best) best = ratio;
+            }
+        }
+
+        if (!sawTarget) return (0f, "no target");
+        int pct = (int)System.Math.Round(best * 100f);
+        return (best, $"{pct}% filled");
+    }
+
+    private static StateDot.DotState MapDotState(SlipStatus status, TransferScheduleState scheduleState)
+    {
+        if (status == SlipStatus.Blocked) return StateDot.DotState.Block;
+        if (scheduleState == TransferScheduleState.Idle) return StateDot.DotState.Idle;
+        return StateDot.DotState.Run;
     }
 
     public static string DescribeDestination(TransferDestination dest)
@@ -103,14 +241,6 @@ internal static class SlipDataBuilder
         string shortLabel = (any ? "res " : "cap ") + (s.Threshold == DepartureThreshold.Full ? "= 100%" : "≥ " + fraction);
         return (longLabel, shortLabel);
     }
-
-    public static StateDot.DotState MapState(TransferScheduleState state) => state switch
-    {
-        TransferScheduleState.Dispatched => StateDot.DotState.Run,
-        TransferScheduleState.Accumulating => StateDot.DotState.Run,
-        TransferScheduleState.Stopped => StateDot.DotState.Block,
-        _ => StateDot.DotState.Idle,
-    };
 
     public static string ShortResourceIcon(string resourceId)
     {

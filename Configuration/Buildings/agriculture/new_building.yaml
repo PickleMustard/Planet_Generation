@@ -1,0 +1,56 @@
+buildings:
+  - id_name: farm
+    display_name: Farm
+    description: Basic farm for growing crops
+    category: agriculture
+    max_resource_tier: 1
+    work_required: 10
+    placement_requirements:
+      biomes: [Coastal, Forest, Grassland, Rainforest, Swamp]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+      configurable_behavior:
+        behavior_class: AtmospherePlacementBehavior
+        min_atmosphere: 30
+        max_atmosphere: 100
+    required_resources:
+      wood: 10
+      iron: 4
+    behaviors:
+      - behavior_id: ManufacturingBehavior
+        default_recipe: "crop_rotation"
+        alternative_recipes: ["pesticides", "aquaponics"]
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 1
+    visual:
+      model_path: "res://Mesh/external/factory_a.glb"
+
+  - id_name: fishmonger
+    display_name: Fish Monger
+    description: Docks and mongering facilities for catching and processing fish
+    category: agriculture
+    max_resource_tier: 1
+    work_required: 50
+    placement_requirements:
+      biomes: [Coastal, DeepOcean, Ocean, ShallowOcean]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      wood: 20
+      concrete: 20
+      iron: 20
+      aluminum: 20
+    behaviors:
+      - behavior_id: ManufacturingBehavior
+        default_recipe: "trawl_fishing"
+        alternative_recipes: []
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 1
+    visual:
+      model_path: "res://Mesh/external/factory_e.glb"

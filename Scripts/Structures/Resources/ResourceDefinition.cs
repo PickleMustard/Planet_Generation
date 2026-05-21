@@ -25,12 +25,6 @@ public class ResourceDefinition
     public string? ResourceType { get; set; }
 
     /// <summary>
-    /// The color used to display this resource in the UI and map views.
-    /// Defaults to white if not specified in configuration.
-    /// </summary>
-    public Color DisplayColor { get; set; } = Colors.White;
-
-    /// <summary>
     /// Set of tags that define where and how this resource can generate.
     /// Tags match against planetary type tags and biome probability modifiers
     /// to determine generation eligibility and probability per cell.
@@ -67,7 +61,8 @@ public class ResourceDefinition
     public IconDefinition Icon { get; set; } = new();
 
     /// <summary>
-    /// Gets the effective icon tint, falling back to DisplayColor if not set.
+    /// Gets the effective icon tint. Returns the icon's explicit tint if set,
+    /// otherwise white (no tint).
     /// </summary>
     public Color GetEffectiveIconTint()
     {
@@ -75,6 +70,6 @@ public class ResourceDefinition
         {
             return Icon.Tint;
         }
-        return DisplayColor;
+        return Colors.White;
     }
 }

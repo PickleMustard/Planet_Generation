@@ -9,9 +9,25 @@ using UtilityLibrary.TaskSystem;
 
 namespace UtilityLibrary
 {
+    /// <summary>
+    /// Global signal dispatcher. Any signal emitted from <c>IManufactureTickable.OnManufactureTick</c>
+    /// (or any other code that runs on the <c>ManufactureTickEngine</c> background thread) MUST
+    /// use the <c>SafeEmit*</c> companion of the corresponding <c>Emit*</c> method — Godot
+    /// rejects signal emission off the main thread. When adding a new signal that may be
+    /// emitted from tick code, also add a <c>SafeEmit*</c> companion.
+    /// </summary>
     public partial class SignalBus : Node
     {
         public static SignalBus? Instance { get; private set; }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        private static void WarnOffMain(string emitterName)
+        {
+            if (!SignalMarshal.IsOnMainThread)
+                GameLogger.Warning(
+                    $"[SignalBus] {emitterName} called off-main; use Safe{emitterName}"
+                );
+        }
 
         /// <summary>
         /// Selected system template filename to be loaded by the next GameScene.
@@ -79,6 +95,7 @@ namespace UtilityLibrary
 
         public override void _Ready()
         {
+            SignalMarshal.Initialize();
             Instance = this;
         }
 
@@ -185,7 +202,24 @@ namespace UtilityLibrary
 
         public void EmitTransferDispatched(string orderId, int originContinentIndex)
         {
+            WarnOffMain(nameof(EmitTransferDispatched));
             EmitSignal(SignalName.TransferDispatched, orderId, originContinentIndex);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitTransferDispatched"/>. Use from any code
+        /// reachable from <c>ManufactureTickEngine</c>.
+        /// </summary>
+        public void SafeEmitTransferDispatched(string orderId, int originContinentIndex)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.TransferDispatched, orderId, originContinentIndex);
+            else
+                CallDeferred(
+                    MethodName.EmitTransferDispatched,
+                    orderId,
+                    originContinentIndex
+                );
         }
 
         /// <summary>
@@ -197,7 +231,19 @@ namespace UtilityLibrary
 
         public void EmitTransferArrived(string orderId, bool fullyAccepted)
         {
+            WarnOffMain(nameof(EmitTransferArrived));
             EmitSignal(SignalName.TransferArrived, orderId, fullyAccepted);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitTransferArrived"/>.
+        /// </summary>
+        public void SafeEmitTransferArrived(string orderId, bool fullyAccepted)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.TransferArrived, orderId, fullyAccepted);
+            else
+                CallDeferred(MethodName.EmitTransferArrived, orderId, fullyAccepted);
         }
 
         /// <summary>
@@ -217,7 +263,33 @@ namespace UtilityLibrary
             float revertedAmount
         )
         {
+            WarnOffMain(nameof(EmitTransferReverted));
             EmitSignal(SignalName.TransferReverted, orderId, originContinentIndex, revertedAmount);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitTransferReverted"/>.
+        /// </summary>
+        public void SafeEmitTransferReverted(
+            string orderId,
+            int originContinentIndex,
+            float revertedAmount
+        )
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(
+                    SignalName.TransferReverted,
+                    orderId,
+                    originContinentIndex,
+                    revertedAmount
+                );
+            else
+                CallDeferred(
+                    MethodName.EmitTransferReverted,
+                    orderId,
+                    originContinentIndex,
+                    revertedAmount
+                );
         }
 
         /// <summary>
@@ -232,7 +304,23 @@ namespace UtilityLibrary
 
         public void EmitTransferScheduleStateChanged(string scheduleId, int newState)
         {
+            WarnOffMain(nameof(EmitTransferScheduleStateChanged));
             EmitSignal(SignalName.TransferScheduleStateChanged, scheduleId, newState);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitTransferScheduleStateChanged"/>.
+        /// </summary>
+        public void SafeEmitTransferScheduleStateChanged(string scheduleId, int newState)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.TransferScheduleStateChanged, scheduleId, newState);
+            else
+                CallDeferred(
+                    MethodName.EmitTransferScheduleStateChanged,
+                    scheduleId,
+                    newState
+                );
         }
 
         /// <summary>
@@ -392,6 +480,40 @@ namespace UtilityLibrary
         }
 
         /// <summary>
+        /// Fired after a station finishes construction and registers as a transfer endpoint.
+        /// Parameters: StationSatellite (the newly active station).
+        /// </summary>
+        [Signal]
+        public delegate void StationConstructedEventHandler(StationSatellite station);
+
+        public void EmitStationConstructed(StationSatellite station)
+        {
+            WarnOffMain(nameof(EmitStationConstructed));
+            EmitSignal(SignalName.StationConstructed, station);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitStationConstructed"/>.
+        /// </summary>
+        public void SafeEmitStationConstructed(StationSatellite station)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.StationConstructed, station);
+            else
+                CallDeferred(MethodName.EmitStationConstructed, station);
+        }
+
+        /// <summary>
+        /// Fired right before a station exits the scene tree and unregisters its transfer endpoint.
+        /// Parameters: StationSatellite (the station being removed).
+        /// </summary>
+        [Signal]
+        public delegate void StationRemovedEventHandler(StationSatellite station);
+
+        public void EmitStationRemoved(StationSatellite station) =>
+            EmitSignal(SignalName.StationRemoved, station);
+
+        /// <summary>
         /// Fired after a building finishes construction and is registered with its
         /// continent economy. Parameters: continentIndex.
         /// </summary>
@@ -436,6 +558,27 @@ namespace UtilityLibrary
             ProceduralGeneration.PlanetGeneration.CelestialBody body,
             string mode) =>
             EmitSignal(SignalName.OpenPlanetBoardRequested, body, mode);
+
+        /// <summary>
+        /// Fired when the PlanetBoard close button or backdrop is clicked.
+        /// GUIControllerHSM listens and dispatches "window_closed" (→ HUD).
+        /// </summary>
+        [Signal]
+        public delegate void PlanetBoardCloseRequestedEventHandler();
+
+        public void EmitPlanetBoardCloseRequested() =>
+            EmitSignal(SignalName.PlanetBoardCloseRequested);
+
+        /// <summary>
+        /// Fired when the PlanetBoard back button is clicked.
+        /// GUIControllerHSM listens, pops the InteractionStack, and dispatches
+        /// the return event to navigate back to the previous panel.
+        /// </summary>
+        [Signal]
+        public delegate void PlanetBoardBackRequestedEventHandler();
+
+        public void EmitPlanetBoardBackRequested() =>
+            EmitSignal(SignalName.PlanetBoardBackRequested);
 
         /// <summary>
         /// Fired exactly once per game instance, when the player places the building

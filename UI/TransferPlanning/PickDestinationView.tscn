@@ -1,0 +1,196 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://dxx4kl8p6jpcq" path="res://Scripts/UI/TransferPlanning/PickDestinationView.cs" id="1_view"]
+[ext_resource type="Script" uid="uid://c5d6r06h7suc" path="res://Scripts/UI/Wireframe/StepIndicator.cs" id="2_steps"]
+[ext_resource type="PackedScene" path="res://UI/PlanetBoard/PlanetBoardView.tscn" id="3_board"]
+[ext_resource type="PackedScene" path="res://UI/Wireframe/TransferActionBar.tscn" id="4_bar"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_board"]
+bg_color = Color(1, 1, 1, 0.35)
+border_color = Color(0.165, 0.145, 0.125, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.769, 0.329, 0.102, 0.08)
+border_color = Color(0.769, 0.329, 0.102, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 14.0
+content_margin_right = 14.0
+content_margin_top = 12.0
+content_margin_bottom = 12.0
+
+[node name="PickDestinationView" type="Control" node_paths=PackedStringArray("_steps", "_board", "_destCardContent", "_destNameLabel", "_destCodeLabel", "_destDistanceLabel", "_existingRoutesLabel", "_continueBtn")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_view")
+_steps = NodePath("RootVBox/StepBarMargin/Steps")
+_board = NodePath("RootVBox/MainSplit/LeftMargin/LeftCol/BoardPanel/Board")
+_destCardContent = NodePath("RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent")
+_destNameLabel = NodePath("RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent/DestNameLabel")
+_destCodeLabel = NodePath("RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent/DestCodeLabel")
+_destDistanceLabel = NodePath("RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent/DestDistanceLabel")
+_existingRoutesLabel = NodePath("RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent/ExistingRoutesLabel")
+_continueBtn = NodePath("RootVBox/MainSplit/RightMargin/RightCol/ActionBar/Root/RightSlot/ContinueBtn")
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="StepBarMargin" type="MarginContainer" parent="RootVBox"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="Steps" type="HBoxContainer" parent="RootVBox/StepBarMargin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+script = ExtResource("2_steps")
+
+[node name="MainSplit" type="HSplitContainer" parent="RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = -360
+collapsed = true
+
+[node name="LeftMargin" type="MarginContainer" parent="RootVBox/MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="LeftCol" type="VBoxContainer" parent="RootVBox/MainSplit/LeftMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Heading" type="HBoxContainer" parent="RootVBox/MainSplit/LeftMargin/LeftCol"]
+layout_mode = 2
+
+[node name="HeadTitle" type="Label" parent="RootVBox/MainSplit/LeftMargin/LeftCol/Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = "LabelHand"
+theme_override_font_sizes/font_size = 22
+text = "Industry Diagram Board"
+
+[node name="Hint" type="Label" parent="RootVBox/MainSplit/LeftMargin/LeftCol"]
+layout_mode = 2
+theme_type_variation = "LabelMono"
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.165, 0.145, 0.125, 0.45)
+text = "TAP A TRANSFER-STATION BUILDING TO MAKE IT THE DESTINATION"
+
+[node name="BoardPanel" type="PanelContainer" parent="RootVBox/MainSplit/LeftMargin/LeftCol"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_board")
+
+[node name="Board" parent="RootVBox/MainSplit/LeftMargin/LeftCol/BoardPanel" instance=ExtResource("3_board")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightMargin" type="MarginContainer" parent="RootVBox/MainSplit"]
+layout_mode = 2
+custom_minimum_size = Vector2(360, 0)
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="RightCol" type="VBoxContainer" parent="RootVBox/MainSplit/RightMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="Kicker" type="Label" parent="RootVBox/MainSplit/RightMargin/RightCol"]
+layout_mode = 2
+theme_type_variation = "LabelMono"
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.165, 0.145, 0.125, 0.45)
+text = "SELECTED HUB"
+
+[node name="Card" type="PanelContainer" parent="RootVBox/MainSplit/RightMargin/RightCol"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="DestCardContent" type="VBoxContainer" parent="RootVBox/MainSplit/RightMargin/RightCol/Card"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DestCodeLabel" type="Label" parent="RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent"]
+layout_mode = 2
+theme_type_variation = "LabelMono"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.165, 0.145, 0.125, 0.45)
+text = "—"
+
+[node name="DestNameLabel" type="Label" parent="RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent"]
+layout_mode = 2
+theme_type_variation = "LabelHand"
+theme_override_font_sizes/font_size = 24
+text = "Pick a destination on the board"
+
+[node name="DestDistanceLabel" type="Label" parent="RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent"]
+layout_mode = 2
+theme_type_variation = "LabelMono"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.353, 0.314, 0.282, 1)
+
+[node name="ExistingKicker" type="Label" parent="RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent"]
+layout_mode = 2
+theme_type_variation = "LabelMono"
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.165, 0.145, 0.125, 0.45)
+text = "EXISTING ROUTES TO HERE"
+
+[node name="ExistingRoutesLabel" type="Label" parent="RootVBox/MainSplit/RightMargin/RightCol/Card/DestCardContent"]
+layout_mode = 2
+theme_type_variation = "LabelHand"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.353, 0.314, 0.282, 1)
+text = "—"
+
+[node name="Spacer" type="Control" parent="RootVBox/MainSplit/RightMargin/RightCol"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ActionBar" parent="RootVBox/MainSplit/RightMargin/RightCol" instance=ExtResource("4_bar")]
+layout_mode = 2
+
+[node name="CancelBtn" type="Button" parent="RootVBox/MainSplit/RightMargin/RightCol/ActionBar/Root/LeftSlot"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="ContinueBtn" type="Button" parent="RootVBox/MainSplit/RightMargin/RightCol/ActionBar/Root/RightSlot"]
+layout_mode = 2
+disabled = true
+theme_type_variation = "ButtonPrimary"
+text = "Continue → Manifest"

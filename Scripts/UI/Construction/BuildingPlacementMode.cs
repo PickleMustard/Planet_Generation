@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
+using Constructables.Buildings;
+using Constructables.Power;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
@@ -34,12 +37,28 @@ public partial class BuildingPlacementMode : Node
     private Transform3D _lastCameraTransform;
     private int _rotationOffset;
     private List<VoronoiCell> _sortedNeighbors = new();
+    private HashSet<VoronoiCell>? _previewCoverage;
+    private PowerGrid? _previewDominant;
+    private IReadOnlyList<PowerGrid> _previewAbsorbed = System.Array.Empty<PowerGrid>();
+    private bool _previewWanted;
+    private bool _previewWarningEmitted;
+    private int _gridRadius;
 
     public void Initialize(BuildingDefinition definition)
     {
         _definition = definition;
         _isActive = true;
         _lastCameraTransform = default;
+
+        // Scan behavior entries for power contributor info
+        var powerEntry = _definition.BehaviorEntries
+            .FirstOrDefault(e => e.BehaviorId is "PowerProducerBehavior"
+                or "BatteryBehavior");
+        _gridRadius = powerEntry != null
+            ? BehaviorConfigHelper.ReadInt(powerEntry.Config, "grid_radius", -1)
+            : -1;
+        _previewWanted = _gridRadius >= 0;
+        _previewWarningEmitted = false;
         // Ghost model will be created on first valid hover to get proper body scaling
     }
 
@@ -54,6 +73,19 @@ public partial class BuildingPlacementMode : Node
             return;
 
         CastRayFromScreenCenter();
+
+        // Recover from the first-frame race where PowerGridMgr was null (deferred-add on
+        // CelestialBody._Ready) when the user first hovered a cell. Without this retry the
+        // preview would stay blank until the user moved to a different cell.
+        if (_previewWanted
+            && _previewCoverage == null
+            && _hoveredBody != null
+            && _selectedCells.Count > 0)
+        {
+            UpdateGridPreview(_hoveredBody);
+            if (_previewCoverage != null)
+                UpdateHighlight(_hoveredBody);
+        }
     }
 
     public override void _Input(InputEvent @event)
@@ -63,7 +95,6 @@ public partial class BuildingPlacementMode : Node
 
         if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed)
         {
-            GD.Print("Placment Click");
             if (mouseButton.ButtonIndex == MouseButton.Left)
             {
                 OnPlacementClick();
@@ -86,6 +117,7 @@ public partial class BuildingPlacementMode : Node
             {
                 _rotationOffset = (_rotationOffset + 1) % _sortedNeighbors.Count;
                 SelectAndValidateCells();
+                UpdateGridPreview(_hoveredBody);
                 UpdateHighlight(_hoveredBody);
                 if (_hoveredBodyNode != null)
                     UpdateGhostPosition(_selectedCells, _hoveredBodyNode);
@@ -198,6 +230,7 @@ public partial class BuildingPlacementMode : Node
         }
 
         SelectAndValidateCells();
+        UpdateGridPreview(body);
         UpdateHighlight(body);
     }
 
@@ -214,7 +247,8 @@ public partial class BuildingPlacementMode : Node
         _selectedCells.Add(_hoveredCell);
         bool primaryValid = BuildingDatabase.Instance.ValidatePlacement(
             _definition.IdName!,
-            _hoveredCell
+            _hoveredCell,
+            _hoveredBody as IOrbitalBody
         );
         _cellValidity.Add(primaryValid);
 
@@ -230,7 +264,8 @@ public partial class BuildingPlacementMode : Node
                 _selectedCells.Add(neighborCell);
                 bool valid = BuildingDatabase.Instance.ValidatePlacement(
                     _definition.IdName!,
-                    neighborCell
+                    neighborCell,
+                    _hoveredBody as IOrbitalBody
                 );
                 _cellValidity.Add(valid);
             }
@@ -240,6 +275,33 @@ public partial class BuildingPlacementMode : Node
             {
                 for (int i = _cellValidity.Count - 1; i >= 0; i--)
                     _cellValidity[i] = false;
+            }
+        }
+
+        // Adjacency: every non-primary cell must share an edge with at least one
+        // other selected cell. The angular-sorted neighbor ring usually satisfies
+        // this; the check rejects degenerate selections (e.g. coastline gaps).
+        if (_definition.Placement.RequiresAdjacent && _selectedCells.Count > 1 && _hoveredBody != null)
+        {
+            for (int i = 1; i < _selectedCells.Count; i++)
+            {
+                var nbrs = _hoveredBody.GetRuntimeCellNeighbors(_selectedCells[i]);
+                bool hasAdjacentInSelection = false;
+                for (int j = 0; j < _selectedCells.Count && !hasAdjacentInSelection; j++)
+                {
+                    if (j == i) continue;
+                    int otherIndex = _selectedCells[j].Index;
+                    for (int k = 0; k < nbrs.Length; k++)
+                    {
+                        if (nbrs[k].Index == otherIndex) { hasAdjacentInSelection = true; break; }
+                    }
+                }
+                if (!hasAdjacentInSelection)
+                {
+                    for (int k = 0; k < _cellValidity.Count; k++)
+                        _cellValidity[k] = false;
+                    break;
+                }
             }
         }
 
@@ -285,20 +347,77 @@ public partial class BuildingPlacementMode : Node
         return result.ConvertAll(item => item.cell);
     }
 
+    private void UpdateGridPreview(ISelectableBody body)
+    {
+        _previewCoverage = null;
+        _previewDominant = null;
+        _previewAbsorbed = System.Array.Empty<PowerGrid>();
+
+        if (_gridRadius < 0)
+            return;
+        if (body is not CelestialBody cb || cb.PowerGridMgr == null)
+        {
+            if (_previewWanted && !_previewWarningEmitted)
+            {
+                _previewWarningEmitted = true;
+                GameLogger.Warning(
+                    $"BuildingPlacementMode: grid preview suppressed for '{_definition.IdName}' " +
+                    $"— hovered body is not a CelestialBody with a PowerGridMgr (body={body?.GetType().Name})"
+                );
+            }
+            return;
+        }
+        if (_selectedCells.Count == 0)
+            return;
+
+        var preview = cb.PowerGridMgr.PreviewPlacement(_selectedCells, _gridRadius);
+        _previewCoverage = preview.Coverage as HashSet<VoronoiCell> ?? new HashSet<VoronoiCell>(preview.Coverage);
+        _previewDominant = preview.Dominant;
+        _previewAbsorbed = preview.Absorbed;
+    }
+
     private void UpdateHighlight(ISelectableBody body)
     {
         if (body.Mesh == null)
             return;
 
-        int[] cellIds = new int[_selectedCells.Count];
-        bool[] valid = new bool[_selectedCells.Count];
-        for (int i = 0; i < _selectedCells.Count; i++)
+        byte[] buf = body.Mesh.AcquirePlacementBuffer(out int width, out int height);
+        if (buf.Length == 0)
+            return;
+
+        if (_previewCoverage != null && _previewCoverage.Count > 0)
         {
-            cellIds[i] = _selectedCells[i].Index;
-            valid[i] = _cellValidity[i];
+            foreach (var cell in _previewCoverage)
+            {
+                int idx = cell.Index;
+                if (idx < 0 || idx >= buf.Length)
+                    continue;
+                bool inDominant = _previewDominant != null && _previewDominant.CoveredCells.Contains(cell);
+                bool inAbsorbed = false;
+                if (!inDominant)
+                {
+                    foreach (var g in _previewAbsorbed)
+                    {
+                        if (g.CoveredCells.Contains(cell))
+                        {
+                            inAbsorbed = true;
+                            break;
+                        }
+                    }
+                }
+                buf[idx] = inDominant ? (byte)4 : inAbsorbed ? (byte)5 : (byte)3;
+            }
         }
 
-        body.Mesh.SetPlacementHighlight(cellIds, valid);
+        for (int i = 0; i < _selectedCells.Count; i++)
+        {
+            int idx = _selectedCells[i].Index;
+            if (idx < 0 || idx >= buf.Length)
+                continue;
+            buf[idx] = _cellValidity[i] ? (byte)1 : (byte)2;
+        }
+
+        body.Mesh.SetPlacementHighlightData(buf, width, height);
     }
 
     private void UpdateGhostPosition(List<VoronoiCell> cells, Node3D bodyNode)
@@ -404,6 +523,9 @@ public partial class BuildingPlacementMode : Node
         _cellValidity.Clear();
         _rotationOffset = 0;
         _sortedNeighbors.Clear();
+        _previewCoverage = null;
+        _previewDominant = null;
+        _previewAbsorbed = System.Array.Empty<PowerGrid>();
 
         if (_ghostContainer != null)
             _ghostContainer.Visible = false;
@@ -428,10 +550,11 @@ public partial class BuildingPlacementMode : Node
         // Fallback: create a simple box placeholder (scaled by body radius)
         if (_ghostNode == null)
         {
-            float fallbackSize = 0.3f * bodyRadius * 0.5f;
+            float fallbackHeight = 0.3f * bodyRadius * 0.5f;
+            float fallbackRadius = fallbackHeight * 0.15f;
             _ghostNode = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(fallbackSize, fallbackSize, fallbackSize) },
+                Mesh = new CylinderMesh { Height = fallbackHeight, TopRadius = fallbackRadius, BottomRadius = fallbackRadius },
                 Name = "GhostFallbackMesh",
             };
             GameLogger.Warning(

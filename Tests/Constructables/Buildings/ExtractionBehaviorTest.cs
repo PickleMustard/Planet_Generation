@@ -5,10 +5,7 @@ using static GdUnit4.Assertions;
 using Constructables;
 using Constructables.Buildings;
 using Constructables.Buildings.Behaviors;
-using Constructables.Tick;
-using Structures.Enums;
 using Structures.GameState;
-using Structures.Logistics;
 using Structures.MeshGeneration;
 using Structures.Resources;
 
@@ -26,100 +23,220 @@ public class ExtractionBehaviorTest
         return cell;
     }
 
-    private static (Building b, ManufacturingBehavior mfg, ExtractionBehavior ext) MakeMine(
-        Dictionary<string, float> cellResources, int extractTypes, float ratePerTick, float workPerCycle)
+    /// <summary>
+    /// Helper: builds a Building + ExtractionBehavior with a tag-output recipe configured.
+    /// The recipe's <c>tag:ore</c> output drives AvailableDeposits filtering.
+    /// </summary>
+    private static (Building b, ExtractionBehavior ext) MakeMine(
+        Dictionary<string, float> cellResources,
+        int maxResourceTier = 99,
+        string? defaultRecipe = "surface_mine")
     {
         var def = new BuildingDefinition
         {
             IdName = "test_mine",
             DisplayName = "Test Mine",
             WorkRequired = 0f,
+            MaxResourceTier = maxResourceTier,
         };
-        // Storage capacity now derived from recipe / extraction outputs; no fixed slot amounts.
-
         var building = new Building();
         building.ApplyDefinition(def);
         building.SetPlacement(MakeCellWithResources(cellResources), null);
 
-        var mfg = new ManufacturingBehavior();
-        mfg.OnAttach(building);
-        building.Behaviors.Add(mfg);
-
-        var ext = new ExtractionBehavior
-        {
-            ExtractTypes = extractTypes,
-            RatePerTick = ratePerTick,
-            WorkPerCycle = workPerCycle,
-        };
+        var ext = new ExtractionBehavior();
+        if (!string.IsNullOrEmpty(defaultRecipe))
+            ext.Configure(new Dictionary<string, object> { ["default_recipe"] = defaultRecipe });
         ext.OnAttach(building);
         building.Behaviors.Add(ext);
-        ext.OnRegister(); // builds synthetic recipe from cell mix
 
-        return (building, mfg, ext);
+        // Set ActiveRecipeId so RebuildAvailableDeposits can find the recipe
+        if (!string.IsNullOrEmpty(defaultRecipe))
+            building.ActiveRecipeId = defaultRecipe;
+
+        // Ensure RecipeDatabase is loaded so LookupRecipe works
+        var rdb = RecipeDatabase.Instance;
+        if (!rdb.IsLoaded) rdb.LoadData();
+
+        ext.OnRegister();
+        return (building, ext);
     }
 
     [TestCase]
-    public void SyntheticRecipe_BuiltFromCellMix_TopByAbundance()
+    [RequireGodotRuntime]
+    public void AvailableDeposits_FiltersByRecipeOutputTags_SumsAbundance()
     {
-        var (_, _, ext) = MakeMine(
-            new Dictionary<string, float> { ["iron_ore"] = 0.7f, ["coal"] = 0.5f, ["stone"] = 0.2f },
-            extractTypes: 2,
-            ratePerTick: 10f,
-            workPerCycle: 1f);
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
 
-        AssertThat(ext.SyntheticRecipe).IsNotNull();
-        AssertThat(ext.SyntheticRecipe!.OutputResources.Count).IsEqual(2);
-        AssertThat(ext.SyntheticRecipe.OutputResources.ContainsKey("iron_ore")).IsTrue();
-        AssertThat(ext.SyntheticRecipe.OutputResources.ContainsKey("coal")).IsTrue();
-        AssertThat(ext.SyntheticRecipe.OutputResources["iron_ore"]).IsEqual(10f);
-        AssertThat(ext.SyntheticRecipe.InputResources.Count).IsEqual(0);
-    }
-
-    [TestCase]
-    public void SyntheticRecipe_EmptyCell_LeavesRecipeNull()
-    {
-        var (_, _, ext) = MakeMine(
-            new Dictionary<string, float>(),
-            extractTypes: 2, ratePerTick: 10f, workPerCycle: 1f);
-
-        AssertThat(ext.SyntheticRecipe).IsNull();
-    }
-
-    [TestCase]
-    public void Extraction_ProducesOutputAfterWorkRequired()
-    {
-        var engine = ManufactureTickEngine.CreateForTesting();
-        try
+        var (_, ext) = MakeMine(new Dictionary<string, float>
         {
-            var (building, mfg, _) = MakeMine(
-                new Dictionary<string, float> { ["iron_ore"] = 1f },
-                extractTypes: 1,
-                ratePerTick: 5f,
-                workPerCycle: 1f);
+            ["iron_ore"] = 0.7f,
+            ["copper_ore"] = 0.3f,
+            ["clay"] = 0.5f,   // not tagged "ore"
+        });
 
-            engine.Register(building);
-
-            // Tick once: drains Register, ticks → TryStart picks synthetic recipe → Manufacturing
-            engine.SingleTickForTesting();
-            AssertThat(mfg.State).IsEqual(ManufacturingState.Manufacturing);
-
-            // Tick repeatedly until WorkProgress accumulates ≥ WorkRequired (1f).
-            // Engine TickDelta = 1/60s, so ~60 ticks needed.
-            for (int i = 0; i < 70; i++)
-                engine.SingleTickForTesting();
-
-            AssertThat(building.OutputStorage.GetQuantity("iron_ore")).IsGreater(0f);
-        }
-        finally { engine.Stop(); }
+        AssertThat(ext.AvailableDeposits.Count).IsEqual(2);
+        AssertThat(ext.AvailableDeposits.ContainsKey("iron_ore")).IsTrue();
+        AssertThat(ext.AvailableDeposits.ContainsKey("copper_ore")).IsTrue();
+        AssertThat(ext.AvailableDeposits.ContainsKey("clay")).IsFalse();
+        AssertThat(ext.AvailableDeposits["iron_ore"]).IsEqual(0.7f);
     }
 
     [TestCase]
-    public void Extraction_ExtractTypesEqualsTwo_ProducesTwoResources()
+    [RequireGodotRuntime]
+    public void AvailableDeposits_FiltersByMaxResourceTier()
     {
-        var (_, _, ext) = MakeMine(
-            new Dictionary<string, float> { ["iron_ore"] = 0.6f, ["coal"] = 0.4f },
-            extractTypes: 2, ratePerTick: 5f, workPerCycle: 1f);
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
 
-        AssertThat(ext.SyntheticRecipe!.OutputResources.Count).IsEqual(2);
+        // iron_ore and copper_ore are tier 0, uranium_ore is tier 1, lithium_ore is tier 2
+        var (_, ext) = MakeMine(
+            new Dictionary<string, float>
+            {
+                ["iron_ore"] = 0.5f,
+                ["copper_ore"] = 0.4f,
+                ["uranium_ore"] = 0.8f,
+                ["lithium_ore"] = 0.6f,
+            },
+            maxResourceTier: 0);
+
+        // Only tier-0 ores should appear
+        AssertThat(ext.AvailableDeposits.Count).IsEqual(2);
+        AssertThat(ext.AvailableDeposits.ContainsKey("iron_ore")).IsTrue();
+        AssertThat(ext.AvailableDeposits.ContainsKey("copper_ore")).IsTrue();
+        AssertThat(ext.AvailableDeposits.ContainsKey("uranium_ore")).IsFalse();
+        AssertThat(ext.AvailableDeposits.ContainsKey("lithium_ore")).IsFalse();
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void AvailableDeposits_EmptyCell_LeavesEmpty()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+
+        var (_, ext) = MakeMine(new Dictionary<string, float>());
+
+        AssertThat(ext.AvailableDeposits.Count).IsEqual(0);
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void TryResolveOutput_PicksHighestWeight()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+
+        var (_, ext) = MakeMine(new Dictionary<string, float>
+        {
+            ["iron_ore"] = 0.2f,
+            ["copper_ore"] = 0.9f,
+        });
+
+        bool ok = ext.TryResolveOutput("ore", out var id, out var weight);
+        AssertThat(ok).IsTrue();
+        AssertThat(id).IsEqual("copper_ore");
+        AssertThat(weight).IsEqual(0.9f);
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void TryResolveOutput_NoMatchingDeposit_ReturnsFalse()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+
+        var (_, ext) = MakeMine(new Dictionary<string, float>
+        {
+            ["iron_ore"] = 0.5f,
+        });
+
+        bool ok = ext.TryResolveOutput("metal", out var id, out var weight);
+        AssertThat(ok).IsFalse();
+        AssertThat(id).IsNull();
+        AssertThat(weight).IsEqual(0f);
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void TryResolveOutput_RespectsMaxResourceTier()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+
+        // iron_ore (tier 0, abundance 0.2) vs uranium_ore (tier 1, abundance 0.9)
+        // With maxTier=0, uranium_ore should be excluded
+        var (_, ext) = MakeMine(
+            new Dictionary<string, float>
+            {
+                ["iron_ore"] = 0.2f,
+                ["uranium_ore"] = 0.9f,
+            },
+            maxResourceTier: 0);
+
+        bool ok = ext.TryResolveOutput("ore", out var id, out var weight);
+        AssertThat(ok).IsTrue();
+        AssertThat(id).IsEqual("iron_ore");
+        AssertThat(weight).IsEqual(0.2f);
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void ResolveTagOutputs_ResolvesAtOnRegister()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+
+        var (_, ext) = MakeMine(new Dictionary<string, float>
+        {
+            ["iron_ore"] = 0.8f,
+            ["copper_ore"] = 0.3f,
+        });
+
+        // ResolvedTagOutputs should be populated from OnRegister
+        AssertThat(ext.ResolvedTagOutputs.ContainsKey("tag:ore")).IsTrue();
+        AssertThat(ext.ResolvedTagOutputs["tag:ore"]).IsEqual("iron_ore");
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void ResolveTagOutputs_RespectsMaxResourceTier()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+
+        // uranium_ore (tier 1) has higher abundance, but maxTier=0 should exclude it
+        var (_, ext) = MakeMine(
+            new Dictionary<string, float>
+            {
+                ["iron_ore"] = 0.2f,
+                ["uranium_ore"] = 0.9f,
+            },
+            maxResourceTier: 0);
+
+        AssertThat(ext.ResolvedTagOutputs.ContainsKey("tag:ore")).IsTrue();
+        AssertThat(ext.ResolvedTagOutputs["tag:ore"]).IsEqual("iron_ore");
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void OnRecipeChanged_UpdatesResolvedOutputs()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+
+        var (building, ext) = MakeMine(new Dictionary<string, float>
+        {
+            ["iron_ore"] = 0.5f,
+        });
+
+        // Verify initial resolution
+        AssertThat(ext.ResolvedTagOutputs.ContainsKey("tag:ore")).IsTrue();
+
+        // Simulate recipe change (even if same recipe, verifies OnRecipeChanged flow)
+        ext.OnRecipeChanged("surface_mine");
+
+        AssertThat(ext.ResolvedTagOutputs.ContainsKey("tag:ore")).IsTrue();
+        AssertThat(ext.ResolvedTagOutputs["tag:ore"]).IsEqual("iron_ore");
     }
 }

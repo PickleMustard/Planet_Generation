@@ -18,20 +18,17 @@ public class DefaultPlacementBehavior : IPlacementBehavior
 
     public bool IsValidPlacement(VoronoiCell cell)
     {
-        // Check elevation using cell height (normalized to 0-1 range)
-        if (cell.Height < _requirements.MinElevation || cell.Height > _requirements.MaxElevation)
+        if (cell.NormalizedHeight < _requirements.MinElevation ||
+            cell.NormalizedHeight > _requirements.MaxElevation)
             return false;
 
-        // Check slope (placeholder - need actual slope calculation)
-        if (_requirements.MaxSlope < 0.0f || _requirements.MaxSlope > 90.0f)
+        if (cell.GetSlope() > _requirements.MaxSlope)
             return false;
 
-        // Check biomes - skip if AllowAnyBiome is true
         if (!_requirements.AllowAnyBiome && _requirements.Biomes.Count > 0)
         {
-            // Future: Use cell.Biome property when comparing
-            // if (!_requirements.Biomes.Contains(cell.Biome))
-            //     return false;
+            if (!_requirements.Biomes.Contains(cell.Biome))
+                return false;
         }
 
         return true;

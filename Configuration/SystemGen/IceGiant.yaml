@@ -13,6 +13,9 @@ celestial:
     vertical_offset: 0
     mass: 4500
     size: 200
+    # Atmospheric pressure range in atmospheres. Ice giants are thick but less
+    # extreme than gas giants. Standard wind disabled — adapted variants pending.
+    atmosphere: [20.0, 100.0]
 
   mesh:
     base_mesh:

@@ -563,6 +563,53 @@ public static class YamlValidator
                 }
             }
 
+            // Validate behaviors structure if present
+            if (building.Children.ContainsKey("behaviors"))
+            {
+                var behaviorsNode = building.Children["behaviors"];
+                if (behaviorsNode is YamlSequenceNode behaviorsSeq)
+                {
+                    int behaviorIndex = 0;
+                    foreach (var entryNode in behaviorsSeq.Children)
+                    {
+                        if (entryNode is YamlScalarNode)
+                        {
+                            // Bare string — allowed but not preferred
+                        }
+                        else if (entryNode is YamlMappingNode entryMap)
+                        {
+                            if (!entryMap.Children.ContainsKey("behavior_id"))
+                            {
+                                result.AddError(
+                                    $"Building at index {buildingIndex}: behavior entry at index {behaviorIndex} missing required 'behavior_id' key"
+                                );
+                            }
+                            else
+                            {
+                                var idNode = entryMap.Children["behavior_id"];
+                                if (idNode is YamlScalarNode idScalar)
+                                {
+                                    string behaviorId = idScalar.Value ?? "";
+                                    if (!IsValidBehaviorId(behaviorId))
+                                    {
+                                        result.AddWarning(
+                                            $"Building at index {buildingIndex}: behavior_id '{behaviorId}' may not be a valid behavior class name"
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            result.AddError(
+                                $"Building at index {buildingIndex}: behavior entry at index {behaviorIndex} must be a string or mapping"
+                            );
+                        }
+                        behaviorIndex++;
+                    }
+                }
+            }
+
             // Validate placement_requirements structure if present
             if (building.Children.ContainsKey("placement_requirements"))
             {
@@ -725,13 +772,19 @@ public static class YamlValidator
                         var behaviorNode = placement.Children["configurable_behavior"];
                         if (behaviorNode is YamlScalarNode behaviorScalar)
                         {
+                            // Legacy bare string format — deprecated
                             string? behaviorValue = behaviorScalar.Value;
                             if (!string.IsNullOrWhiteSpace(behaviorValue))
                             {
+                                result.AddWarning(
+                                    $"Building at index {buildingIndex}: " +
+                                    "Bare string 'configurable_behavior' is deprecated. " +
+                                    "Use mapping with 'behavior_class' key and inline config."
+                                );
+
                                 // Check if it's a file path or class name
                                 if (behaviorValue.StartsWith("res://", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    // Validate file path format
                                     if (!behaviorValue.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
                                     {
                                         result.AddWarning(
@@ -749,10 +802,36 @@ public static class YamlValidator
                                 }
                             }
                         }
+                        else if (behaviorNode is YamlMappingNode behaviorMap)
+                        {
+                            // New inline config format
+                            if (!behaviorMap.Children.ContainsKey("behavior_class"))
+                            {
+                                result.AddError(
+                                    $"Building at index {buildingIndex}: " +
+                                    "'configurable_behavior' mapping missing required 'behavior_class' key"
+                                );
+                            }
+                            else
+                            {
+                                var classNode = behaviorMap.Children["behavior_class"];
+                                if (classNode is YamlScalarNode classScalar)
+                                {
+                                    string className = classScalar.Value ?? "";
+                                    if (!string.IsNullOrWhiteSpace(className) && !IsValidBehaviorName(className))
+                                    {
+                                        result.AddWarning(
+                                            $"Building at index {buildingIndex}: " +
+                                            $"'configurable_behavior.behavior_class' value '{className}' may not be a valid class name"
+                                        );
+                                    }
+                                }
+                            }
+                        }
                         else
                         {
                             result.AddError(
-                                $"Building at index {buildingIndex}: 'configurable_behavior' must be a string"
+                                $"Building at index {buildingIndex}: 'configurable_behavior' must be a string or mapping"
                             );
                         }
                     }
@@ -805,65 +884,15 @@ public static class YamlValidator
                 }
             }
 
-            // Validate production structure if present
-            if (building.Children.ContainsKey("production"))
+            // Warn on deprecated top-level sections (config should be inline in behaviors:)
+            var deprecatedSections = new[] { "production", "power", "extraction", "transfer_station", "storage_capacity", "slot_filters", "starting_stockpiles" };
+            foreach (var section in deprecatedSections)
             {
-                var productionNode = building.Children["production"];
-
-                if (
-                    productionNode is YamlScalarNode prodScalar
-                    && (
-                        prodScalar.Value == null
-                        || prodScalar.Value == ""
-                        || prodScalar.Value == "~"
-                    )
-                )
+                if (building.Children.ContainsKey(section))
                 {
-                    // Valid: empty production
-                }
-                else if (productionNode is YamlMappingNode productionMap)
-                {
-                    if (productionMap.Children.ContainsKey("input_storage_amount"))
-                    {
-                        if (!IsIntegerNode(productionMap.Children["input_storage_amount"]))
-                        {
-                            result.AddError(
-                                $"Building at index {buildingIndex}: 'production.input_storage_amount' must be integer"
-                            );
-                        }
-                    }
-                    if (productionMap.Children.ContainsKey("output_storage_amount"))
-                    {
-                        if (!IsIntegerNode(productionMap.Children["output_storage_amount"]))
-                        {
-                            result.AddError(
-                                $"Building at index {buildingIndex}: 'production.output_storage_amount' must be integer"
-                            );
-                        }
-                    }
-                    if (productionMap.Children.ContainsKey("production_speed"))
-                    {
-                        if (!IsNumericNode(productionMap.Children["production_speed"]))
-                        {
-                            result.AddError(
-                                $"Building at index {buildingIndex}: 'production.production_speed' must be numeric"
-                            );
-                        }
-                    }
-                    if (productionMap.Children.ContainsKey("alternative_recipes"))
-                    {
-                        if (productionMap.Children["alternative_recipes"] is not YamlSequenceNode)
-                        {
-                            result.AddError(
-                                $"Building at index {buildingIndex}: 'production.alternative_recipes' must be a sequence"
-                            );
-                        }
-                    }
-                }
-                else
-                {
-                    result.AddError(
-                        $"Building at index {buildingIndex}: 'production' must be a mapping or empty"
+                    result.AddWarning(
+                        $"Building at index {buildingIndex}: Top-level '{section}' section is deprecated. " +
+                        $"Move config inline under 'behaviors:' entries."
                     );
                 }
             }
@@ -900,14 +929,21 @@ public static class YamlValidator
                             );
                         }
                     }
-                    if (visualMap.Children.ContainsKey("shape"))
+                    if (visualMap.Children.ContainsKey("shape_id"))
                     {
-                        if (visualMap.Children["shape"] is not YamlScalarNode)
+                        if (visualMap.Children["shape_id"] is not YamlScalarNode)
                         {
                             result.AddError(
-                                $"Building at index {buildingIndex}: 'visual.shape' must be a string"
+                                $"Building at index {buildingIndex}: 'visual.shape_id' must be a string"
                             );
                         }
+                    }
+                    if (visualMap.Children.ContainsKey("shape"))
+                    {
+                        result.AddError(
+                            $"Building at index {buildingIndex}: 'visual.shape' is deprecated. " +
+                            "Use 'shape_id' referencing a BuildingShape2D in Configuration/Building2D/."
+                        );
                     }
                     if (visualMap.Children.ContainsKey("shape_size"))
                     {
@@ -1078,6 +1114,26 @@ public static class YamlValidator
         }
 
         return char.IsLetter(name[0]) || name[0] == '_';
+    }
+
+    private static readonly HashSet<string> KnownBehaviorIds = new()
+    {
+        "ManufacturingBehavior",
+        "PowerProducerBehavior",
+        "PowerConsumerBehavior",
+        "BatteryBehavior",
+        "ExtractionBehavior",
+        "StorageHubBehavior",
+        "TransferStationBehavior",
+        "TransportHubBehavior",
+        "InitialStockpileBehavior",
+        "GameStartBehavior",
+        "BulkStorageRoutingBehavior",
+    };
+
+    private static bool IsValidBehaviorId(string id)
+    {
+        return KnownBehaviorIds.Contains(id);
     }
 
     private static void ValidateTemplateSection(
@@ -1435,7 +1491,7 @@ public static class YamlValidator
         return files;
     }
 
-    public static ValidationResult ValidateRecipeDefinition(string filePath)
+    public static ValidationResult ValidateBuildingShape2D(string filePath)
     {
         var result = new ValidationResult { FilePath = filePath };
 
@@ -1449,6 +1505,170 @@ public static class YamlValidator
         {
             using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
             string text = f.GetAsText();
+
+            var parseResult = ValidateYamlSyntax(text);
+            if (!parseResult.IsValid)
+            {
+                result.Errors.AddRange(parseResult.Errors);
+                return result;
+            }
+
+            var yaml = new YamlStream();
+            yaml.Load(new StringReader(text));
+            var root = (YamlMappingNode)yaml.Documents[0].RootNode;
+
+            ValidateBuildingShape2DStructure(root, result);
+        }
+        catch (Exception e)
+        {
+            result.AddError($"Validation exception: {e.Message}");
+        }
+
+        return result;
+    }
+
+    private static void ValidateBuildingShape2DStructure(YamlMappingNode root, ValidationResult result)
+    {
+        if (!root.Children.ContainsKey("id"))
+        {
+            result.AddError("Missing required field: 'id'");
+        }
+
+        if (!root.Children.ContainsKey("vertices"))
+        {
+            result.AddError("Missing required field: 'vertices'");
+            return;
+        }
+
+        if (root.Children["vertices"] is not YamlSequenceNode vertices)
+        {
+            result.AddError("'vertices' must be a sequence");
+            return;
+        }
+
+        if (vertices.Children.Count < 3)
+        {
+            result.AddError($"'vertices' must contain at least 3 entries; got {vertices.Children.Count}");
+            return;
+        }
+
+        int vIdx = 0;
+        foreach (var vNode in vertices.Children)
+        {
+            if (vNode is not YamlSequenceNode pair || pair.Children.Count < 2)
+            {
+                result.AddError($"vertices[{vIdx}] must be [x, y]");
+            }
+            else
+            {
+                if (!IsNumericNode(pair.Children[0]) || !IsNumericNode(pair.Children[1]))
+                    result.AddError($"vertices[{vIdx}] must contain numeric x and y");
+            }
+            vIdx++;
+        }
+
+        if (root.Children.ContainsKey("sides"))
+        {
+            if (root.Children["sides"] is not YamlSequenceNode sides)
+            {
+                result.AddError("'sides' must be a sequence");
+                return;
+            }
+
+            if (sides.Children.Count != vertices.Children.Count)
+            {
+                result.AddError(
+                    $"'sides' count ({sides.Children.Count}) must equal 'vertices' count ({vertices.Children.Count})"
+                );
+            }
+
+            int sIdx = 0;
+            foreach (var sideNode in sides.Children)
+            {
+                if (sideNode is YamlMappingNode sideMap && sideMap.Children.ContainsKey("slots"))
+                {
+                    if (sideMap.Children["slots"] is YamlSequenceNode slots)
+                    {
+                        int slotIdx = 0;
+                        foreach (var slotNode in slots.Children)
+                        {
+                            if (slotNode is not YamlMappingNode slotMap)
+                            {
+                                result.AddError(
+                                    $"sides[{sIdx}].slots[{slotIdx}] must be a mapping with 'kind' and 'state'"
+                                );
+                                slotIdx++;
+                                continue;
+                            }
+
+                            if (!slotMap.Children.TryGetValue("kind", out var kindNode)
+                                || kindNode is not YamlScalarNode kindScalar
+                                || string.IsNullOrWhiteSpace(kindScalar.Value)
+                                || !IsValidResourceNodeKind(kindScalar.Value))
+                            {
+                                result.AddError(
+                                    $"sides[{sIdx}].slots[{slotIdx}].kind must be one of: import, export, flex"
+                                );
+                            }
+
+                            if (!slotMap.Children.TryGetValue("state", out var stateNode)
+                                || stateNode is not YamlScalarNode stateScalar
+                                || string.IsNullOrWhiteSpace(stateScalar.Value)
+                                || !IsValidStateOfMatter(stateScalar.Value))
+                            {
+                                result.AddError(
+                                    $"sides[{sIdx}].slots[{slotIdx}].state must be one of: solid, fluid, liquid, gas"
+                                );
+                            }
+                            slotIdx++;
+                        }
+                    }
+                }
+                sIdx++;
+            }
+        }
+    }
+
+    private static bool IsValidResourceNodeKind(string value)
+    {
+        return string.Equals(value, "import", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "export", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "flex", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsValidStateOfMatter(string value)
+    {
+        return string.Equals(value, "solid", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "fluid", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "liquid", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "gas", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static ValidationResult ValidateRecipeDefinition(string filePath)
+    {
+        var result = new ValidationResult { FilePath = filePath };
+
+        if (!Godot.FileAccess.FileExists(filePath))
+        {
+            result.AddError("File does not exist");
+            return result;
+        }
+
+        try
+        {
+            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
+            string rawText = f.GetAsText();
+
+            // Empty-key slot entries (e.g. `- : 5`) crash YamlDotNet's representation
+            // model. Pre-substitute them so the rest of the file can still parse, and
+            // surface each empty key as a validation error with its line number.
+            var pre = RecipeYamlPreprocessor.Preprocess(rawText);
+            foreach (int lineNumber in pre.EmptyKeyLineNumbers)
+            {
+                result.AddError($"Empty resource key at line {lineNumber}");
+            }
+
+            string text = pre.Text;
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -1527,7 +1747,91 @@ public static class YamlValidator
                 ValidateIconSection(recipe.Children["icon"], $"Recipe at index {recipeIndex}", result);
             }
 
+            // Validate optional tags section
+            if (recipe.Children.ContainsKey("tags"))
+            {
+                if (recipe.Children["tags"] is not YamlSequenceNode tagsSeq)
+                {
+                    result.AddError($"Recipe at index {recipeIndex}: 'tags' must be a sequence");
+                }
+                else
+                {
+                    int tagIndex = 0;
+                    foreach (var tagNode in tagsSeq.Children)
+                    {
+                        if (tagNode is not YamlScalarNode tagScalar || string.IsNullOrWhiteSpace(tagScalar.Value))
+                        {
+                            result.AddError(
+                                $"Recipe at index {recipeIndex}: 'tags[{tagIndex}]' must be a non-empty string"
+                            );
+                        }
+                        tagIndex++;
+                    }
+                }
+            }
+
+            // Validate input/output resources keys (allow optional tag: prefix on both)
+            ValidateRecipeSlotKeys(recipe, "input_resources", recipeIndex, allowTagPrefix: true, result);
+            ValidateRecipeSlotKeys(recipe, "output_resources", recipeIndex, allowTagPrefix: true, result);
+
             recipeIndex++;
+        }
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex _recipeSlotKeyRegex =
+        new("^[a-z_][a-z0-9_]*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static void ValidateRecipeSlotKeys(
+        YamlMappingNode recipe,
+        string field,
+        int recipeIndex,
+        bool allowTagPrefix,
+        ValidationResult result)
+    {
+        if (!recipe.Children.ContainsKey(field)) return;
+        if (recipe.Children[field] is not YamlSequenceNode list) return;
+
+        int slotIndex = 0;
+        foreach (var entry in list.Children)
+        {
+            if (entry is not YamlMappingNode slotMap)
+            {
+                slotIndex++;
+                continue;
+            }
+
+            foreach (var kvp in slotMap.Children)
+            {
+                if (kvp.Key is not YamlScalarNode keyScalar || string.IsNullOrEmpty(keyScalar.Value))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: '{field}[{slotIndex}]' has empty key"
+                    );
+                    continue;
+                }
+
+                string key = keyScalar.Value!;
+                string baseKey = key;
+                if (allowTagPrefix && key.StartsWith("tag:"))
+                {
+                    baseKey = key.Substring("tag:".Length);
+                }
+                else if (!allowTagPrefix && key.StartsWith("tag:"))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: '{field}[{slotIndex}]' may not use 'tag:' prefix"
+                    );
+                    continue;
+                }
+
+                if (!_recipeSlotKeyRegex.IsMatch(baseKey))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: '{field}[{slotIndex}]' key '{key}' must be lower_snake_case"
+                    );
+                }
+            }
+            slotIndex++;
         }
     }
 
@@ -1571,7 +1875,7 @@ public static class YamlValidator
 
         string basePath = basePathScalar.Value;
 
-        // Validate all three icon sizes exist
+        // Validate all three icon sizes exist (skip Off)
         foreach (IconSize size in System.Enum.GetValues<IconSize>())
         {
             string suffix = size.GetSuffix();
@@ -1624,7 +1928,7 @@ public static class YamlValidator
             IconSize.Small => 64,
             IconSize.Medium => 128,
             IconSize.Large => 512,
-            _ => 128
+            _ => 512
         };
     }
 }

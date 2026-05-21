@@ -2,7 +2,7 @@
 using GdUnit4;
 using static GdUnit4.Assertions;
 
-using UI.Debug.Console;
+using Debug.Console;
 
 namespace Tests;
 

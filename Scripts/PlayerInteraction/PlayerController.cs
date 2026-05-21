@@ -2,6 +2,7 @@ using Constructables;
 using Godot;
 using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
+using UI;
 using UtilityLibrary;
 
 public partial class PlayerController : Node3D
@@ -28,7 +29,7 @@ public partial class PlayerController : Node3D
     private Node3D? _parent;
     private Node3D? _pointerNode;
     private Camera3D? _camera;
-    private InputHandler? _inputHandler;
+    private WorldInputController? _worldInput;
     private ShipMovement? _shipMovement;
 
     //Local Variables
@@ -45,23 +46,36 @@ public partial class PlayerController : Node3D
 
     public override void _Ready()
     {
-        _inputHandler = GetNode<InputHandler>("../InputHandler"); // Assuming InputHandler is a sibling
         _parent = GetParent() as Node3D;
         _camera = GetNode<Camera3D>("../Camera3D"); // Assuming camera is a child
         _pointerNode = GetNode<Node3D>("../Camera3D/Pointer");
         _shipMovement = GetParent() as ShipMovement;
         _decelerateFactor = Mathf.Log(DecelerationTime);
 
-        if (_inputHandler != null)
+        Callable rayCastRequest = new Callable(this, "OnCastRay");
+        SignalBus.Instance!.ConnectToSignal("RequestRayCast", rayCastRequest);
+
+        CallDeferred(MethodName.WireWorldInputSignals);
+    }
+
+    private void WireWorldInputSignals()
+    {
+        _worldInput =
+            GetTree().GetFirstNodeInGroup(WorldInputController.GroupName)
+            as WorldInputController;
+        if (_worldInput == null)
         {
-            _inputHandler.Move += OnMove;
-            _inputHandler.Accelerate += OnAccelerate;
-            _inputHandler.VerticalMove += OnVerticalMove;
-            _inputHandler.CameraLook += OnCameraLook;
-            _inputHandler.IndependentRotatation += OnMakeCameraIndependent;
-            Callable rayCastRequest = new Callable(this, "OnCastRay");
-            SignalBus.Instance!.ConnectToSignal("RequestRayCast", rayCastRequest);
+            GD.PushWarning(
+                "PlayerController: WorldInputController not found in group; input wiring skipped."
+            );
+            return;
         }
+
+        _worldInput.Move += OnMove;
+        _worldInput.Accelerate += OnAccelerate;
+        _worldInput.VerticalMove += OnVerticalMove;
+        _worldInput.CameraLook += OnCameraLook;
+        _worldInput.IndependentRotatation += OnMakeCameraIndependent;
     }
 
     public override void _PhysicsProcess(double delta)

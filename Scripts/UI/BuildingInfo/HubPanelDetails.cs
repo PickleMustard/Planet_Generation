@@ -1,12 +1,13 @@
+using System;
+using System.Collections.Generic;
 using Constructables;
 using Constructables.Buildings.Behaviors;
 using Godot;
-using ProceduralGeneration.PlanetGeneration;
+using ProceduralGeneration;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.Resources;
 using Structures.Transfers;
-using UI.TransferPlanning;
 using UtilityLibrary;
 
 namespace UI.BuildingInfo;
@@ -18,6 +19,8 @@ namespace UI.BuildingInfo;
 /// </summary>
 public partial class HubPanelDetails : BaseBuildingDetails
 {
+    [Signal] public delegate void ManageRoutesRequestedEventHandler();
+
     private TextureRect? _renderIcon;
     private Label? _kindTag;
     private Label? _usedValue;
@@ -39,6 +42,9 @@ public partial class HubPanelDetails : BaseBuildingDetails
     private Button? _manageRoutesButton;
 
     private PackedScene? _resourceSlotItemScene;
+
+    private IOrbitalBody? _cachedBody;
+    private Building? _bodyResolvedFor;
 
     private int _refreshCounter;
     public override void _PhysicsProcess(double delta)
@@ -78,11 +84,21 @@ public partial class HubPanelDetails : BaseBuildingDetails
         if (_building == null) { Clear(); return; }
 
         UpdateRender();
-        bool isTransport = IsTransportHub(_building);
-        UpdateHeader(isTransport);
+        bool hasOutbound = HasTransferStation(_building);
+        var body = ResolveBody();
+        IReadOnlyList<TransferSchedule> inboundSchedules = Array.Empty<TransferSchedule>();
+        IReadOnlyList<TransferStationBehavior.ActiveTransfer> inboundActive = Array.Empty<TransferStationBehavior.ActiveTransfer>();
+        if (!hasOutbound && body != null && !string.IsNullOrEmpty(_building.Id))
+        {
+            inboundSchedules = body.GetInboundSchedulesForBuilding(_building.Id);
+            inboundActive = body.GetInboundActiveTransfersForBuilding(_building.Id);
+        }
+        bool hasInbound = inboundSchedules.Count + inboundActive.Count > 0;
+
+        UpdateHeader(hasOutbound);
         UpdateBulkSlots();
         UpdateLinks();
-        UpdateTransfers(isTransport);
+        UpdateTransfers(hasOutbound, hasInbound, inboundSchedules, inboundActive, body);
     }
 
     public override void Clear()
@@ -100,31 +116,53 @@ public partial class HubPanelDetails : BaseBuildingDetails
         ClearChildren(_withdrawalsList);
         ClearChildren(_transfersList);
         if (_transfersSection != null) _transfersSection.Visible = false;
+        _cachedBody = null;
+        _bodyResolvedFor = null;
     }
 
-    private bool IsTransportHub(Building building)
-        => building.Definition?.TransferStation != null
-            || building.GetBehavior<TransportHubBehavior>() != null;
+    private bool HasTransferStation(Building building)
+        => building.GetBehavior<Constructables.Buildings.Behaviors.TransferStationBehavior>() != null;
+
+    private IOrbitalBody? ResolveBody()
+    {
+        if (_building == null) return null;
+        if (!ReferenceEquals(_bodyResolvedFor, _building))
+        {
+            _cachedBody = null;
+            _bodyResolvedFor = _building;
+            Node? cursor = _building.VisualNode;
+            while (cursor != null)
+            {
+                if (cursor is IOrbitalBody body)
+                {
+                    _cachedBody = body;
+                    break;
+                }
+                cursor = cursor.GetParent();
+            }
+        }
+        return _cachedBody;
+    }
 
     private void UpdateRender()
     {
         if (_renderIcon == null || _building?.Definition == null) return;
         var iconDef = _building.Definition.Icon;
         Texture2D? tex = iconDef?.IsValid == true
-            ? (iconDef.MediumTexture ?? iconDef.SmallTexture)
+            ? (iconDef.LargeTexture ?? iconDef.MediumTexture ?? iconDef.SmallTexture)
             : null;
         if (tex == null && !string.IsNullOrEmpty(iconDef?.BasePath))
         {
-            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + "_medium.png"); }
+            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + ".png"); }
             catch { tex = null; }
         }
         _renderIcon.Texture = tex;
     }
 
-    private void UpdateHeader(bool isTransport)
+    private void UpdateHeader(bool hasOutbound)
     {
         if (_kindTag != null)
-            _kindTag.Text = isTransport ? "TRANSPORT HUB" : "STORAGE HUB";
+            _kindTag.Text = hasOutbound ? "TRANSPORT HUB" : "STORAGE HUB";
 
         var bulk = _building?.BulkStorage;
         int total = bulk?.Slots.Count ?? 0;
@@ -143,7 +181,7 @@ public partial class HubPanelDetails : BaseBuildingDetails
 
         if (_usedValue != null) _usedValue.Text = $"{occupied} / {total}";
         if (_freeValue != null) _freeValue.Text = $"{free}";
-        if (_categoryValue != null) _categoryValue.Text = GetStorageCategory(_building?.Definition);
+        if (_categoryValue != null) _categoryValue.Text = GetStorageCategory(_building);
 
         float frac = capacityQty > 0f ? Mathf.Clamp(usedQty / capacityQty, 0f, 1f) : 0f;
         if (_fillBar != null) { _fillBar.MinValue = 0; _fillBar.MaxValue = 1; _fillBar.Value = frac; }
@@ -204,22 +242,41 @@ public partial class HubPanelDetails : BaseBuildingDetails
         list.AddChild(lbl);
     }
 
-    private void UpdateTransfers(bool isTransport)
+    private void UpdateTransfers(
+        bool hasOutbound,
+        bool hasInbound,
+        IReadOnlyList<TransferSchedule> inboundSchedules,
+        IReadOnlyList<TransferStationBehavior.ActiveTransfer> inboundActive,
+        IOrbitalBody? body)
     {
-        if (_transfersSection != null) _transfersSection.Visible = isTransport;
+        bool visible = hasOutbound || hasInbound;
+        if (_transfersSection != null) _transfersSection.Visible = visible;
         ClearChildren(_transfersList);
-        if (!isTransport || _transfersList == null) return;
+        if (_manageRoutesButton != null) _manageRoutesButton.Visible = hasOutbound;
+        if (!visible || _transfersList == null) return;
 
-        var mgr = FindBodyTransferManager();
-        if (_manageRoutesButton != null) _manageRoutesButton.Disabled = mgr == null;
-        if (mgr == null)
+        if (hasOutbound)
         {
-            if (_transfersHeader != null) _transfersHeader.Text = "TRANSFERS · no manager";
+            RenderOutbound();
+        }
+        else
+        {
+            RenderInbound(inboundSchedules, inboundActive, body);
+        }
+    }
+
+    private void RenderOutbound()
+    {
+        var behavior = _building?.GetBehavior<TransferStationBehavior>();
+        if (_manageRoutesButton != null) _manageRoutesButton.Disabled = behavior == null;
+        if (behavior == null)
+        {
+            if (_transfersHeader != null) _transfersHeader.Text = "TRANSFERS · no behavior";
             return;
         }
 
-        var schedules = mgr.GetAllSchedules();
-        var active = mgr.GetActiveTransfers();
+        var schedules = behavior.GetAllSchedules();
+        var active = behavior.GetActiveTransfers();
         if (_transfersHeader != null)
             _transfersHeader.Text = $"TRANSFERS · {active.Count} active · {schedules.Count} scheduled";
 
@@ -240,8 +297,67 @@ public partial class HubPanelDetails : BaseBuildingDetails
                 ? new Color(0.6f, 0.6f, 0.65f)
                 : new Color(0.29f, 0.65f, 0.32f);
             row.AddChild(state);
-            _transfersList.AddChild(row);
+            _transfersList!.AddChild(row);
         }
+    }
+
+    private void RenderInbound(
+        IReadOnlyList<TransferSchedule> schedules,
+        IReadOnlyList<TransferStationBehavior.ActiveTransfer> active,
+        IOrbitalBody? body)
+    {
+        if (_transfersHeader != null)
+            _transfersHeader.Text = $"INBOUND · {active.Count} active · {schedules.Count} scheduled";
+
+        foreach (var transfer in active)
+        {
+            var order = transfer.Order;
+            if (order == null) continue;
+            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            string originLabel = FormatOriginLabel(order.OriginBuildingId, body);
+            var name = new Label
+            {
+                Text = $"from {originLabel}",
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            };
+            row.AddChild(name);
+            var state = new Label { Text = order.State.ToString() };
+            state.Modulate = new Color(0.29f, 0.65f, 0.32f);
+            row.AddChild(state);
+            _transfersList!.AddChild(row);
+        }
+
+        foreach (var schedule in schedules)
+        {
+            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            string originLabel = FormatOriginLabel(schedule.OriginBuildingId, body);
+            var name = new Label
+            {
+                Text = $"from {originLabel}",
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            };
+            row.AddChild(name);
+            var state = new Label { Text = schedule.State.ToString() };
+            state.Modulate = schedule.State == TransferScheduleState.Idle
+                ? new Color(0.6f, 0.6f, 0.65f)
+                : new Color(0.29f, 0.65f, 0.32f);
+            row.AddChild(state);
+            _transfersList!.AddChild(row);
+        }
+    }
+
+    private static string FormatOriginLabel(string originId, IOrbitalBody? body)
+    {
+        string originShort = originId.Length >= 6 ? originId[..6] : originId;
+        if (body != null)
+        {
+            var owner = body.GetTransferEndpointOwner(originId);
+            if (owner is Building origin && !string.IsNullOrEmpty(origin.Name))
+                return $"{origin.Name} ({originShort})";
+            if (owner is StationSatellite station && !string.IsNullOrEmpty(station.Name))
+                return $"{station.Name} ({originShort})";
+        }
+        return originShort;
     }
 
     private void OnManageRoutesPressed()
@@ -253,57 +369,15 @@ public partial class HubPanelDetails : BaseBuildingDetails
             return;
         }
 
-        int continentIndex = _building.PrimaryCell?.ContinentIndex ?? -1;
-        var (body, continent) = ResolveBodyAndContinent(continentIndex);
-        if (body == null)
+        EmitSignal(SignalName.ManageRoutesRequested);
+    }
+
+    private string GetStorageCategory(Building? building)
+    {
+        var hub = building?.GetBehavior<Constructables.Buildings.Behaviors.StorageHubBehavior>();
+        if (hub != null && hub.SlotFilters.Count > 0)
         {
-            GameLogger.Warning("HubPanelDetails: failed to resolve body for transfer routes");
-            return;
-        }
-
-        DispatchSlipsWindow.Instance?.ShowWindow(_building, body, continent);
-    }
-
-    private (Node3D? body, Continent? continent) ResolveBodyAndContinent(int continentIndex)
-    {
-        Node? cursor = _building?.VisualNode;
-        while (cursor != null)
-        {
-            switch (cursor)
-            {
-                case CelestialBody cb:
-                    return (cb, cb.Mesh?.GetContinent(continentIndex));
-                case SatelliteBody sb:
-                    return (sb, sb.Mesh?.GetContinent(continentIndex));
-            }
-            cursor = cursor.GetParent();
-        }
-        return (null, null);
-    }
-
-    private BodyTransferManager? FindBodyTransferManager()
-    {
-        var tree = GetTree();
-        if (tree == null) return null;
-        foreach (var node in tree.Root.GetChildren())
-            if (TryFindManager(node, out var mgr)) return mgr;
-        return null;
-    }
-
-    private static bool TryFindManager(Node node, out BodyTransferManager? mgr)
-    {
-        if (node is BodyTransferManager m) { mgr = m; return true; }
-        foreach (var child in node.GetChildren())
-            if (TryFindManager(child, out mgr)) return true;
-        mgr = null;
-        return false;
-    }
-
-    private string GetStorageCategory(BuildingDefinition? definition)
-    {
-        if (definition?.SlotFilters != null && definition.SlotFilters.Count > 0)
-        {
-            foreach (var spec in definition.SlotFilters)
+            foreach (var spec in hub.SlotFilters)
             {
                 if (spec.Filter.Kind == Structures.Logistics.SlotFilterKind.Category && spec.Filter.Category != null)
                     return spec.Filter.Category;

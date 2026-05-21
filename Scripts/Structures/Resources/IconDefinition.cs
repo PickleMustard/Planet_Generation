@@ -37,13 +37,13 @@ public class IconDefinition
         LargeTexture != null;
 
     /// <summary>
-    /// Returns true if at least the medium icon is loaded.
+    /// Returns true if at least the large (default) icon is loaded.
     /// </summary>
-    public bool IsValid => MediumTexture != null;
+    public bool IsValid => LargeTexture != null;
 
     /// <summary>
     /// Gets the icon texture for a specific size.
-    /// Returns null if not loaded.
+    /// Returns null if not loaded, or if Off (deactivated).
     /// </summary>
     public Texture2D? GetTexture(IconSize size)
     {
@@ -52,7 +52,7 @@ public class IconDefinition
             IconSize.Small => SmallTexture,
             IconSize.Medium => MediumTexture,
             IconSize.Large => LargeTexture,
-            _ => MediumTexture
+            _ => LargeTexture
         };
     }
 

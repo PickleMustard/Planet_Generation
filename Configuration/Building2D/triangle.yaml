@@ -1,0 +1,10 @@
+id: triangle
+display_name: Triangle
+vertices:
+  - [0, -1]
+  - [0.866, 0.5]
+  - [-0.866, 0.5]
+sides:
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: export, state: solid }] }

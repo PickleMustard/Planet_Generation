@@ -234,7 +234,7 @@ public static class ContinentResourceGenerator
                 if (!ResourceDatabase.Instance.IsResourceGeneratable(resourceId))
                 {
                     GD.Print(
-                        $"[ResourceDebug] SelectResources: resource '{resourceId}' is not generatable (missing biome_affinity, elevation_range, or display_color), skipping"
+                        $"[ResourceDebug] SelectResources: resource '{resourceId}' is not generatable (missing tags), skipping"
                     );
                     continue;
                 }

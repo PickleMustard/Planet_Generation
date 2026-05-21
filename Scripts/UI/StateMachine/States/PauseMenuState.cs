@@ -1,4 +1,5 @@
 using Godot;
+using UI;
 using UtilityLibrary;
 
 public partial class PauseMenuState : LimboState
@@ -32,6 +33,7 @@ public partial class PauseMenuState : LimboState
         if (pauseMenuUI != null)
             pauseMenuUI.Visible = true;
         GetTree().Paused = true;
+        WorldInputController.Instance?.PushDisable();
         GameLogger.Info("Entering PauseMenuState");
     }
 
@@ -40,6 +42,7 @@ public partial class PauseMenuState : LimboState
         GetTree().Paused = false;
         if (pauseMenuUI != null)
             pauseMenuUI.Visible = false;
+        WorldInputController.Instance?.PopDisable();
         GameLogger.Info("Exiting PauseMenuState");
     }
 

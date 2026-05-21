@@ -1,7 +1,8 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
-using UI.Debug.DatabaseViewer;
+using System.Linq;
+using Debug.DatabaseViewer;
 
 namespace Structures.Resources
 {
@@ -52,7 +53,7 @@ namespace Structures.Resources
                     var buildingNode = categoryNode.AddChild(building.IdName ?? "Unknown")
                         .AddProperty("Display Name", building.DisplayName ?? "")
                         .AddProperty("Description", building.Description ?? "")
-                        .AddProperty("Building Time", building.BuildingTime)
+                        .AddProperty("Max Resource Tier", building.MaxResourceTier)
                         .AddProperty("Work Required", building.WorkRequired);
 
                     var placementNode = buildingNode.AddChild("Placement");
@@ -88,14 +89,27 @@ namespace Structures.Resources
                     }
 
                     var productionNode = buildingNode.AddChild("Production");
+                    var mfgEntry = building.BehaviorEntries
+                        .FirstOrDefault(e => e.BehaviorId == "ManufacturingBehavior");
+                    var mfgDefault = mfgEntry != null
+                        ? Constructables.Buildings.BehaviorConfigHelper.ReadString(mfgEntry.Config, "default_recipe", "") ?? ""
+                        : "";
+                    var mfgAlts = mfgEntry != null
+                        ? Constructables.Buildings.BehaviorConfigHelper.ReadStringList(mfgEntry.Config, "alternative_recipes")
+                        : new List<string>();
+                    var mfgSpeed = mfgEntry != null
+                        ? Constructables.Buildings.BehaviorConfigHelper.ReadFloat(mfgEntry.Config, "production_speed", 1.0f)
+                        : 1.0f;
+                    var storageEntry = building.BehaviorEntries
+                        .FirstOrDefault(e => e.BehaviorId == "StorageHubBehavior");
+                    var storageCap = storageEntry != null
+                        ? Constructables.Buildings.BehaviorConfigHelper.ReadInt(storageEntry.Config, "storage_capacity", 0)
+                        : 0;
                     productionNode
-                        .AddProperty("Default Recipe", building.Production.DefaultRecipe ?? "")
-                        .AddProperty(
-                            "Alternative Recipes",
-                            building.Production.AlternativeRecipes.Count
-                        )
-                        .AddProperty("Storage Capacity (slots)", building.StorageCapacity)
-                        .AddProperty("Production Speed", building.Production.ProductionSpeed);
+                        .AddProperty("Default Recipe", mfgDefault)
+                        .AddProperty("Alternative Recipes", mfgAlts.Count)
+                        .AddProperty("Storage Capacity (slots)", storageCap)
+                        .AddProperty("Production Speed", mfgSpeed);
 
                     var visualNode = buildingNode.AddChild("Visual");
                     visualNode

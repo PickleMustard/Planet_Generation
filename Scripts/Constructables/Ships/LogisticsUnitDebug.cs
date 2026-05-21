@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using Structures.Enums;
 using Structures.Logistics;
 using Structures.Resources;
-using UI.Debug;
-using UI.Debug.Console;
+using Debug;
+using Debug.Console;
 using UtilityLibrary;
 
 namespace Constructables;

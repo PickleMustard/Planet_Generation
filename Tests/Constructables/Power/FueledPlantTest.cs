@@ -26,7 +26,7 @@ public class FueledPlantTest
         mfg.OnAttach(building);
         building.Behaviors.Add(mfg);
 
-        var prod = new PowerProducerBehavior { Output = 100f, Radius = 4, IsRenewable = renewable };
+        var prod = new PowerProducerBehavior { Radius = 4, IsRenewable = renewable };
         prod.OnAttach(building);
         building.Behaviors.Add(prod);
 

@@ -3,11 +3,6 @@ recipes:
     display_name: "Solar Tracking"
     description: Solar panels are programmed to track the sun's position and angle to maximize energy capture.
     category: power
-    work_required: 2.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/power/solar"
-
-    input_resources:
-
+    work_required: 2
     output_resources:
-      - power: 20
+      - power: 100

@@ -4,34 +4,51 @@ using Constructables.Buildings.Behaviors;
 using Constructables.Power;
 using Godot;
 using Structures.Resources;
+using UI.GridWindow;
 using UtilityLibrary;
 
 namespace UI.BuildingInfo;
 
 /// <summary>
-/// Bespoke panel for power-generation buildings. Top strip shows the building thumbnail,
-/// a power-cycle stat header, and a fuel/cycle bar pair. Bottom split shows the fuel bus
-/// (recipe inputs only) and the grid list (producers / consumers / batteries).
+/// Bespoke panel for power-generation buildings. Stat strip across the top
+/// (State / Output / Fuel / Grid). Three-column body: render + connections,
+/// recipe + fuel bus + cycle indicator, grid header + producers/consumers/batteries list.
 /// </summary>
 public partial class PowerPanelDetails : BaseBuildingDetails
 {
     private TextureRect? _renderIcon;
 
+    // Stat strip
+    private PanelContainer? _statFuelTile;
     private Label? _stateValueLabel;
     private ColorRect? _stateDot;
-    private Label? _cycleValueLabel;
     private Label? _outputValueLabel;
-    private Label? _gridValueLabel;
     private Label? _fuelValueLabel;
+    private Label? _gridValueLabel;
 
-    private ProgressBar? _fuelBar;
+    // Cycle strip (center column)
+    private Label? _outputBigLabel;
     private ProgressBar? _cycleBar;
-    private Label? _outputDetailLabel;
-    private Label? _batteryDetailLabel;
+    private ProgressBar? _fuelBar;
+    private Label? _cycleFooterStateLabel;
+    private Label? _cycleValueLabel;
 
+    // Recipe / fuel bus
+    private Label? _recipeHeader;
     private RecipeDisplay? _recipeDisplay;
+    private ScrollContainer? _fuelScroll;
     private VBoxContainer? _fuelList;
 
+    // Grid header (right column)
+    private Label? _gridTitleLabel;
+    private Button? _gridDetailsBtn;
+    private Label? _genValueLabel;
+    private Label? _drawValueLabel;
+    private Label? _batteryValueLabel;
+    private ProgressBar? _balanceBar;
+    private Label? _balanceValueLabel;
+
+    // Grid sections
     private Label? _producersHeader;
     private Label? _consumersHeader;
     private Label? _batteriesHeader;
@@ -46,6 +63,10 @@ public partial class PowerPanelDetails : BaseBuildingDetails
     private static readonly Color StateDotBlock = new(0.78f, 0.32f, 0.21f);
     private static readonly Color StateDotFull = new(0.85f, 0.62f, 0.25f);
 
+    private static readonly Color BalanceColorOk = new(0.29f, 0.65f, 0.32f);
+    private static readonly Color BalanceColorDeficit = new(0.78f, 0.32f, 0.21f);
+    private static readonly Color BalanceColorNeutral = new(0.353f, 0.314f, 0.282f);
+
     private int _refreshCounter;
     public override void _PhysicsProcess(double delta)
     {
@@ -55,29 +76,42 @@ public partial class PowerPanelDetails : BaseBuildingDetails
 
     public override void _Ready()
     {
-        _renderIcon = GetNodeOrNull<TextureRect>("Layout/TopStrip/RenderTile/RenderIcon");
+        _renderIcon = GetNodeOrNull<TextureRect>("Layout/Body/LeftColumn/RenderTile/RenderIcon");
 
-        _stateValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/StateTile/Row/StateLabel");
-        _stateDot = GetNodeOrNull<ColorRect>("Layout/TopStrip/RightVBox/Header/StateTile/Row/StateDot");
-        _cycleValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/StateTile/Row/CycleLabel");
-        _outputValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/OutputTile/VBox/OutputValue");
-        _gridValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/GridTile/VBox/GridValue");
-        _fuelValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/FuelTile/VBox/FuelValue");
+        _stateValueLabel = GetNodeOrNull<Label>("Layout/StatStrip/StateTile/VBox/Row/StateLabel");
+        _stateDot = GetNodeOrNull<ColorRect>("Layout/StatStrip/StateTile/VBox/Row/StateDot");
+        _outputValueLabel = GetNodeOrNull<Label>("Layout/StatStrip/OutputTile/VBox/OutputValue");
+        _statFuelTile = GetNodeOrNull<PanelContainer>("Layout/StatStrip/FuelTile");
+        _fuelValueLabel = GetNodeOrNull<Label>("Layout/StatStrip/FuelTile/VBox/FuelValue");
+        _gridValueLabel = GetNodeOrNull<Label>("Layout/StatStrip/GridTile/VBox/GridValue");
 
-        _cycleBar = GetNodeOrNull<ProgressBar>("Layout/TopStrip/RightVBox/CycleRow/CycleBox/CycleBar");
-        _fuelBar = GetNodeOrNull<ProgressBar>("Layout/TopStrip/RightVBox/CycleRow/FuelBox/FuelBar");
-        _outputDetailLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/CycleRow/Detail/OutputDetail");
-        _batteryDetailLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/CycleRow/Detail/BatteryDetail");
+        _outputBigLabel = GetNodeOrNull<Label>("Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail/OutputBig");
+        _cycleBar = GetNodeOrNull<ProgressBar>("Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail/CycleBar");
+        _fuelBar = GetNodeOrNull<ProgressBar>("Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail/FuelBar");
+        _cycleFooterStateLabel = GetNodeOrNull<Label>("Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail/CycleFooter/CycleFooterState");
+        _cycleValueLabel = GetNodeOrNull<Label>("Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail/CycleFooter/CycleLabel");
 
-        _recipeDisplay = GetNodeOrNull<RecipeDisplay>("Layout/Bottom/FuelPane/RecipeDisplay");
-        _fuelList = GetNodeOrNull<VBoxContainer>("Layout/Bottom/FuelPane/Scroll/FuelList");
+        _recipeHeader = GetNodeOrNull<Label>("Layout/Body/CenterColumn/RecipeHeader");
+        _recipeDisplay = GetNodeOrNull<RecipeDisplay>("Layout/Body/CenterColumn/RecipeDisplay");
+        _fuelScroll = GetNodeOrNull<ScrollContainer>("Layout/Body/CenterColumn/FuelScroll");
+        _fuelList = GetNodeOrNull<VBoxContainer>("Layout/Body/CenterColumn/FuelScroll/FuelList");
 
-        _producersHeader = GetNodeOrNull<Label>("Layout/Bottom/GridPane/Scroll/Sections/Producers/Header");
-        _consumersHeader = GetNodeOrNull<Label>("Layout/Bottom/GridPane/Scroll/Sections/Consumers/Header");
-        _batteriesHeader = GetNodeOrNull<Label>("Layout/Bottom/GridPane/Scroll/Sections/Batteries/Header");
-        _producersList = GetNodeOrNull<VBoxContainer>("Layout/Bottom/GridPane/Scroll/Sections/Producers/List");
-        _consumersList = GetNodeOrNull<VBoxContainer>("Layout/Bottom/GridPane/Scroll/Sections/Consumers/List");
-        _batteriesList = GetNodeOrNull<VBoxContainer>("Layout/Bottom/GridPane/Scroll/Sections/Batteries/List");
+        _gridTitleLabel = GetNodeOrNull<Label>("Layout/Body/RightColumn/GridHeaderBox/GridTitleRow/GridTitle");
+        _gridDetailsBtn = GetNodeOrNull<Button>("Layout/Body/RightColumn/GridHeaderBox/GridTitleRow/GridDetailsBtn");
+        if (_gridDetailsBtn != null)
+            _gridDetailsBtn.Pressed += OnGridDetailsPressed;
+        _genValueLabel = GetNodeOrNull<Label>("Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/GenStat/GenValue");
+        _drawValueLabel = GetNodeOrNull<Label>("Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/DrawStat/DrawValue");
+        _batteryValueLabel = GetNodeOrNull<Label>("Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/BatteryStat/BatteryValue");
+        _balanceBar = GetNodeOrNull<ProgressBar>("Layout/Body/RightColumn/GridHeaderBox/BalanceRow/BalanceBar");
+        _balanceValueLabel = GetNodeOrNull<Label>("Layout/Body/RightColumn/GridHeaderBox/BalanceRow/BalanceValue");
+
+        _producersHeader = GetNodeOrNull<Label>("Layout/Body/RightColumn/SectionsScroll/Sections/Producers/Header");
+        _consumersHeader = GetNodeOrNull<Label>("Layout/Body/RightColumn/SectionsScroll/Sections/Consumers/Header");
+        _batteriesHeader = GetNodeOrNull<Label>("Layout/Body/RightColumn/SectionsScroll/Sections/Batteries/Header");
+        _producersList = GetNodeOrNull<VBoxContainer>("Layout/Body/RightColumn/SectionsScroll/Sections/Producers/List");
+        _consumersList = GetNodeOrNull<VBoxContainer>("Layout/Body/RightColumn/SectionsScroll/Sections/Consumers/List");
+        _batteriesList = GetNodeOrNull<VBoxContainer>("Layout/Body/RightColumn/SectionsScroll/Sections/Batteries/List");
 
         _resourceRateItemScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/ResourceRateItem.tscn");
     }
@@ -93,10 +127,32 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         var consumer = _building.GetBehavior<PowerConsumerBehavior>();
         var recipe = GetActiveRecipe();
 
-        UpdateHeader(producer, battery, consumer, grid, recipe);
-        UpdateCycleRow(producer, battery, recipe);
+        bool hasFuelCycle = recipe != null && HasFuelInputs(recipe);
+        ApplyFuelCycleVisibility(hasFuelCycle);
+
+        UpdateStatStrip(producer, battery, consumer, grid, recipe, hasFuelCycle);
+        UpdateCycleStrip(producer, battery, grid, recipe, hasFuelCycle);
         UpdateFuelPane(recipe);
+        UpdateGridHeader(grid);
         UpdateGridList(grid);
+    }
+
+    private bool HasFuelInputs(RecipeDefinition recipe)
+    {
+        foreach (var kvp in recipe.InputResources)
+            if (kvp.Key != "power" && kvp.Value > 0f) return true;
+        return false;
+    }
+
+    private void ApplyFuelCycleVisibility(bool show)
+    {
+        if (_statFuelTile != null) _statFuelTile.Visible = show;
+        if (_recipeHeader != null) _recipeHeader.Visible = show;
+        if (_recipeDisplay != null) _recipeDisplay.Visible = show;
+        if (_fuelScroll != null) _fuelScroll.Visible = show;
+        if (_cycleBar != null) _cycleBar.Visible = show;
+        if (_fuelBar != null) _fuelBar.Visible = show;
+        if (_cycleValueLabel != null) _cycleValueLabel.Visible = show;
     }
 
     public override void Clear()
@@ -104,14 +160,24 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         base.Clear();
         if (_renderIcon != null) _renderIcon.Texture = null;
         if (_stateValueLabel != null) _stateValueLabel.Text = "—";
-        if (_cycleValueLabel != null) _cycleValueLabel.Text = "—";
+        if (_stateDot != null) _stateDot.Color = StateDotIdle;
         if (_outputValueLabel != null) _outputValueLabel.Text = "—";
-        if (_gridValueLabel != null) _gridValueLabel.Text = "—";
         if (_fuelValueLabel != null) _fuelValueLabel.Text = "—";
+        if (_gridValueLabel != null) _gridValueLabel.Text = "—";
+
+        if (_outputBigLabel != null) _outputBigLabel.Text = "—";
         if (_cycleBar != null) _cycleBar.Value = 0;
         if (_fuelBar != null) _fuelBar.Value = 0;
-        if (_outputDetailLabel != null) _outputDetailLabel.Text = "";
-        if (_batteryDetailLabel != null) _batteryDetailLabel.Text = "";
+        if (_cycleFooterStateLabel != null) _cycleFooterStateLabel.Text = "—";
+        if (_cycleValueLabel != null) _cycleValueLabel.Text = "cycle · 0%";
+
+        if (_gridTitleLabel != null) _gridTitleLabel.Text = "GRID";
+        if (_genValueLabel != null) _genValueLabel.Text = "—";
+        if (_drawValueLabel != null) _drawValueLabel.Text = "—";
+        if (_batteryValueLabel != null) _batteryValueLabel.Text = "—";
+        if (_balanceBar != null) _balanceBar.Value = 0;
+        if (_balanceValueLabel != null) { _balanceValueLabel.Text = "—"; _balanceValueLabel.Modulate = Colors.White; }
+
         ClearChildren(_fuelList);
         ClearChildren(_producersList);
         ClearChildren(_consumersList);
@@ -124,18 +190,18 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         if (_renderIcon == null || _building?.Definition == null) return;
         var iconDef = _building.Definition.Icon;
         Texture2D? tex = iconDef?.IsValid == true
-            ? (iconDef.MediumTexture ?? iconDef.SmallTexture)
+            ? (iconDef.LargeTexture ?? iconDef.MediumTexture ?? iconDef.SmallTexture)
             : null;
         if (tex == null && !string.IsNullOrEmpty(iconDef?.BasePath))
         {
-            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + "_medium.png"); }
+            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + ".png"); }
             catch { tex = null; }
         }
         _renderIcon.Texture = tex;
     }
 
-    private void UpdateHeader(PowerProducerBehavior? producer, BatteryBehavior? battery,
-        PowerConsumerBehavior? consumer, PowerGrid? grid, RecipeDefinition? recipe)
+    private void UpdateStatStrip(PowerProducerBehavior? producer, BatteryBehavior? battery,
+        PowerConsumerBehavior? consumer, PowerGrid? grid, RecipeDefinition? recipe, bool hasFuelCycle)
     {
         bool producing = producer?.IsProducing ?? false;
         bool brownedOut = grid?.IsBrownedOut ?? false;
@@ -146,15 +212,16 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         if (_stateValueLabel != null) _stateValueLabel.Text = label;
         if (_stateDot != null) _stateDot.Color = dot;
 
-        var mfg = _building?.GetBehavior<ManufacturingBehavior>();
-        float cyclePct = (mfg != null && mfg.WorkRequired > 0f)
-            ? Mathf.Clamp(mfg.WorkProgress / mfg.WorkRequired, 0f, 1f) : 0f;
-        if (_cycleValueLabel != null) _cycleValueLabel.Text = $"cycle · {Mathf.RoundToInt(cyclePct * 100)}%";
-
         if (_outputValueLabel != null)
         {
             float output = producer?.Output ?? 0f;
             _outputValueLabel.Text = output > 0f ? $"{output:F0} kW" : "—";
+        }
+
+        if (hasFuelCycle && _fuelValueLabel != null)
+        {
+            float fuel = ComputeFuelLevel(recipe);
+            _fuelValueLabel.Text = $"{Mathf.RoundToInt(fuel * 100)}%";
         }
 
         if (_gridValueLabel != null)
@@ -162,42 +229,36 @@ public partial class PowerPanelDetails : BaseBuildingDetails
             if (grid == null) _gridValueLabel.Text = "no grid";
             else _gridValueLabel.Text = brownedOut ? "DEFICIT" : "OK";
         }
-
-        if (_fuelValueLabel != null)
-        {
-            float fuel = ComputeFuelLevel(recipe);
-            _fuelValueLabel.Text = recipe == null ? "—" : $"{Mathf.RoundToInt(fuel * 100)}%";
-        }
     }
 
-    private void UpdateCycleRow(PowerProducerBehavior? producer, BatteryBehavior? battery, RecipeDefinition? recipe)
+    private void UpdateCycleStrip(PowerProducerBehavior? producer, BatteryBehavior? battery,
+        PowerGrid? grid, RecipeDefinition? recipe, bool hasFuelCycle)
     {
-        var mfg = _building?.GetBehavior<ManufacturingBehavior>();
-        if (_cycleBar != null)
+        if (hasFuelCycle && producer != null)
         {
-            _cycleBar.MinValue = 0; _cycleBar.MaxValue = 1;
-            _cycleBar.Value = (mfg != null && mfg.WorkRequired > 0f)
-                ? Mathf.Clamp(mfg.WorkProgress / mfg.WorkRequired, 0f, 1f) : 0f;
+            float remainingFrac = producer.WorkRequired > 0f
+                ? Mathf.Clamp(producer.WorkRemaining / producer.WorkRequired, 0f, 1f) : 1f;
+            float progressPct = 1f - remainingFrac;
+
+            if (_cycleBar != null) { _cycleBar.MinValue = 0; _cycleBar.MaxValue = 1; _cycleBar.Value = remainingFrac; }
+            if (_fuelBar != null) { _fuelBar.MinValue = 0; _fuelBar.MaxValue = 1; _fuelBar.Value = ComputeFuelLevel(recipe); }
+            if (_cycleValueLabel != null) _cycleValueLabel.Text = $"cycle · {Mathf.RoundToInt(progressPct * 100)}%";
         }
 
-        if (_fuelBar != null)
-        {
-            _fuelBar.MinValue = 0; _fuelBar.MaxValue = 1;
-            _fuelBar.Value = ComputeFuelLevel(recipe);
-        }
-
-        if (_outputDetailLabel != null)
+        if (_outputBigLabel != null)
         {
             float output = producer?.Output ?? 0f;
-            _outputDetailLabel.Text = output > 0f ? $"+{output:F0} kW · to grid" : "—";
+            _outputBigLabel.Text = output > 0f ? $"+{output:F0} kW" : "—";
         }
 
-        if (_batteryDetailLabel != null)
+        if (_cycleFooterStateLabel != null)
         {
-            if (battery != null && battery.Capacity > 0f)
-                _batteryDetailLabel.Text = $"battery · {battery.Stored:F0}/{battery.Capacity:F0} kWh";
-            else
-                _batteryDetailLabel.Text = "";
+            bool producing = producer?.IsProducing ?? false;
+            bool brownedOut = grid?.IsBrownedOut ?? false;
+            _cycleFooterStateLabel.Text = brownedOut ? "stalled · brownout"
+                : producing ? (hasFuelCycle ? "generating" : "generating · continuous")
+                : (battery != null && battery.Stored > 0f) ? "discharging"
+                : "idle";
         }
     }
 
@@ -220,7 +281,7 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         ClearChildren(_fuelList);
         if (recipe == null || _resourceRateItemScene == null) return;
 
-        var (inputRates, _) = ComputeRecipeRates(recipe, _building?.Definition);
+        var (inputRates, _) = ComputeRecipeRates(recipe, _building?.GetBehavior<PowerProducerBehavior>());
         if (_fuelList == null) return;
         foreach (var kvp in inputRates)
         {
@@ -228,6 +289,44 @@ public partial class PowerPanelDetails : BaseBuildingDetails
             if (item == null) continue;
             _fuelList.AddChild(item);
             item.SetResourceRate(kvp.Key, -kvp.Value);
+        }
+    }
+
+    private void UpdateGridHeader(PowerGrid? grid)
+    {
+        if (grid == null)
+        {
+            if (_gridTitleLabel != null) _gridTitleLabel.Text = "GRID · (none)";
+            if (_genValueLabel != null) _genValueLabel.Text = "—";
+            if (_drawValueLabel != null) _drawValueLabel.Text = "—";
+            if (_batteryValueLabel != null) _batteryValueLabel.Text = "—";
+            if (_balanceBar != null) _balanceBar.Value = 0;
+            if (_balanceValueLabel != null) { _balanceValueLabel.Text = "—"; _balanceValueLabel.Modulate = Colors.White; }
+            return;
+        }
+
+        if (_gridTitleLabel != null) _gridTitleLabel.Text = $"GRID · {grid.Id}";
+        if (_genValueLabel != null) _genValueLabel.Text = $"{grid.LastGeneration:F0} kW";
+        if (_drawValueLabel != null) _drawValueLabel.Text = $"{grid.LastDraw:F0} kW";
+        if (_batteryValueLabel != null) _batteryValueLabel.Text = grid.BatteryCapacity > 0f
+            ? $"{grid.BatteryStored:F0} / {grid.BatteryCapacity:F0}"
+            : "—";
+
+        if (_balanceBar != null)
+        {
+            _balanceBar.MinValue = 0; _balanceBar.MaxValue = 1;
+            _balanceBar.Value = grid.BatteryCapacity > 0f
+                ? Mathf.Clamp(grid.BatteryStored / grid.BatteryCapacity, 0f, 1f)
+                : 0f;
+        }
+
+        if (_balanceValueLabel != null)
+        {
+            float balance = grid.LastGeneration - grid.LastDraw;
+            string sign = balance >= 0f ? "+" : "";
+            _balanceValueLabel.Text = $"{sign}{balance:F0} kW";
+            _balanceValueLabel.Modulate = grid.IsBrownedOut ? BalanceColorDeficit
+                : (balance >= 0f ? BalanceColorOk : BalanceColorDeficit);
         }
     }
 
@@ -256,7 +355,7 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         {
             var prod = b.GetBehavior<PowerProducerBehavior>();
             var bat = b.GetBehavior<BatteryBehavior>();
-            if (prod != null && prod.Output > 0f)
+            if (prod != null)
             {
                 AddGridRow(_producersList, b, $"{prod.Output:F0} kW", prod.IsProducing);
             }
@@ -301,16 +400,37 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         list.AddChild(row);
     }
 
+    private void OnGridDetailsPressed()
+    {
+        if (_building == null) return;
+        var grid = FindGridForBuilding(_building);
+        if (grid != null)
+            GridDetailWindow.Instance?.ShowGrid(grid);
+    }
+
     private PowerGrid? FindGridForBuilding(Building building)
     {
         // Consumers carry a direct grid reference.
         var consumer = building.GetBehavior<PowerConsumerBehavior>();
         if (consumer?.Grid != null) return consumer.Grid;
 
-        // Producers and batteries: scan registered BodyPowerGridManager instances.
-        var tree = GetTree();
-        if (tree == null) return null;
-        foreach (var node in tree.Root.GetChildren())
+        // Producers: resolve via BodyPowerGridManager.GetGridForBuilding.
+        var producer = building.GetBehavior<PowerProducerBehavior>();
+        if (producer != null)
+        {
+            var tree = GetTree();
+            if (tree != null)
+            {
+                foreach (var node in tree.Root.GetChildren())
+                    if (TryFindGrid(node, building, out var g)) return g;
+            }
+            return null;
+        }
+
+        // Batteries and others: scan registered BodyPowerGridManager instances.
+        var tree2 = GetTree();
+        if (tree2 == null) return null;
+        foreach (var node in tree2.Root.GetChildren())
             if (TryFindGrid(node, building, out var g)) return g;
         return null;
     }

@@ -1,7 +1,7 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
-using UI.Debug.DatabaseViewer;
+using Debug.DatabaseViewer;
 
 namespace Structures.Resources
 {
@@ -28,8 +28,7 @@ namespace Structures.Resources
                 definitionsNode
                     .AddChild(def.IdName ?? "Unknown")
                     .AddProperty("Resource Type", def.ResourceType ?? "Unknown")
-                    .AddProperty("Resource Tier", def.ResourceTier)
-                    .AddProperty("Color", def.DisplayColor.ToString());
+                    .AddProperty("Resource Tier", def.ResourceTier);
             }
 
             return node;

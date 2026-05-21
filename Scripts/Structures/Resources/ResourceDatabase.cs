@@ -7,7 +7,7 @@ using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 
 namespace Structures.Resources
@@ -32,6 +32,10 @@ namespace Structures.Resources
         }
 
         private Dictionary<string, ResourceDefinition> _resources = new();
+        private Dictionary<string, List<ResourceDefinition>> _byTag = new();
+
+        /// <summary>Prefix marking a tag-discriminator (e.g., "material:iron").</summary>
+        public const string DiscriminatorTagPrefix = "material:";
 
         public string DatabaseName => "ResourceDatabase";
         public bool IsLoaded { get; private set; } = false;
@@ -70,6 +74,7 @@ namespace Structures.Resources
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
 
                 _resources.Clear();
+                _byTag.Clear();
                 foreach (var definition in definitions)
                 {
                     if (string.IsNullOrEmpty(definition.IdName))
@@ -84,6 +89,20 @@ namespace Structures.Resources
                     }
 
                     _resources[definition.IdName] = definition;
+                    if (definition.Tags != null)
+                    {
+                        foreach (var tag in definition.Tags)
+                        {
+                            if (string.IsNullOrEmpty(tag))
+                                continue;
+                            if (!_byTag.TryGetValue(tag, out var bucket))
+                            {
+                                bucket = new List<ResourceDefinition>();
+                                _byTag[tag] = bucket;
+                            }
+                            bucket.Add(definition);
+                        }
+                    }
                 }
 
                 // Step 3: Finalize database
@@ -109,6 +128,7 @@ namespace Structures.Resources
         public void Unload()
         {
             _resources.Clear();
+            _byTag.Clear();
             IsLoaded = false;
             LoadProgress = 0f;
             GD.Print($"ResourceDatabase: '{DatabaseName}' unloaded");
@@ -151,6 +171,105 @@ namespace Structures.Resources
         }
 
         /// <summary>
+        /// Returns all resources carrying the given tag, or an empty list when the tag is unknown.
+        /// </summary>
+        public IReadOnlyList<ResourceDefinition> GetResourcesByTag(string tag)
+        {
+            EnsureLoaded();
+            if (string.IsNullOrEmpty(tag))
+                return Array.Empty<ResourceDefinition>();
+            return _byTag.TryGetValue(tag, out var list)
+                ? (IReadOnlyList<ResourceDefinition>)list
+                : Array.Empty<ResourceDefinition>();
+        }
+
+        /// <summary>
+        /// Returns all resources carrying the given tag with a tier at or below
+        /// <paramref name="maxTier"/>, or an empty list when the tag is unknown.
+        /// </summary>
+        public IReadOnlyList<ResourceDefinition> GetResourcesByTagAndMaxTier(string tag, int maxTier)
+        {
+            EnsureLoaded();
+            if (string.IsNullOrEmpty(tag))
+                return Array.Empty<ResourceDefinition>();
+            if (!_byTag.TryGetValue(tag, out var list))
+                return Array.Empty<ResourceDefinition>();
+            var filtered = new List<ResourceDefinition>();
+            foreach (var def in list)
+            {
+                if (def.ResourceTier <= maxTier)
+                    filtered.Add(def);
+            }
+            return filtered;
+        }
+
+        /// <summary>
+        /// Finds the unique resource carrying both <paramref name="outputTag"/> and
+        /// <paramref name="discriminatorTag"/> with a tier at or below
+        /// <paramref name="maxTier"/>. Returns false when zero or more than one resource match.
+        /// </summary>
+        public bool TryResolveTaggedOutput(string outputTag, string discriminatorTag, int maxTier, out ResourceDefinition? result)
+        {
+            result = null;
+            EnsureLoaded();
+            if (string.IsNullOrEmpty(outputTag) || string.IsNullOrEmpty(discriminatorTag))
+                return false;
+            if (!_byTag.TryGetValue(outputTag, out var bucket))
+                return false;
+
+            ResourceDefinition? match = null;
+            foreach (var def in bucket)
+            {
+                if (def.Tags == null || !def.Tags.Contains(discriminatorTag))
+                    continue;
+                if (def.ResourceTier > maxTier)
+                    continue;
+                if (match != null)
+                {
+                    GD.PrintErr(
+                        $"ResourceDatabase.TryResolveTaggedOutput: multiple resources carry both '{outputTag}' and '{discriminatorTag}' within tier <= {maxTier} (e.g., '{match.IdName}' and '{def.IdName}'). Material discriminators must be 1:1 per output tag.");
+                    return false;
+                }
+                match = def;
+            }
+
+            result = match;
+            return match != null;
+        }
+
+        /// <summary>
+        /// Finds the unique resource carrying both <paramref name="outputTag"/> and
+        /// <paramref name="discriminatorTag"/>. Returns false when zero or more than one resource match;
+        /// ambiguity is logged so recipe authors can catch material-tag duplication.
+        /// </summary>
+        public bool TryResolveTaggedOutput(string outputTag, string discriminatorTag, out ResourceDefinition? result)
+        {
+            result = null;
+            EnsureLoaded();
+            if (string.IsNullOrEmpty(outputTag) || string.IsNullOrEmpty(discriminatorTag))
+                return false;
+            if (!_byTag.TryGetValue(outputTag, out var bucket))
+                return false;
+
+            ResourceDefinition? match = null;
+            foreach (var def in bucket)
+            {
+                if (def.Tags == null || !def.Tags.Contains(discriminatorTag))
+                    continue;
+                if (match != null)
+                {
+                    GD.PrintErr(
+                        $"ResourceDatabase.TryResolveTaggedOutput: multiple resources carry both '{outputTag}' and '{discriminatorTag}' (e.g., '{match.IdName}' and '{def.IdName}'). Material discriminators must be 1:1 per output tag.");
+                    return false;
+                }
+                match = def;
+            }
+
+            result = match;
+            return match != null;
+        }
+
+        /// <summary>
         /// Gets all resources that can generate naturally on celestial bodies.
         /// </summary>
         public IReadOnlyDictionary<string, ResourceDefinition> GetGeneratableResources()
@@ -172,16 +291,6 @@ namespace Structures.Resources
                 return resource.IsGeneratable;
             }
             return false;
-        }
-
-        public Color GetResourceColor(string resourceId)
-        {
-            EnsureLoaded();
-            if (TryGetResource(resourceId, out var resource) && resource != null)
-            {
-                return resource.DisplayColor;
-            }
-            return Colors.White;
         }
 
         public bool ValidateResourceExists(string resourceId)
@@ -363,7 +472,7 @@ namespace Structures.Resources
         /// Gets the icon for a resource at a specific size.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetResourceIcon(string resourceId, IconSize size = IconSize.Medium)
+        public Texture2D GetResourceIcon(string resourceId, IconSize size = IconSize.Large)
         {
             EnsureLoaded();
             if (TryGetResource(resourceId, out var resource) && resource != null)

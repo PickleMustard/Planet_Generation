@@ -91,7 +91,7 @@ public sealed class PowerGrid : IManufactureTickable
             ApplyPowerStateToMembers(true);
         }
 
-        Stats.RecordTick(generation, draw, IsBrownedOut);
+        Stats.RecordTick(generation, draw, BatteryStored, IsBrownedOut);
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public sealed class PowerGrid : IManufactureTickable
         {
             var producer = b.GetBehavior<PowerProducerBehavior>();
             if (producer != null && producer.IsProducing)
-                total += producer.Output;
+                total += producer.EffectiveOutput;
         }
         return total;
     }

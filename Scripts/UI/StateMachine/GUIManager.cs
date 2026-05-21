@@ -27,7 +27,6 @@ public partial class GUIManager : Node
 
     /// <summary>
     /// True when any GUI window is open (not in HUD/idle state).
-    /// Used by InputHandler/PlayerController instead of checking individual windows.
     /// </summary>
     public bool IsWindowOpen => _guiController?.GetActiveState() is not IdleState;
 
@@ -63,7 +62,6 @@ public partial class GUIManager : Node
         if (CellSelectionManager.Instance != null)
         {
             CellSelectionManager.Instance.CellSelected += OnCellSelected;
-            CellSelectionManager.Instance.ContinentSelected += OnContinentSelected;
         }
 
         GameLogger.Info("GUIManager initialized");
@@ -87,7 +85,7 @@ public partial class GUIManager : Node
 
     // ───────── Signal Handlers ─────────
 
-    private void OnCellSelected(VoronoiCell cell, Node3D body, Structures.GameState.Continent continent)
+    private void OnCellSelected(VoronoiCell cell, Node3D body)
     {
         GameLogger.Debug("GUIManager: Cell selected");
 
@@ -95,31 +93,9 @@ public partial class GUIManager : Node
         _blackboard.SetVar("SelectedCell", cell);
         _blackboard.SetVar("SelectedBody", body);
         _blackboard.SetVar("BodyType", body.GetType().Name);
-        _blackboard.SetVar("SelectedContinent", continent);
 
         // Dispatch to HSM
         _guiController?.Dispatch("cell_selected");
-    }
-
-    private void OnContinentSelected(int continentIndex, Node3D body)
-    {
-        GameLogger.Debug($"GUIManager: Continent {continentIndex} selected");
-
-        // Get continent from body
-        Structures.GameState.Continent? continent = null;
-        if (body is ISelectableBody selectable && selectable.Mesh?.Continents != null)
-        {
-            selectable.Mesh.Continents.TryGetValue(continentIndex, out continent);
-        }
-
-        // Populate blackboard
-        _blackboard.SetVar("SelectedContinentIndex", continentIndex);
-        _blackboard.SetVar("SelectedContinent", continent);
-        _blackboard.SetVar("SelectedBody", body);
-        _blackboard.SetVar("BodyType", body.GetType().Name);
-
-        // Dispatch to HSM
-        _guiController?.Dispatch("continent_selected");
     }
 
     // ───────── Public API ─────────

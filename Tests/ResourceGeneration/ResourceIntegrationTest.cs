@@ -171,7 +171,7 @@ public class ResourceIntegrationTest
 
     [TestCase]
     [RequireGodotRuntime]
-    public void ResourceTintingIntegration()
+    public void ResourceGenerationIntegration()
     {
         var rng = new RandomNumberGenerator();
         rng.Seed = 88888;
@@ -182,14 +182,15 @@ public class ResourceIntegrationTest
         ContinentResourceGenerator.GenerateResources(continents, config, rng, null!);
 
         var continent = continents.Values.First();
+        bool hasResources = false;
         foreach (var cell in continent.cells)
         {
             if (cell.Resources.Count > 0)
             {
-                var biomeColor = Colors.ForestGreen;
-                var tintedColor = ResourceVisualizer.ApplyResourceTint(biomeColor, cell.Resources);
-                AssertThat(tintedColor).IsNotEqual(Colors.White);
+                hasResources = true;
+                break;
             }
         }
+        AssertThat(hasResources).IsTrue();
     }
 }

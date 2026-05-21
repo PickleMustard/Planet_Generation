@@ -1,27 +1,31 @@
-[gd_scene load_steps=2 format=3 uid="uid://research_panel_details"]
+[gd_scene format=3 uid="uid://dpo4ryc0hr2un"]
 
-[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/Administration/ResearchPanelDetails.cs" id="1_research"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_a1cx4"]
+[ext_resource type="Script" uid="uid://cfjqj6471ed0t" path="res://Scripts/UI/BuildingInfo/Administration/ResearchPanelDetails.cs" id="1_research"]
 
-[node name="ResearchPanelDetails" type="Control" node_paths=PackedStringArray("StatusLabel")]
+[node name="ResearchPanelDetails" type="Control" unique_id=1787656744 node_paths=PackedStringArray("StatusLabel")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_a1cx4")
 script = ExtResource("1_research")
 StatusLabel = NodePath("CenterContainer/StatusLabel")
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1738847662]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_a1cx4")
 
-[node name="StatusLabel" type="Label" parent="CenterContainer"]
+[node name="StatusLabel" type="Label" parent="CenterContainer" unique_id=282826207]
 layout_mode = 2
+theme = ExtResource("1_a1cx4")
+theme_type_variation = &"LabelMono"
 text = "Research subsystem — pending"
 horizontal_alignment = 1
-theme_type_variation = &"LabelMono"

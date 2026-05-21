@@ -1,29 +1,68 @@
 using System.Collections.Generic;
 using Constructables;
 using Godot;
-using Structures.Resources;
 
 namespace UI.PlanetBoard;
 
 /// <summary>
-/// Computes board-space positions for a planet's buildings. Projects each
-/// <see cref="Building.PrimaryCell"/>'s 3D center onto a 2D plane via an
-/// equirectangular projection, then runs a few collision-relaxation passes so
-/// shapes don't overlap.
+/// Computes board-space positions for a planet's buildings using Vogel's
+/// sunflower (phyllotaxis) packing. The first building sits at the origin
+/// and subsequent buildings spiral outward at the golden angle, producing
+/// uniform density across the disk regardless of count. Incremental adds
+/// simply append at the next sunflower index, so existing positions stay
+/// stable. The bounding disk radius is a continuous function of count.
 /// </summary>
 public static class BoardLayoutEngine
 {
-    private const float ProjectionScale = 600f;
-    private const float Padding = 16f;
-    private const int RelaxationPasses = 20;
+    /// <summary>Extra gap (board-space pixels) added to shape diameter to derive nearest-neighbor spacing.</summary>
+    private const float Padding = 24f;
 
+    /// <summary>Multiplier on shape diameter for the minimum disk radius (single-building case).</summary>
+    private const float MinRadiusDiameterMultiplier = 2f;
+
+    /// <summary>Rotation offset applied to every sunflower index so the spiral has a consistent orientation.</summary>
+    private const float StartAngle = -Mathf.Pi / 2f;
+
+    /// <summary>Golden angle in radians: π × (3 − √5) ≈ 137.5°.</summary>
+    private static readonly float GoldenAngleRad = Mathf.Pi * (3f - Mathf.Sqrt(5f));
+
+    /// <summary>
+    /// Result of a full layout computation or incremental placement.
+    /// </summary>
     public sealed class Layout
     {
         public Dictionary<Building, Vector2> Positions { get; } = new();
         public Rect2 BoundingBox { get; set; } = new Rect2(Vector2.Zero, Vector2.One);
         public float ShapeRadius { get; set; } = 64f;
+        public float CircleRadius { get; set; }
     }
 
+    /// <summary>
+    /// Result of an incremental single-building placement via
+    /// <see cref="ComputePositionForNew"/>.
+    /// </summary>
+    public sealed class IncrementalResult
+    {
+        /// <summary>Position for the newly added building.</summary>
+        public Vector2 NewPosition;
+
+        /// <summary>The disk radius after placement.</summary>
+        public float NewCircleRadius;
+
+        /// <summary>
+        /// Updated positions for existing buildings that moved. Empty for
+        /// sunflower placement — indices are stable and old positions are
+        /// preserved.
+        /// </summary>
+        public Dictionary<Building, Vector2> UpdatedPositions = new();
+    }
+
+    // ── Full layout computation ────────────────────────────────────────
+
+    /// <summary>
+    /// Computes sunflower positions for all buildings. Index 0 sits at the
+    /// origin; subsequent indices spiral outward at the golden angle.
+    /// </summary>
     public static Layout Compute(IReadOnlyList<Building> buildings, float defaultRadius = 64f)
     {
         var layout = new Layout { ShapeRadius = defaultRadius };
@@ -33,56 +72,187 @@ public static class BoardLayoutEngine
             return layout;
         }
 
-        // First pass: equirectangular projection. Buildings without a placed
-        // PrimaryCell go in a fallback row below the main bbox.
-        var positions = new Dictionary<Building, Vector2>();
-        var unplaced = new List<Building>();
-        float maxRadius = 0f;
-        foreach (var b in buildings)
-        {
-            float r = ResolveRadius(b, defaultRadius);
-            if (r > maxRadius)
-                maxRadius = r;
-            if (b.PrimaryCell == null)
-            {
-                unplaced.Add(b);
-                continue;
-            }
-            positions[b] = Project(b.PrimaryCell.Center);
-        }
+        float maxRadius = ResolveMaxRadius(buildings, defaultRadius);
+        float shapeDiameter = maxRadius * 2f;
+        layout.ShapeRadius = maxRadius;
 
-        if (positions.Count > 0)
-        {
-            for (int pass = 0; pass < RelaxationPasses; pass++)
-            {
-                if (!RelaxOnce(positions, maxRadius))
-                    break;
-            }
-        }
+        int count = buildings.Count;
+        float c = ComputePackingSpacing(shapeDiameter);
+        layout.CircleRadius = ComputeCircleRadius(count, shapeDiameter);
 
-        if (unplaced.Count > 0)
-        {
-            float startX = positions.Count > 0 ? GetMin(positions).X : 0f;
-            float yRow = positions.Count > 0 ? GetMax(positions).Y + (maxRadius * 2f + Padding) : 0f;
-            float step = maxRadius * 2f + Padding;
-            for (int i = 0; i < unplaced.Count; i++)
-                positions[unplaced[i]] = new Vector2(startX + i * step, yRow);
-        }
+        for (int i = 0; i < count; i++)
+            layout.Positions[buildings[i]] = SunflowerPosition(i, c, StartAngle);
 
-        layout.ShapeRadius = maxRadius > 0 ? maxRadius : defaultRadius;
-        foreach (var kv in positions)
-            layout.Positions[kv.Key] = kv.Value;
-        layout.BoundingBox = ComputeBBox(positions, layout.ShapeRadius);
+        layout.BoundingBox = ComputeBBox(layout.Positions, maxRadius);
         return layout;
     }
 
-    private static Vector2 Project(Vector3 center)
+    // ── Incremental single-building placement ──────────────────────────
+
+    /// <summary>
+    /// Computes a position for a single new building. The new building is
+    /// appended at the next sunflower index, so existing positions are not
+    /// disturbed. The disk radius is recomputed continuously.
+    /// </summary>
+    /// <param name="newBuilding">The building to place.</param>
+    /// <param name="existingBuildings">Existing buildings in order.</param>
+    /// <param name="existingPositions">Current board-space positions of existing buildings (unused; preserved for API compatibility).</param>
+    /// <param name="currentCircleRadius">Current disk radius (unused; preserved for API compatibility).</param>
+    /// <param name="defaultRadius">Fallback shape radius.</param>
+    public static IncrementalResult ComputePositionForNew(
+        Building newBuilding,
+        IReadOnlyList<Building> existingBuildings,
+        Dictionary<Building, Vector2> existingPositions,
+        float currentCircleRadius,
+        float defaultRadius = 64f)
     {
-        Vector3 c = center.LengthSquared() > 1e-8f ? center.Normalized() : Vector3.Forward;
-        float u = Mathf.Atan2(c.Z, c.X);
-        float v = Mathf.Asin(Mathf.Clamp(c.Y, -1f, 1f));
-        return new Vector2(u, v) * ProjectionScale;
+        var result = new IncrementalResult();
+
+        float newRadius = ResolveRadius(newBuilding, defaultRadius);
+        float maxExistingRadius = 0f;
+        if (existingBuildings != null)
+        {
+            foreach (var b in existingBuildings)
+            {
+                float r = ResolveRadius(b, defaultRadius);
+                if (r > maxExistingRadius)
+                    maxExistingRadius = r;
+            }
+        }
+        float effectiveMax = Mathf.Max(newRadius, maxExistingRadius);
+        float shapeDiameter = effectiveMax * 2f;
+
+        int newIndex = existingBuildings?.Count ?? 0;
+        int totalCount = newIndex + 1;
+        float c = ComputePackingSpacing(shapeDiameter);
+
+        result.NewPosition = SunflowerPosition(newIndex, c, StartAngle);
+        result.NewCircleRadius = ComputeCircleRadius(totalCount, shapeDiameter);
+        // UpdatedPositions intentionally left empty: sunflower indices are
+        // stable, so previously-placed buildings stay where they were.
+        return result;
     }
+
+    // ── Sunflower geometry ────────────────────────────────────────────
+
+    /// <summary>
+    /// Nearest-neighbor packing constant for Vogel's spiral. With
+    /// <c>r_i = c·√i</c>, adjacent spiral neighbors sit roughly <c>c</c>
+    /// apart. Choosing <c>c = shapeDiameter + Padding</c> guarantees a
+    /// collision-free minimum spacing.
+    /// </summary>
+    public static float ComputePackingSpacing(float shapeDiameter) => shapeDiameter + Padding;
+
+    /// <summary>
+    /// Vogel sunflower position for the <paramref name="i"/>-th item
+    /// (0-indexed). Index 0 returns the origin; subsequent indices spiral
+    /// outward at the golden angle.
+    /// </summary>
+    public static Vector2 SunflowerPosition(int i, float c, float rotationOffset)
+    {
+        if (i <= 0)
+            return Vector2.Zero;
+        float r = c * Mathf.Sqrt(i);
+        float theta = i * GoldenAngleRad + rotationOffset;
+        return new Vector2(Mathf.Cos(theta) * r, Mathf.Sin(theta) * r);
+    }
+
+    // ── Disk radius computation ───────────────────────────────────────
+
+    /// <summary>
+    /// Continuous, monotonic disk radius required to contain
+    /// <paramref name="count"/> sunflower-packed shapes of the given
+    /// <paramref name="shapeDiameter"/>.
+    /// </summary>
+    public static float ComputeCircleRadius(int count, float shapeDiameter)
+    {
+        if (count <= 0)
+            return 0f;
+
+        float minRadius = shapeDiameter * MinRadiusDiameterMultiplier;
+        if (count == 1)
+            return minRadius;
+
+        float c = ComputePackingSpacing(shapeDiameter);
+        float diskRadius = c * Mathf.Sqrt(count - 1);
+        // Pad by half a shape edge plus the global padding so the outermost
+        // shape fits entirely inside the disk.
+        float padded = diskRadius + shapeDiameter * 0.5f + Padding;
+        return Mathf.Max(padded, minRadius);
+    }
+
+    // ── Station outer-ring placement ───────────────────────────────────
+
+    /// <summary>Extra gap (board-space pixels) between the buildings disk and the station ring.</summary>
+    public const float StationRingGap = 48f;
+
+    /// <summary>Default circumradius for a station diamond in board-space pixels.</summary>
+    public const float DefaultStationRadius = 36f;
+
+    /// <summary>
+    /// Computes evenly-spaced positions for stations on a ring outside the buildings disk.
+    /// Stations spread around the full circle at angle <c>i · 2π / N</c> starting from the
+    /// top (<c>-π/2</c>), at radius <c>innerCircleRadius + StationRingGap + stationRadius</c>.
+    /// </summary>
+    public static Dictionary<StationSatellite, Vector2> ComputeStationRing(
+        IReadOnlyList<StationSatellite> stations,
+        float innerCircleRadius,
+        float stationRadius = DefaultStationRadius)
+    {
+        var result = new Dictionary<StationSatellite, Vector2>();
+        if (stations == null || stations.Count == 0)
+            return result;
+
+        float ringR = ComputeStationRingRadius(innerCircleRadius, stationRadius);
+        float step = Mathf.Tau / stations.Count;
+        for (int i = 0; i < stations.Count; i++)
+        {
+            float angle = StartAngle + i * step;
+            result[stations[i]] = AngleToPosition(angle, ringR);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Radius at which station centers sit on the outer ring.
+    /// </summary>
+    public static float ComputeStationRingRadius(float innerCircleRadius, float stationRadius = DefaultStationRadius)
+        => innerCircleRadius + StationRingGap + stationRadius;
+
+    // ── Geometry helpers ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Converts an angle (radians, 0 = right, -π/2 = top) to a position
+    /// on the circle of the given radius centered at the origin.
+    /// </summary>
+    public static Vector2 AngleToPosition(float angle, float radius)
+    {
+        return new Vector2(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius);
+    }
+
+    /// <summary>
+    /// Extracts the angle of a position relative to the origin.
+    /// </summary>
+    public static float PositionToAngle(Vector2 position)
+    {
+        if (position.LengthSquared() < 1e-8f)
+            return StartAngle;
+        return Mathf.Atan2(position.Y, position.X);
+    }
+
+    /// <summary>
+    /// Positive angular difference from <paramref name="from"/> to
+    /// <paramref name="to"/>, in [0, 2π).
+    /// </summary>
+    public static float AngleDiff(float to, float from)
+    {
+        float diff = to - from;
+        while (diff < 0f) diff += Mathf.Tau;
+        while (diff >= Mathf.Tau) diff -= Mathf.Tau;
+        return diff;
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────
 
     private static float ResolveRadius(Building b, float fallback)
     {
@@ -92,30 +262,16 @@ public static class BoardLayoutEngine
         return fallback;
     }
 
-    private static bool RelaxOnce(Dictionary<Building, Vector2> positions, float radius)
+    private static float ResolveMaxRadius(IReadOnlyList<Building> buildings, float fallback)
     {
-        bool moved = false;
-        float minDist = radius * 2f + Padding;
-        var keys = new Building[positions.Count];
-        positions.Keys.CopyTo(keys, 0);
-        for (int i = 0; i < keys.Length; i++)
+        float max = 0f;
+        foreach (var b in buildings)
         {
-            for (int j = i + 1; j < keys.Length; j++)
-            {
-                Vector2 a = positions[keys[i]];
-                Vector2 b = positions[keys[j]];
-                Vector2 delta = b - a;
-                float d = delta.Length();
-                if (d >= minDist)
-                    continue;
-                Vector2 push = d > 1e-4f ? delta / d : new Vector2(1, 0);
-                float overlap = (minDist - d) * 0.5f + 0.5f;
-                positions[keys[i]] = a - push * overlap;
-                positions[keys[j]] = b + push * overlap;
-                moved = true;
-            }
+            float r = ResolveRadius(b, fallback);
+            if (r > max)
+                max = r;
         }
-        return moved;
+        return max > 0f ? max : fallback;
     }
 
     private static Rect2 ComputeBBox(Dictionary<Building, Vector2> positions, float radius)
@@ -124,7 +280,7 @@ public static class BoardLayoutEngine
             return new Rect2(Vector2.Zero, new Vector2(1, 1));
         Vector2 min = GetMin(positions);
         Vector2 max = GetMax(positions);
-        Vector2 pad = new(radius + Padding, radius + Padding);
+        Vector2 pad = new(radius + 16f, radius + 16f);
         return new Rect2(min - pad, (max - min) + pad * 2f);
     }
 

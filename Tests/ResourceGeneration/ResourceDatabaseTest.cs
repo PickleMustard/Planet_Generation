@@ -49,7 +49,6 @@ public class ResourceDatabaseTest
         AssertThat(db.TryGetResource("iron_ore", out var ironOre)).IsTrue();
         AssertThat(ironOre!.IdName).IsEqual("iron_ore");
         AssertThat(ironOre.ResourceType).IsEqual("ore");
-        AssertThat(ironOre.DisplayColor).IsNotEqual(Colors.White);
 
         AssertThat(db.TryGetResource("water", out var water)).IsTrue();
         AssertThat(water!.ResourceType).IsEqual("fuel");
@@ -106,9 +105,6 @@ public class ResourceDatabaseTest
             .Throws<DatabaseNotLoadedException>();
 
         AssertThat(() => db.ValidateResourceExists("iron_ore"))
-            .Throws<DatabaseNotLoadedException>();
-
-        AssertThat(() => db.GetResourceColor("iron_ore"))
             .Throws<DatabaseNotLoadedException>();
     }
 

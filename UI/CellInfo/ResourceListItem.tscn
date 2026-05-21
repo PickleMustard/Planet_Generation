@@ -1,26 +1,31 @@
-[gd_scene load_steps=2 format=3 uid="uid://c8r1q2a3b4d5e"]
+[gd_scene format=3 uid="uid://c8r1q2a3b4d5e"]
 
-[ext_resource type="Script" path="res://Scripts/UI/CellInfo/ResourceListItem.cs" id="1_resitem"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_brq8g"]
+[ext_resource type="Script" uid="uid://h67tty7mgh66" path="res://Scripts/UI/CellInfo/ResourceListItem.cs" id="1_resitem"]
 
-[node name="ResourceListItem" type="HBoxContainer"]
+[node name="ResourceListItem" type="HBoxContainer" unique_id=148635530]
 custom_minimum_size = Vector2(200, 24)
+theme = ExtResource("1_brq8g")
 theme_override_constants/separation = 8
 script = ExtResource("1_resitem")
 
-[node name="IconRect" type="TextureRect" parent="."]
+[node name="IconRect" type="TextureRect" parent="." unique_id=1193558098]
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
 size_flags_vertical = 4
+theme = ExtResource("1_brq8g")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="ResourceNameLabel" type="Label" parent="."]
+[node name="ResourceNameLabel" type="Label" parent="." unique_id=1716576513]
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_brq8g")
 text = "Resource Name"
 
-[node name="AbundanceLabel" type="Label" parent="."]
+[node name="AbundanceLabel" type="Label" parent="." unique_id=401533605]
 custom_minimum_size = Vector2(50, 0)
 layout_mode = 2
-horizontal_alignment = 2
+theme = ExtResource("1_brq8g")
 text = "-"
+horizontal_alignment = 2

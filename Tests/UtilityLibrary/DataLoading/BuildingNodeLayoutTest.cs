@@ -1,89 +1,111 @@
 using GdUnit4;
+using Godot;
 using static GdUnit4.Assertions;
+using System.Collections.Generic;
+using Structures.Enums;
 using Structures.Resources;
-using UtilityLibrary.DataLoading;
 
 namespace Tests.UtilityLibrary.DataLoading;
 
 /// <summary>
-/// Verifies the YAML loader translates a building's <c>nodes:</c> block into a
-/// populated <see cref="BuildingDefinition.NodeLayout"/>, and that buildings
-/// without a <c>nodes:</c> block load with an empty layout (back-compat).
+/// Verifies that <see cref="BuildingDefinition.PopulateNodeLayoutFromShape"/>
+/// builds the runtime node layout from the referenced shape's per-side slot
+/// declarations. Shapes are now the source of truth for node layout; building
+/// YAMLs carry only <c>shape_id</c>.
 /// </summary>
 [TestSuite]
 public class BuildingNodeLayoutTest
 {
     [TestCase]
-    [RequireGodotRuntime]
-    public void Mine_HasExportNodes()
+    public void PopulateFromShape_BuildsLayoutFromSlots()
     {
-        var defs = BuildingConfigLoader.LoadBuildingDefinitions(
-            "res://Configuration/Buildings/Extraction/Mine.yaml");
-
-        // Validation may strip individual buildings; require at least one extraction
-        // building loaded with an Export node layout.
-        AssertThat(defs.Count).IsGreater(0);
-
-        bool foundExtractionExport = false;
-        foreach (var d in defs)
+        var shape = new BuildingShape2D
         {
-            foreach (var spec in d.NodeLayout)
+            Id = "test_shape",
+            Vertices = new[]
             {
-                if (spec.Kind == ResourceNodeKind.Export)
-                {
-                    foundExtractionExport = true;
-                    break;
-                }
-            }
-            if (foundExtractionExport) break;
-        }
-        AssertThat(foundExtractionExport).IsTrue();
+                new Vector2(0, -1), new Vector2(1, 0),
+                new Vector2(0, 1), new Vector2(-1, 0),
+            },
+            Sides = new List<BuildingShape2D.SideSpec>
+            {
+                new() { Slots =
+                    {
+                        new BuildingShape2D.SlotSpec { Kind = ResourceNodeKind.Import, StateOfMatter = StateOfMatter.Solid },
+                        new BuildingShape2D.SlotSpec { Kind = ResourceNodeKind.Import, StateOfMatter = StateOfMatter.Fluid },
+                    } },
+                new() { Slots = { new BuildingShape2D.SlotSpec { Kind = ResourceNodeKind.Export, StateOfMatter = StateOfMatter.Solid } } },
+                new() { Slots = { new BuildingShape2D.SlotSpec { Kind = ResourceNodeKind.Flex, StateOfMatter = StateOfMatter.Fluid } } },
+                new() { },
+            },
+        };
+
+        var def = new BuildingDefinition { IdName = "t" };
+        def.PopulateNodeLayoutFromShape(shape);
+
+        AssertThat(def.NodeLayout.Count).IsEqual(4);
+        AssertThat(def.NodeLayout[0].SideIndex).IsEqual(0);
+        AssertThat(def.NodeLayout[0].SlotIndex).IsEqual(0);
+        AssertThat(def.NodeLayout[0].Kind).IsEqual(ResourceNodeKind.Import);
+        AssertThat(def.NodeLayout[0].StateOfMatter).IsEqual(StateOfMatter.Solid);
+        AssertThat(def.NodeLayout[1].SideIndex).IsEqual(0);
+        AssertThat(def.NodeLayout[1].SlotIndex).IsEqual(1);
+        AssertThat(def.NodeLayout[1].Kind).IsEqual(ResourceNodeKind.Import);
+        AssertThat(def.NodeLayout[1].StateOfMatter).IsEqual(StateOfMatter.Fluid);
+        AssertThat(def.NodeLayout[2].SideIndex).IsEqual(1);
+        AssertThat(def.NodeLayout[2].Kind).IsEqual(ResourceNodeKind.Export);
+        AssertThat(def.NodeLayout[2].StateOfMatter).IsEqual(StateOfMatter.Solid);
+        AssertThat(def.NodeLayout[3].SideIndex).IsEqual(2);
+        AssertThat(def.NodeLayout[3].Kind).IsEqual(ResourceNodeKind.Flex);
+        AssertThat(def.NodeLayout[3].StateOfMatter).IsEqual(StateOfMatter.Fluid);
     }
 
     [TestCase]
-    [RequireGodotRuntime]
-    public void PowerPlant_HasImportNodeForFuel()
+    public void PopulateFromShape_EmptySidesYieldsNoNodes()
     {
-        var defs = BuildingConfigLoader.LoadBuildingDefinitions(
-            "res://Configuration/Buildings/Power/PowerPlant.yaml");
-
-        BuildingDefinition? fission = null;
-        foreach (var d in defs)
+        var shape = new BuildingShape2D
         {
-            if (d.IdName == "fission_reactor") { fission = d; break; }
-        }
-        AssertThat(fission).IsNotNull();
-        AssertThat(fission!.NodeLayout.Count).IsGreater(0);
-        AssertThat(fission.NodeLayout[0].Kind).IsEqual(ResourceNodeKind.Import);
+            Id = "empty",
+            Vertices = new[]
+            {
+                new Vector2(0, -1), new Vector2(1, 0),
+                new Vector2(0, 1), new Vector2(-1, 0),
+            },
+            Sides = new List<BuildingShape2D.SideSpec>
+            {
+                new(), new(), new(), new(),
+            },
+        };
+
+        var def = new BuildingDefinition { IdName = "empty" };
+        def.PopulateNodeLayoutFromShape(shape);
+        AssertThat(def.NodeLayout.Count).IsEqual(0);
     }
 
     [TestCase]
-    [RequireGodotRuntime]
-    public void Solar_HasNoNodes()
+    public void PopulateFromShape_Replaces_ExistingLayout()
     {
-        var defs = BuildingConfigLoader.LoadBuildingDefinitions(
-            "res://Configuration/Buildings/Power/Solar.yaml");
+        var def = new BuildingDefinition { IdName = "repop" };
+        def.NodeLayout.Add(new NodeSpec { SideIndex = 9, Kind = ResourceNodeKind.Flex });
 
-        AssertThat(defs.Count).IsGreater(0);
-        foreach (var d in defs)
-            AssertThat(d.NodeLayout.Count).IsEqual(0);
-    }
-
-    [TestCase]
-    [RequireGodotRuntime]
-    public void HQ_HasFlexNodes()
-    {
-        var defs = BuildingConfigLoader.LoadBuildingDefinitions(
-            "res://Configuration/Buildings/Administration/CompanyHeadquarters.yaml");
-
-        BuildingDefinition? hq = null;
-        foreach (var d in defs)
+        var shape = new BuildingShape2D
         {
-            if (d.IdName == "company_headquarters") { hq = d; break; }
-        }
-        AssertThat(hq).IsNotNull();
-        AssertThat(hq!.NodeLayout.Count).IsEqual(4);
-        foreach (var spec in hq.NodeLayout)
-            AssertThat(spec.Kind).IsEqual(ResourceNodeKind.Flex);
+            Id = "small",
+            Vertices = new[]
+            {
+                new Vector2(0, -1), new Vector2(0.866f, 0.5f), new Vector2(-0.866f, 0.5f),
+            },
+            Sides = new List<BuildingShape2D.SideSpec>
+            {
+                new() { Slots = { new BuildingShape2D.SlotSpec { Kind = ResourceNodeKind.Export, StateOfMatter = StateOfMatter.Solid } } },
+                new(),
+                new(),
+            },
+        };
+        def.PopulateNodeLayoutFromShape(shape);
+
+        AssertThat(def.NodeLayout.Count).IsEqual(1);
+        AssertThat(def.NodeLayout[0].Kind).IsEqual(ResourceNodeKind.Export);
+        AssertThat(def.NodeLayout[0].StateOfMatter).IsEqual(StateOfMatter.Solid);
     }
 }

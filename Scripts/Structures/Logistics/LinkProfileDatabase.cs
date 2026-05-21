@@ -6,7 +6,7 @@ using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 
 namespace Structures.Resources

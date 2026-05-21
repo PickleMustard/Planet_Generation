@@ -65,7 +65,6 @@ Each category file contains a `resources` list. Resource type is inferred from t
 resources:
   - id_name: iron_ore
     resource_tier: 0
-    display_color: [139, 69, 19]  # Optional - defaults to white
     biome_affinity:                # Optional - defaults to empty dict
       Mountain: 2.0
       StoneDesert: 1.5
@@ -81,12 +80,10 @@ resources:
 1. **Category Inference**: Resource type is automatically set based on filename. Do NOT include `resource_type` field in YAML.
 
 2. **Generatable Resources**: A resource is considered "generatable" (can spawn on celestial bodies) if it defines ANY of:
-   - `display_color` (not default white)
    - `biome_affinity` (non-empty)
    - `elevation_range` (not default [0.0, 1.0])
 
 3. **Default Values**:
-   - `display_color`: `Colors.White` (RGB: 255, 255, 255)
    - `biome_affinity`: Empty dictionary `{}`
    - `elevation_range`: `[0.0, 1.0]`
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Godot;
+using Structures.Enums;
 using Structures.Logistics;
 using UtilityLibrary;
 using YamlDotNet.Serialization;
@@ -49,6 +50,7 @@ public static class LinkConfigLoader
         catch (Exception e)
         {
             GameLogger.Error($"Error loading link profiles from {filePath}: {e.Message}\n{e.StackTrace}");
+            throw;
         }
 
         return definitions;
@@ -58,6 +60,13 @@ public static class LinkConfigLoader
     {
         string idName = ReadString(dict, "id_name", "");
 
+        string stateRaw = ReadString(dict, "state_of_matter", "");
+        if (string.IsNullOrWhiteSpace(stateRaw))
+        {
+            throw new InvalidOperationException(
+                $"Link profile '{idName}' is missing required 'state_of_matter' (expected 'solid' or 'fluid').");
+        }
+
         var profile = new LinkProfile
         {
             IdName = idName,
@@ -66,6 +75,7 @@ public static class LinkConfigLoader
             PackageSize = ReadInt(dict, "package_size", 0),
             BundleTime = ReadInt(dict, "bundle_time", 0),
             SlotCapacity = ReadInt(dict, "slot_capacity", 0),
+            StateOfMatter = StateOfMatterExtensions.Parse(stateRaw),
         };
 
         return profile;

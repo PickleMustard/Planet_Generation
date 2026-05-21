@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using GdUnit4;
 using Godot;
 using Structures.Enums;
@@ -32,7 +34,7 @@ public class BuildingDatabaseTest
                 foundExample = true;
                 AssertThat(building.DisplayName).IsEqual("Example Building");
                 AssertThat(building.Category).IsEqual("example");
-                AssertThat(building.BuildingTime).IsEqual(300.0f);
+                AssertThat(building.MaxResourceTier).IsEqual(0);
                 AssertThat(building.WorkRequired).IsEqual(500.0f);
                 break;
             }
@@ -74,10 +76,13 @@ public class BuildingDatabaseTest
         AssertThat(exampleBuilding.RequiredResources["electronics"]).IsEqual(25);
         AssertThat(exampleBuilding.RequiredResources["water"]).IsEqual(100);
 
-        // Test production
-        AssertThat(exampleBuilding.Production.DefaultRecipe).IsEqual("recipe_id");
-        AssertThat(exampleBuilding.Production.AlternativeRecipes.Count).IsEqual(1);
-        AssertThat(exampleBuilding.Production.ProductionSpeed).IsEqual(5.0f);
+        // Test production (now via BehaviorEntries)
+        var mfgEntry = exampleBuilding.BehaviorEntries
+            .FirstOrDefault(e => e.BehaviorId == "ManufacturingBehavior");
+        AssertThat(mfgEntry).IsNotNull();
+        AssertThat(global::Constructables.Buildings.BehaviorConfigHelper.ReadString(mfgEntry!.Config, "default_recipe", "")).IsEqual("recipe_id");
+        AssertThat(global::Constructables.Buildings.BehaviorConfigHelper.ReadStringList(mfgEntry.Config, "alternative_recipes").Count).IsEqual(1);
+        AssertThat(global::Constructables.Buildings.BehaviorConfigHelper.ReadFloat(mfgEntry.Config, "production_speed", 1.0f)).IsEqual(5.0f);
 
         // Test visual (model_path may be null if file doesn't exist on disk)
         // AssertThat(exampleBuilding.Visual.ModelPath).IsEqual("res://Models/Buildings/example.glb");
@@ -99,7 +104,7 @@ public class BuildingDatabaseTest
         AssertThat(universalBuilding.Category).IsEqual("universal");
 
         // Default values should be set
-        AssertThat(universalBuilding.BuildingTime).IsEqual(60.0f); // Default
+        AssertThat(universalBuilding.MaxResourceTier).IsEqual(0); // Default
         AssertThat(universalBuilding.WorkRequired).IsEqual(100.0f); // Default
 
         // Placement - should allow any biome via wildcard
@@ -115,10 +120,21 @@ public class BuildingDatabaseTest
         AssertThat(universalBuilding.RequiredResources.Count).IsEqual(1);
         AssertThat(universalBuilding.RequiredResources["iron"]).IsEqual(10);
 
-        // Production defaults
-        AssertThat(universalBuilding.Production.DefaultRecipe ?? "").IsEqual("");
-        AssertThat(universalBuilding.Production.AlternativeRecipes.Count).IsEqual(0);
-        AssertThat(universalBuilding.Production.ProductionSpeed).IsEqual(1.0f);
+        // Production defaults (now via BehaviorEntries)
+        var mfgEntry = universalBuilding.BehaviorEntries
+            .FirstOrDefault(e => e.BehaviorId == "ManufacturingBehavior");
+        var mfgDefault = mfgEntry != null
+            ? global::Constructables.Buildings.BehaviorConfigHelper.ReadString(mfgEntry.Config, "default_recipe", "") ?? ""
+            : "";
+        var mfgAlts = mfgEntry != null
+            ? global::Constructables.Buildings.BehaviorConfigHelper.ReadStringList(mfgEntry.Config, "alternative_recipes")
+            : new List<string>();
+        var mfgSpeed = mfgEntry != null
+            ? global::Constructables.Buildings.BehaviorConfigHelper.ReadFloat(mfgEntry.Config, "production_speed", 1.0f)
+            : 1.0f;
+        AssertThat(mfgDefault).IsEqual("");
+        AssertThat(mfgAlts.Count).IsEqual(0);
+        AssertThat(mfgSpeed).IsEqual(1.0f);
 
         // Visual defaults
         AssertThat(universalBuilding.Visual.ModelPath).IsNull();

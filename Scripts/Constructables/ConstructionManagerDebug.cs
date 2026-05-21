@@ -2,12 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Constructables.Stations.Behaviors;
 using Logistics.Resources;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Logistics;
-using UI.Debug;
-using UI.Debug.Console;
-using UI.Debug.DatabaseViewer;
+using Debug;
+using Debug.Console;
+using Debug.DatabaseViewer;
 using UtilityLibrary;
 using UtilityLibrary.NameGeneration;
 
@@ -323,8 +324,10 @@ public partial class ConstructionManager : IDebugDataProvider
                 float progress = station.GetProgress() * 100f;
                 string typeInfo = station switch
                 {
-                    ConstructionYardStation yard => $" [Yard: {yard.GetActiveBuilds().Count} active, {yard.GetShipBuildQueue().Count} queued]",
-                    OrbitalArchitectStation arch => $" [Architect]",
+                    StationSatellite s when s.GetBehavior<ShipyardBehavior>() is { } yard =>
+                        $" [Yard: {yard.ActiveShipBuildCount} active, {yard.QueuedShipBuildCount} queued]",
+                    StationSatellite s when s.GetBehavior<OrbitalConstructorBehavior>() != null =>
+                        " [Architect]",
                     _ => ""
                 };
                 ctx.WriteLine($"  {station.Name} - {station.GetStatus()} ({progress:F1}%) Band {station.BandIndex}{typeInfo}");

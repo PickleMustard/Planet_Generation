@@ -1,5 +1,6 @@
 using Constructables;
 using Godot;
+using UI.StateMachine;
 using UtilityLibrary;
 
 namespace UI.StateMachine.States;
@@ -46,11 +47,20 @@ public partial class StationViewState : LimboState
             return;
         }
 
+        var playerCamera = GetViewport().GetCamera3D();
+        if (playerCamera == null)
+        {
+            GameLogger.Warning("StationViewState: no active Camera3D in viewport");
+            Dispatch("window_closed");
+            GameLogger.ExitFunction(nameof(_Enter));
+            return;
+        }
+
         _window.WindowCloseRequested += OnWindowCloseRequested;
-        _window.BespokeFeatureRequested += OnBespokeFeatureRequested;
+        _window.BackRequested += OnBackRequested;
         _window.BuildingInspectRequested += OnBuildingInspectRequested;
 
-        _window.ShowWindow(station);
+        _window.ShowWindow(station, playerCamera);
 
         GameLogger.ExitFunction(nameof(_Enter));
     }
@@ -63,7 +73,7 @@ public partial class StationViewState : LimboState
         if (_window != null)
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
-            _window.BespokeFeatureRequested -= OnBespokeFeatureRequested;
+            _window.BackRequested -= OnBackRequested;
             _window.BuildingInspectRequested -= OnBuildingInspectRequested;
             _window.HideWindow();
         }
@@ -78,24 +88,27 @@ public partial class StationViewState : LimboState
         Dispatch("window_closed");
     }
 
-    private void OnBespokeFeatureRequested(string featureId)
+    private void OnBackRequested()
     {
-        switch (featureId)
+        var bb = Blackboard?.Top();
+        var returnEvent = InteractionStack.Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
         {
-            case "ship_queue":
-                Dispatch("ship_queue_opened");
-                break;
-            default:
-                GameLogger.Warning($"StationViewState: Unknown bespoke feature '{featureId}'");
-                break;
+            InteractionStack.Clear(bb);
+            Dispatch("window_closed");
+            return;
         }
+        Dispatch(returnEvent);
     }
 
     private void OnBuildingInspectRequested(Building building)
     {
         if (building == null) return;
         Blackboard?.Top()?.SetVar("SelectedBuilding", building);
-        Blackboard?.Top()?.SetVar("BuildingReturnTo", "station");
+        var bb = Blackboard?.Top();
+        if (bb != null)
+            InteractionStack.Push(bb, "station_opened",
+                InteractionStack.SnapshotVars(bb, "SelectedStation", "SelectedBody"));
         Dispatch("building_details_opened");
     }
 }

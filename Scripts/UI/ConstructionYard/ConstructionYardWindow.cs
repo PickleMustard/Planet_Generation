@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Stations.Behaviors;
 using Godot;
 using Godot.Collections;
 using Logistics.Resources;
@@ -8,7 +9,7 @@ using UtilityLibrary;
 namespace UI.ConstructionYard;
 
 /// <summary>
-/// Bespoke sub-window for a ConstructionYardStation. Lists active builds and queued
+/// Bespoke sub-window for a station's ShipyardBehavior. Lists active builds and queued
 /// ships, handles pause/cancel/reorder/start interactions, and stays in sync via
 /// ConstructionManager signals. Instantiated by ShipQueueManagementState on enter
 /// and freed on exit.
@@ -45,7 +46,8 @@ public partial class ConstructionYardWindow : Control
     [Export]
     private PackedScene? _queuedShipRowScene;
 
-    private ConstructionYardStation? _yard;
+    private StationSatellite? _station;
+    private ShipyardBehavior? _yard;
     private readonly System.Collections.Generic.Dictionary<LogisticsUnit, ActiveBuildRow> _activeRows = new();
     private readonly System.Collections.Generic.Dictionary<LogisticsUnit, QueuedShipRow> _queuedRows = new();
 
@@ -76,12 +78,13 @@ public partial class ConstructionYardWindow : Control
         }
     }
 
-    public void Bind(ConstructionYardStation yard)
+    public void Bind(StationSatellite station)
     {
-        _yard = yard;
+        _station = station;
+        _yard = station.GetBehavior<ShipyardBehavior>();
 
         if (_titleLabel != null)
-            _titleLabel.Text = $"Construction Yard — {yard.Name}";
+            _titleLabel.Text = $"Construction Yard — {station.Name}";
 
         var cm = ConstructionManager.Instance;
         if (cm != null)
@@ -108,6 +111,7 @@ public partial class ConstructionYardWindow : Control
 
         ClearRows();
         _yard = null;
+        _station = null;
     }
 
     private void ClearRows()
@@ -133,7 +137,7 @@ public partial class ConstructionYardWindow : Control
         ReconcileQueue(queued);
 
         if (_slotsLabel != null)
-            _slotsLabel.Text = $"Slots: {active.Count}/{_yard.MaxParallelShipBuilds}";
+            _slotsLabel.Text = $"Slots: {active.Count}/{_yard?.MaxParallelBuilds ?? 0}";
     }
 
     private void ReconcileActive(IReadOnlyList<LogisticsUnit> ships)
@@ -231,7 +235,7 @@ public partial class ConstructionYardWindow : Control
 
     private void OnProgressUpdated(string entityName, float progress, string status)
     {
-        if (_yard == null)
+        if (_station == null)
             return;
         foreach (var kvp in _activeRows)
         {
@@ -245,12 +249,12 @@ public partial class ConstructionYardWindow : Control
 
     private bool IsMyShip(Dictionary details, string key)
     {
-        if (_yard == null)
+        if (_station == null)
             return false;
         if (!details.ContainsKey(key))
             return false;
         var node = details[key].As<Node>();
-        return node is LogisticsUnit ship && ship.ConstructingStation == _yard;
+        return node is LogisticsUnit ship && ship.ConstructingStation == _station;
     }
 
     private void OnActivePauseToggled(LogisticsUnit ship)
@@ -327,7 +331,7 @@ public partial class ConstructionYardWindow : Control
         if (_shipPickerPanel != null)
             _shipPickerPanel.Visible = false;
 
-        if (_yard == null)
+        if (_yard == null || _station == null)
             return;
 
         var db = ShipDatabase.Instance;
@@ -337,10 +341,10 @@ public partial class ConstructionYardWindow : Control
             return;
         }
 
-        var targetBody = _yard.GetParent()?.GetParent() as IOrbitalBody;
+        var targetBody = _station.GetParent()?.GetParent() as IOrbitalBody;
         if (targetBody == null)
         {
-            GameLogger.Warning($"ConstructionYardWindow: could not resolve parent orbital body for yard '{_yard.Name}'");
+            GameLogger.Warning($"ConstructionYardWindow: could not resolve parent orbital body for station '{_station.Name}'");
             return;
         }
 
@@ -348,10 +352,10 @@ public partial class ConstructionYardWindow : Control
         {
             ConstructionManager.Instance?.CreateLogisticsUnit(
                 targetBody,
-                _yard.BandIndex,
+                _station.BandIndex,
                 string.IsNullOrWhiteSpace(shipName) ? null : shipName,
                 def,
-                _yard);
+                _station);
         }
         catch (System.Exception ex)
         {

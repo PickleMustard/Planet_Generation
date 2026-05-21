@@ -50,7 +50,20 @@ public class RecipeDefinition
     public IconDefinition Icon { get; set; } = new();
 
     /// <summary>
+    /// Free-form tags used for filtering and discovery in the recipe editor.
+    /// </summary>
+    public HashSet<string> Tags { get; set; } = new();
+
+    /// <summary>
     /// Returns true if this recipe has an explicit icon configured.
     /// </summary>
     public bool HasIcon => Icon?.IsValid == true;
+
+    public const string TagInputPrefix = "tag:";
+
+    /// <summary>True when an input key represents a resource-tag requirement instead of a specific resource ID.</summary>
+    public static bool IsTagInput(string key) => key != null && key.StartsWith(TagInputPrefix);
+
+    /// <summary>Strip the tag: prefix from a tag-input key.</summary>
+    public static string GetTagName(string key) => IsTagInput(key) ? key[TagInputPrefix.Length..] : key;
 }

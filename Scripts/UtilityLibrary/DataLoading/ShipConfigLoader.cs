@@ -401,24 +401,11 @@ public static class ShipConfigLoader
         visual.AnimationPath = BaseConfigLoader.ReadString(visualDict, "animation_path", "");
         visual.Scale = BaseConfigLoader.ReadFloat(visualDict, "scale", 1.0f);
         visual.RotationOffset = BaseConfigLoader.ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
-        visual.Shape = ParseShape(BaseConfigLoader.ReadString(visualDict, "shape", "hexagon"));
+        visual.ShapeId = BaseConfigLoader.ReadString(visualDict, "shape_id", "hexagon").Trim();
+        if (string.IsNullOrEmpty(visual.ShapeId)) visual.ShapeId = "hexagon";
         visual.ShapeSize = BaseConfigLoader.ReadFloat(visualDict, "shape_size", 64f);
         visual.ShapeColor = ReadColor(visualDict, "shape_color", visual.ShapeColor);
 
         return visual;
-    }
-
-    private static readonly System.Collections.Generic.HashSet<string> AllowedShapes =
-        new() { "hexagon", "square", "rectangle", "pentagon", "triangle" };
-
-    private static string ParseShape(string raw)
-    {
-        string s = (raw ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrEmpty(s))
-            return "hexagon";
-        if (AllowedShapes.Contains(s))
-            return s;
-        GameLogger.Warning($"ShipConfigLoader: unknown visual.shape '{raw}', falling back to 'hexagon'");
-        return "hexagon";
     }
 }

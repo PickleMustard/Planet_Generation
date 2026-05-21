@@ -1,219 +1,97 @@
-[gd_scene format=3 uid="uid://dstation_window"]
+[gd_scene load_steps=7 format=3 uid="uid://tejc44gqclpv"]
 
-[ext_resource type="Script" uid="uid://dstation_window_cs" path="res://Scripts/UI/StationWindow/StationWindow.cs" id="1_window"]
-[ext_resource type="Script" uid="uid://dstation_header_cs" path="res://Scripts/UI/StationWindow/StationHeaderPanel.cs" id="2_header"]
-[ext_resource type="Script" uid="uid://dstation_tabbed_cs" path="res://Scripts/UI/StationWindow/StationTabbedPanel.cs" id="3_tabbed"]
-[ext_resource type="Script" uid="uid://dstation_details_cs" path="res://Scripts/UI/StationWindow/StationDetailsPanel.cs" id="4_details"]
-[ext_resource type="Script" uid="uid://dstation_bespoke_cs" path="res://Scripts/UI/StationWindow/StationBespokeBar.cs" id="5_bespoke"]
+[ext_resource type="Script" uid="uid://vpk3thqhttuu" path="res://Scripts/UI/StationWindow/StationWindow.cs" id="1_window"]
+[ext_resource type="Script" path="res://Scripts/UI/StationWindow/StationOrbitCamera.cs" id="2_orbitcam"]
+[ext_resource type="PackedScene" uid="uid://station_cartouche_panel" path="res://UI/StationWindow/StationCartouchePanel.tscn" id="3_cartouche"]
+[ext_resource type="Script" uid="uid://nxjrnvar72a2" path="res://Scripts/UI/StationWindow/StationTabbedPanel.cs" id="4_tabbed"]
+[ext_resource type="PackedScene" uid="uid://station_behavior_tab" path="res://UI/StationWindow/StationBehaviorTab.tscn" id="5_behavior_tab"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="6_theme"]
+[ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="7_elite"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.15, 0.15, 0.18, 0.92)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tabbed"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.15, 0.15, 0.18, 0.92)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_details"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.15, 0.15, 0.18, 0.92)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.3, 0.1, 0.1, 0.8)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_hover"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.5, 0.15, 0.15, 0.9)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[node name="StationWindow" type="Control" node_paths=PackedStringArray("_closeButton", "_headerPanel", "_tabbedPanel", "_detailsPanel", "_bespokeBar")]
+[node name="StationWindow" type="Control" node_paths=PackedStringArray("_closeButton", "_backButton", "_cartouchePanel", "_tabbedPanel", "_orbitCamera")]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("6_theme")
 script = ExtResource("1_window")
 _closeButton = NodePath("CloseButton")
-_headerPanel = NodePath("HeaderPanel")
-_tabbedPanel = NodePath("TabbedPanel")
-_detailsPanel = NodePath("DetailsPanel")
-_bespokeBar = NodePath("BespokeBar")
+_backButton = NodePath("BackButton")
+_cartouchePanel = NodePath("StationCartouchePanel")
+_tabbedPanel = NodePath("StationTabbedPanel")
+_orbitCamera = NodePath("StationOrbitCamera")
 
-[node name="HeaderPanel" type="PanelContainer" parent="." node_paths=PackedStringArray("_stationNameLabel", "_stationTypeLabel", "_statusLabel", "_bandLabel", "_constructionProgressBar")]
-layout_mode = 0
+[node name="StationOrbitCamera" type="Node" parent="."]
+script = ExtResource("2_orbitcam")
+
+[node name="StationCartouchePanel" parent="." instance=ExtResource("3_cartouche")]
+layout_mode = 1
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 400.0
-offset_bottom = 220.0
+offset_right = 396.0
+offset_bottom = 376.0
+grow_horizontal = 1
+grow_vertical = 1
+
+[node name="StationTabbedPanel" type="PanelContainer" parent="." node_paths=PackedStringArray()]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.3333
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
 mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_header")
-script = ExtResource("2_header")
-_stationNameLabel = NodePath("MarginContainer/VBoxContainer/StationNameLabel")
-_stationTypeLabel = NodePath("MarginContainer/VBoxContainer/TypeLabel")
-_statusLabel = NodePath("MarginContainer/VBoxContainer/StatusLabel")
-_bandLabel = NodePath("MarginContainer/VBoxContainer/BandLabel")
-_constructionProgressBar = NodePath("MarginContainer/VBoxContainer/ConstructionProgressBar")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("4_tabbed")
+_behaviorTabScene = ExtResource("5_behavior_tab")
 
-[node name="MarginContainer" type="MarginContainer" parent="HeaderPanel"]
-layout_mode = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="HeaderPanel/MarginContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="StationTabbedPanel"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="StationNameLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "Station Name"
-
-[node name="TypeLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
-theme_override_font_sizes/font_size = 14
-text = "Station Type"
-
-[node name="HSeparator" type="HSeparator" parent="HeaderPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="StatusLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "Status"
-
-[node name="BandLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
-theme_override_font_sizes/font_size = 13
-text = "Band 0"
-
-[node name="ConstructionProgressBar" type="ProgressBar" parent="HeaderPanel/MarginContainer/VBoxContainer"]
-visible = false
-layout_mode = 2
-custom_minimum_size = Vector2(0, 20)
-
-[node name="TabbedPanel" type="PanelContainer" parent="."]
-layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 697.0
-offset_top = 16.0
-offset_right = 1096.0
-offset_bottom = 34.0
-grow_horizontal = 0
-grow_vertical = 2
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_tabbed")
-script = ExtResource("3_tabbed")
-
-[node name="VBoxContainer" type="VBoxContainer" parent="TabbedPanel"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TabBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer"]
+[node name="TabBar" type="HBoxContainer" parent="StationTabbedPanel/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="TabContent" type="ScrollContainer" parent="TabbedPanel/VBoxContainer"]
+[node name="HSepTab" type="HSeparator" parent="StationTabbedPanel/VBoxContainer"]
 layout_mode = 2
-size_flags_vertical = 3
 
-[node name="ContentContainer" type="VBoxContainer" parent="TabbedPanel/VBoxContainer/TabContent"]
+[node name="TabBodyContainer" type="VBoxContainer" parent="StationTabbedPanel/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-
-[node name="BespokeBar" type="VBoxContainer" parent="."]
-visible = false
-layout_mode = 0
-offset_left = 16.0
-offset_top = 236.0
-offset_right = 200.0
-offset_bottom = 396.0
-theme_override_constants/separation = 6
-script = ExtResource("5_bespoke")
-
-[node name="DetailsPanel" type="PanelContainer" parent="."]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = 413.0
-offset_right = 225.0
-offset_bottom = 592.0
-grow_horizontal = 2
-grow_vertical = 0
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_details")
-script = ExtResource("4_details")
-
-[node name="VBoxContainer" type="VBoxContainer" parent="DetailsPanel"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="DetailTitleLabel" type="Label" parent="DetailsPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Details"
-
-[node name="DetailContent" type="VBoxContainer" parent="DetailsPanel/VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="PlaceholderLabel" type="Label" parent="DetailsPanel/VBoxContainer/DetailContent"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
-theme_override_font_sizes/font_size = 13
-text = "Select an item above to view details"
 
 [node name="CloseButton" type="Button" parent="."]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = 1056.0
+offset_left = -64.0
 offset_top = 16.0
-offset_right = 1096.0
+offset_right = -16.0
 offset_bottom = 56.0
 grow_horizontal = 0
+theme_type_variation = &"ButtonDanger"
+theme_override_fonts/font = ExtResource("7_elite")
 theme_override_font_sizes/font_size = 20
-theme_override_styles/normal = SubResource("StyleBoxFlat_close")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_hover")
-text = "X"
+text = "✕"
+
+[node name="BackButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 96.0
+offset_bottom = 56.0
+tooltip_text = "Back one panel"
+text = "← Back"
+visible = false

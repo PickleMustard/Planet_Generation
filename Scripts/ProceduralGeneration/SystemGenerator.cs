@@ -256,6 +256,12 @@ public partial class SystemGenerator : Node
 
         GetEffectiveContainer().AddChild(celBody);
         celBody.Position = position;
+        celBody.OrbitalParent =
+            !string.IsNullOrEmpty(parentName)
+            && parentName != "barycenter"
+            && _parentBodies.TryGetValue(parentName, out var parentForOrbit)
+                ? parentForOrbit
+                : null;
         _parentBodies.Add(celBody.Name, celBody);
         _totalMass += celBody.Mass;
 
@@ -364,6 +370,7 @@ public partial class SystemGenerator : Node
 
         GetEffectiveContainer().AddChild(celBody);
         celBody.Position = position;
+        celBody.OrbitalParent = null;
         GD.Print($"CelBody: {celBody.Name}");
         _parentBodies.Add(celBody.Name, celBody);
         _totalMass += celBody.Mass;
@@ -383,8 +390,8 @@ public partial class SystemGenerator : Node
         // Register the body with the debug system after mesh generation completes
         // Use the sanitized namespace from IDebugDataProvider to exclude non-alphanumeric characters
 #if DEBUG
-        var bodyNamespace = ((UI.Debug.DatabaseViewer.IDebugDataProvider)celBody).InstanceNamespace;
-        UI.Debug.Console.InstanceRegistry.Register(celBody, bodyNamespace);
+        var bodyNamespace = ((Debug.DatabaseViewer.IDebugDataProvider)celBody).InstanceNamespace;
+        Debug.Console.InstanceRegistry.Register(celBody, bodyNamespace);
 #endif
 
         completedBody.InitializeOrbitSystem();
@@ -592,6 +599,7 @@ public partial class SystemGenerator : Node
         satBody.Position = position;
         // Override velocity with calculated orbital velocity
         satBody.Velocity = velocity;
+        satBody.OrbitalParent = parentBody;
 
         satBody.StartMeshGeneration(
             onCompleted: (completedSat) =>
@@ -622,6 +630,7 @@ public partial class SystemGenerator : Node
         foreach (SatelliteBody sat in sats)
         {
             parentBody.CallDeferred("add_child", sat);
+            sat.OrbitalParent = parentBody;
             var templateDict = (Godot.Collections.Dictionary)sat.bodyDict!["template"];
             sat.Position = (Vector3)templateDict["base_position"];
             GD.Print($"Generating {sat.Name}, Position: {sat.Position}");

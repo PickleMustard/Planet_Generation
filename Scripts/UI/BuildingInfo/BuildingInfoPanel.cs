@@ -1,5 +1,6 @@
 using Godot;
 using Constructables;
+using Constructables.Buildings.Behaviors;
 using Structures.GameState;
 using UtilityLibrary;
 
@@ -49,7 +50,7 @@ public partial class BuildingInfoPanel : PanelContainer
         }
 
         string category = building.Definition.Category?.ToLowerInvariant() ?? "";
-        ShowDetailsForCategory(category, building);
+        ShowDetailsFor(building, category);
 
         GameLogger.Debug($"BuildingInfoPanel: Displaying building '{building.Name}' (category: {category})");
     }
@@ -84,25 +85,16 @@ public partial class BuildingInfoPanel : PanelContainer
         DetailsContainer?.AddChild(label);
     }
 
-    private void ShowDetailsForCategory(string? category, Building building)
+    private void ShowDetailsFor(Building building, string category)
     {
         ClearCurrentDetails();
 
-        PackedScene? detailsScene = category switch
-        {
-            "extraction"     => BuildingPanelDetailsScene,
-            "agriculture"    => BuildingPanelDetailsScene,
-            "manufacturing"  => BuildingPanelDetailsScene,
-            "power"          => PowerPanelDetailsScene,
-            "storage"        => HubPanelDetailsScene,
-            "logistics"      => HubPanelDetailsScene,
-            "administration" => ResolveAdminScene(building),
-            _ => null
-        };
+        PackedScene? detailsScene = ResolveDetailsScene(building, category);
 
         if (detailsScene == null)
         {
-            GameLogger.Warning($"BuildingInfoPanel: No detail view for category '{category}'");
+            var id = building.Definition?.IdName ?? "<unknown>";
+            GameLogger.Warning($"BuildingInfoPanel: no detail view for '{id}' (category='{category}')");
             return;
         }
 
@@ -111,13 +103,43 @@ public partial class BuildingInfoPanel : PanelContainer
         {
             DetailsContainer?.AddChild(_currentDetails);
             _currentDetails.SetBuilding(building);
+
+            // Bubble ManageRoutesRequested from HubPanelDetails up through the window
+            if (_currentDetails is HubPanelDetails hubDetails)
+                hubDetails.ManageRoutesRequested += OnManageRoutesRequested;
         }
+    }
+
+    private PackedScene? ResolveDetailsScene(Building b, string category)
+    {
+        if (category == "administration") return ResolveAdminScene(b);
+
+        if (b.GetBehavior<ManufacturingBehavior>() != null
+         || b.GetBehavior<ExtractionBehavior>() != null)
+            return BuildingPanelDetailsScene;
+
+        if (b.GetBehavior<StorageHubBehavior>() != null
+         || b.GetBehavior<TransferStationBehavior>() != null
+         || b.GetBehavior<TransportHubBehavior>() != null
+         || b.GetBehavior<BulkStorageRoutingBehavior>() != null)
+            return HubPanelDetailsScene;
+
+        if (b.GetBehavior<PowerProducerBehavior>() != null
+         || b.GetBehavior<BatteryBehavior>() != null
+         || b.GetBehavior<PowerConsumerBehavior>() != null)
+            return PowerPanelDetailsScene;
+
+        return null;
     }
 
     private void ClearCurrentDetails()
     {
         if (_currentDetails != null)
         {
+            // Disconnect signal before freeing
+            if (_currentDetails is HubPanelDetails hubDetails)
+                hubDetails.ManageRoutesRequested -= OnManageRoutesRequested;
+
             _currentDetails.Clear();
             _currentDetails.QueueFree();
             _currentDetails = null;
@@ -147,5 +169,10 @@ public partial class BuildingInfoPanel : PanelContainer
             $"BuildingInfoPanel: no admin scene registered for '{id}', using fallback"
         );
         return AdminFallbackDetailsScene;
+    }
+
+    private void OnManageRoutesRequested()
+    {
+        BuildingInfoWindow.Instance?.EmitSignal(BuildingInfoWindow.SignalName.ManageRoutesRequested);
     }
 }

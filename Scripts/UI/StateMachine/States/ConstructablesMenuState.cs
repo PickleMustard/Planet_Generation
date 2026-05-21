@@ -1,4 +1,5 @@
 using Godot;
+using UI.StateMachine;
 using UtilityLibrary;
 
 namespace UI.StateMachine;
@@ -26,6 +27,7 @@ public partial class ConstructablesMenuState : LimboState
 
         _menuPanel.ItemSelectedForPlacement += OnItemSelectedForPlacement;
         _menuPanel.MenuClosed += OnMenuClosed;
+        _menuPanel.BackRequested += OnBackRequested;
         _menuPanel.Visible = true;
 
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
@@ -40,6 +42,7 @@ public partial class ConstructablesMenuState : LimboState
         {
             _menuPanel.ItemSelectedForPlacement -= OnItemSelectedForPlacement;
             _menuPanel.MenuClosed -= OnMenuClosed;
+            _menuPanel.BackRequested -= OnBackRequested;
             _menuPanel.ClearSelection();
             _menuPanel.Visible = false;
         }
@@ -74,6 +77,20 @@ public partial class ConstructablesMenuState : LimboState
     private void OnMenuClosed()
     {
         GameLogger.Debug("ConstructablesMenuState: Menu closed");
+        InteractionStack.Clear(Blackboard?.Top());
         Dispatch("window_closed");
+    }
+
+    private void OnBackRequested()
+    {
+        var bb = Blackboard?.Top();
+        var returnEvent = InteractionStack.Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
+        {
+            InteractionStack.Clear(bb);
+            Dispatch("window_closed");
+            return;
+        }
+        Dispatch(returnEvent);
     }
 }

@@ -1,204 +1,249 @@
-[gd_scene load_steps=2 format=3 uid="uid://hub_panel_details"]
+[gd_scene format=3 uid="uid://dkq5mblru0vex"]
 
-[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/HubPanelDetails.cs" id="1_hubpanel"]
+[ext_resource type="Script" uid="uid://comwy4sgtmwtc" path="res://Scripts/UI/BuildingInfo/HubPanelDetails.cs" id="1_hubpanel"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_x73sx"]
 
-[node name="HubPanelDetails" type="Control"]
+[node name="HubPanelDetails" type="Control" unique_id=1305955072]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_x73sx")
 script = ExtResource("1_hubpanel")
 
-[node name="Layout" type="VBoxContainer" parent="."]
+[node name="Layout" type="VBoxContainer" parent="." unique_id=1573200364]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme = ExtResource("1_x73sx")
+script = ExtResource("1_hubpanel")
 
-[node name="Header" type="HBoxContainer" parent="Layout"]
+[node name="Header" type="HBoxContainer" parent="Layout" unique_id=100636440]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 12
 
-[node name="RenderTile" type="PanelContainer" parent="Layout/Header"]
+[node name="RenderTile" type="PanelContainer" parent="Layout/Header" unique_id=163882985]
 custom_minimum_size = Vector2(160, 140)
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"PaperPanel"
 
-[node name="RenderIcon" type="TextureRect" parent="Layout/Header/RenderTile"]
+[node name="RenderIcon" type="TextureRect" parent="Layout/Header/RenderTile" unique_id=45519281]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Stats" type="VBoxContainer" parent="Layout/Header"]
+[node name="Stats" type="VBoxContainer" parent="Layout/Header" unique_id=1545988533]
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 6
 
-[node name="KindTag" type="Label" parent="Layout/Header/Stats"]
+[node name="KindTag" type="Label" parent="Layout/Header/Stats" unique_id=272136733]
 layout_mode = 2
-text = "STORAGE HUB"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "STORAGE HUB"
 
-[node name="Stats" type="HBoxContainer" parent="Layout/Header/Stats"]
+[node name="Stats" type="HBoxContainer" parent="Layout/Header/Stats" unique_id=1708271234]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 12
 
-[node name="UsedTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats"]
+[node name="UsedTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats" unique_id=338855454]
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_x73sx")
 
-[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/UsedTile"]
+[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/UsedTile" unique_id=444145494]
 layout_mode = 2
-text = "USED"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "USED"
 
-[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/UsedTile"]
+[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/UsedTile" unique_id=2135803732]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 text = "0 / 0"
 
-[node name="FreeTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats"]
+[node name="FreeTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats" unique_id=1031585561]
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_x73sx")
 
-[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/FreeTile"]
+[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/FreeTile" unique_id=914017694]
 layout_mode = 2
-text = "FREE SLOTS"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "FREE SLOTS"
 
-[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/FreeTile"]
+[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/FreeTile" unique_id=226593871]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 text = "0"
 
-[node name="CategoryTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats"]
+[node name="CategoryTile" type="VBoxContainer" parent="Layout/Header/Stats/Stats" unique_id=464410285]
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_x73sx")
 
-[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/CategoryTile"]
+[node name="Caption" type="Label" parent="Layout/Header/Stats/Stats/CategoryTile" unique_id=1928014316]
 layout_mode = 2
-text = "CATEGORY"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "CATEGORY"
 
-[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/CategoryTile"]
+[node name="Value" type="Label" parent="Layout/Header/Stats/Stats/CategoryTile" unique_id=110162450]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 text = "—"
 
-[node name="FillRow" type="HBoxContainer" parent="Layout/Header/Stats"]
+[node name="FillRow" type="HBoxContainer" parent="Layout/Header/Stats" unique_id=90570868]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 8
 
-[node name="FillCaption" type="Label" parent="Layout/Header/Stats/FillRow"]
+[node name="FillCaption" type="Label" parent="Layout/Header/Stats/FillRow" unique_id=1301273019]
 layout_mode = 2
-text = "FILL"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "FILL"
 
-[node name="FillBar" type="ProgressBar" parent="Layout/Header/Stats/FillRow"]
+[node name="FillBar" type="ProgressBar" parent="Layout/Header/Stats/FillRow" unique_id=283982486]
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_x73sx")
 max_value = 1.0
-step = 0.01
 show_percentage = false
 
-[node name="FillPct" type="Label" parent="Layout/Header/Stats/FillRow"]
+[node name="FillPct" type="Label" parent="Layout/Header/Stats/FillRow" unique_id=1913465519]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 text = "0%"
 
-[node name="Body" type="HSplitContainer" parent="Layout"]
+[node name="Body" type="HSplitContainer" parent="Layout" unique_id=1896625718]
 layout_mode = 2
 size_flags_vertical = 3
+theme = ExtResource("1_x73sx")
 
-[node name="SlotsPane" type="VBoxContainer" parent="Layout/Body"]
+[node name="SlotsPane" type="VBoxContainer" parent="Layout/Body" unique_id=2129438337]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 0.65
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 6
 
-[node name="SlotsHeader" type="Label" parent="Layout/Body/SlotsPane"]
+[node name="SlotsHeader" type="Label" parent="Layout/Body/SlotsPane" unique_id=668603792]
 layout_mode = 2
-text = "BULK SLOTS"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "BULK SLOTS"
 
-[node name="Scroll" type="ScrollContainer" parent="Layout/Body/SlotsPane"]
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/SlotsPane" unique_id=1978936095]
 layout_mode = 2
 size_flags_vertical = 3
+theme = ExtResource("1_x73sx")
 
-[node name="BulkSlotsGrid" type="GridContainer" parent="Layout/Body/SlotsPane/Scroll"]
+[node name="BulkSlotsGrid" type="GridContainer" parent="Layout/Body/SlotsPane/Scroll" unique_id=812080932]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_x73sx")
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
 columns = 8
 
-[node name="IOPane" type="VBoxContainer" parent="Layout/Body"]
+[node name="IOPane" type="VBoxContainer" parent="Layout/Body" unique_id=1880517693]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 0.35
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 6
 
-[node name="LinksHeader" type="Label" parent="Layout/Body/IOPane"]
+[node name="LinksHeader" type="Label" parent="Layout/Body/IOPane" unique_id=820167378]
 layout_mode = 2
-text = "HUB I/O"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "HUB I/O"
 
-[node name="Scroll" type="ScrollContainer" parent="Layout/Body/IOPane"]
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/IOPane" unique_id=1723506413]
 layout_mode = 2
 size_flags_vertical = 3
+theme = ExtResource("1_x73sx")
 
-[node name="Sections" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll"]
+[node name="Sections" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll" unique_id=338638692]
 layout_mode = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 12
 
-[node name="Deposits" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections"]
+[node name="Deposits" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections" unique_id=831906372]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 4
 
-[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Deposits"]
+[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Deposits" unique_id=274962344]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 text = "Deposits · in"
 
-[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Deposits"]
+[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Deposits" unique_id=161004527]
 layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 2
 
-[node name="Withdrawals" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections"]
+[node name="Withdrawals" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections" unique_id=1716680792]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 4
 
-[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Withdrawals"]
+[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Withdrawals" unique_id=1786842745]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 text = "Withdrawals · out"
 
-[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Withdrawals"]
+[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Withdrawals" unique_id=798927829]
 layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 2
 
-[node name="Transfers" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections"]
+[node name="Transfers" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections" unique_id=1645484637]
 visible = false
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 4
 
-[node name="HeaderRow" type="HBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Transfers"]
+[node name="HeaderRow" type="HBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Transfers" unique_id=1336236100]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 8
 
-[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Transfers/HeaderRow"]
+[node name="Header" type="Label" parent="Layout/Body/IOPane/Scroll/Sections/Transfers/HeaderRow" unique_id=1573353956]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "TRANSFERS"
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"LabelMono"
+text = "TRANSFERS"
 vertical_alignment = 1
 
-[node name="ManageRoutesButton" type="Button" parent="Layout/Body/IOPane/Scroll/Sections/Transfers/HeaderRow"]
+[node name="ManageRoutesButton" type="Button" parent="Layout/Body/IOPane/Scroll/Sections/Transfers/HeaderRow" unique_id=507110284]
 layout_mode = 2
+theme = ExtResource("1_x73sx")
 theme_type_variation = &"ButtonPrimary"
 text = "+ Manage Routes"
 
-[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Transfers"]
+[node name="List" type="VBoxContainer" parent="Layout/Body/IOPane/Scroll/Sections/Transfers" unique_id=614225692]
 layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_x73sx")
 theme_override_constants/separation = 2

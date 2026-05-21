@@ -19,37 +19,70 @@ public partial class BuildingDefinition : Resource
     public string? Description { get; set; }
     public string? Category { get; set; }
 
-    public float BuildingTime { get; set; } = 60.0f;
     public float WorkRequired { get; set; } = 100.0f;
     public int BuildingLimit { get; set; } = -1;
 
+    /// <summary>
+    /// Maximum resource tier this building can interact with. Resources with a tier
+    /// exceeding this value are excluded from tag resolution and blocked from literal
+    /// recipe inputs/outputs. Default 0 means only tier-0 resources are processed.
+    /// </summary>
+    public int MaxResourceTier { get; set; } = 0;
+
     public PlacementRequirements Placement { get; set; } = new();
     public Dictionary<string, int> RequiredResources { get; set; } = new();
-    public ProductionDefinition Production { get; set; } = new();
-    public PowerDefinition Power { get; set; } = new();
-    public ExtractionDefinition Extraction { get; set; } = new();
     public VisualDefinition Visual { get; set; } = new();
     public IconDefinition Icon { get; set; } = new();
     public SoundDefinition Sound { get; set; } = new();
-    public TransferStationDefinition? TransferStation { get; set; }
     public string? AllowedRecipeCategory { get; set; }
-    public Dictionary<string, int> StartingStockpiles { get; set; } = new();
-
-    /// <summary>
-    /// Total number of bulk-storage slots this building exposes via
-    /// <see cref="Constructables.Buildings.Behaviors.StorageHubBehavior"/>.
-    /// </summary>
-    public int StorageCapacity { get; set; } = 0;
-
-    /// <summary>
-    /// Filter mix for the bulk-storage slots. The sum of <see cref="SlotFilterSpec.Count"/>
-    /// values must be ≤ <see cref="StorageCapacity"/>; any remaining slots default to
-    /// <see cref="SlotFilter.Any"/>.
-    /// </summary>
-    public List<SlotFilterSpec> SlotFilters { get; set; } = new();
 
     public Godot.Collections.Array<NodeSpec> NodeLayout { get; set; } = new();
-    public Godot.Collections.Array<string> BehaviorRefs { get; set; } = new();
+
+    /// <summary>
+    /// Populates <see cref="NodeLayout"/> from the slot lists declared on a
+    /// referenced <see cref="BuildingShape2D"/>. Shape slots are the source of
+    /// truth — building YAML carries no per-node config; instead it references
+    /// a shape by id and inherits the shape's slot layout.
+    /// </summary>
+    public void PopulateNodeLayoutFromShape(BuildingShape2D shape)
+    {
+        NodeLayout.Clear();
+        for (int sideIdx = 0; sideIdx < shape.Sides.Count; sideIdx++)
+        {
+            var side = shape.Sides[sideIdx];
+            for (int slotIdx = 0; slotIdx < side.Slots.Count; slotIdx++)
+            {
+                var slot = side.Slots[slotIdx];
+                NodeLayout.Add(new NodeSpec
+                {
+                    SideIndex = sideIdx,
+                    SlotIndex = slotIdx,
+                    Kind = slot.Kind,
+                    StateOfMatter = slot.StateOfMatter,
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Inline behavior entries parsed from YAML. Each entry pairs a behavior ID
+    /// with an optional config dict. The factory calls IBehaviorConfigurable.Configure()
+    /// when config is non-empty.
+    /// </summary>
+    public List<BehaviorConfigEntry> BehaviorEntries { get; set; } = new();
+
+
+
+    /// <summary>
+    /// Pairs a behavior class name with an inline config dict parsed from the
+    /// behaviors: section of the building YAML. When config is non-empty, the
+    /// factory will call IBehaviorConfigurable.Configure() before OnAttach().
+    /// </summary>
+    public class BehaviorConfigEntry
+    {
+        public string BehaviorId { get; set; } = "";
+        public Dictionary<string, object> Config { get; set; } = new();
+    }
 
     /// <summary>
     /// Whether this building can be demolished after construction completes. Defaults to
@@ -76,53 +109,42 @@ public partial class BuildingDefinition : Resource
         var building = new Building();
         building.Id = System.Guid.NewGuid().ToString();
         building.ApplyDefinition(this);
-        if (!string.IsNullOrEmpty(Production.DefaultRecipe))
-            building.ActiveRecipeId = Production.DefaultRecipe;
-        foreach (var spec in NodeLayout)
-            building.Nodes.Add(spec.Build(building));
-        foreach (var refName in BehaviorRefs)
+
+        // Attach behaviors from entries (config flows through IBehaviorConfigurable)
+        foreach (var entry in BehaviorEntries)
         {
-            var behavior = Constructables.Buildings.BehaviorFactory.Create(refName);
+            var behavior = Constructables.Buildings.BehaviorFactory.Create(
+                entry.BehaviorId, entry.Config);
             if (behavior == null)
                 continue;
-            ApplyPowerToBehavior(behavior);
             building.Behaviors.Add(behavior);
             behavior.OnAttach(building);
         }
-        return building;
-    }
 
-    /// <summary>
-    /// Pushes power-related fields from this definition onto power behaviors right
-    /// after instantiation, before OnAttach runs. Keeps YAML the single source of
-    /// truth instead of embedding values in the behavior types.
-    /// </summary>
-    private void ApplyPowerToBehavior(Constructables.Buildings.IBuildingBehavior behavior)
-    {
-        switch (behavior)
+        // Set initial active recipe from ManufacturingBehavior or ExtractionBehavior
+        var mfg = building.GetBehavior<Constructables.Buildings.Behaviors.ManufacturingBehavior>();
+        if (mfg != null && !string.IsNullOrEmpty(mfg.DefaultRecipe))
+            building.ActiveRecipeId = mfg.DefaultRecipe;
+
+        var ext = building.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>();
+        if (ext != null && !string.IsNullOrEmpty(ext.DefaultRecipe) && string.IsNullOrEmpty(building.ActiveRecipeId))
+            building.ActiveRecipeId = ext.DefaultRecipe;
+
+        // Build resource nodes from NodeLayout
+        foreach (var spec in NodeLayout)
+            building.Nodes.Add(spec.Build(building));
+
+        // Auto-attach BulkStorageRoutingBehavior if StorageHubBehavior was configured
+        var hub = building.GetBehavior<Constructables.Buildings.Behaviors.StorageHubBehavior>();
+        if (hub != null && hub.StorageCapacity > 0
+            && building.GetBehavior<Constructables.Buildings.Behaviors.BulkStorageRoutingBehavior>() == null)
         {
-            case Constructables.Buildings.Behaviors.PowerProducerBehavior producer:
-                producer.Output = Power.Output;
-                producer.Radius = Power.GridRadius;
-                producer.IsRenewable = Power.IsRenewable;
-                break;
-            case Constructables.Buildings.Behaviors.BatteryBehavior battery:
-                battery.Capacity = Power.BatteryCapacity;
-                battery.Radius = Power.GridRadius;
-                break;
-            case Constructables.Buildings.Behaviors.PowerConsumerBehavior consumer:
-                consumer.BaseDraw = Power.BaseDraw;
-                break;
-            case Constructables.Buildings.Behaviors.ExtractionBehavior extraction:
-                extraction.ExtractTypes = Extraction.ExtractTypes;
-                extraction.RatePerTick = Extraction.RatePerTick;
-                extraction.WorkPerCycle = Extraction.WorkPerCycle;
-                break;
-            case Constructables.Buildings.Behaviors.StorageHubBehavior hub:
-                hub.StorageCapacity = StorageCapacity;
-                hub.SlotFilters = SlotFilters;
-                break;
+            var routing = new Constructables.Buildings.Behaviors.BulkStorageRoutingBehavior();
+            building.Behaviors.Add(routing);
+            routing.OnAttach(building);
         }
+
+        return building;
     }
 
     /// <summary>
@@ -131,12 +153,22 @@ public partial class BuildingDefinition : Resource
     /// </summary>
     public bool ValidatePlacement(VoronoiCell? cell)
     {
+        return ValidatePlacement(cell, null);
+    }
+
+    /// <summary>
+    /// Body-aware overload. Custom behaviors (atmosphere, vent) consume the body reference;
+    /// default placement ignores it. Callers in the UI/construction layer should prefer this
+    /// overload so all checks see consistent context.
+    /// </summary>
+    public bool ValidatePlacement(VoronoiCell? cell, IOrbitalBody? body)
+    {
         if (cell == null)
             return false;
 
         IPlacementBehavior behavior =
             Placement.ConfigurableBehavior ?? new DefaultPlacementBehavior(Placement);
-        return behavior.IsValidPlacement(cell);
+        return behavior.IsValidPlacement(cell, body);
     }
 
     public partial class PlacementRequirements : Resource
@@ -149,47 +181,6 @@ public partial class BuildingDefinition : Resource
         public int CellCount { get; set; } = 1;
         public bool RequiresAdjacent { get; set; } = false;
         public IPlacementBehavior? ConfigurableBehavior { get; set; }
-    }
-
-    public class ProductionDefinition
-    {
-        public string? DefaultRecipe { get; set; }
-        public List<string> AlternativeRecipes { get; set; } = new();
-        public float ProductionSpeed { get; set; } = 1.0f;
-    }
-
-    /// <summary>
-    /// Power-grid parameters. Producers and batteries set <see cref="GridRadius"/> +
-    /// <see cref="Output"/> / <see cref="BatteryCapacity"/> to seed and extend a grid.
-    /// Consumers set <see cref="BaseDraw"/>. Buildings without a power role leave this
-    /// at its defaults and receive no PowerProducer/Consumer/Battery behavior.
-    /// </summary>
-    public class PowerDefinition
-    {
-        public int GridRadius { get; set; } = 0;
-        public float Output { get; set; } = 0f;
-        public float BaseDraw { get; set; } = 0f;
-        public float BatteryCapacity { get; set; } = 0f;
-
-        /// <summary>
-        /// Renewable producers generate continuously regardless of manufacturing state.
-        /// Defaults to false — fueled plants gate generation on active manufacturing.
-        /// </summary>
-        public bool IsRenewable { get; set; } = false;
-    }
-
-    /// <summary>
-    /// Per-cycle extraction parameters. Buildings with an <c>ExtractionBehavior</c> sample up
-    /// to <see cref="ExtractTypes"/> resources from their occupied cells' resource mix and emit
-    /// <see cref="RatePerTick"/> units of each as the synthetic recipe's outputs every
-    /// <see cref="WorkPerCycle"/> seconds of work. Early-tier extractors set ExtractTypes=1
-    /// for narrow output; late-tier set higher values for parallel extraction.
-    /// </summary>
-    public class ExtractionDefinition
-    {
-        public int ExtractTypes { get; set; } = 1;
-        public float RatePerTick { get; set; } = 1f;
-        public float WorkPerCycle { get; set; } = 1f;
     }
 
     public class SoundDefinition

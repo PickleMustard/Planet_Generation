@@ -13,6 +13,9 @@ celestial:
     vertical_offset: 0
     mass: 1000
     size: 150
+    # Atmospheric pressure range in atmospheres (1.0 = Earth standard).
+    # Rocky planets span thin (Mars-like) to thick (Venus-like).
+    atmosphere: [0.0, 2.0]
 
   mesh:
     base_mesh:

@@ -10,10 +10,11 @@ using Structures;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
+using Structures.Transfers;
 using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 
 namespace ProceduralGeneration.PlanetGeneration;
@@ -100,6 +101,20 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
     public BodyClassification Classification { get; set; } = null!;
 
+    /// <summary>
+    /// Atmospheric pressure in atmospheres (1.0 = Earth standard). Sampled at
+    /// generation from the body type's YAML range. Used by wind power gating
+    /// and scaling; reserved for future atmosphere processing.
+    /// </summary>
+    [Export]
+    public float Atmosphere { get; set; } = 0f;
+
+    /// <summary>
+    /// The body this one orbits. Null for system-root bodies (stars, black holes
+    /// orbiting the barycenter). Wired by <see cref="SystemGenerator"/>.
+    /// </summary>
+    public IOrbitalBody? OrbitalParent { get; set; }
+
     [Export]
     public BodyBillboardTextures BillboardTextures { get; private set; } = null!;
 
@@ -136,7 +151,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     public Node3D SatellitesContainer { get; private set; } = null!;
     public BuildingConstructionManager? BuildingConstructionMgr { get; private set; }
     public BodyEconomyManager? EconomyMgr { get; private set; }
-    public BodyTransferManager? TransferMgr { get; private set; }
     public Constructables.Power.BodyPowerGridManager? PowerGridMgr { get; private set; }
     public Node ConstructionManager
     {
@@ -144,6 +158,10 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     }
     private Godot.Collections.Dictionary<int, int> _bandSatelliteCounts = new();
 
+    // Transfer endpoint registry (lightweight — no transfer state)
+    private readonly Dictionary<string, TransferStationDefinition> _endpointDefs = new();
+
+    private readonly Dictionary<string, GodotObject> _endpointOwners = new();
     #region OrbitalParameters
 
     /// <summary>
@@ -222,6 +240,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         this.Mass = mass;
         this.Velocity = velocity;
         this.Mesh = mesh;
+        this.Atmosphere = SampleAtmosphere(celestialBodyType, rand);
         mesh.size = size;
         this.AddChild(mesh);
 
@@ -232,6 +251,14 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             emision.OmniAttenuation = .14f;
             this.AddChild(emision);
         }
+    }
+
+    private static float SampleAtmosphere(CelestialBodyType type, RandomNumberGenerator rand)
+    {
+        var (min, max) = UtilityLibrary.DataLoading.TemplateHelpers.GetAtmosphereRange(type);
+        if (max <= min)
+            return min;
+        return rand.RandfRange(min, max);
     }
 
     private CelestialBody(Builder builder)
@@ -246,6 +273,10 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         this.TotalForce = Vector3.Zero;
         this.Name = builder._name ?? "";
         this.BillboardTextures = new BodyBillboardTextures();
+
+        var atmRand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var cbt = this.Classification.AsCelestialBodyType;
+        this.Atmosphere = cbt.HasValue ? SampleAtmosphere(cbt.Value, atmRand) : 0f;
 
         if (this.Mesh != null)
         {
@@ -333,12 +364,9 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         };
         CallDeferred("add_child", BuildingConstructionMgr);
 
-        // Create per-body economy and transfer managers
+        // Create per-body economy manager
         EconomyMgr = new BodyEconomyManager { Name = "BodyEconomyManager" };
         CallDeferred("add_child", EconomyMgr);
-
-        TransferMgr = new BodyTransferManager { Name = "BodyTransferManager" };
-        CallDeferred("add_child", TransferMgr);
 
         PowerGridMgr = new Constructables.Power.BodyPowerGridManager
         {
@@ -1065,6 +1093,108 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         }
         return meshParams;
     }
+
+    #region TransferEndpointRegistry
+
+    public void RegisterTransferEndpoint(string endpointId, TransferStationDefinition def, GodotObject owner)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return;
+
+        _endpointDefs[endpointId] = def;
+        _endpointOwners[endpointId] = owner;
+
+        int continentIdx = owner is Building b ? b.PrimaryCell?.ContinentIndex ?? -1 : -1;
+        SignalBus.Instance?.EmitContinentTransferCapacityChanged(
+            continentIdx,
+            GetTotalTransferCapacityOnContinent(continentIdx)
+        );
+
+        GameLogger.Info(
+            $"[CelestialBody] Endpoint '{endpointId[..System.Math.Min(8, endpointId.Length)]}' "
+                + $"registered (capacity: {def.CargoCapacity:F0})"
+        );
+    }
+
+    public void UnregisterTransferEndpoint(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return;
+
+        int? continentIdx = _endpointOwners.TryGetValue(endpointId, out var owner)
+            ? (owner as Building)?.PrimaryCell?.ContinentIndex
+            : null;
+
+        _endpointDefs.Remove(endpointId);
+        _endpointOwners.Remove(endpointId);
+
+        if (continentIdx.HasValue)
+            SignalBus.Instance?.EmitContinentTransferCapacityChanged(
+                continentIdx.Value,
+                GetTotalTransferCapacityOnContinent(continentIdx.Value)
+            );
+    }
+
+    public bool HasTransferEndpoint(string endpointId)
+    {
+        return !string.IsNullOrEmpty(endpointId) && _endpointDefs.ContainsKey(endpointId);
+    }
+
+    public TransferStationDefinition? GetTransferEndpointDef(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return null;
+        _endpointDefs.TryGetValue(endpointId, out var def);
+        return def;
+    }
+
+    [Obsolete("Use GetTransferEndpointOwner instead")]
+    public Building? GetTransferEndpointBuilding(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return null;
+        _endpointOwners.TryGetValue(endpointId, out var owner);
+        return owner as Building;
+    }
+
+    public GodotObject? GetTransferEndpointOwner(string endpointId)
+    {
+        if (string.IsNullOrEmpty(endpointId))
+            return null;
+        _endpointOwners.TryGetValue(endpointId, out var owner);
+        return owner;
+    }
+
+    public IReadOnlyList<string> GetAllTransferEndpoints()
+    {
+        return new List<string>(_endpointDefs.Keys);
+    }
+
+    public IReadOnlyList<string> GetTransferEndpointsOnContinent(int continentIndex)
+    {
+        var list = new List<string>();
+        foreach (var kvp in _endpointOwners)
+        {
+            if (kvp.Value is Building b && b.PrimaryCell?.ContinentIndex == continentIndex)
+                list.Add(kvp.Key);
+        }
+        return list;
+    }
+
+    public float GetTotalTransferCapacityOnContinent(int continentIndex)
+    {
+        if (continentIndex < 0)
+            return 0f;
+        float total = 0f;
+        foreach (var id in GetTransferEndpointsOnContinent(continentIndex))
+        {
+            if (_endpointDefs.TryGetValue(id, out var def))
+                total += def.CargoCapacity;
+        }
+        return total;
+    }
+
+    #endregion
 
     public class Builder
     {

@@ -83,6 +83,7 @@ public partial class GameStartState : LimboState
         _previousMouseMode = Input.MouseMode;
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
         GetTree().Paused = true;
+        WorldInputController.Instance?.PushDisable();
 
         GameLogger.ExitFunction(nameof(_Enter));
     }
@@ -97,6 +98,7 @@ public partial class GameStartState : LimboState
 
         GetTree().Paused = false;
         Input.SetMouseMode(_previousMouseMode);
+        WorldInputController.Instance?.PopDisable();
 
         if (!_confirmed && _placedHq != null)
         {
