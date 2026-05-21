@@ -2168,7 +2168,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         _colorMapper ??=
             Classification != null
                 ? ColorMapperFactory.GetMapper(Classification)
-                : new DefaultColorMapper();
+                : new DataDrivenColorMapper();
 
         return _colorMapper.GetBiomeColor(biome, height);
     }

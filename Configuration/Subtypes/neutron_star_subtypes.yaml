@@ -1,0 +1,19 @@
+subtypes:
+  - id: subtype_neutron_star_pulsar
+    display_name: Pulsar
+    base_resource_weight: 0.0
+  - id: subtype_neutron_star_magnetar
+    display_name: Magnetar
+    base_resource_weight: 0.0
+  - id: subtype_neutron_star_isolated
+    display_name: Isolated
+    base_resource_weight: 0.0
+  - id: subtype_neutron_star_binary
+    display_name: Binary
+    base_resource_weight: 0.0
+  - id: subtype_neutron_star_millisecond
+    display_name: Millisecond
+    base_resource_weight: 0.0
+  - id: subtype_neutron_star_xray_pulsar
+    display_name: XRay Pulsar
+    base_resource_weight: 0.0

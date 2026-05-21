@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Godot;
+using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
@@ -22,11 +24,6 @@ namespace ProceduralGeneration.MeshGeneration;
 /// </summary>
 public static class GeothermalVentGenerator
 {
-    private const float DEEP_OCEAN_BASE = 0.15f;
-    private const float OCEAN_BASE = 0.05f;
-    private const float VOLCANIC_BASE = 0.10f;
-    private const float MOUNTAIN_BASE = 0.02f;
-    private const float PLAIN_BASE = 0.02f;
     private const float DEFAULT_BASE = 0.03f;
 
     private const float DIVERGENT_BONUS = 0.10f;
@@ -101,35 +98,8 @@ public static class GeothermalVentGenerator
 
     private static float BaseFromBiome(Biome.BiomeType biome)
     {
-        switch (biome)
-        {
-            case Biome.BiomeType.DeepOcean:
-                return DEEP_OCEAN_BASE;
-            case Biome.BiomeType.Ocean:
-            case Biome.BiomeType.ShallowOcean:
-                return OCEAN_BASE;
-            case Biome.BiomeType.VolcanicPeak:
-            case Biome.BiomeType.VolcanicPlain:
-            case Biome.BiomeType.LavaOcean:
-            case Biome.BiomeType.AshPlain:
-            case Biome.BiomeType.ObsidianField:
-                return VOLCANIC_BASE;
-            case Biome.BiomeType.Mountain:
-            case Biome.BiomeType.RustedMountain:
-                return MOUNTAIN_BASE;
-            case Biome.BiomeType.Grassland:
-            case Biome.BiomeType.Desert:
-            case Biome.BiomeType.SandDesert:
-            case Biome.BiomeType.StoneDesert:
-            case Biome.BiomeType.Tundra:
-            case Biome.BiomeType.Taiga:
-            case Biome.BiomeType.FrozenPlain:
-            case Biome.BiomeType.RustedPlain:
-            case Biome.BiomeType.ScouredPlain:
-                return PLAIN_BASE;
-            default:
-                return DEFAULT_BASE;
-        }
+        var def = BiomeDatabase.Instance.GetById(BiomeIdMapper.BiomeTypeToId(biome));
+        return def?.GeothermalVentProbability ?? DEFAULT_BASE;
     }
 
     private static float BoundaryModifier(VoronoiCell cell)

@@ -43,7 +43,7 @@ public class MeshSnapshotTextureGenerator : ITextureGenerator
         var colorMapper =
             body.Mesh!.Classification != null
                 ? ColorMapperFactory.GetMapper(body.Mesh.Classification)
-                : new DefaultColorMapper();
+                : new DataDrivenColorMapper();
 
         bool useCellBiome = true;
         float bodySize = body.Mesh.size;

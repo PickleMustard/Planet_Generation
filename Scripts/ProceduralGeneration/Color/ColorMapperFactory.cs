@@ -1,33 +1,21 @@
 using Structures;
-using Structures.Enums;
 
 namespace ProceduralGeneration.ColorSystem;
 
+/// <summary>
+/// Builds an <see cref="IColorMapper"/> for a given body classification.
+/// Now always returns a <see cref="DataDrivenColorMapper"/>; color tables live in
+/// <c>Configuration/Biomes/biomes.yaml</c> keyed by subtype ID.
+/// </summary>
 public static class ColorMapperFactory
 {
     public static IColorMapper GetMapper(BodyClassification classification)
     {
         return classification switch
         {
-            BodyClassification.RockyPlanet rp => GetRockyPlanetMapper(rp.Subtype),
-            _ => new DefaultColorMapper()
-        };
-    }
-
-    private static IColorMapper GetRockyPlanetMapper(RockyPlanetSubtype subtype)
-    {
-        return subtype switch
-        {
-            RockyPlanetSubtype.Scoured => new ScouredPlanetColorMapper(),
-            RockyPlanetSubtype.Desert => new DesertPlanetColorMapper(),
-            RockyPlanetSubtype.Temperate => new TemperatePlanetColorMapper(),
-            RockyPlanetSubtype.Ice => new IcePlanetColorMapper(),
-            RockyPlanetSubtype.Cool => new CoolPlanetColorMapper(),
-            RockyPlanetSubtype.Tropical => new TropicalPlanetColorMapper(),
-            RockyPlanetSubtype.Ocean => new OceanPlanetColorMapper(),
-            RockyPlanetSubtype.Rusted => new RustedPlanetColorMapper(),
-            RockyPlanetSubtype.Volcanic => new VolcanicPlanetColorMapper(),
-            _ => new TemperatePlanetColorMapper()
+            BodyClassification.RockyPlanet rp =>
+                new DataDrivenColorMapper(BiomeIdMapper.RockyPlanetSubtypeToId(rp.Subtype)),
+            _ => new DataDrivenColorMapper()
         };
     }
 }

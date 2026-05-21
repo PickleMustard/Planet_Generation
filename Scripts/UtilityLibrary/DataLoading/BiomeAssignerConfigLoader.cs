@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Godot;
 using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -50,26 +51,29 @@ public static class BiomeAssignerConfigLoader
             var cfg = new BiomeAssignerConfig();
             foreach (var kvp in assignersNode)
             {
-                string? subtypeName = kvp.Key?.ToString();
-                if (string.IsNullOrEmpty(subtypeName)) continue;
-                if (!Enum.TryParse<RockyPlanetSubtype>(subtypeName, true, out var subtype))
-                {
-                    GameLogger.Warning($"BiomeAssignerConfigLoader: unknown subtype '{subtypeName}'");
-                    continue;
-                }
+                string? key = kvp.Key?.ToString();
+                if (string.IsNullOrEmpty(key)) continue;
+
+                // YAML keys may be either the legacy enum name ("Temperate") or the stable
+                // ID ("subtype_rocky_temperate"). Normalize to stable ID.
+                string subtypeId = key.StartsWith("subtype_")
+                    ? key
+                    : (Enum.TryParse<RockyPlanetSubtype>(key, ignoreCase: true, out var enumVal)
+                        ? BiomeIdMapper.RockyPlanetSubtypeToId(enumVal)
+                        : key);
 
                 if (kvp.Value is not Dictionary<object, object> entryDict)
                 {
-                    GameLogger.Warning($"BiomeAssignerConfigLoader: entry for '{subtypeName}' is not a map");
+                    GameLogger.Warning($"BiomeAssignerConfigLoader: entry for '{key}' is not a map");
                     continue;
                 }
 
                 var entry = new BiomeAssignerEntry
                 {
                     Moisture = ParseMoisture(entryDict),
-                    Rules = ParseRules(entryDict, subtypeName),
+                    Rules = ParseRules(entryDict, key),
                 };
-                cfg.Assigners[subtype] = entry;
+                cfg.Assigners[subtypeId] = entry;
             }
 
             return cfg;
@@ -118,13 +122,17 @@ public static class BiomeAssignerConfigLoader
             if (item is not Dictionary<object, object> ruleDict) continue;
 
             string biomeName = ReadString(ruleDict, "biome", "");
-            if (!Enum.TryParse<Biome.BiomeType>(biomeName, true, out var biomeType))
+            // Biome refs may be enum name ("Mountain") or stable ID ("biome_mountain"). Normalize.
+            Biome.BiomeType? biomeType = biomeName.StartsWith("biome_")
+                ? BiomeIdMapper.IdToBiomeType(biomeName)
+                : (Enum.TryParse<Biome.BiomeType>(biomeName, ignoreCase: true, out var v) ? v : null);
+            if (biomeType == null)
             {
                 GameLogger.Warning($"BiomeAssignerConfigLoader: '{subtypeName}' has unknown biome '{biomeName}'");
                 continue;
             }
 
-            var rule = new BiomeRule { Biome = biomeType };
+            var rule = new BiomeRule { Biome = biomeType.Value };
             if (ruleDict.TryGetValue("when", out var whenObj) && whenObj is Dictionary<object, object> w)
             {
                 rule.When = ParseConditions(w);

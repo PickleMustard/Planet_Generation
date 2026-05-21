@@ -347,6 +347,32 @@ namespace UtilityLibrary.DataLoading
                 }
             }
 
+            var biomeDb = ProceduralGeneration.BiomeSystem.BiomeDatabase.Instance;
+            if (biomeDb != null && !_loadManager.IsDatabaseRegistered(biomeDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(biomeDb))
+                {
+                    GameLogger.Info($"Registered database: {biomeDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {biomeDb.DatabaseName}");
+                }
+            }
+
+            var subtypeDb = ProceduralGeneration.SubtypeSystem.SubtypeDatabase.Instance;
+            if (subtypeDb != null && !_loadManager.IsDatabaseRegistered(subtypeDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(subtypeDb))
+                {
+                    GameLogger.Info($"Registered database: {subtypeDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {subtypeDb.DatabaseName}");
+                }
+            }
+
             GameLogger.ExitFunction(
                 nameof(RegisterDatabases),
                 $"Registered {GetTotalDatabaseCount()} databases"

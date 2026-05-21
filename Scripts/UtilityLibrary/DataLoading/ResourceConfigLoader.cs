@@ -479,66 +479,6 @@ public static class ResourceConfigLoader
     }
 
     /// <summary>
-    /// Loads biome tag probability configuration from the standard configuration file.
-    /// </summary>
-    /// <returns>Loaded biome tag configuration, or null if loading fails</returns>
-    public static BiomeTagConfig? LoadBiomeTagConfig()
-    {
-        return LoadBiomeTagConfig(
-            "res://Configuration/ResourceDefinition/biome_tag_probabilities.yaml"
-        );
-    }
-
-    /// <summary>
-    /// Loads biome tag probability configuration from a YAML file.
-    /// </summary>
-    /// <param name="filePath">Path to the YAML configuration file</param>
-    /// <returns>Loaded biome tag configuration, or null if loading fails</returns>
-    public static BiomeTagConfig? LoadBiomeTagConfig(string filePath)
-    {
-        if (!Godot.FileAccess.FileExists(filePath))
-        {
-            GD.PrintErr($"Biome tag configuration file not found: {filePath}");
-            return null;
-        }
-
-        try
-        {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
-
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(CamelCaseNamingConvention.Instance)
-                .IgnoreUnmatchedProperties()
-                .Build();
-
-            var config = deserializer.Deserialize<BiomeTagConfig>(text);
-
-            if (config != null)
-            {
-                if (config.Validate())
-                {
-                    GD.Print($"Successfully loaded biome tag configuration from {filePath}");
-                }
-                else
-                {
-                    GD.PrintErr($"Biome tag configuration failed validation: {filePath}");
-                    return null;
-                }
-            }
-
-            return config;
-        }
-        catch (Exception e)
-        {
-            GD.PrintErr(
-                $"Error loading biome tag configuration from {filePath}: {e.Message}\n{e.StackTrace}"
-            );
-            return null;
-        }
-    }
-
-    /// <summary>
     /// Loads biome categories from the standard configuration file.
     /// </summary>
     /// <returns>Loaded biome category configuration, or null if loading fails</returns>

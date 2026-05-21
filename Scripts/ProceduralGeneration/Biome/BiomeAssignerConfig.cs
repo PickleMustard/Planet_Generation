@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Structures.Enums;
 
@@ -50,5 +51,8 @@ public class BiomeAssignerEntry
 
 public class BiomeAssignerConfig
 {
-    public Dictionary<RockyPlanetSubtype, BiomeAssignerEntry> Assigners { get; set; } = new();
+    /// <summary>
+    /// Keyed by stable subtype ID (e.g. <c>subtype_rocky_temperate</c>).
+    /// </summary>
+    public Dictionary<string, BiomeAssignerEntry> Assigners { get; set; } = new(StringComparer.Ordinal);
 }

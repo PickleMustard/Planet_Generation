@@ -1,0 +1,19 @@
+subtypes:
+  - id: subtype_black_hole_stellar_mass
+    display_name: Stellar Mass
+    base_resource_weight: 0.0
+  - id: subtype_black_hole_intermediate
+    display_name: Intermediate
+    base_resource_weight: 0.0
+  - id: subtype_black_hole_supermassive
+    display_name: Supermassive
+    base_resource_weight: 0.0
+  - id: subtype_black_hole_primordial
+    display_name: Primordial
+    base_resource_weight: 0.0
+  - id: subtype_black_hole_rotating
+    display_name: Rotating
+    base_resource_weight: 0.0
+  - id: subtype_black_hole_charged
+    display_name: Charged
+    base_resource_weight: 0.0
