@@ -1,0 +1,39 @@
+subtypes:
+  - id: subtype_star_main_sequence
+    display_name: Main Sequence
+    base_resource_weight: 0.1
+    add_resources: [hydrogen, tritium]
+
+  - id: subtype_star_red_giant
+    display_name: Red Giant
+    base_resource_weight: 0.15
+    add_resources: [hydrogen]
+
+  - id: subtype_star_white_dwarf
+    display_name: White Dwarf
+    base_resource_weight: 0.05
+
+  - id: subtype_star_red_dwarf
+    display_name: Red Dwarf
+    base_resource_weight: 0.1
+    add_resources: [hydrogen]
+
+  - id: subtype_star_blue_supergiant
+    display_name: Blue Supergiant
+    base_resource_weight: 0.2
+    add_resources: [hydrogen, tritium]
+
+  - id: subtype_star_yellow_dwarf
+    display_name: Yellow Dwarf
+    base_resource_weight: 0.1
+    add_resources: [hydrogen]
+
+  - id: subtype_star_binary_primary
+    display_name: Binary Primary
+    base_resource_weight: 0.1
+    add_resources: [hydrogen]
+
+  - id: subtype_star_variable_star
+    display_name: Variable Star
+    base_resource_weight: 0.08
+    add_resources: [hydrogen]

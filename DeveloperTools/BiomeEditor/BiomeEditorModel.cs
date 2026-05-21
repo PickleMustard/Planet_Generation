@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Godot;
 using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 using Structures.Resources;
 using UtilityLibrary;
@@ -130,9 +131,15 @@ public class BiomeEditorModel
         }
         foreach (var kvp in cfg.Assigners)
         {
-            Assigners[kvp.Key] = new AssignerEdit
+            var subtypeEnum = BiomeIdMapper.IdToRockyPlanetSubtype(kvp.Key);
+            if (subtypeEnum == null)
             {
-                Subtype = kvp.Key,
+                GameLogger.Warning($"BiomeEditorModel: unknown rocky subtype id '{kvp.Key}'");
+                continue;
+            }
+            Assigners[subtypeEnum.Value] = new AssignerEdit
+            {
+                Subtype = subtypeEnum.Value,
                 Moisture = CloneMoisture(kvp.Value.Moisture),
                 Rules = kvp.Value.Rules.Select(CloneRule).ToList(),
             };
@@ -392,7 +399,7 @@ public class BiomeEditorModel
         var cfg = new BiomeAssignerConfig();
         foreach (var kvp in Assigners)
         {
-            cfg.Assigners[kvp.Key] = new BiomeAssignerEntry
+            cfg.Assigners[BiomeIdMapper.RockyPlanetSubtypeToId(kvp.Key)] = new BiomeAssignerEntry
             {
                 Moisture = CloneMoisture(kvp.Value.Moisture),
                 Rules = kvp.Value.Rules.Select(CloneRule).ToList(),

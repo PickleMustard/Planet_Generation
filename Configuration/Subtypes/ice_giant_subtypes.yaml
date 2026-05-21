@@ -1,0 +1,50 @@
+subtypes:
+  - id: subtype_ice_giant_standard_neptune
+    display_name: Standard Neptune
+    atmosphere_min: 20.0
+    atmosphere_max: 100.0
+    base_resource_weight: 0.4
+    resource_groups: [frozenVolatiles]
+
+  - id: subtype_ice_giant_uranus_type
+    display_name: Uranus Type
+    atmosphere_min: 20.0
+    atmosphere_max: 100.0
+    base_resource_weight: 0.35
+    resource_groups: [frozenVolatiles]
+
+  - id: subtype_ice_giant_methane_giant
+    display_name: Methane Giant
+    atmosphere_min: 20.0
+    atmosphere_max: 100.0
+    base_resource_weight: 0.4
+    resource_groups: [frozenVolatiles]
+
+  - id: subtype_ice_giant_ammonia_giant
+    display_name: Ammonia Giant
+    atmosphere_min: 20.0
+    atmosphere_max: 100.0
+    base_resource_weight: 0.38
+    resource_groups: [frozenVolatiles]
+
+  - id: subtype_ice_giant_toxic_giant
+    display_name: Toxic Giant
+    atmosphere_min: 20.0
+    atmosphere_max: 100.0
+    base_resource_weight: 0.3
+    resource_groups: [frozenVolatiles]
+
+  - id: subtype_ice_giant_silver_giant
+    display_name: Silver Giant
+    atmosphere_min: 20.0
+    atmosphere_max: 100.0
+    base_resource_weight: 0.45
+    resource_groups: [frozenVolatiles, preciousOres]
+
+  - id: subtype_ice_giant_cryovolcanic
+    display_name: Cryovolcanic
+    atmosphere_min: 20.0
+    atmosphere_max: 100.0
+    base_resource_weight: 0.5
+    resource_groups: [frozenVolatiles, commonOres]
+    add_resources: [water]

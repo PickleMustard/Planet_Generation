@@ -1,0 +1,73 @@
+subtypes:
+  - id: subtype_satellite_rocky_moon
+    display_name: Rocky Moon
+    base_resource_weight: 0.5
+    resource_groups: [commonOres]
+
+  - id: subtype_satellite_icy_moon
+    display_name: Icy Moon
+    base_resource_weight: 0.45
+    resource_groups: [frozenVolatiles, commonOres]
+    add_resources: [water_ice]
+
+  - id: subtype_satellite_volcanic_moon
+    display_name: Volcanic Moon
+    base_resource_weight: 0.55
+    resource_groups: [commonOres, radioactiveOres]
+    add_resources: [silicon]
+
+  - id: subtype_satellite_tidally_locked
+    display_name: Tidally Locked
+    base_resource_weight: 0.5
+    resource_groups: [commonOres, preciousOres]
+
+  - id: subtype_satellite_captured_asteroid
+    display_name: Captured Asteroid
+    base_resource_weight: 0.4
+    resource_groups: [commonOres]
+
+  - id: subtype_satellite_carbonaceous
+    display_name: Carbonaceous
+    base_resource_weight: 0.45
+    resource_groups: [industrialMaterials, commonOres]
+
+  - id: subtype_satellite_silicate
+    display_name: Silicate
+    base_resource_weight: 0.5
+    resource_groups: [commonOres]
+    add_resources: [silicon]
+
+  - id: subtype_satellite_metallic
+    display_name: Metallic
+    base_resource_weight: 0.65
+    resource_groups: [commonOres, preciousOres]
+
+  - id: subtype_satellite_ice_asteroid
+    display_name: Ice Asteroid
+    base_resource_weight: 0.4
+    resource_groups: [frozenVolatiles]
+    add_resources: [water_ice]
+
+  - id: subtype_satellite_short_period
+    display_name: Short Period
+    base_resource_weight: 0.35
+    resource_groups: [frozenVolatiles]
+    add_resources: [water_ice]
+
+  - id: subtype_satellite_long_period
+    display_name: Long Period
+    base_resource_weight: 0.3
+    resource_groups: [frozenVolatiles]
+    add_resources: [water_ice]
+
+  - id: subtype_satellite_halley_type
+    display_name: Halley Type
+    base_resource_weight: 0.3
+    resource_groups: [frozenVolatiles]
+    add_resources: [water_ice]
+
+  - id: subtype_satellite_encke_type
+    display_name: Encke Type
+    base_resource_weight: 0.25
+    resource_groups: [frozenVolatiles]
+    add_resources: [water_ice]

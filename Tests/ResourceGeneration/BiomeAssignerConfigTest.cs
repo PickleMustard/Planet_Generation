@@ -1,5 +1,6 @@
 using GdUnit4;
 using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
 using ProceduralGeneration.MeshGeneration;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
@@ -39,7 +40,8 @@ public class BiomeAssignerConfigTest
 
         foreach (RockyPlanetSubtype subtype in System.Enum.GetValues<RockyPlanetSubtype>())
         {
-            AssertThat(_config.Assigners.ContainsKey(subtype))
+            string subtypeId = BiomeIdMapper.RockyPlanetSubtypeToId(subtype);
+            AssertThat(_config.Assigners.ContainsKey(subtypeId))
                 .OverrideFailureMessage($"Missing assigner config for {subtype}")
                 .IsTrue();
         }
@@ -136,7 +138,7 @@ public class BiomeAssignerConfigTest
         RockyPlanetSubtype subtype, float height, float moisture, float latitude, Biome.BiomeType expected)
     {
         AssertThat(_config).IsNotNull();
-        var entry = _config!.Assigners[subtype];
+        var entry = _config!.Assigners[BiomeIdMapper.RockyPlanetSubtypeToId(subtype)];
         var assigner = new ConfigurableBiomeAssigner(entry);
 
         var mesh = new UnifiedCelestialMesh { maxHeight = 1f };

@@ -1,3 +1,4 @@
+using ProceduralGeneration.ColorSystem;
 using Structures;
 using Structures.Enums;
 
@@ -16,7 +17,8 @@ public static class BiomeAssignerFactory
 
     private static IBiomeAssigner GetRockyPlanetAssigner(RockyPlanetSubtype subtype)
     {
-        var entry = BiomeAssignerConfigDatabase.Instance.GetForSubtype(subtype);
+        var entry = BiomeAssignerConfigDatabase.Instance.GetForSubtype(
+            BiomeIdMapper.RockyPlanetSubtypeToId(subtype));
         return new ConfigurableBiomeAssigner(entry);
     }
 }

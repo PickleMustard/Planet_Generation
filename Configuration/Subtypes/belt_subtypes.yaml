@@ -1,0 +1,30 @@
+subtypes:
+  - id: subtype_belt_asteroid_belt
+    display_name: Asteroid Belt
+    base_resource_weight: 0.45
+    resource_groups: [commonOres]
+
+  - id: subtype_belt_ice_belt
+    display_name: Ice Belt
+    base_resource_weight: 0.4
+    resource_groups: [frozenVolatiles]
+    add_resources: [water_ice]
+
+  - id: subtype_belt_debris_disk
+    display_name: Debris Disk
+    base_resource_weight: 0.25
+    resource_groups: [commonOres]
+
+  - id: subtype_belt_dust_ring
+    display_name: Dust Ring
+    base_resource_weight: 0.1
+
+  - id: subtype_belt_resonant_belt
+    display_name: Resonant Belt
+    base_resource_weight: 0.35
+    resource_groups: [commonOres]
+
+  - id: subtype_belt_shepherd_belt
+    display_name: Shepherd Belt
+    base_resource_weight: 0.3
+    resource_groups: [commonOres]

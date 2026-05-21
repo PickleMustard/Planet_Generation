@@ -1,0 +1,51 @@
+subtypes:
+  - id: subtype_dwarf_planet_icy_kuiper
+    display_name: Icy Kuiper
+    atmosphere_min: 0.0
+    atmosphere_max: 0.05
+    base_resource_weight: 0.4
+    resource_groups: [frozenVolatiles]
+    add_resources: [water_ice]
+
+  - id: subtype_dwarf_planet_rocky_belt
+    display_name: Rocky Belt
+    atmosphere_min: 0.0
+    atmosphere_max: 0.05
+    base_resource_weight: 0.5
+    resource_groups: [commonOres, preciousOres]
+
+  - id: subtype_dwarf_planet_mixed_composition
+    display_name: Mixed Composition
+    atmosphere_min: 0.0
+    atmosphere_max: 0.05
+    base_resource_weight: 0.45
+    resource_groups: [commonOres, frozenVolatiles]
+
+  - id: subtype_dwarf_planet_plutoid
+    display_name: Plutoid
+    atmosphere_min: 0.0
+    atmosphere_max: 0.05
+    base_resource_weight: 0.35
+    resource_groups: [frozenVolatiles, preciousOres]
+
+  - id: subtype_dwarf_planet_ceres_type
+    display_name: Ceres Type
+    atmosphere_min: 0.0
+    atmosphere_max: 0.05
+    base_resource_weight: 0.55
+    resource_groups: [commonOres, industrialMaterials]
+    add_resources: [water_ice]
+
+  - id: subtype_dwarf_planet_scattered_disk
+    display_name: Scattered Disk
+    atmosphere_min: 0.0
+    atmosphere_max: 0.05
+    base_resource_weight: 0.3
+    resource_groups: [commonOres]
+
+  - id: subtype_dwarf_planet_detached_object
+    display_name: Detached Object
+    atmosphere_min: 0.0
+    atmosphere_max: 0.05
+    base_resource_weight: 0.25
+    resource_groups: [frozenVolatiles]

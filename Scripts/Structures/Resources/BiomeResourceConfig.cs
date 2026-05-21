@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 using UtilityLibrary;
 using YamlDotNet.Serialization;
@@ -8,7 +9,8 @@ namespace Structures.Resources;
 
 /// <summary>
 /// Main configuration class for biome resource weight modifiers.
-/// Contains a dictionary mapping biome types to their resource weight entries.
+/// Keyed by stable biome ID (e.g. <c>biome_mountain</c>). YAML still allows enum names
+/// for backwards compatibility — the loader normalizes them to IDs.
 /// </summary>
 public class BiomeResourceConfig
 {
@@ -19,16 +21,15 @@ public class BiomeResourceConfig
     public List<BiomeResourceEntry> BiomesRaw { get; set; } = new();
 
     /// <summary>
-    /// Runtime dictionary built from BiomesRaw after deserialization.
+    /// Runtime dictionary built from BiomesRaw after deserialization. Keys are biome IDs.
     /// </summary>
     [YamlIgnore]
-    public Dictionary<Biome.BiomeType, BiomeResourceEntry> Biomes { get; set; } = new();
+    public Dictionary<string, BiomeResourceEntry> Biomes { get; set; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Converts the deserialized BiomesRaw list into the Biomes dictionary.
     /// Must be called after YAML deserialization and before Validate().
     /// </summary>
-    /// <returns>True if all entries were successfully converted</returns>
     public bool BuildDictionary()
     {
         Biomes.Clear();
@@ -42,16 +43,16 @@ public class BiomeResourceConfig
         bool allParsed = true;
         foreach (var entry in BiomesRaw)
         {
-            var biomeType = entry.Biome;
+            string biomeId = BiomeIdMapper.BiomeTypeToId(entry.Biome);
 
-            if (Biomes.ContainsKey(biomeType))
+            if (Biomes.ContainsKey(biomeId))
             {
-                GameLogger.Error($"BiomeResourceConfig: Duplicate biome entry '{biomeType}'");
+                GameLogger.Error($"BiomeResourceConfig: Duplicate biome entry '{biomeId}'");
                 allParsed = false;
                 continue;
             }
 
-            Biomes[biomeType] = entry;
+            Biomes[biomeId] = entry;
         }
 
         if (allParsed)
@@ -63,72 +64,52 @@ public class BiomeResourceConfig
     }
 
     /// <summary>
-    /// Validates the entire configuration for consistency.
-    /// Checks that all 19 BiomeType enum values are represented and configurations are valid.
+    /// Validates that every <see cref="Biome.BiomeType"/> enum value has an entry.
     /// </summary>
-    /// <returns>True if configuration is valid, false otherwise</returns>
     public bool Validate()
     {
         bool isValid = true;
 
-        // Get all biome type enum values
-        var allBiomeTypes = Enum.GetValues<Biome.BiomeType>();
-
-        // Check that all biome types are represented
-        foreach (var biomeType in allBiomeTypes)
+        foreach (Biome.BiomeType biomeType in Enum.GetValues<Biome.BiomeType>())
         {
-            if (!Biomes.ContainsKey(biomeType))
+            string id = BiomeIdMapper.BiomeTypeToId(biomeType);
+            if (!Biomes.ContainsKey(id))
             {
-                GameLogger.Error($"BiomeResourceConfig: Missing configuration for biome type {biomeType}");
+                GameLogger.Error($"BiomeResourceConfig: Missing configuration for biome '{id}'");
+                isValid = false;
+                continue;
+            }
+
+            var entry = Biomes[id];
+            if (entry == null)
+            {
+                GameLogger.Error($"BiomeResourceConfig: Null configuration for biome '{id}'");
                 isValid = false;
             }
-            else
+            else if (!entry.Validate())
             {
-                var entry = Biomes[biomeType];
-                if (entry == null)
-                {
-                    GameLogger.Error($"BiomeResourceConfig: Null configuration for biome type {biomeType}");
-                    isValid = false;
-                }
-                else if (!entry.Validate())
-                {
-                    GameLogger.Error($"BiomeResourceConfig: Invalid configuration for biome type {biomeType}");
-                    isValid = false;
-                }
+                GameLogger.Error($"BiomeResourceConfig: Invalid configuration for biome '{id}'");
+                isValid = false;
             }
         }
 
         if (isValid)
-        {
             GameLogger.Info("BiomeResourceConfig: Configuration validation passed");
-        }
         else
-        {
             GameLogger.Error("BiomeResourceConfig: Configuration validation failed");
-        }
 
         return isValid;
     }
 
-    /// <summary>
-    /// Gets the resource weight entry for a specific biome type.
-    /// </summary>
-    /// <param name="biomeType">The biome type to get configuration for</param>
-    /// <returns>The biome resource entry, or null if not found</returns>
-    public BiomeResourceEntry? GetBiomeConfig(Biome.BiomeType biomeType)
-    {
-        return Biomes.TryGetValue(biomeType, out var config) ? config : null;
-    }
+    public BiomeResourceEntry? GetBiomeConfig(string biomeId) =>
+        Biomes.TryGetValue(biomeId, out var c) ? c : null;
 
-    /// <summary>
-    /// Gets the weight modifier for a resource ID within a specific biome.
-    /// Convenience method that delegates to GetBiomeConfig.
-    /// </summary>
-    /// <param name="biomeType">The biome type</param>
-    /// <param name="resourceId">The resource ID</param>
-    /// <returns>The weight modifier, or 1.0 if biome not found or resource not specified</returns>
-    public float GetWeightModifier(Biome.BiomeType biomeType, string resourceId)
-    {
-        return GetBiomeConfig(biomeType)?.GetWeightModifier(resourceId) ?? 1.0f;
-    }
+    public BiomeResourceEntry? GetBiomeConfig(Biome.BiomeType biomeType) =>
+        GetBiomeConfig(BiomeIdMapper.BiomeTypeToId(biomeType));
+
+    public float GetWeightModifier(string biomeId, string resourceId) =>
+        GetBiomeConfig(biomeId)?.GetWeightModifier(resourceId) ?? 1.0f;
+
+    public float GetWeightModifier(Biome.BiomeType biomeType, string resourceId) =>
+        GetWeightModifier(BiomeIdMapper.BiomeTypeToId(biomeType), resourceId);
 }

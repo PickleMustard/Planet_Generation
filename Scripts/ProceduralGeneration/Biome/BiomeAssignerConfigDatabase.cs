@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using ProceduralGeneration.ColorSystem;
+using ProceduralGeneration.SubtypeSystem;
 using Structures.Enums;
+using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
@@ -53,18 +56,41 @@ public partial class BiomeAssignerConfigDatabase : ILoadableDatabase
 
     private BiomeAssignerConfigDatabase() { }
 
-    public BiomeAssignerEntry GetForSubtype(RockyPlanetSubtype subtype)
+    /// <summary>
+    /// Lookup by stable subtype ID (e.g. <c>subtype_rocky_temperate</c>). If not found,
+    /// falls back to the first registered subtype of the same <see cref="BodyFamily"/>
+    /// (via <see cref="SubtypeDatabase.GetDefaultForFamily"/>); if that also misses, falls
+    /// back to any available entry.
+    /// </summary>
+    public BiomeAssignerEntry GetForSubtype(string subtypeId)
     {
         EnsureLoaded();
-        if (_config!.Assigners.TryGetValue(subtype, out var entry))
+        if (!string.IsNullOrEmpty(subtypeId) && _config!.Assigners.TryGetValue(subtypeId, out var entry))
             return entry;
 
-        if (_config.Assigners.TryGetValue(RockyPlanetSubtype.Temperate, out var fallback))
-            return fallback;
+        var subtypeDef = SubtypeDatabase.Instance.IsLoaded
+            ? SubtypeDatabase.Instance.GetById(subtypeId ?? string.Empty)
+            : null;
+        if (subtypeDef != null)
+        {
+            var familyDefault = SubtypeDatabase.Instance.GetDefaultForFamily(subtypeDef.Family);
+            if (familyDefault != null
+                && _config!.Assigners.TryGetValue(familyDefault.Id, out var familyEntry))
+                return familyEntry;
+        }
+
+        foreach (var anyEntry in _config!.Assigners.Values)
+            return anyEntry;
 
         throw new InvalidOperationException(
-            $"BiomeAssignerConfigDatabase: no entry for {subtype} and no Temperate fallback");
+            $"BiomeAssignerConfigDatabase: no entry for '{subtypeId}' and no fallback available");
     }
+
+    /// <summary>
+    /// Legacy enum-keyed overload; converts to stable ID internally. Remove once enums die.
+    /// </summary>
+    public BiomeAssignerEntry GetForSubtype(RockyPlanetSubtype subtype) =>
+        GetForSubtype(BiomeIdMapper.RockyPlanetSubtypeToId(subtype));
 
     /// <summary>
     /// Replaces the in-memory config without touching disk. Used by the developer-tools

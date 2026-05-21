@@ -1,0 +1,268 @@
+# Rocky planet subtypes. Each entry defines its surface generation parameters
+# (moisture, ordered biome assigner rules) and resource generation config.
+# Migrated from biome_assigner_config.yaml + planetary_resource_config.yaml.
+
+subtypes:
+  - id: subtype_rocky_scoured
+    display_name: Scoured
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 7.0
+    base_resource_weight: 0.7
+    moisture_mode: uniform_random
+    moisture_params:
+      random_min: 0.0
+      random_max: 0.1
+    assigner_rules:
+      - biome_id: biome_mountain
+        when: { height_above: 0.8 }
+      - biome_id: biome_stone_desert
+        when: { height_above: 0.4 }
+      - biome_id: biome_sand_desert
+        when: { height_above: 0.1 }
+      - biome_id: biome_scoured_plain
+        when: {}
+    resource_groups: [commonOres, preciousOres, radioactiveOres, industrialMaterials]
+    add_resources: []
+    remove_resources: [clay]
+
+  - id: subtype_rocky_desert
+    display_name: Desert
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 4.0
+    base_resource_weight: 0.8
+    moisture_mode: uniform_random
+    moisture_params:
+      random_min: 0.0
+      random_max: 0.15
+    assigner_rules:
+      - biome_id: biome_mountain
+        when: { height_above: 0.8 }
+      - biome_id: biome_stone_desert
+        when: { height_above: 0.5 }
+      - biome_id: biome_sand_desert
+        when: { height_above: 0.2 }
+      - biome_id: biome_desert
+        when: { height_above: 0.05 }
+      - biome_id: biome_stone_desert
+        when: {}
+    resource_groups: [commonOres, preciousOres, radioactiveOres, industrialMaterials]
+    add_resources: []
+    remove_resources: [clay]
+
+  - id: subtype_rocky_temperate
+    display_name: Temperate
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 1.0
+    base_resource_weight: 1.0
+    moisture_mode: whittaker
+    moisture_params:
+      base_offset: 0.0
+      latitude_factor_divisor: 9.0
+      size_factor_divisor: 100.0
+      random_min: -0.4
+      random_max: 0.2
+      max_moisture: 2.7
+      constant_offset: 0.0
+    assigner_rules:
+      - biome_id: biome_icecap
+        when: { height_above: 0.9, abs_latitude_above: 0.9 }
+      - biome_id: biome_mountain
+        when: { height_above: 0.68, height_below: 0.9 }
+      - biome_id: biome_tundra
+        when: { height_above: 0.4, moisture_below: 0.5, abs_latitude_above: 0.8, abs_latitude_below: 0.9 }
+      - biome_id: biome_taiga
+        when: { height_above: 0.4, moisture_above: 0.5, abs_latitude_above: 0.7, abs_latitude_below: 0.8 }
+      - biome_id: biome_ocean
+        when: { height_below: 0.05 }
+      - biome_id: biome_coastal
+        when: { height_below: 0.07 }
+      - biome_id: biome_desert
+        when: { height_below: 0.3, moisture_below: 0.2, abs_latitude_above: 0.2, abs_latitude_below: 0.5 }
+      - biome_id: biome_grassland
+        when: { height_below: 0.3, moisture_above: 0.2, moisture_below: 0.5 }
+      - biome_id: biome_forest
+        when: { height_above: 0.3, moisture_above: 0.5, moisture_below: 0.7, abs_latitude_above: 0.2, abs_latitude_below: 0.5 }
+      - biome_id: biome_rainforest
+        when: { moisture_above: 0.6, abs_latitude_above: 0.0, abs_latitude_below: 0.2 }
+    resource_groups: [commonOres, basicFuels, frozenVolatiles, industrialMaterials]
+    add_resources: []
+    remove_resources: []
+
+  - id: subtype_rocky_tropical
+    display_name: Tropical
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 2.0
+    base_resource_weight: 1.0
+    moisture_mode: whittaker
+    moisture_params:
+      base_offset: 0.0
+      latitude_factor_divisor: 9.0
+      size_factor_divisor: 100.0
+      random_min: -0.2
+      random_max: 0.3
+      max_moisture: 2.7
+      constant_offset: 0.0
+    assigner_rules:
+      - biome_id: biome_mountain
+        when: { height_above: 0.7 }
+      - biome_id: biome_ocean
+        when: { height_below: 0.05 }
+      - biome_id: biome_coastal
+        when: { height_below: 0.08 }
+      - biome_id: biome_desert
+        when: { moisture_below: 0.15 }
+      - biome_id: biome_rainforest
+        when: { moisture_above: 0.6 }
+      - biome_id: biome_forest
+        when: { moisture_above: 0.35 }
+      - biome_id: biome_swamp
+        when: { moisture_above: 0.15 }
+      - biome_id: biome_grassland
+        when: {}
+    resource_groups: [commonOres, preciousOres, basicFuels, industrialMaterials]
+    add_resources: []
+    remove_resources: []
+
+  - id: subtype_rocky_ocean
+    display_name: Ocean
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 2.0
+    base_resource_weight: 0.9
+    moisture_mode: uniform_random
+    moisture_params:
+      random_min: 0.8
+      random_max: 1.0
+    assigner_rules:
+      - biome_id: biome_mountain
+        when: { height_above: 0.85 }
+      - biome_id: biome_grassland
+        when: { height_above: 0.75 }
+      - biome_id: biome_coastal
+        when: { height_above: 0.65 }
+      - biome_id: biome_shallow_ocean
+        when: { height_above: 0.35 }
+      - biome_id: biome_deep_ocean
+        when: {}
+    resource_groups: [commonOres, preciousOres, basicFuels, industrialMaterials]
+    add_resources: []
+    remove_resources: []
+
+  - id: subtype_rocky_cool
+    display_name: Cool
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 3.0
+    base_resource_weight: 0.6
+    moisture_mode: whittaker
+    moisture_params:
+      base_offset: 0.0
+      latitude_factor_divisor: 9.0
+      size_factor_divisor: 100.0
+      random_min: -0.4
+      random_max: 0.2
+      max_moisture: 2.7
+      constant_offset: 0.3
+    assigner_rules:
+      - biome_id: biome_icecap
+        when: { height_above: 0.85 }
+      - biome_id: biome_mountain
+        when: { height_above: 0.65 }
+      - biome_id: biome_glacier
+        when: { height_above: 0.4, abs_latitude_above: 0.6 }
+      - biome_id: biome_tundra
+        when: { height_above: 0.4, abs_latitude_above: 0.4 }
+      - biome_id: biome_ocean
+        when: { height_below: 0.05 }
+      - biome_id: biome_coastal
+        when: { height_below: 0.07 }
+      - biome_id: biome_frozen_plain
+        when: { moisture_below: 0.3 }
+      - biome_id: biome_tundra
+        when: { moisture_below: 0.6 }
+      - biome_id: biome_taiga
+        when: {}
+    resource_groups: [commonOres, frozenVolatiles, basicFuels, industrialMaterials]
+    add_resources: []
+    remove_resources: []
+
+  - id: subtype_rocky_ice
+    display_name: Ice
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 6.0
+    base_resource_weight: 0.5
+    moisture_mode: uniform_random
+    moisture_params:
+      random_min: 0.7
+      random_max: 0.9
+    assigner_rules:
+      - biome_id: biome_mountain
+        when: { height_above: 0.8 }
+      - biome_id: biome_icecap
+        when: { height_above: 0.6 }
+      - biome_id: biome_glacier
+        when: { height_above: 0.4 }
+      - biome_id: biome_desert
+        when: { height_above: 0.2, moisture_below: 0.3 }
+      - biome_id: biome_tundra
+        when: { height_above: 0.2 }
+      - biome_id: biome_frozen_plain
+        when: {}
+    resource_groups: [frozenVolatiles, commonOres, basicFuels, industrialMaterials, radioactiveOres]
+    add_resources: []
+    remove_resources: []
+
+  - id: subtype_rocky_rusted
+    display_name: Rusted
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 5.0
+    base_resource_weight: 0.75
+    moisture_mode: uniform_random
+    moisture_params:
+      random_min: 0.0
+      random_max: 0.2
+    assigner_rules:
+      - biome_id: biome_rusted_mountain
+        when: { height_above: 0.8 }
+      - biome_id: biome_rusted_desert
+        when: { height_above: 0.55 }
+      - biome_id: biome_rusted_plain
+        when: { height_above: 0.3 }
+      - biome_id: biome_sand_desert
+        when: { height_above: 0.1 }
+      - biome_id: biome_rusted_plain
+        when: {}
+    resource_groups: [commonOres, preciousOres, industrialMaterials, radioactiveOres]
+    add_resources: []
+    remove_resources: []
+
+  - id: subtype_rocky_volcanic
+    display_name: Volcanic
+    atmosphere_min: 0.0
+    atmosphere_max: 2.0
+    base_hazard: 9.0
+    base_resource_weight: 0.85
+    moisture_mode: uniform_random
+    moisture_params:
+      random_min: 0.0
+      random_max: 0.1
+    assigner_rules:
+      - biome_id: biome_volcanic_peak
+        when: { height_above: 0.8 }
+      - biome_id: biome_obsidian_field
+        when: { height_above: 0.55 }
+      - biome_id: biome_ash_plain
+        when: { height_above: 0.3 }
+      - biome_id: biome_volcanic_plain
+        when: { height_above: 0.1 }
+      - biome_id: biome_lava_ocean
+        when: {}
+    resource_groups: [commonOres, radioactiveOres, preciousOres, industrialMaterials]
+    add_resources: []
+    remove_resources: []

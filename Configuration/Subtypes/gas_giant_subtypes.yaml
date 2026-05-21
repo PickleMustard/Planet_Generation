@@ -1,0 +1,63 @@
+subtypes:
+  - id: subtype_gas_giant_hot_jupiter
+    display_name: Hot Jupiter
+    atmosphere_min: 50.0
+    atmosphere_max: 200.0
+    base_resource_weight: 0.3
+    resource_groups: []
+    add_resources: [hydrogen]
+    remove_resources: []
+
+  - id: subtype_gas_giant_standard_jupiter
+    display_name: Standard Jupiter
+    atmosphere_min: 50.0
+    atmosphere_max: 200.0
+    base_resource_weight: 0.25
+    resource_groups: []
+    add_resources: [hydrogen]
+    remove_resources: []
+
+  - id: subtype_gas_giant_cold_jupiter
+    display_name: Cold Jupiter
+    atmosphere_min: 50.0
+    atmosphere_max: 200.0
+    base_resource_weight: 0.2
+    resource_groups: [frozenVolatiles]
+    add_resources: []
+    remove_resources: []
+
+  - id: subtype_gas_giant_failed_star
+    display_name: Failed Star
+    atmosphere_min: 50.0
+    atmosphere_max: 200.0
+    base_resource_weight: 0.4
+    resource_groups: []
+    add_resources: [hydrogen]
+    remove_resources: []
+
+  - id: subtype_gas_giant_ringed_giant
+    display_name: Ringed Giant
+    atmosphere_min: 50.0
+    atmosphere_max: 200.0
+    base_resource_weight: 0.25
+    resource_groups: []
+    add_resources: [hydrogen, water_ice]
+    remove_resources: []
+
+  - id: subtype_gas_giant_stormy_giant
+    display_name: Stormy Giant
+    atmosphere_min: 50.0
+    atmosphere_max: 200.0
+    base_resource_weight: 0.35
+    resource_groups: []
+    add_resources: [hydrogen]
+    remove_resources: []
+
+  - id: subtype_gas_giant_puffy_giant
+    display_name: Puffy Giant
+    atmosphere_min: 50.0
+    atmosphere_max: 200.0
+    base_resource_weight: 0.2
+    resource_groups: []
+    add_resources: [hydrogen]
+    remove_resources: []
