@@ -16,18 +16,7 @@ public static class BiomeAssignerFactory
 
     private static IBiomeAssigner GetRockyPlanetAssigner(RockyPlanetSubtype subtype)
     {
-        return subtype switch
-        {
-            RockyPlanetSubtype.Scoured => new ScouredPlanetBiomeAssigner(),
-            RockyPlanetSubtype.Desert => new DesertPlanetBiomeAssigner(),
-            RockyPlanetSubtype.Temperate => new TemperatePlanetBiomeAssigner(),
-            RockyPlanetSubtype.Ice => new IcePlanetBiomeAssigner(),
-            RockyPlanetSubtype.Cool => new CoolPlanetBiomeAssigner(),
-            RockyPlanetSubtype.Tropical => new TropicalPlanetBiomeAssigner(),
-            RockyPlanetSubtype.Ocean => new OceanPlanetBiomeAssigner(),
-            RockyPlanetSubtype.Rusted => new RustedPlanetBiomeAssigner(),
-            RockyPlanetSubtype.Volcanic => new VolcanicPlanetBiomeAssigner(),
-            _ => new TemperatePlanetBiomeAssigner()
-        };
+        var entry = BiomeAssignerConfigDatabase.Instance.GetForSubtype(subtype);
+        return new ConfigurableBiomeAssigner(entry);
     }
 }

@@ -334,6 +334,19 @@ namespace UtilityLibrary.DataLoading
                 }
             }
 
+            var biomeAssignerDb = ProceduralGeneration.BiomeSystem.BiomeAssignerConfigDatabase.Instance;
+            if (biomeAssignerDb != null && !_loadManager.IsDatabaseRegistered(biomeAssignerDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(biomeAssignerDb))
+                {
+                    GameLogger.Info($"Registered database: {biomeAssignerDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {biomeAssignerDb.DatabaseName}");
+                }
+            }
+
             GameLogger.ExitFunction(
                 nameof(RegisterDatabases),
                 $"Registered {GetTotalDatabaseCount()} databases"
