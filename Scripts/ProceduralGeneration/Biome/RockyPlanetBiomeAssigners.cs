@@ -1,6 +1,5 @@
 using Godot;
 using ProceduralGeneration.MeshGeneration;
-using Structures.Enums;
 using Structures.GameState;
 
 namespace ProceduralGeneration.BiomeSystem;
@@ -9,13 +8,12 @@ namespace ProceduralGeneration.BiomeSystem;
 /// Fallback assigner for non-RockyPlanet bodies (GasGiant, IceGiant, DwarfPlanet, etc).
 /// Forwards to the legacy static <see cref="BiomeAssigner"/>.
 ///
-/// RockyPlanet subtypes now flow through <see cref="ConfigurableBiomeAssigner"/> driven by
-/// <c>Configuration/Biomes/biome_assigner_config.yaml</c>. The previously hardcoded subtype
-/// classes (TemperatePlanetBiomeAssigner, ScouredPlanetBiomeAssigner, ...) were deleted.
+/// RockyPlanet subtypes flow through <see cref="ConfigurableBiomeAssigner"/> driven by
+/// <c>Configuration/Biomes/biome_assigner_config.yaml</c>.
 /// </summary>
 public class DefaultBiomeAssigner : IBiomeAssigner
 {
-    public Structures.Enums.Biome.BiomeType AssignBiome(
+    public string AssignBiome(
         UnifiedCelestialMesh generator, float height, float moisture, float latitude = 0f)
     {
         return BiomeAssigner.AssignBiome(generator, height, moisture, latitude);

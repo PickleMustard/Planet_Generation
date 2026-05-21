@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GdUnit4;
 using Godot;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using static GdUnit4.Assertions;
@@ -243,19 +244,19 @@ public class BuildingDatabaseTest
         var biomes = exampleBuilding!.Placement.Biomes;
 
         // From temperate: Grassland, Forest, Coastal, Mountain, Swamp, Taiga
-        AssertThat(biomes.Contains(Biome.BiomeType.Grassland)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.Forest)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.Coastal)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.Mountain)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.Swamp)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.Taiga)).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Grassland))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Forest))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Coastal))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Mountain))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Swamp))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Taiga))).IsTrue();
 
         // From coastal: ShallowOcean (plus Coastal which is already counted)
-        AssertThat(biomes.Contains(Biome.BiomeType.ShallowOcean)).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.ShallowOcean))).IsTrue();
 
         // Should not have biomes not in these categories
-        AssertThat(biomes.Contains(Biome.BiomeType.Desert)).IsFalse();
-        AssertThat(biomes.Contains(Biome.BiomeType.Ocean)).IsFalse();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Desert))).IsFalse();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Ocean))).IsFalse();
     }
 
     [TestCase]
@@ -273,16 +274,16 @@ public class BuildingDatabaseTest
         var biomes = mixedBuilding!.Placement.Biomes;
 
         // From arable: Grassland, Forest, Rainforest, Coastal, Swamp
-        AssertThat(biomes.Contains(Biome.BiomeType.Grassland)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.Forest)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.Rainforest)).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Grassland))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Forest))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Rainforest))).IsTrue();
 
         // From mountain: Mountain, VolcanicPeak, RustedMountain
-        AssertThat(biomes.Contains(Biome.BiomeType.Mountain)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.VolcanicPeak)).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Mountain))).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.VolcanicPeak))).IsTrue();
 
         // Individual Ocean
-        AssertThat(biomes.Contains(Biome.BiomeType.Ocean)).IsTrue();
+        AssertThat(biomes.Contains(BiomeIdMapper.BiomeTypeToId(Biome.BiomeType.Ocean))).IsTrue();
     }
 }
 

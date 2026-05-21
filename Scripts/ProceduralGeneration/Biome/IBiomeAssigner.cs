@@ -1,13 +1,15 @@
 using Godot;
 using ProceduralGeneration.MeshGeneration;
-using Structures.Enums;
 using Structures.GameState;
 
 namespace ProceduralGeneration.BiomeSystem;
 
 public interface IBiomeAssigner
 {
-    Structures.Enums.Biome.BiomeType AssignBiome(
+    /// <summary>
+    /// Returns the assigned biome's stable ID (e.g. <c>biome_forest</c>).
+    /// </summary>
+    string AssignBiome(
         UnifiedCelestialMesh generator,
         float height,
         float moisture,

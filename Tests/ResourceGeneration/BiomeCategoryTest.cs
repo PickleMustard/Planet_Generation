@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GdUnit4;
 using Godot;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 using Structures.Resources;
 using UtilityLibrary.DataLoading;
@@ -26,6 +27,8 @@ public class BiomeCategoryTest
     {
         _config = null;
     }
+
+    private static string Id(Biome.BiomeType b) => BiomeIdMapper.BiomeTypeToId(b);
 
     [TestCase]
     [RequireGodotRuntime]
@@ -66,9 +69,9 @@ public class BiomeCategoryTest
 
         var mountainBiomes = _config!.GetBiomesForCategory("mountain");
         AssertThat(mountainBiomes).IsNotNull();
-        AssertThat(mountainBiomes!.Contains(Biome.BiomeType.Mountain)).IsTrue();
-        AssertThat(mountainBiomes.Contains(Biome.BiomeType.VolcanicPeak)).IsTrue();
-        AssertThat(mountainBiomes.Contains(Biome.BiomeType.RustedMountain)).IsTrue();
+        AssertThat(mountainBiomes!.Contains(Id(Biome.BiomeType.Mountain))).IsTrue();
+        AssertThat(mountainBiomes.Contains(Id(Biome.BiomeType.VolcanicPeak))).IsTrue();
+        AssertThat(mountainBiomes.Contains(Id(Biome.BiomeType.RustedMountain))).IsTrue();
     }
 
     [TestCase]
@@ -79,10 +82,10 @@ public class BiomeCategoryTest
 
         var arableBiomes = _config!.GetBiomesForCategory("arable");
         AssertThat(arableBiomes).IsNotNull();
-        AssertThat(arableBiomes!.Contains(Biome.BiomeType.Grassland)).IsTrue();
-        AssertThat(arableBiomes.Contains(Biome.BiomeType.Forest)).IsTrue();
-        AssertThat(arableBiomes.Contains(Biome.BiomeType.Rainforest)).IsTrue();
-        AssertThat(arableBiomes.Contains(Biome.BiomeType.Coastal)).IsTrue();
+        AssertThat(arableBiomes!.Contains(Id(Biome.BiomeType.Grassland))).IsTrue();
+        AssertThat(arableBiomes.Contains(Id(Biome.BiomeType.Forest))).IsTrue();
+        AssertThat(arableBiomes.Contains(Id(Biome.BiomeType.Rainforest))).IsTrue();
+        AssertThat(arableBiomes.Contains(Id(Biome.BiomeType.Coastal))).IsTrue();
     }
 
     [TestCase]
@@ -91,7 +94,6 @@ public class BiomeCategoryTest
     {
         AssertThat(_config).IsNotNull();
 
-        // Test various case combinations
         AssertThat(_config!.HasCategory("FLAT")).IsTrue();
         AssertThat(_config.HasCategory("Flat")).IsTrue();
         AssertThat(_config.HasCategory("fLaT")).IsTrue();
@@ -122,9 +124,9 @@ public class BiomeCategoryTest
 
         AssertThat(wildcardPresent).IsFalse();
         AssertThat(result.Count).IsEqual(3);
-        AssertThat(result.Contains(Biome.BiomeType.Grassland)).IsTrue();
-        AssertThat(result.Contains(Biome.BiomeType.Mountain)).IsTrue();
-        AssertThat(result.Contains(Biome.BiomeType.Desert)).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Grassland))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Mountain))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Desert))).IsTrue();
     }
 
     [TestCase]
@@ -137,8 +139,8 @@ public class BiomeCategoryTest
 
         AssertThat(wildcardPresent).IsFalse();
         AssertThat(result.Count).IsGreater(0);
-        AssertThat(result.Contains(Biome.BiomeType.Grassland)).IsTrue();
-        AssertThat(result.Contains(Biome.BiomeType.Coastal)).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Grassland))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Coastal))).IsTrue();
     }
 
     [TestCase]
@@ -150,10 +152,10 @@ public class BiomeCategoryTest
         var result = config.ResolveBiomeEntries(entries, out bool wildcardPresent);
 
         AssertThat(wildcardPresent).IsFalse();
-        AssertThat(result.Contains(Biome.BiomeType.Mountain)).IsTrue();
-        AssertThat(result.Contains(Biome.BiomeType.Desert)).IsTrue();
-        AssertThat(result.Contains(Biome.BiomeType.SandDesert)).IsTrue();
-        AssertThat(result.Contains(Biome.BiomeType.StoneDesert)).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Mountain))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Desert))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.SandDesert))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.StoneDesert))).IsTrue();
     }
 
     [TestCase]
@@ -165,25 +167,23 @@ public class BiomeCategoryTest
         var result = config.ResolveBiomeEntries(entries, out bool wildcardPresent);
 
         AssertThat(wildcardPresent).IsFalse();
-        AssertThat(result.Contains(Biome.BiomeType.Grassland)).IsTrue(); // From category:flat
-        AssertThat(result.Contains(Biome.BiomeType.Ocean)).IsTrue();     // Individual
-        AssertThat(result.Contains(Biome.BiomeType.Mountain)).IsTrue();  // Individual
+        AssertThat(result.Contains(Id(Biome.BiomeType.Grassland))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Ocean))).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Mountain))).IsTrue();
     }
 
     [TestCase]
     public void ResolveBiomeEntries_DuplicateBiomesFromMultipleCategories()
     {
-        // Mountain appears in both "mountain" and "rocky" categories
         var config = CreateTestConfig();
         var entries = new List<string> { "category:mountain", "category:rocky" };
 
         var result = config.ResolveBiomeEntries(entries, out bool wildcardPresent);
 
         AssertThat(wildcardPresent).IsFalse();
-        AssertThat(result.Contains(Biome.BiomeType.Mountain)).IsTrue();
+        AssertThat(result.Contains(Id(Biome.BiomeType.Mountain))).IsTrue();
 
-        // Should only be added once - HashSet deduplicates
-        var mountainCount = result.Count(b => b == Biome.BiomeType.Mountain);
+        var mountainCount = result.Count(b => b == Id(Biome.BiomeType.Mountain));
         AssertThat(mountainCount).IsEqual(1);
     }
 
@@ -216,7 +216,6 @@ public class BiomeCategoryTest
     {
         var config = CreateTestConfig();
 
-        // Test various case combinations of the "category:" prefix
         var entriesLower = new List<string> { "category:flat" };
         var entriesUpper = new List<string> { "CATEGORY:flat" };
         var entriesMixed = new List<string> { "Category:flat" };
@@ -233,27 +232,30 @@ public class BiomeCategoryTest
     }
 
     [TestCase]
-    public void TryParseBiomeType_ValidBiomes()
+    public void TryNormalizeBiomeId_ValidBiomes()
     {
-        AssertThat(BiomeCategoryConfig.TryParseBiomeType("Grassland", out var biome1)).IsTrue();
-        AssertThat(biome1).IsEqual(Biome.BiomeType.Grassland);
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("Grassland", out var biome1)).IsTrue();
+        AssertThat(biome1).IsEqual("biome_grassland");
 
-        AssertThat(BiomeCategoryConfig.TryParseBiomeType("grassland", out var biome2)).IsTrue();
-        AssertThat(biome2).IsEqual(Biome.BiomeType.Grassland);
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("grassland", out var biome2)).IsTrue();
+        AssertThat(biome2).IsEqual("biome_grassland");
 
-        AssertThat(BiomeCategoryConfig.TryParseBiomeType("Mountain", out var biome3)).IsTrue();
-        AssertThat(biome3).IsEqual(Biome.BiomeType.Mountain);
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("Mountain", out var biome3)).IsTrue();
+        AssertThat(biome3).IsEqual("biome_mountain");
 
-        AssertThat(BiomeCategoryConfig.TryParseBiomeType("Stone_Desert", out var biome4)).IsTrue();
-        AssertThat(biome4).IsEqual(Biome.BiomeType.StoneDesert);
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("Stone_Desert", out var biome4)).IsTrue();
+        AssertThat(biome4).IsEqual("biome_stone_desert");
+
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("biome_mountain", out var biome5)).IsTrue();
+        AssertThat(biome5).IsEqual("biome_mountain");
     }
 
     [TestCase]
-    public void TryParseBiomeType_InvalidBiomes()
+    public void TryNormalizeBiomeId_InvalidBiomes()
     {
-        AssertThat(BiomeCategoryConfig.TryParseBiomeType("", out _)).IsFalse();
-        AssertThat(BiomeCategoryConfig.TryParseBiomeType("Invalid", out _)).IsFalse();
-        AssertThat(BiomeCategoryConfig.TryParseBiomeType("category:flat", out _)).IsFalse();
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("", out _)).IsFalse();
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("Invalid", out _)).IsFalse();
+        AssertThat(BiomeCategoryConfig.TryNormalizeBiomeId("category:flat", out _)).IsFalse();
     }
 
     [TestCase]
@@ -262,11 +264,11 @@ public class BiomeCategoryTest
         var allBiomes = BiomeCategoryConfig.GetAllBiomes();
         var enumValues = Enum.GetValues<Biome.BiomeType>();
 
-        AssertThat(allBiomes.Count).IsEqual(enumValues.Length);
+        AssertThat(allBiomes.Count).IsGreaterEqual(enumValues.Length);
 
         foreach (var biomeType in enumValues)
         {
-            AssertThat(allBiomes.Contains(biomeType)).IsTrue();
+            AssertThat(allBiomes.Contains(Id(biomeType))).IsTrue();
         }
     }
 
@@ -275,13 +277,11 @@ public class BiomeCategoryTest
     {
         var config = CreateTestConfig();
 
-        // Mountain should be in both "mountain" and "rocky" categories
-        var mountainCategories = config.GetCategoriesForBiome(Biome.BiomeType.Mountain);
+        var mountainCategories = config.GetCategoriesForBiome(Id(Biome.BiomeType.Mountain));
         AssertThat(mountainCategories.Contains("mountain")).IsTrue();
         AssertThat(mountainCategories.Contains("rocky")).IsTrue();
 
-        // Grassland should be in "flat" and "arable"
-        var grasslandCategories = config.GetCategoriesForBiome(Biome.BiomeType.Grassland);
+        var grasslandCategories = config.GetCategoriesForBiome(Id(Biome.BiomeType.Grassland));
         AssertThat(grasslandCategories.Contains("flat")).IsTrue();
         AssertThat(grasslandCategories.Contains("arable")).IsTrue();
     }
@@ -290,7 +290,6 @@ public class BiomeCategoryTest
     [RequireGodotRuntime]
     public void BuildingWithCategoryBiomes_LoadsCorrectly()
     {
-        // Clear the cache to ensure fresh load
         BuildingConfigLoader.ClearBiomeCategoryCache();
 
         var definitions = BuildingConfigLoader.LoadBuildingDefinitions(
@@ -304,9 +303,8 @@ public class BiomeCategoryTest
         AssertThat(farm).IsNotNull();
         AssertThat(farm!.Placement.AllowAnyBiome).IsFalse();
 
-        // Farm uses "category:arable" which should resolve to multiple biomes
         AssertThat(farm.Placement.Biomes.Count).IsGreater(0);
-        AssertThat(farm.Placement.Biomes.Contains(Biome.BiomeType.Grassland)).IsTrue();
+        AssertThat(farm.Placement.Biomes.Contains(Id(Biome.BiomeType.Grassland))).IsTrue();
     }
 
     [TestCase]
@@ -322,17 +320,15 @@ public class BiomeCategoryTest
         var windTurbine = definitions.Find(b => b.IdName == "wind_turbine");
         AssertThat(windTurbine).IsNotNull();
 
-        // Wind turbine uses: [category:flat, category:ocean, category:mountain]
         var biomes = windTurbine!.Placement.Biomes;
         AssertThat(biomes.Count).IsGreater(0);
 
-        // Should have biomes from all three categories
-        AssertThat(biomes.Contains(Biome.BiomeType.Grassland) || biomes.Contains(Biome.BiomeType.Coastal))
-            .IsTrue(); // From flat
-        AssertThat(biomes.Contains(Biome.BiomeType.Ocean) || biomes.Contains(Biome.BiomeType.Coastal))
-            .IsTrue(); // From ocean
-        AssertThat(biomes.Contains(Biome.BiomeType.Mountain))
-            .IsTrue(); // From mountain
+        AssertThat(biomes.Contains(Id(Biome.BiomeType.Grassland)) || biomes.Contains(Id(Biome.BiomeType.Coastal)))
+            .IsTrue();
+        AssertThat(biomes.Contains(Id(Biome.BiomeType.Ocean)) || biomes.Contains(Id(Biome.BiomeType.Coastal)))
+            .IsTrue();
+        AssertThat(biomes.Contains(Id(Biome.BiomeType.Mountain)))
+            .IsTrue();
     }
 
     [TestCase]
@@ -348,13 +344,11 @@ public class BiomeCategoryTest
         var mountainExtractor = definitions.Find(b => b.IdName == "mountain_extractor");
         AssertThat(mountainExtractor).IsNotNull();
 
-        // Uses: [category:mountain, category:rocky, volcanic]
         var biomes = mountainExtractor!.Placement.Biomes;
         AssertThat(biomes.Count).IsGreater(0);
 
-        // Should have Mountain from categories AND VolcanicPeak from individual entry
-        AssertThat(biomes.Contains(Biome.BiomeType.Mountain)).IsTrue();
-        AssertThat(biomes.Contains(Biome.BiomeType.VolcanicPeak)).IsTrue();
+        AssertThat(biomes.Contains(Id(Biome.BiomeType.Mountain))).IsTrue();
+        AssertThat(biomes.Contains(Id(Biome.BiomeType.VolcanicPeak))).IsTrue();
     }
 
     [TestCase]
@@ -373,7 +367,6 @@ public class BiomeCategoryTest
         AssertThat(businessAdmin.Placement.Biomes.Count).IsEqual(0);
     }
 
-    // Helper method to create a test config with sample categories
     private BiomeCategoryConfig CreateTestConfig()
     {
         var config = new BiomeCategoryConfig();
@@ -381,31 +374,31 @@ public class BiomeCategoryTest
         config.Categories["flat"] = new BiomeCategoryEntry
         {
             CategoryId = "flat",
-            Biomes = new HashSet<Biome.BiomeType> { Biome.BiomeType.Grassland, Biome.BiomeType.Coastal, Biome.BiomeType.Desert }
+            Biomes = new HashSet<string> { Id(Biome.BiomeType.Grassland), Id(Biome.BiomeType.Coastal), Id(Biome.BiomeType.Desert) }
         };
 
         config.Categories["mountain"] = new BiomeCategoryEntry
         {
             CategoryId = "mountain",
-            Biomes = new HashSet<Biome.BiomeType> { Biome.BiomeType.Mountain, Biome.BiomeType.VolcanicPeak }
+            Biomes = new HashSet<string> { Id(Biome.BiomeType.Mountain), Id(Biome.BiomeType.VolcanicPeak) }
         };
 
         config.Categories["rocky"] = new BiomeCategoryEntry
         {
             CategoryId = "rocky",
-            Biomes = new HashSet<Biome.BiomeType> { Biome.BiomeType.Mountain, Biome.BiomeType.StoneDesert }
+            Biomes = new HashSet<string> { Id(Biome.BiomeType.Mountain), Id(Biome.BiomeType.StoneDesert) }
         };
 
         config.Categories["desert"] = new BiomeCategoryEntry
         {
             CategoryId = "desert",
-            Biomes = new HashSet<Biome.BiomeType> { Biome.BiomeType.Desert, Biome.BiomeType.SandDesert, Biome.BiomeType.StoneDesert }
+            Biomes = new HashSet<string> { Id(Biome.BiomeType.Desert), Id(Biome.BiomeType.SandDesert), Id(Biome.BiomeType.StoneDesert) }
         };
 
         config.Categories["ocean"] = new BiomeCategoryEntry
         {
             CategoryId = "ocean",
-            Biomes = new HashSet<Biome.BiomeType> { Biome.BiomeType.Ocean, Biome.BiomeType.Coastal }
+            Biomes = new HashSet<string> { Id(Biome.BiomeType.Ocean), Id(Biome.BiomeType.Coastal) }
         };
 
         return config;

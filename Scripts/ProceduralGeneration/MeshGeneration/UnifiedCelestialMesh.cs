@@ -2163,14 +2163,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         return Color.FromHsv(hue / 360f, saturation, value);
     }
 
-    private Color GetBiomeColor(Biome.BiomeType biome, float height)
+    private Color GetBiomeColor(string biomeId, float height)
     {
         _colorMapper ??=
             Classification != null
                 ? ColorMapperFactory.GetMapper(Classification)
                 : new DataDrivenColorMapper();
 
-        return _colorMapper.GetBiomeColor(biome, height);
+        return _colorMapper.GetBiomeColor(biomeId, height);
     }
 
     public virtual void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, Octree<Point> oct)

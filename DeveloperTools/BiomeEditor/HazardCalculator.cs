@@ -15,12 +15,12 @@ namespace DeveloperTools.BiomeEditor;
 /// </summary>
 public static class HazardCalculator
 {
-    public static float Compute(RockyPlanetSubtype subtype, float atmosphereMin, float atmosphereMax, Biome.BiomeType biome)
+    public static float Compute(RockyPlanetSubtype subtype, float atmosphereMin, float atmosphereMax, string biomeId)
     {
         float midAtm = (atmosphereMin + atmosphereMax) * 0.5f;
         float atmosphereHazard = Mathf.Abs(midAtm - 1.0f) * 1.5f;
         float subtypeBase = SubtypeBaseHazard(subtype);
-        float biomeHazard = BiomeHazardWeight(biome);
+        float biomeHazard = BiomeHazardWeight(biomeId);
         return Mathf.Clamp(subtypeBase + atmosphereHazard + biomeHazard, 0f, 10f);
     }
 
@@ -30,9 +30,9 @@ public static class HazardCalculator
         return def?.BaseHazard ?? 0f;
     }
 
-    public static float BiomeHazardWeight(Biome.BiomeType biome)
+    public static float BiomeHazardWeight(string biomeId)
     {
-        var def = BiomeDatabase.Instance.GetById(BiomeIdMapper.BiomeTypeToId(biome));
+        var def = BiomeDatabase.Instance.GetById(biomeId);
         return def?.HazardWeight ?? 0f;
     }
 }

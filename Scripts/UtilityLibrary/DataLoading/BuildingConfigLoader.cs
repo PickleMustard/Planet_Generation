@@ -337,13 +337,13 @@ public static class BuildingConfigLoader
                                         $"- biome categories not loaded."
                                     );
                                 }
-                                else if (TryParseBiomeType(entry, out Biome.BiomeType biomeType))
+                                else if (BiomeCategoryConfig.TryNormalizeBiomeId(entry, out var biomeId))
                                 {
-                                    placement.Biomes.Add(biomeType);
+                                    placement.Biomes.Add(biomeId);
                                 }
                                 else
                                 {
-                                    GD.PrintErr($"Unknown biome type in building placement: {entry}");
+                                    GD.PrintErr($"Unknown biome in building placement: {entry}");
                                 }
                             }
                         }
@@ -636,28 +636,6 @@ public static class BuildingConfigLoader
         }
 
         return path;
-    }
-
-    private static bool TryParseBiomeType(string name, out Biome.BiomeType biomeType)
-    {
-        biomeType = Biome.BiomeType.Tundra;
-
-        if (string.IsNullOrWhiteSpace(name))
-            return false;
-
-        string normalized = name.Replace("_", "").Replace(" ", "").Trim();
-
-        foreach (Biome.BiomeType type in Enum.GetValues(typeof(Biome.BiomeType)))
-        {
-            string enumName = type.ToString().Replace("_", "");
-            if (string.Equals(normalized, enumName, StringComparison.OrdinalIgnoreCase))
-            {
-                biomeType = type;
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static string ReadString(Dictionary<object, object> dict, string key, string fallback)

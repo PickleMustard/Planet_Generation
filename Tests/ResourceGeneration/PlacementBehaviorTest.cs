@@ -1,6 +1,5 @@
 using GdUnit4;
 using Godot;
-using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
 using Structures.Resources;
@@ -110,7 +109,7 @@ public class PlacementBehaviorTest
         var behavior = new GeothermalVentPlacementBehavior();
         var cell = CreateTestCell(
             height: 0.6f,
-            biome: Biome.BiomeType.VolcanicPeak,
+            biome: "biome_volcanic_peak",
             stress: 0.7f
         );
 
@@ -157,7 +156,7 @@ public class PlacementBehaviorTest
 
     private VoronoiCell CreateTestCell(
         float height = 0.5f,
-        Biome.BiomeType biome = Biome.BiomeType.Grassland,
+        string biome = "biome_grassland",
         float stress = 0.0f)
     {
         var cell = new VoronoiCell(

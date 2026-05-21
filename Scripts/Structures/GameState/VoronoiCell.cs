@@ -1,8 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Constructables;
 using Godot;
-using Structures.Enums;
 using Structures.MeshGeneration;
 
 namespace Structures.GameState;
@@ -34,10 +34,16 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     public int Increment { get; set; } = 1;
 
     /// <summary>
-    /// The dominant biome type for this cell, calculated from its points.
-    /// When points have multiple biomes assigned, this represents the most common biome.
+    /// Default biome ID used for unassigned cells.
     /// </summary>
-    public Biome.BiomeType Biome { get; set; }
+    public const string DefaultBiomeId = "biome_grassland";
+
+    /// <summary>
+    /// The dominant biome ID for this cell, calculated from its points.
+    /// When points have multiple biomes assigned, this represents the most common biome
+    /// (with priority-based tie-breaking).
+    /// </summary>
+    public string Biome { get; set; } = DefaultBiomeId;
 
     /// <summary>
     /// Cached slope value in degrees. Calculated on first access.
@@ -67,34 +73,34 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     /// Priority order for biome tie-breaking. Higher values indicate higher priority.
     /// Used when multiple biomes have the same count in a cell.
     /// </summary>
-    private static readonly Dictionary<Biome.BiomeType, int> BiomePriority = new Dictionary<Biome.BiomeType, int>
+    private static readonly Dictionary<string, int> BiomePriority = new(StringComparer.Ordinal)
     {
-        { Structures.Enums.Biome.BiomeType.Mountain, 100 },
-        { Structures.Enums.Biome.BiomeType.Forest, 90 },
-        { Structures.Enums.Biome.BiomeType.Rainforest, 85 },
-        { Structures.Enums.Biome.BiomeType.Taiga, 80 },
-        { Structures.Enums.Biome.BiomeType.Grassland, 70 },
-        { Structures.Enums.Biome.BiomeType.Coastal, 60 },
-        { Structures.Enums.Biome.BiomeType.Tundra, 50 },
-        { Structures.Enums.Biome.BiomeType.Desert, 40 },
-        { Structures.Enums.Biome.BiomeType.SandDesert, 35 },
-        { Structures.Enums.Biome.BiomeType.StoneDesert, 30 },
-        { Structures.Enums.Biome.BiomeType.Icecap, 20 },
-        { Structures.Enums.Biome.BiomeType.Ocean, 10 },
-        { Structures.Enums.Biome.BiomeType.Swamp, 75 },
-        { Structures.Enums.Biome.BiomeType.Glacier, 25 },
-        { Structures.Enums.Biome.BiomeType.FrozenPlain, 45 },
-        { Structures.Enums.Biome.BiomeType.RustedPlain, 55 },
-        { Structures.Enums.Biome.BiomeType.RustedMountain, 95 },
-        { Structures.Enums.Biome.BiomeType.RustedDesert, 37 },
-        { Structures.Enums.Biome.BiomeType.ScouredPlain, 65 },
-        { Structures.Enums.Biome.BiomeType.VolcanicPeak, 98 },
-        { Structures.Enums.Biome.BiomeType.ObsidianField, 42 },
-        { Structures.Enums.Biome.BiomeType.AshPlain, 38 },
-        { Structures.Enums.Biome.BiomeType.VolcanicPlain, 32 },
-        { Structures.Enums.Biome.BiomeType.LavaOcean, 8 },
-        { Structures.Enums.Biome.BiomeType.ShallowOcean, 15 },
-        { Structures.Enums.Biome.BiomeType.DeepOcean, 5 },
+        { "biome_mountain", 100 },
+        { "biome_volcanic_peak", 98 },
+        { "biome_rusted_mountain", 95 },
+        { "biome_forest", 90 },
+        { "biome_rainforest", 85 },
+        { "biome_taiga", 80 },
+        { "biome_swamp", 75 },
+        { "biome_grassland", 70 },
+        { "biome_scoured_plain", 65 },
+        { "biome_coastal", 60 },
+        { "biome_rusted_plain", 55 },
+        { "biome_tundra", 50 },
+        { "biome_frozen_plain", 45 },
+        { "biome_obsidian_field", 42 },
+        { "biome_desert", 40 },
+        { "biome_ash_plain", 38 },
+        { "biome_rusted_desert", 37 },
+        { "biome_sand_desert", 35 },
+        { "biome_volcanic_plain", 32 },
+        { "biome_stone_desert", 30 },
+        { "biome_glacier", 25 },
+        { "biome_icecap", 20 },
+        { "biome_shallow_ocean", 15 },
+        { "biome_ocean", 10 },
+        { "biome_lava_ocean", 8 },
+        { "biome_deep_ocean", 5 },
     };
 
     public VoronoiCell(int triangleIndex, Point[] points, Triangle[] triangles, Edge[] edges)
@@ -107,7 +113,7 @@ public partial class VoronoiCell : Resource, IVoronoiCell
         BoundingContinentIndex = new int[] { };
         IsBorderTile = false;
         EdgeBoundaryMap = new Dictionary<Edge, int>();
-        Biome = Structures.Enums.Biome.BiomeType.Grassland;
+        Biome = DefaultBiomeId;
 
         Vector3 center = new Vector3(0, 0, 0);
         foreach (Point p in Points)
@@ -147,22 +153,22 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     }
 
     /// <summary>
-    /// Calculates and sets the dominant biome for this cell based on the biomes of its points.
+    /// Calculates and sets the dominant biome ID for this cell based on the biomes of its points.
     /// Uses majority voting with priority-based tie-breaking.
     /// </summary>
     public void CalculateCellBiome()
     {
         if (Points == null || Points.Length == 0)
         {
-            Biome = Structures.Enums.Biome.BiomeType.Grassland;
+            Biome = DefaultBiomeId;
             return;
         }
 
-        var biomeCounts = new Dictionary<Structures.Enums.Biome.BiomeType, int>();
+        var biomeCounts = new Dictionary<string, int>(StringComparer.Ordinal);
 
         foreach (Point p in Points)
         {
-            var pointBiome = p.Biome;
+            var pointBiome = p.Biome ?? DefaultBiomeId;
             if (!biomeCounts.ContainsKey(pointBiome))
                 biomeCounts[pointBiome] = 0;
             biomeCounts[pointBiome]++;
@@ -170,38 +176,22 @@ public partial class VoronoiCell : Resource, IVoronoiCell
 
         if (biomeCounts.Count == 0)
         {
-            Biome = Structures.Enums.Biome.BiomeType.Grassland;
+            Biome = DefaultBiomeId;
             return;
         }
 
-        // Find the maximum count
         int maxCount = biomeCounts.Values.Max();
-
-        // Get all biomes with the maximum count
         var topBiomes = biomeCounts.Where(kvp => kvp.Value == maxCount).Select(kvp => kvp.Key).ToList();
 
-        if (topBiomes.Count == 1)
-        {
-            // Single majority biome
-            Biome = topBiomes[0];
-        }
-        else
-        {
-            // Tie - use priority order
-            Biome = topBiomes.OrderByDescending(b => BiomePriority.GetValueOrDefault(b, 0)).First();
-        }
+        Biome = topBiomes.Count == 1
+            ? topBiomes[0]
+            : topBiomes.OrderByDescending(b => BiomePriority.GetValueOrDefault(b, 0)).First();
     }
 
     public override string ToString()
     {
         string output = "";
         output += $"VoronoiCell: ({Index}";
-        //foreach(Point p in Points) {
-        //  output += $"{p}, ";
-        //}
-        //foreach(Triangle t in Triangles) {
-        //  output += $"{t}, ";
-        //}
         output += ")";
         output += $"{BoundingBox}, ";
         output += $", {Points.Length}# Points, {Edges.Length}# Edges, {Triangles.Length}# Triangles.";
@@ -232,7 +222,6 @@ public partial class VoronoiCell : Resource, IVoronoiCell
 
         foreach (var triangle in Triangles)
         {
-            // Get the three vertices of this triangle
             if (triangle.Points == null || triangle.Points.Count < 3)
                 continue;
 
@@ -240,18 +229,13 @@ public partial class VoronoiCell : Resource, IVoronoiCell
             Vector3 p1 = triangle.Points[1].Position;
             Vector3 p2 = triangle.Points[2].Position;
 
-            // Calculate triangle surface normal
             Vector3 edge1 = p1 - p0;
             Vector3 edge2 = p2 - p0;
             Vector3 normal = edge1.Cross(edge2).Normalized();
 
-            // Calculate radial vector (from assumed planet center at origin to triangle centroid)
             Vector3 centroid = (p0 + p1 + p2) / 3f;
             Vector3 radial = centroid.Normalized();
 
-            // Calculate angle between normal and radial vector
-            // Flat terrain = normal parallel to radial (0° slope)
-            // Vertical cliff = normal perpendicular to radial (90° slope)
             float dot = Mathf.Abs(normal.Dot(radial));
             float angleRad = Mathf.Acos(Mathf.Clamp(dot, -1f, 1f));
             float angleDeg = Mathf.RadToDeg(angleRad);

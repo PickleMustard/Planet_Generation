@@ -72,22 +72,18 @@ public class RockyPlanetTextureGenerator : ITextureGenerator
                 float u = x / (float)resolution;
                 float v = y / (float)resolution;
 
-                // Convert to spherical coordinates
                 float lon = u * 2.0f * Mathf.Pi - Mathf.Pi;
                 float lat = v * Mathf.Pi - Mathf.Pi / 2.0f;
 
-                // Direction vector on unit sphere
                 Vector3 dir = new Vector3(
                     Mathf.Cos(lat) * Mathf.Cos(lon),
                     Mathf.Sin(lat),
                     Mathf.Cos(lat) * Mathf.Sin(lon)
                 );
 
-                // Sample height and biome color
                 float heightNoise = _surfaceNoise.GetNoise3Dv(dir * 5.0f);
                 Color baseColor = SampleBiomeColor(lat, heightNoise);
 
-                // Apply surface variation/turbulence
                 float turbulence = _turbulenceNoise.GetNoise3Dv(dir * 30.0f);
                 baseColor = baseColor.Darkened(turbulence * 0.1f);
 
@@ -100,26 +96,22 @@ public class RockyPlanetTextureGenerator : ITextureGenerator
 
     private Color SampleBiomeColor(float latitude, float height)
     {
-        // Ice caps at poles
         if (Mathf.Abs(latitude) > 0.8f)
-            return _colorMapper.GetBiomeColor(Biome.BiomeType.Icecap, height);
+            return _colorMapper.GetBiomeColor("biome_icecap", height);
 
-        // Mountains at high elevation
         if (height > 0.4f)
-            return _colorMapper.GetBiomeColor(Biome.BiomeType.Mountain, height);
+            return _colorMapper.GetBiomeColor("biome_mountain", height);
 
-        // Ocean at low elevation
         if (height < -0.2f)
-            return _colorMapper.GetBiomeColor(Biome.BiomeType.Ocean, height);
+            return _colorMapper.GetBiomeColor("biome_ocean", height);
 
-        // Default to grassland/forest/taiga based on latitude
-        var biome = Mathf.Abs(latitude) switch
+        string biomeId = Mathf.Abs(latitude) switch
         {
-            < 0.3f => Biome.BiomeType.Grassland,
-            < 0.6f => Biome.BiomeType.Forest,
-            _ => Biome.BiomeType.Taiga,
+            < 0.3f => "biome_grassland",
+            < 0.6f => "biome_forest",
+            _ => "biome_taiga",
         };
 
-        return _colorMapper.GetBiomeColor(biome, height);
+        return _colorMapper.GetBiomeColor(biomeId, height);
     }
 }

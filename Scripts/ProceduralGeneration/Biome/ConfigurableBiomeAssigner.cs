@@ -1,7 +1,6 @@
 using System;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
-using Structures.Enums;
 using Structures.GameState;
 
 namespace ProceduralGeneration.BiomeSystem;
@@ -9,23 +8,23 @@ namespace ProceduralGeneration.BiomeSystem;
 /// <summary>
 /// Data-driven biome assigner. Evaluates a list of rules in declared order; first match wins.
 /// Moisture is computed either via the Whittaker-style formula or as a uniform random draw,
-/// depending on the configured MoistureMode.
+/// depending on the configured MoistureMode. Rules reference biomes by stable ID.
 /// </summary>
 public class ConfigurableBiomeAssigner : IBiomeAssigner
 {
     private readonly BiomeAssignerEntry _entry;
-    private readonly Biome.BiomeType _fallbackBiome;
+    private readonly string _fallbackBiomeId;
 
     public ConfigurableBiomeAssigner(BiomeAssignerEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
         _entry = entry;
-        _fallbackBiome = _entry.Rules.Count > 0
+        _fallbackBiomeId = _entry.Rules.Count > 0
             ? _entry.Rules[^1].Biome
-            : Biome.BiomeType.Grassland;
+            : VoronoiCell.DefaultBiomeId;
     }
 
-    public Biome.BiomeType AssignBiome(
+    public string AssignBiome(
         UnifiedCelestialMesh generator, float height, float moisture, float latitude = 0f)
     {
         float normalizedHeight = height / generator.maxHeight;
@@ -44,7 +43,7 @@ public class ConfigurableBiomeAssigner : IBiomeAssigner
             return rule.Biome;
         }
 
-        return _fallbackBiome;
+        return _fallbackBiomeId;
     }
 
     public float CalculateMoisture(Continent continent, RandomNumberGenerator rng, float baseMoisture = 0.5f)
