@@ -122,17 +122,19 @@ public static class BiomeAssignerConfigLoader
             if (item is not Dictionary<object, object> ruleDict) continue;
 
             string biomeName = ReadString(ruleDict, "biome", "");
-            // Biome refs may be enum name ("Mountain") or stable ID ("biome_mountain"). Normalize.
-            Biome.BiomeType? biomeType = biomeName.StartsWith("biome_")
-                ? BiomeIdMapper.IdToBiomeType(biomeName)
-                : (Enum.TryParse<Biome.BiomeType>(biomeName, ignoreCase: true, out var v) ? v : null);
-            if (biomeType == null)
+            // Biome refs may be enum name ("Mountain") or stable ID ("biome_mountain"). Normalize to ID.
+            string? biomeId = biomeName.StartsWith("biome_")
+                ? biomeName
+                : (Enum.TryParse<Biome.BiomeType>(biomeName, ignoreCase: true, out var v)
+                    ? BiomeIdMapper.BiomeTypeToId(v)
+                    : null);
+            if (string.IsNullOrEmpty(biomeId))
             {
                 GameLogger.Warning($"BiomeAssignerConfigLoader: '{subtypeName}' has unknown biome '{biomeName}'");
                 continue;
             }
 
-            var rule = new BiomeRule { Biome = biomeType.Value };
+            var rule = new BiomeRule { Biome = biomeId };
             if (ruleDict.TryGetValue("when", out var whenObj) && whenObj is Dictionary<object, object> w)
             {
                 rule.When = ParseConditions(w);

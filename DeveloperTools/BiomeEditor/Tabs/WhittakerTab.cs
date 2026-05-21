@@ -121,7 +121,7 @@ public partial class WhittakerTab : Control
         float maxM = entry.Moisture.MaxMoisture > 0.01f ? entry.Moisture.MaxMoisture : 1f;
 
         var image = Image.CreateEmpty(GridSize, GridSize, false, Image.Format.Rgb8);
-        var biomesSeen = new HashSet<Biome.BiomeType>();
+        var biomesSeen = new HashSet<string>();
 
         for (int x = 0; x < GridSize; x++)
         {
@@ -139,7 +139,7 @@ public partial class WhittakerTab : Control
         RebuildLegend(subtype, biomesSeen);
     }
 
-    private void RebuildLegend(RockyPlanetSubtype subtype, HashSet<Biome.BiomeType> biomes)
+    private void RebuildLegend(RockyPlanetSubtype subtype, HashSet<string> biomes)
     {
         foreach (var c in _legend.GetChildren()) c.QueueFree();
         var header = new Label { Text = "Legend" };
@@ -149,13 +149,13 @@ public partial class WhittakerTab : Control
         var atm = _model!.AtmosphereTemplates.TryGetValue("RockyPlanet", out var t)
             ? (t.AtmosphereMin, t.AtmosphereMax) : (0f, 1f);
 
-        foreach (var biome in biomes.OrderBy(b => b.ToString(), StringComparer.Ordinal))
+        foreach (var biomeId in biomes.OrderBy(b => b, StringComparer.Ordinal))
         {
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            var swatch = new ColorRect { Color = BiomeColor(biome), CustomMinimumSize = new Vector2(16, 16) };
+            var swatch = new ColorRect { Color = BiomeColor(biomeId), CustomMinimumSize = new Vector2(16, 16) };
             row.AddChild(swatch);
-            row.AddChild(new Label { Text = biome.ToString(), SizeFlagsHorizontal = SizeFlags.ExpandFill });
-            float hz = HazardCalculator.Compute(subtype, atm.Item1, atm.Item2, biome);
+            row.AddChild(new Label { Text = biomeId, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            float hz = HazardCalculator.Compute(subtype, atm.Item1, atm.Item2, biomeId);
             var hzLabel = new Label { Text = $"hz {hz:0.0}" };
             hzLabel.AddThemeColorOverride("font_color", new Color(1f, 0.6f, 0.6f));
             row.AddChild(hzLabel);
@@ -163,7 +163,7 @@ public partial class WhittakerTab : Control
         }
     }
 
-    public static Biome.BiomeType EvaluateRules(List<BiomeRule> rules, float h, float m, float lat)
+    public static string EvaluateRules(List<BiomeRule> rules, float h, float m, float lat)
     {
         float absLat = Mathf.Abs(lat);
         foreach (var rule in rules)
@@ -177,14 +177,14 @@ public partial class WhittakerTab : Control
             if (w.AbsLatitudeBelow.HasValue && absLat > w.AbsLatitudeBelow.Value) continue;
             return rule.Biome;
         }
-        return rules.Count > 0 ? rules[^1].Biome : Biome.BiomeType.Grassland;
+        return rules.Count > 0 ? rules[^1].Biome : "biome_grassland";
     }
 
-    private static Color BiomeColor(Biome.BiomeType biome)
+    private static Color BiomeColor(string biomeId)
     {
-        // Stable hashed palette: convert enum index to HSV → RGB.
-        int idx = (int)biome;
-        float hue = (idx * 0.137508f) % 1f;
+        // Stable hashed palette from biome ID string.
+        int hash = biomeId.GetHashCode();
+        float hue = (Mathf.Abs(hash) % 360) / 360f;
         return Color.FromHsv(hue, 0.65f, 0.85f);
     }
 }

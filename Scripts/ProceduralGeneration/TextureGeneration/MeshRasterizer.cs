@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration.ColorSystem;
-using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
 

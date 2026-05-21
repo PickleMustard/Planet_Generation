@@ -145,8 +145,9 @@ public class BiomeAssignerConfigTest
         var actual = assigner.AssignBiome(mesh, height, moisture, latitude);
         mesh.QueueFree();
 
+        string expectedId = BiomeIdMapper.BiomeTypeToId(expected);
         AssertThat(actual)
-            .OverrideFailureMessage($"{subtype}(h={height}, m={moisture}, lat={latitude}) expected {expected}, got {actual}")
-            .IsEqual(expected);
+            .OverrideFailureMessage($"{subtype}(h={height}, m={moisture}, lat={latitude}) expected {expectedId}, got {actual}")
+            .IsEqual(expectedId);
     }
 }

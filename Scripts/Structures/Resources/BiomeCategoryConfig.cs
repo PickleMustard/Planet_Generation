@@ -2,27 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 
 namespace Structures.Resources;
 
 /// <summary>
 /// Configuration class for biome categories.
-/// Maps category names (e.g., "mountain", "arable") to sets of biome types.
+/// Maps category names (e.g., "mountain", "arable") to sets of biome IDs.
 /// Used for building placement requirements to allow specifying groups of biomes
-/// instead of individual biome types.
+/// instead of individual biome IDs.
 /// </summary>
 public class BiomeCategoryConfig
 {
-    /// <summary>
-    /// Dictionary mapping category IDs to their entries.
-    /// </summary>
     public Dictionary<string, BiomeCategoryEntry> Categories { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Validates the entire configuration.
-    /// </summary>
-    /// <returns>True if configuration is valid, false otherwise</returns>
     public bool Validate()
     {
         bool isValid = true;
@@ -52,108 +47,63 @@ public class BiomeCategoryConfig
         return isValid;
     }
 
-    /// <summary>
-    /// Gets all biome types for a specific category.
-    /// </summary>
-    /// <param name="categoryId">The category ID (case-insensitive)</param>
-    /// <returns>Set of biome types in the category, or null if category not found</returns>
-    public HashSet<Biome.BiomeType>? GetBiomesForCategory(string categoryId)
+    public HashSet<string>? GetBiomesForCategory(string categoryId)
     {
         if (Categories.TryGetValue(categoryId, out var entry))
-        {
             return entry.Biomes;
-        }
         return null;
     }
 
-    /// <summary>
-    /// Checks if a category exists.
-    /// </summary>
-    /// <param name="categoryId">The category ID (case-insensitive)</param>
-    /// <returns>True if the category exists</returns>
-    public bool HasCategory(string categoryId)
-    {
-        return Categories.ContainsKey(categoryId);
-    }
+    public bool HasCategory(string categoryId) => Categories.ContainsKey(categoryId);
 
-    /// <summary>
-    /// Gets all categories that contain a specific biome type.
-    /// </summary>
-    /// <param name="biomeType">The biome type to search for</param>
-    /// <returns>List of category IDs containing the biome</returns>
-    public List<string> GetCategoriesForBiome(Biome.BiomeType biomeType)
+    public List<string> GetCategoriesForBiome(string biomeId)
     {
         var categories = new List<string>();
-
         foreach (var kvp in Categories)
-        {
-            if (kvp.Value?.ContainsBiome(biomeType) ?? false)
-            {
+            if (kvp.Value?.ContainsBiome(biomeId) ?? false)
                 categories.Add(kvp.Key);
-            }
-        }
-
         return categories;
     }
 
     /// <summary>
-    /// Resolves a list of biome entries (which can be individual biome names or category: prefixes)
-    /// to a unique set of BiomeType values.
+    /// Resolves a list of biome entries (individual biome names/IDs or category:prefixes)
+    /// to a set of stable biome IDs.
     /// </summary>
-    /// <param name="entries">List of entries (e.g., "Grassland", "category:mountain")</param>
-    /// <param name="wildcardPresent">Output parameter indicating if wildcard "*" was found</param>
-    /// <returns>Set of resolved biome types (empty if wildcard is present)</returns>
-    public HashSet<Biome.BiomeType> ResolveBiomeEntries(
+    public HashSet<string> ResolveBiomeEntries(
         IEnumerable<string> entries,
-        out bool wildcardPresent
-    )
+        out bool wildcardPresent)
     {
-        var result = new HashSet<Biome.BiomeType>();
+        var result = new HashSet<string>(StringComparer.Ordinal);
         wildcardPresent = false;
 
         foreach (var entry in entries)
         {
             string trimmed = entry?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(trimmed)) continue;
 
-            if (string.IsNullOrEmpty(trimmed))
-                continue;
-
-            // Check for wildcard
             if (trimmed == "*")
             {
                 wildcardPresent = true;
-                return new HashSet<Biome.BiomeType>(); // Return empty set for wildcard
+                return new HashSet<string>();
             }
 
-            // Check for category prefix
             if (trimmed.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
             {
-                string categoryId = trimmed.Substring(9).Trim(); // Remove "category:" prefix
-
+                string categoryId = trimmed.Substring(9).Trim();
                 var categoryBiomes = GetBiomesForCategory(categoryId);
                 if (categoryBiomes != null)
-                {
-                    foreach (var biome in categoryBiomes)
-                    {
-                        result.Add(biome);
-                    }
-                }
+                    foreach (var biomeId in categoryBiomes)
+                        result.Add(biomeId);
                 else
-                {
                     GD.PrintErr($"BiomeCategoryConfig: Unknown category '{categoryId}'");
-                }
+            }
+            else if (TryNormalizeBiomeId(trimmed, out var biomeId))
+            {
+                result.Add(biomeId);
             }
             else
             {
-                // Parse as individual biome name
-                if (TryParseBiomeType(trimmed, out var biomeType))
-                {
-                    result.Add(biomeType);
-                }
-                else
-                {
-                    GD.PrintErr($"BiomeCategoryConfig: Unknown biome type '{trimmed}'");
-                }
+                GD.PrintErr($"BiomeCategoryConfig: Unknown biome '{trimmed}'");
             }
         }
 
@@ -161,37 +111,40 @@ public class BiomeCategoryConfig
     }
 
     /// <summary>
-    /// Gets all biome types defined in the BiomeType enum.
-    /// Used when wildcard "*" is specified.
+    /// Returns every registered biome ID (from <see cref="BiomeDatabase"/> if loaded;
+    /// otherwise enumerates the legacy enum). Used for wildcard "*" expansion.
     /// </summary>
-    /// <returns>Set of all biome types</returns>
-    public static HashSet<Biome.BiomeType> GetAllBiomes()
+    public static HashSet<string> GetAllBiomes()
     {
-        return Enum.GetValues<Biome.BiomeType>().ToHashSet();
+        if (BiomeDatabase.Instance.IsLoaded)
+            return BiomeDatabase.Instance.All.Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
+        return Enum.GetValues<Biome.BiomeType>()
+            .Select(BiomeIdMapper.BiomeTypeToId)
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     /// <summary>
-    /// Tries to parse a biome name string to a BiomeType enum value.
-    /// Handles various formats (e.g., "Grassland", "grassland", "GrassLand").
+    /// Accepts either a stable ID (<c>biome_grassland</c>) or a legacy enum name
+    /// (<c>Grassland</c>, <c>grass land</c>) and returns the stable ID.
     /// </summary>
-    /// <param name="name">The biome name to parse</param>
-    /// <param name="biomeType">Output biome type if successful</param>
-    /// <returns>True if parsing succeeded</returns>
-    public static bool TryParseBiomeType(string name, out Biome.BiomeType biomeType)
+    public static bool TryNormalizeBiomeId(string name, out string biomeId)
     {
-        biomeType = Biome.BiomeType.Tundra;
+        biomeId = string.Empty;
+        if (string.IsNullOrWhiteSpace(name)) return false;
 
-        if (string.IsNullOrWhiteSpace(name))
-            return false;
-
-        string normalized = name.Replace("_", "").Replace(" ", "").Trim();
-
-        foreach (Biome.BiomeType type in Enum.GetValues(typeof(Biome.BiomeType)))
+        string trimmed = name.Trim();
+        if (trimmed.StartsWith("biome_"))
         {
-            string enumName = type.ToString().Replace("_", "");
-            if (string.Equals(normalized, enumName, StringComparison.OrdinalIgnoreCase))
+            biomeId = trimmed;
+            return true;
+        }
+
+        string normalized = trimmed.Replace("_", "").Replace(" ", "");
+        foreach (var type in Enum.GetValues<Biome.BiomeType>())
+        {
+            if (string.Equals(normalized, type.ToString(), StringComparison.OrdinalIgnoreCase))
             {
-                biomeType = type;
+                biomeId = BiomeIdMapper.BiomeTypeToId(type);
                 return true;
             }
         }

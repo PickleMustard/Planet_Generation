@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using Structures.Enums;
 
 namespace Structures.MeshGeneration;
 
@@ -54,7 +53,7 @@ public partial class Point : Resource, IEquatable<Point>
     }
     public bool isOnContinentBorder { get; set; }
     public float Radius { get; set; }
-    public Biome.BiomeType Biome { get; set; }
+    public string Biome { get; set; } = "biome_grassland";
 
     private static int QuantizeKey(float x, float y, float z)
     {

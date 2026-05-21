@@ -144,10 +144,15 @@ public partial class BiomeAssignerCard : PanelContainer
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 
             var biomeOpt = new OptionButton();
-            foreach (var biome in Enum.GetNames<Biome.BiomeType>())
-                biomeOpt.AddItem(biome);
-            biomeOpt.Selected = (int)rule.Biome;
-            biomeOpt.ItemSelected += idx => MutateRule(capturedIndex, r => r.Biome = (Biome.BiomeType)idx);
+            var biomeNames = Enum.GetNames<Biome.BiomeType>();
+            var biomeIds = biomeNames.Select(n =>
+                ProceduralGeneration.ColorSystem.BiomeIdMapper.BiomeTypeToId(
+                    (Biome.BiomeType)Enum.Parse(typeof(Biome.BiomeType), n))).ToArray();
+            for (int b = 0; b < biomeNames.Length; b++)
+                biomeOpt.AddItem(biomeNames[b]);
+            int currentIdx = Array.IndexOf(biomeIds, rule.Biome);
+            biomeOpt.Selected = currentIdx >= 0 ? currentIdx : 0;
+            biomeOpt.ItemSelected += idx => MutateRule(capturedIndex, r => r.Biome = biomeIds[idx]);
             row.AddChild(biomeOpt);
 
             AddCondFloatEdit(row, "h≥", rule.When.HeightAbove, v => MutateRule(capturedIndex, r => r.When.HeightAbove = v));
@@ -237,7 +242,7 @@ public partial class BiomeAssignerCard : PanelContainer
 
     private void OnAddRule()
     {
-        _model.AddAssignerRule(_subtype, new BiomeRule { Biome = Biome.BiomeType.Grassland });
+        _model.AddAssignerRule(_subtype, new BiomeRule { Biome = "biome_grassland" });
     }
 
     private void UpdateHazardLabel()

@@ -577,9 +577,9 @@ public static class ResourceConfigLoader
                 {
                     if (biomeObj is string biomeName)
                     {
-                        if (TryParseBiomeType(biomeName, out var biomeType))
+                        if (BiomeCategoryConfig.TryNormalizeBiomeId(biomeName, out var biomeId))
                         {
-                            entry.Biomes.Add(biomeType);
+                            entry.Biomes.Add(biomeId);
                         }
                         else
                         {
@@ -593,27 +593,6 @@ public static class ResourceConfigLoader
         return entry;
     }
 
-    private static bool TryParseBiomeType(string name, out Biome.BiomeType biomeType)
-    {
-        biomeType = Biome.BiomeType.Tundra;
-
-        if (string.IsNullOrWhiteSpace(name))
-            return false;
-
-        string normalized = name.Replace("_", "").Replace(" ", "").Trim();
-
-        foreach (Biome.BiomeType type in Enum.GetValues(typeof(Biome.BiomeType)))
-        {
-            string enumName = type.ToString().Replace("_", "");
-            if (string.Equals(normalized, enumName, StringComparison.OrdinalIgnoreCase))
-            {
-                biomeType = type;
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     /// <summary>
     /// Loads resource groups from the standard configuration file.

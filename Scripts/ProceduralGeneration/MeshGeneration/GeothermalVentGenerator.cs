@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration.BiomeSystem;
-using ProceduralGeneration.ColorSystem;
-using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
 using UtilityLibrary;
@@ -96,9 +94,9 @@ public static class GeothermalVentGenerator
         return baseProb + boundaryMod;
     }
 
-    private static float BaseFromBiome(Biome.BiomeType biome)
+    private static float BaseFromBiome(string biomeId)
     {
-        var def = BiomeDatabase.Instance.GetById(BiomeIdMapper.BiomeTypeToId(biome));
+        var def = BiomeDatabase.Instance.GetById(biomeId);
         return def?.GeothermalVentProbability ?? DEFAULT_BASE;
     }
 

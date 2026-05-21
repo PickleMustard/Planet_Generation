@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Structures;
-using Structures.Enums;
 using Structures.GameState;
 using Structures.Resources;
 using UtilityLibrary;
@@ -260,12 +259,12 @@ public static class CellResourceGenerator
     /// </summary>
     private static float ComputeResourceScore(
         string resourceId,
-        Biome.BiomeType biome,
+        string biomeId,
         BiomeResourceConfig biomeResourceConfig,
         float baseResourceWeight
     )
     {
-        float modifier = biomeResourceConfig.GetWeightModifier(biome, resourceId);
+        float modifier = biomeResourceConfig.GetWeightModifier(biomeId, resourceId);
         return baseResourceWeight * modifier;
     }
 

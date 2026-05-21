@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Structures.Enums;
 
 namespace ProceduralGeneration.BiomeSystem;
 
@@ -39,7 +38,10 @@ public class BiomeRuleConditions
 
 public class BiomeRule
 {
-    public Biome.BiomeType Biome { get; set; }
+    /// <summary>
+    /// Stable biome ID this rule assigns (e.g. <c>biome_forest</c>).
+    /// </summary>
+    public string Biome { get; set; } = "biome_grassland";
     public BiomeRuleConditions When { get; set; } = new();
 }
 

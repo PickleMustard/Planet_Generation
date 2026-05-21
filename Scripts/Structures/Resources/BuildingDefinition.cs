@@ -173,7 +173,7 @@ public partial class BuildingDefinition : Resource
 
     public partial class PlacementRequirements : Resource
     {
-        public Godot.Collections.Array<Biome.BiomeType> Biomes { get; set; } = new();
+        public Godot.Collections.Array<string> Biomes { get; set; } = new();
         public bool AllowAnyBiome { get; set; } = false;
         public float MinElevation { get; set; } = 0.0f;
         public float MaxElevation { get; set; } = 1.0f;

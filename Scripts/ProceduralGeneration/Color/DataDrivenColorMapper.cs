@@ -1,6 +1,5 @@
 using Godot;
 using ProceduralGeneration.BiomeSystem;
-using Structures.Enums;
 using UtilityLibrary;
 
 namespace ProceduralGeneration.ColorSystem;
@@ -19,16 +18,18 @@ public sealed class DataDrivenColorMapper : IColorMapper
     /// <summary>
     /// <paramref name="subtypeId"/> is the stable subtype ID (e.g. <c>subtype_rocky_temperate</c>).
     /// Pass an empty string to bypass overrides and always return the biome's default color
-    /// — that's the new fallback equivalent of the old <c>DefaultColorMapper</c>.
+    /// — the new fallback equivalent of the old <c>DefaultColorMapper</c>.
     /// </summary>
     public DataDrivenColorMapper(string subtypeId = "")
     {
         _subtypeId = subtypeId ?? string.Empty;
     }
 
-    public Color GetBiomeColor(Biome.BiomeType biome, float height)
+    public Color GetBiomeColor(string biomeId, float height)
     {
-        string biomeId = BiomeIdMapper.BiomeTypeToId(biome);
+        if (string.IsNullOrEmpty(biomeId))
+            return Colors.Gray;
+
         var def = BiomeDatabase.Instance.GetById(biomeId);
         if (def == null)
         {

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using Structures.Enums;
 using Structures.GameState;
 using Structures.Resources;
 
@@ -384,30 +383,22 @@ public static class ContinentResourceGenerator
         if (continent.cells == null || continent.cells.Count == 0)
             return affinities;
 
-        var biomeCounts = new Dictionary<Biome.BiomeType, int>();
+        var biomeCounts = new Dictionary<string, int>();
 
         foreach (var cell in continent.cells)
         {
-            var biome = GetCellBiome(cell, mesh);
-            if (!biomeCounts.ContainsKey(biome))
-                biomeCounts[biome] = 0;
-            biomeCounts[biome]++;
+            var biomeId = cell.Biome;
+            if (!biomeCounts.ContainsKey(biomeId))
+                biomeCounts[biomeId] = 0;
+            biomeCounts[biomeId]++;
         }
 
         foreach (var kvp in biomeCounts)
         {
-            affinities[kvp.Key.ToString()] = (float)kvp.Value / continent.cells.Count;
+            affinities[kvp.Key] = (float)kvp.Value / continent.cells.Count;
         }
 
         return affinities;
-    }
-
-    private static Biome.BiomeType GetCellBiome(VoronoiCell cell, UnifiedCelestialMesh mesh)
-    {
-        // Use the cell's stored biome if available
-        // The cell's Biome property should be set during the AssignBiomes phase
-        // We'll assume it's been calculated (even if mesh is null, cell might have biome)
-        return cell.Biome;
     }
 
     private static float GetElevationWeight(
@@ -436,30 +427,7 @@ public static class ContinentResourceGenerator
         Dictionary<string, float> biomeAffinities
     )
     {
-        if (!ResourceDatabase.Instance.TryGetResource(resourceId, out var resourceDef))
-            return 1.0f;
-
-        //if (resourceDef!.BiomeAffinity == null || resourceDef.BiomeAffinity.Count == 0)
-        //    return 1.0f;
-
-        float totalWeight = 0f;
-        float totalAffinity = 0f;
-
-        foreach (var biomeKvp in biomeAffinities)
-        {
-            if (TryParseBiomeType(biomeKvp.Key, out Biome.BiomeType biomeType))
-            {
-                //if (resourceDef.BiomeAffinity.TryGetValue(biomeType, out float affinity))
-                //{
-                //    totalWeight += affinity * biomeKvp.Value;
-                //    totalAffinity += biomeKvp.Value;
-                //}
-            }
-        }
-
-        if (totalAffinity > 0)
-            return totalWeight / totalAffinity;
-
+        // Biome affinity on ResourceDefinition has been disabled; keep neutral weight.
         return 1.0f;
     }
 
@@ -529,27 +497,6 @@ public static class ContinentResourceGenerator
         return values[^1];
     }
 
-    private static bool TryParseBiomeType(string name, out Biome.BiomeType biomeType)
-    {
-        biomeType = Biome.BiomeType.Tundra;
-
-        if (string.IsNullOrWhiteSpace(name))
-            return false;
-
-        string normalized = name.Replace("_", "").Replace(" ", "").Trim();
-
-        foreach (Biome.BiomeType type in Enum.GetValues(typeof(Biome.BiomeType)))
-        {
-            string enumName = type.ToString().Replace("_", "");
-            if (string.Equals(normalized, enumName, StringComparison.OrdinalIgnoreCase))
-            {
-                biomeType = type;
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     private static float GetFloat(Godot.Collections.Dictionary dict, string key, float fallback)
     {
