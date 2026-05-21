@@ -13,3 +13,6 @@
 
 # Temporary directory
 /temp/
+
+# External resources (not committed)
+**/external/

@@ -18,6 +18,16 @@ namespace Constructables.Tick;
 /// Threading model: a single dedicated worker thread ticks all registered tickables
 /// sequentially. Register/Unregister enqueue ops onto a thread-safe queue; ops are
 /// drained atomically at the start of each tick before any tickable runs.
+///
+/// IMPORTANT — SceneTree thread-safety: any code reachable from
+/// <see cref="IManufactureTickable.OnManufactureTick"/> MUST emit signals via
+/// <c>SignalBus.SafeEmit*</c> (for bus signals) or
+/// <c>UtilityLibrary.SignalMarshal.EmitNode</c> (for per-Node signals). Direct
+/// <c>EmitSignal</c> / <c>SignalBus.EmitX</c> from a tickable will crash Godot. SceneTree
+/// mutation (AddChild / RemoveChild / QueueFree / Reparent) must be marshaled with
+/// <c>CallDeferredThreadGroup("add_child", ...)</c> or wrapped in
+/// <c>Callable.From(() => ...).CallDeferred()</c>. New tick-reachable signals must ship
+/// with a <c>SafeEmit*</c> companion in <c>SignalBus</c>.
 /// </summary>
 public sealed class ManufactureTickEngine
 {

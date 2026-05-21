@@ -24,18 +24,20 @@ public static class RecipeConfigLoader
         var validation = YamlValidator.ValidateRecipeDefinition(filePath);
         if (!validation.IsValid)
         {
-            GD.PrintErr($"YAML validation failed for {filePath}");
+            // Surface validation issues (empty keys, missing fields, etc.) but still
+            // try to load — the editor needs to display malformed entries so the user
+            // can fix them. Hard parse failures will be caught by the try/catch below.
+            GD.PrintErr($"YAML validation issues in {filePath}");
             foreach (var error in validation.Errors)
             {
                 GD.PrintErr($"  - {error}");
             }
-            return definitions;
         }
 
         try
         {
             using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = RecipeYamlPreprocessor.Preprocess(f.GetAsText()).Text;
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -82,6 +84,7 @@ public static class RecipeConfigLoader
             WorkRequired = ReadFloat(dict, "work_required", 10.0f),
             InputResources = ParseResourceList(dict, "input_resources"),
             OutputResources = ParseResourceList(dict, "output_resources"),
+            Tags = ReadTags(dict, "tags"),
             Icon = ParseIconDefinition(dict, $"recipe:{recipeId}"),
         };
 
@@ -180,6 +183,25 @@ public static class RecipeConfigLoader
         }
 
         return icon;
+    }
+
+    private static HashSet<string> ReadTags(Dictionary<object, object> dict, string key)
+    {
+        var tags = new HashSet<string>();
+
+        if (!dict.ContainsKey(key) || dict[key] is not List<object> tagList)
+            return tags;
+
+        foreach (var tagObj in tagList)
+        {
+            string? tag = tagObj?.ToString();
+            if (!string.IsNullOrWhiteSpace(tag))
+            {
+                tags.Add(tag);
+            }
+        }
+
+        return tags;
     }
 
     private static Color ReadColor(Dictionary<object, object> dict, string key, Color fallback)

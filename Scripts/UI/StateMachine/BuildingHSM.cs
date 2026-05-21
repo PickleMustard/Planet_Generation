@@ -11,6 +11,7 @@ namespace UI.StateMachine;
 public partial class BuildingHSM : LimboHsm
 {
     private LimboState? _buildingDetails;
+    private LimboState? _transferPlanning;
 
     [Export]
     public LimboState? BuildingDetails
@@ -19,9 +20,18 @@ public partial class BuildingHSM : LimboHsm
         set => _buildingDetails = value;
     }
 
+    [Export]
+    public LimboState? TransferPlanning
+    {
+        get => _transferPlanning;
+        set => _transferPlanning = value;
+    }
+
     public override void _Ready()
     {
         base._Ready();
+        AddTransition(_buildingDetails, _transferPlanning, "transfer_opened");
+        AddTransition(_transferPlanning, _buildingDetails, "transfer_closed");
         InitialState = _buildingDetails;
         GameLogger.Info("BuildingHSM initialized");
     }
@@ -30,6 +40,7 @@ public partial class BuildingHSM : LimboHsm
     {
         base._Enter();
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
+        WorldInputController.Instance?.PushDisable();
     }
 
     public override void _Exit()
@@ -37,6 +48,7 @@ public partial class BuildingHSM : LimboHsm
         base._Exit();
 
         Blackboard.Top()?.SetVar("SelectedBuilding", default(Variant));
-        Blackboard.Top()?.SetVar("BuildingReturnTo", default(Variant));
+
+        WorldInputController.Instance?.PopDisable();
     }
 }

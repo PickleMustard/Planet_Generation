@@ -2,8 +2,6 @@ using Constructables;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
-using UI.CellView;
-using UI.BuildingInfo;
 using UtilityLibrary;
 
 namespace UI.CellInfo;
@@ -17,32 +15,26 @@ public partial class VoronoiCellInfoWindow : Control
     public static VoronoiCellInfoWindow? Instance { get; private set; }
 
     [Export] private Control? _blockInput;
-    [Export] private PanelContainer? _panelContainer;
-    [Export] private TextureButton? _closeButton;
-    [Export] private Button? _continentViewButton;
+    [Export] private Button? _closeButton;
+    [Export] private Button? _backButton;
+    [Export] private Label? _headerLabel;
 
-    [Export] private CellViewPanel? _cellViewPanel;
     [Export] private CellGeneralInfoPanel? _cellGeneralInfoPanel;
     [Export] private CellResourcePanel? _cellResourcePanel;
-    [Export] private BuildingInfoPanel? _buildingInfoPanel;
-    [Export] private Button? _openBuildingDetailsButton;
+    [Export] private BuildingSummaryWidget? _buildingSummary;
 
-    [Export] private Label? _noBuildingLabel; // Shown when cell has no building
+    [Export] private Button? _openBuildingButton;
+    [Export] private Button? _openOrbitalBodyButton;
 
     private VoronoiCell? _currentCell;
     private Node3D? _currentBody;
-    private Continent? _currentContinent;
 
     public bool WindowIsVisible => Visible;
 
-    [Signal]
-    public delegate void WindowCloseRequestedEventHandler();
-
-    [Signal]
-    public delegate void ContinentViewRequestedEventHandler();
-
-    [Signal]
-    public delegate void BuildingDetailsRequestedEventHandler(Building building);
+    [Signal] public delegate void WindowCloseRequestedEventHandler();
+    [Signal] public delegate void BackRequestedEventHandler();
+    [Signal] public delegate void BuildingDetailsRequestedEventHandler(Building building);
+    [Signal] public delegate void OrbitalBodyViewRequestedEventHandler();
 
     public override void _EnterTree()
     {
@@ -57,78 +49,48 @@ public partial class VoronoiCellInfoWindow : Control
 
     public override void _Ready()
     {
-        // Initial state: hidden
         Hide();
 
-        // Connect signals
-        if (_closeButton != null)
-            _closeButton.Pressed += OnClosePressed;
+        if (_closeButton != null) _closeButton.Pressed += OnClosePressed;
+        if (_backButton != null) _backButton.Pressed += OnBackPressed;
+        if (_openBuildingButton != null) _openBuildingButton.Pressed += OnOpenBuildingPressed;
+        if (_openOrbitalBodyButton != null) _openOrbitalBodyButton.Pressed += OnOpenOrbitalBodyPressed;
 
-        if (_continentViewButton != null)
-            _continentViewButton.Pressed += OnContinentViewPressed;
-
-        if (_openBuildingDetailsButton != null)
-            _openBuildingDetailsButton.Pressed += OnOpenBuildingDetailsPressed;
-
-        // Block input backdrop
         if (_blockInput != null)
-        {
             _blockInput.GuiInput += OnBackdropInput;
-        }
 
         GameLogger.Info("VoronoiCellInfoWindow initialized");
     }
 
-    /// <summary>
-    /// Shows the window and populates it with cell data.
-    /// </summary>
-    public void ShowWindow(VoronoiCell cell, Node3D body, Continent? continent)
+    public void ShowWindow(VoronoiCell cell, Node3D body)
     {
         _currentCell = cell;
         _currentBody = body;
-        _currentContinent = continent;
 
-        // Show the window
         Show();
-
-        // Capture mouse for UI interaction
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
 
-        // Populate panels
         PopulatePanels();
 
         GameLogger.Info($"VoronoiCellInfoWindow shown for cell {cell.Index}");
     }
 
-    /// <summary>
-    /// Hides the window and clears selection.
-    /// </summary>
     public void HideWindow()
     {
         Hide();
-
-        // Selection clearing is handled by CellOverviewState._Exit()
-
         GameLogger.Info("VoronoiCellInfoWindow hidden");
     }
 
-    /// <summary>
-    /// Clears all panel data.
-    /// </summary>
     public void Clear()
     {
         _currentCell = null;
         _currentBody = null;
-        _currentContinent = null;
 
+        if (_headerLabel != null) _headerLabel.Text = "-";
         _cellGeneralInfoPanel?.ClearDisplay();
         _cellResourcePanel?.ClearDisplay();
-        _cellViewPanel?.Close();
-
-        // Show "No Building" label, hide BuildingInfoPanel
-        if (_noBuildingLabel != null)
-            _noBuildingLabel.Show();
-        _buildingInfoPanel?.Clear();
+        _buildingSummary?.Clear();
+        if (_openBuildingButton != null) _openBuildingButton.Visible = false;
     }
 
     private void PopulatePanels()
@@ -136,60 +98,34 @@ public partial class VoronoiCellInfoWindow : Control
         if (_currentCell == null || _currentBody == null)
             return;
 
-        // Cell View Panel
-        if (_cellViewPanel != null && _currentBody is ISelectableBody selectableBody)
-        {
-            _cellViewPanel.Initialize(selectableBody, _currentCell);
-        }
+        if (_headerLabel != null)
+            _headerLabel.Text = $"Cell {_currentCell.Index} • {_currentCell.Biome} • {_currentBody.Name}";
 
-        // General Info Panel
         _cellGeneralInfoPanel?.UpdateFromCell(_currentCell);
-
-        // Resource Panel
         _cellResourcePanel?.UpdateFromCell(_currentCell);
+        _buildingSummary?.UpdateFromCell(_currentCell);
 
-        // Building Info Panel
-        PopulateBuildingInfo();
+        if (_openBuildingButton != null)
+            _openBuildingButton.Visible = _currentCell.Building != null;
     }
 
-    private void PopulateBuildingInfo()
-    {
-        var building = _currentCell?.Building;
+    private void OnClosePressed() => EmitSignal(SignalName.WindowCloseRequested);
+    private void OnBackPressed() => EmitSignal(SignalName.BackRequested);
 
-        if (building != null)
-        {
-            _noBuildingLabel?.Hide();
-            _buildingInfoPanel?.SetBuilding(building);
-            if (_openBuildingDetailsButton != null) _openBuildingDetailsButton.Visible = true;
-        }
-        else
-        {
-            _noBuildingLabel?.Show();
-            _buildingInfoPanel?.Clear();
-            if (_openBuildingDetailsButton != null) _openBuildingDetailsButton.Visible = false;
-        }
-    }
-
-    private void OnClosePressed()
-    {
-        EmitSignal(SignalName.WindowCloseRequested);
-    }
-
-    private void OnContinentViewPressed()
-    {
-        EmitSignal(SignalName.ContinentViewRequested);
-    }
-
-    private void OnOpenBuildingDetailsPressed()
+    private void OnOpenBuildingPressed()
     {
         var building = _currentCell?.Building;
         if (building == null) return;
         EmitSignal(SignalName.BuildingDetailsRequested, building);
     }
 
+    private void OnOpenOrbitalBodyPressed()
+    {
+        EmitSignal(SignalName.OrbitalBodyViewRequested);
+    }
+
     private void OnBackdropInput(InputEvent @event)
     {
-        // Clicking the backdrop closes the window
         if (@event is InputEventMouseButton mouseEvent &&
             mouseEvent.ButtonIndex == MouseButton.Left &&
             mouseEvent.Pressed)

@@ -1,429 +1,465 @@
-# Planetary Resource Configuration
-# Defines what resources each of the 63 subtypes across 9 body type categories can generate
-# Each subtype references resource groups from resource_groups.yaml and can add/remove specific resources
-
 rockyPlanetSubtypes:
-  - subtype: Scoured
-    resourceGroups: [commonOres, preciousOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.7
-
-  - subtype: Desert
-    resourceGroups: [commonOres, preciousOres, radioactiveOres]
-    addResources: [silicon]
-    removeResources: []
-    baseResourceWeight: 0.8
-
-  - subtype: Temperate
-    resourceGroups: [commonOres, preciousOres, basicFuels, habitableFoods]
-    addResources: [clay]
-    removeResources: []
-    baseResourceWeight: 1.0
-
-  - subtype: Tropical
-    resourceGroups: [commonOres, preciousOres, basicFuels, habitableFoods]
-    addResources: [clay]
-    removeResources: []
-    baseResourceWeight: 1.0
-
-  - subtype: Ocean
-    resourceGroups: [commonOres, preciousOres, basicFuels, habitableFoods]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.9
-
-  - subtype: Cool
-    resourceGroups: [commonOres, frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.6
-
-  - subtype: Ice
-    resourceGroups: [frozenVolatiles, commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.5
-
-  - subtype: Rusted
-    resourceGroups: [commonOres, preciousOres, industrialMaterials]
-    addResources: [silicon]
-    removeResources: []
-    baseResourceWeight: 0.75
-
-  - subtype: Volcanic
-    resourceGroups: [commonOres, radioactiveOres, preciousOres]
-    addResources: [silicon]
-    removeResources: []
-    baseResourceWeight: 0.85
-
+- subtype: Scoured
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  - radioactiveOres
+  - industrialMaterials
+  addResources: []
+  removeResources:
+  - clay
+  baseResourceWeight: 0.699999988079071
+- subtype: Desert
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  - radioactiveOres
+  - industrialMaterials
+  addResources: []
+  removeResources:
+  - clay
+  baseResourceWeight: 0.800000011920929
+- subtype: Temperate
+  resourceGroups:
+  - commonOres
+  - basicFuels
+  - frozenVolatiles
+  - industrialMaterials
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 1
+- subtype: Tropical
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  - basicFuels
+  - industrialMaterials
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 1
+- subtype: Ocean
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  - basicFuels
+  - industrialMaterials
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.8999999761581421
+- subtype: Cool
+  resourceGroups:
+  - commonOres
+  - frozenVolatiles
+  - basicFuels
+  - industrialMaterials
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.6000000238418579
+- subtype: Ice
+  resourceGroups:
+  - frozenVolatiles
+  - commonOres
+  - basicFuels
+  - industrialMaterials
+  - radioactiveOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.5
+- subtype: Rusted
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  - industrialMaterials
+  - radioactiveOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.75
+- subtype: Volcanic
+  resourceGroups:
+  - commonOres
+  - radioactiveOres
+  - preciousOres
+  - industrialMaterials
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.8500000238418579
 gasGiantSubtypes:
-  - subtype: HotJupiter
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.3
-
-  - subtype: StandardJupiter
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.25
-
-  - subtype: ColdJupiter
-    resourceGroups: [frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.2
-
-  - subtype: FailedStar
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.4
-
-  - subtype: RingedGiant
-    resourceGroups: []
-    addResources: [hydrogen, water_ice]
-    removeResources: []
-    baseResourceWeight: 0.25
-
-  - subtype: StormyGiant
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.35
-
-  - subtype: PuffyGiant
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.2
-
+- subtype: HotJupiter
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.3
+- subtype: StandardJupiter
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.25
+- subtype: ColdJupiter
+  resourceGroups:
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.2
+- subtype: FailedStar
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.4
+- subtype: RingedGiant
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.25
+- subtype: StormyGiant
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.35
+- subtype: PuffyGiant
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.2
 iceGiantSubtypes:
-  - subtype: StandardNeptune
-    resourceGroups: [frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.4
-
-  - subtype: UranusType
-    resourceGroups: [frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.35
-
-  - subtype: MethaneGiant
-    resourceGroups: [frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.4
-
-  - subtype: AmmoniaGiant
-    resourceGroups: [frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.38
-
-  - subtype: ToxicGiant
-    resourceGroups: [frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.3
-
-  - subtype: SilverGiant
-    resourceGroups: [frozenVolatiles, preciousOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.45
-
-  - subtype: Cryovolcanic
-    resourceGroups: [frozenVolatiles, commonOres]
-    addResources: [water]
-    removeResources: []
-    baseResourceWeight: 0.5
-
+- subtype: StandardNeptune
+  resourceGroups:
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.4
+- subtype: UranusType
+  resourceGroups:
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.35
+- subtype: MethaneGiant
+  resourceGroups:
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.4
+- subtype: AmmoniaGiant
+  resourceGroups:
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.38
+- subtype: ToxicGiant
+  resourceGroups:
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.3
+- subtype: SilverGiant
+  resourceGroups:
+  - frozenVolatiles
+  - preciousOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.45
+- subtype: Cryovolcanic
+  resourceGroups:
+  - frozenVolatiles
+  - commonOres
+  addResources:
+  - water
+  removeResources: []
+  baseResourceWeight: 0.5
 dwarfPlanetSubtypes:
-  - subtype: IcyKuiper
-    resourceGroups: [frozenVolatiles]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.4
-
-  - subtype: RockyBelt
-    resourceGroups: [commonOres, preciousOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.5
-
-  - subtype: MixedComposition
-    resourceGroups: [commonOres, frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.45
-
-  - subtype: Plutoid
-    resourceGroups: [frozenVolatiles, preciousOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.35
-
-  - subtype: CeresType
-    resourceGroups: [commonOres, industrialMaterials]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.55
-
-  - subtype: ScatteredDisk
-    resourceGroups: [commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.3
-
-  - subtype: DetachedObject
-    resourceGroups: [frozenVolatiles]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.25
-
+- subtype: IcyKuiper
+  resourceGroups:
+  - frozenVolatiles
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.4
+- subtype: RockyBelt
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.5
+- subtype: MixedComposition
+  resourceGroups:
+  - commonOres
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.45
+- subtype: Plutoid
+  resourceGroups:
+  - frozenVolatiles
+  - preciousOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.35
+- subtype: CeresType
+  resourceGroups:
+  - commonOres
+  - industrialMaterials
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.55
+- subtype: ScatteredDisk
+  resourceGroups:
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.3
+- subtype: DetachedObject
+  resourceGroups:
+  - frozenVolatiles
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.25
 starSubtypes:
-  - subtype: MainSequence
-    resourceGroups: []
-    addResources: [hydrogen, tritium]
-    removeResources: []
-    baseResourceWeight: 0.1
-
-  - subtype: RedGiant
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.15
-
-  - subtype: WhiteDwarf
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.05
-
-  - subtype: RedDwarf
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.1
-
-  - subtype: BlueSupergiant
-    resourceGroups: []
-    addResources: [hydrogen, tritium]
-    removeResources: []
-    baseResourceWeight: 0.2
-
-  - subtype: YellowDwarf
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.1
-
-  - subtype: BinaryPrimary
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.1
-
-  - subtype: VariableStar
-    resourceGroups: []
-    addResources: [hydrogen]
-    removeResources: []
-    baseResourceWeight: 0.08
-
+- subtype: MainSequence
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  - tritium
+  removeResources: []
+  baseResourceWeight: 0.1
+- subtype: RedGiant
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.15
+- subtype: WhiteDwarf
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.05
+- subtype: RedDwarf
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.1
+- subtype: BlueSupergiant
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  - tritium
+  removeResources: []
+  baseResourceWeight: 0.2
+- subtype: YellowDwarf
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.1
+- subtype: BinaryPrimary
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.1
+- subtype: VariableStar
+  resourceGroups: []
+  addResources:
+  - hydrogen
+  removeResources: []
+  baseResourceWeight: 0.08
 blackHoleSubtypes:
-  - subtype: StellarMass
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Intermediate
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Supermassive
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Primordial
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Rotating
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Charged
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
+- subtype: StellarMass
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Intermediate
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Supermassive
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Primordial
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Rotating
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Charged
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
 neutronStarSubtypes:
-  - subtype: Pulsar
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Magnetar
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Isolated
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Binary
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: Millisecond
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
-  - subtype: XRayPulsar
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.0
-
+- subtype: Pulsar
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Magnetar
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Isolated
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Binary
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: Millisecond
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
+- subtype: XRayPulsar
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.0
 satelliteSubtypes:
-  # Moon subtypes
-  - subtype: RockyMoon
-    resourceGroups: [commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.5
-
-  - subtype: IcyMoon
-    resourceGroups: [frozenVolatiles, commonOres]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.45
-
-  - subtype: VolcanicMoon
-    resourceGroups: [commonOres, radioactiveOres]
-    addResources: [silicon]
-    removeResources: []
-    baseResourceWeight: 0.55
-
-  - subtype: TidallyLocked
-    resourceGroups: [commonOres, preciousOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.5
-
-  - subtype: CapturedAsteroid
-    resourceGroups: [commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.4
-
-  # Asteroid subtypes
-  - subtype: Carbonaceous
-    resourceGroups: [industrialMaterials, commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.45
-
-  - subtype: Silicate
-    resourceGroups: [commonOres]
-    addResources: [silicon]
-    removeResources: []
-    baseResourceWeight: 0.5
-
-  - subtype: Metallic
-    resourceGroups: [commonOres, preciousOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.65
-
-  - subtype: IceAsteroid
-    resourceGroups: [frozenVolatiles]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.4
-
-  # Comet subtypes
-  - subtype: ShortPeriod
-    resourceGroups: [frozenVolatiles]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.35
-
-  - subtype: LongPeriod
-    resourceGroups: [frozenVolatiles]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.3
-
-  - subtype: HalleyType
-    resourceGroups: [frozenVolatiles]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.3
-
-  - subtype: EnckeType
-    resourceGroups: [frozenVolatiles]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.25
-
+- subtype: RockyMoon
+  resourceGroups:
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.5
+- subtype: IcyMoon
+  resourceGroups:
+  - frozenVolatiles
+  - commonOres
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.45
+- subtype: VolcanicMoon
+  resourceGroups:
+  - commonOres
+  - radioactiveOres
+  addResources:
+  - silicon
+  removeResources: []
+  baseResourceWeight: 0.55
+- subtype: TidallyLocked
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.5
+- subtype: CapturedAsteroid
+  resourceGroups:
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.4
+- subtype: Carbonaceous
+  resourceGroups:
+  - industrialMaterials
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.45
+- subtype: Silicate
+  resourceGroups:
+  - commonOres
+  addResources:
+  - silicon
+  removeResources: []
+  baseResourceWeight: 0.5
+- subtype: Metallic
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.65
+- subtype: IceAsteroid
+  resourceGroups:
+  - frozenVolatiles
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.4
+- subtype: ShortPeriod
+  resourceGroups:
+  - frozenVolatiles
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.35
+- subtype: LongPeriod
+  resourceGroups:
+  - frozenVolatiles
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.3
+- subtype: HalleyType
+  resourceGroups:
+  - frozenVolatiles
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.3
+- subtype: EnckeType
+  resourceGroups:
+  - frozenVolatiles
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.25
 beltSubtypes:
-  - subtype: AsteroidBelt
-    resourceGroups: [commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.45
-
-  - subtype: IceBelt
-    resourceGroups: [frozenVolatiles]
-    addResources: [water_ice]
-    removeResources: []
-    baseResourceWeight: 0.4
-
-  - subtype: DebrisDisk
-    resourceGroups: [commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.25
-
-  - subtype: DustRing
-    resourceGroups: []
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.1
-
-  - subtype: ResonantBelt
-    resourceGroups: [commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.35
-
-  - subtype: ShepherdBelt
-    resourceGroups: [commonOres]
-    addResources: []
-    removeResources: []
-    baseResourceWeight: 0.3
+- subtype: AsteroidBelt
+  resourceGroups:
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.45
+- subtype: IceBelt
+  resourceGroups:
+  - frozenVolatiles
+  addResources:
+  - water_ice
+  removeResources: []
+  baseResourceWeight: 0.4
+- subtype: DebrisDisk
+  resourceGroups:
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.25
+- subtype: DustRing
+  resourceGroups: []
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.1
+- subtype: ResonantBelt
+  resourceGroups:
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.35
+- subtype: ShepherdBelt
+  resourceGroups:
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.3

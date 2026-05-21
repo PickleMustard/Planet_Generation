@@ -1,49 +1,123 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cnbr6iwjql7yi"]
 
-[ext_resource type="Script" path="res://Scripts/UI/PlanetBoard/PlanetBoardWindow.cs" id="1_window"]
-[ext_resource type="Script" path="res://Scripts/UI/PlanetBoard/PlanetBoardView.cs" id="2_view"]
+[ext_resource type="Script" uid="uid://cggtgodyntq7j" path="res://Scripts/UI/PlanetBoard/PlanetBoardWindow.cs" id="1_window"]
+[ext_resource type="PackedScene" path="res://UI/PlanetBoard/PlanetBoardView.tscn" id="2_view"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="3_paper_theme"]
 
-[node name="PlanetBoardWindow" type="PanelContainer" node_paths=PackedStringArray("_viewPath", "_modeSwitcherPath", "_titleLabelPath", "_closeButtonPath")]
-custom_minimum_size = Vector2(900, 700)
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -450.0
-offset_top = -350.0
-offset_right = 450.0
-offset_bottom = 350.0
+[node name="PlanetBoardWindow" type="Control" unique_id=1738769878 node_paths=PackedStringArray("_viewBoard", "_modeSwitcher", "_titleLabel", "_summaryLabel", "_closeButton", "_backButton", "_blockInput", "_infoBar", "_infoContent")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_paper_theme")
 script = ExtResource("1_window")
-_viewPath = NodePath("MainVBox/BoardView")
-_modeSwitcherPath = NodePath("MainVBox/TitleBar/ModeSwitcher")
-_titleLabelPath = NodePath("MainVBox/TitleBar/TitleLabel")
-_closeButtonPath = NodePath("MainVBox/TitleBar/CloseButton")
+_viewBoard = NodePath("PanelContainer/MarginContainer/MainVBox/BodyHBox/BoardView")
+_modeSwitcher = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/ModeSwitcher")
+_titleLabel = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/TitleLabel")
+_summaryLabel = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/SummaryLabel")
+_closeButton = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/CloseButton")
+_backButton = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/BackButton")
+_blockInput = NodePath("BlockInput")
+_infoBar = NodePath("PanelContainer/MarginContainer/MainVBox/BodyHBox/InfoBar")
+_infoContent = NodePath("PanelContainer/MarginContainer/MainVBox/BodyHBox/InfoBar/MarginContainer/ScrollContainer/InfoContent")
 
-[node name="MainVBox" type="VBoxContainer" parent="."]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="BlockInput" type="ColorRect" parent="." unique_id=930384344]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
 
-[node name="TitleBar" type="HBoxContainer" parent="MainVBox"]
-layout_mode = 2
-size_flags_horizontal = 3
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=1040734905]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.04
+anchor_top = 0.05
+anchor_right = 0.96
+anchor_bottom = 0.95
+mouse_filter = 1
+theme_type_variation = &"PaperPanel"
 
-[node name="TitleLabel" type="Label" parent="MainVBox/TitleBar"]
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer" unique_id=860050683]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 18
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="MainVBox" type="VBoxContainer" parent="PanelContainer/MarginContainer" unique_id=758039380]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HeaderBar" type="PanelContainer" parent="PanelContainer/MarginContainer/MainVBox" unique_id=768379224]
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"Ribbon"
+
+[node name="HBox" type="HBoxContainer" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar" unique_id=1704972388]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox" unique_id=1690690340]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
 text = "Planet Board"
 
-[node name="ModeSwitcher" type="OptionButton" parent="MainVBox/TitleBar"]
+[node name="SummaryLabel" type="Label" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox" unique_id=1869025490]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelFaint"
+
+[node name="ModeSwitcher" type="OptionButton" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox" unique_id=1308385249]
 layout_mode = 2
 
-[node name="CloseButton" type="Button" parent="MainVBox/TitleBar"]
+[node name="BackButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox" unique_id=381533423]
 layout_mode = 2
-text = "X"
+tooltip_text = "Back one panel"
+text = "← Back"
 
-[node name="BoardView" type="Control" parent="MainVBox"]
+[node name="CloseButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox" unique_id=1561025420]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "Close"
+theme_type_variation = &"ButtonDanger"
+text = "✕"
+
+[node name="BodyHBox" type="HBoxContainer" parent="PanelContainer/MarginContainer/MainVBox" unique_id=2070390086]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-script = ExtResource("2_view")
+theme_override_constants/separation = 8
+
+[node name="BoardView" parent="PanelContainer/MarginContainer/MainVBox/BodyHBox" unique_id=924647845 instance=ExtResource("2_view")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 5.0
+
+[node name="InfoBar" type="PanelContainer" parent="PanelContainer/MarginContainer/MainVBox/BodyHBox" unique_id=1850736379]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"PaperPanel"
+
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer/MarginContainer/MainVBox/BodyHBox/InfoBar" unique_id=1632598226]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="ScrollContainer" type="ScrollContainer" parent="PanelContainer/MarginContainer/MainVBox/BodyHBox/InfoBar/MarginContainer" unique_id=1000738041]
+layout_mode = 2
+
+[node name="InfoContent" type="VBoxContainer" parent="PanelContainer/MarginContainer/MainVBox/BodyHBox/InfoBar/MarginContainer/ScrollContainer" unique_id=298248292]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4

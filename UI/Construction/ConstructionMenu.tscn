@@ -2,9 +2,8 @@
 
 [ext_resource type="Script" uid="uid://ly3cuewe3kbq" path="res://Scripts/UI/Construction/ConstructionMenu.cs" id="1_nuxyx"]
 
-[node name="ConstructionMenu" type="PanelContainer" unique_id=722322480 node_paths=PackedStringArray("_tabContainer", "_stationsList", "_shipsList", "_buildingsList", "_detailLabel", "_buildButton", "_cancelButton")]
+[node name="ConstructionMenu" type="PanelContainer" unique_id=722322480 node_paths=PackedStringArray("_tabContainer", "_stationsList", "_shipsList", "_buildingsList", "_detailLabel", "_buildButton", "_cancelButton", "_backButton", "_closeToHudButton")]
 custom_minimum_size = Vector2(600, 500)
-anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
@@ -21,11 +20,24 @@ _buildingsList = NodePath("MainVBox/TabContainer/Buildings/BuildingsList")
 _detailLabel = NodePath("MainVBox/FooterVBox/DetailLabel")
 _buildButton = NodePath("MainVBox/FooterVBox/ButtonBar/BuildButton")
 _cancelButton = NodePath("MainVBox/FooterVBox/ButtonBar/CancelButton")
+_backButton = NodePath("MainVBox/HeaderBar/BackButton")
+_closeToHudButton = NodePath("MainVBox/HeaderBar/CloseToHudButton")
 
 [node name="MainVBox" type="VBoxContainer" parent="." unique_id=1986742922]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="HeaderBar" type="HBoxContainer" parent="MainVBox" unique_id=613035085]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="MainVBox/HeaderBar"]
+layout_mode = 2
+text = "←"
+
+[node name="CloseToHudButton" type="Button" parent="MainVBox/HeaderBar"]
+layout_mode = 2
+text = "✕"
 
 [node name="TitleLabel" type="Label" parent="MainVBox" unique_id=1310253182]
 layout_mode = 2
@@ -41,6 +53,7 @@ size_flags_vertical = 3
 current_tab = 0
 
 [node name="Stations" type="VBoxContainer" parent="MainVBox/TabContainer" unique_id=1273703898]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 0
 

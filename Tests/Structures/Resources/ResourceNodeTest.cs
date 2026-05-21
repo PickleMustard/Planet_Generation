@@ -1,5 +1,4 @@
 using GdUnit4;
-using Godot;
 using static GdUnit4.Assertions;
 using Structures.Logistics;
 using Structures.Resources;
@@ -19,8 +18,8 @@ public class ResourceNodeTest
         var node = new ResourceNode();
 
         AssertThat(node.Owner).IsNull();
-        AssertThat(node.Side).IsEqual(BuildingSide.Top);
-        AssertThat(node.Position).IsEqual(Vector3.Zero);
+        AssertThat(node.SideIndex).IsEqual(0);
+        AssertThat(node.SlotIndex).IsEqual(0);
         AssertThat(node.Kind).IsEqual(ResourceNodeKind.Import);
         AssertThat(node.Link).IsNull();
     }

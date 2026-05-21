@@ -1,0 +1,23 @@
+buildings:
+  - id_name: surface_quarry
+    display_name: Surface Quarry
+    description: Strip minerals from the top layers of the crust
+    category: extraction
+    max_resource_tier: 1
+    work_required: 30
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    behaviors:
+      - behavior_id: ExtractionBehavior
+        default_recipe: "surface_mine"
+        alternative_recipes: []
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 1
+    visual:
+      model_path: "res://Mesh/external/factory_d.glb"
+      shape_id: square

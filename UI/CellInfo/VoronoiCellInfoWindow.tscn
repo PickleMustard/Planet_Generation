@@ -1,41 +1,31 @@
-[gd_scene format=3 uid="uid://cfba15hnd3ydc"]
+[gd_scene load_steps=6 format=3 uid="uid://cfba15hnd3ydc"]
 
-[ext_resource type="Script" uid="uid://b02w0w3p4hdoi" path="res://Scripts/UI/CellInfo/VoronoiCellInfoWindow.cs" id="1_script"]
-[ext_resource type="PackedScene" uid="uid://drwi4juw4xb3e" path="res://UI/CellView/CellViewPanel.tscn" id="2_cellview"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" uid="uid://b02w0w3p4hdoi" path="res://Scripts/UI/CellInfo/VoronoiCellInfoWindow.cs" id="2_script"]
 [ext_resource type="PackedScene" uid="uid://5342p6hctm3t" path="res://UI/CellInfo/CellGeneralInfoPanel.tscn" id="3_cellinfo"]
 [ext_resource type="PackedScene" uid="uid://cujujlooijfau" path="res://UI/CellInfo/CellResourcePanel.tscn" id="4_cellresource"]
-[ext_resource type="PackedScene" uid="uid://sn5ksr7arjsu" path="res://UI/BuildingInfo/BuildingInfoPanel.tscn" id="5_buildinginfo"]
+[ext_resource type="PackedScene" uid="uid://cn2vbsh1g3xqw" path="res://UI/CellInfo/BuildingSummaryWidget.tscn" id="5_buildingsummary"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-content_margin_left = 8.0
-content_margin_top = 8.0
-content_margin_right = 8.0
-content_margin_bottom = 8.0
-bg_color = Color(0.15, 0.15, 0.18, 1)
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_mpewa"]
-load_path = "res://.godot/imported/xmark.svg-b28a3e46769c95399ae018f453096621.ctex"
-
-[node name="VoronoiCellInfoWindow" type="Control" unique_id=405348774 node_paths=PackedStringArray("_blockInput", "_panelContainer", "_closeButton", "_continentViewButton", "_cellViewPanel", "_cellGeneralInfoPanel", "_cellResourcePanel", "_buildingInfoPanel", "_openBuildingDetailsButton", "_noBuildingLabel")]
+[node name="VoronoiCellInfoWindow" type="Control" node_paths=PackedStringArray("_blockInput", "_closeButton", "_backButton", "_headerLabel", "_cellGeneralInfoPanel", "_cellResourcePanel", "_buildingSummary", "_openBuildingButton", "_openOrbitalBodyButton")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_script")
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
 _blockInput = NodePath("BlockInput")
-_panelContainer = NodePath("PanelContainer")
-_closeButton = NodePath("PanelContainer/MarginContainer/MainVBox/Header/CloseButton")
-_continentViewButton = NodePath("PanelContainer/MarginContainer/MainVBox/Header/ContinentViewButton")
-_cellViewPanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/LeftColumn/CellViewContainer/CellViewPanel")
-_cellGeneralInfoPanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/LeftColumn/CellGeneralInfoContainer/CellGeneralInfoPanel")
-_cellResourcePanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/CellResourceContainer/CellResourcePanel")
-_buildingInfoPanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer/BuildingInfoPanel")
-_openBuildingDetailsButton = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer/OpenBuildingDetailsButton")
-_noBuildingLabel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer/NoBuildingLabel")
+_closeButton = NodePath("PanelContainer/MarginContainer/MainVBox/Chrome/CloseButton")
+_backButton = NodePath("PanelContainer/MarginContainer/MainVBox/Chrome/BackButton")
+_headerLabel = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderRibbon")
+_cellGeneralInfoPanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/CellGeneralInfoPanel")
+_cellResourcePanel = NodePath("PanelContainer/MarginContainer/MainVBox/Content/CellResourcePanel")
+_buildingSummary = NodePath("PanelContainer/MarginContainer/MainVBox/Content/BuildingSummaryWidget")
+_openBuildingButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar/OpenBuildingButton")
+_openOrbitalBodyButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar/OpenOrbitalBodyButton")
 
-[node name="BlockInput" type="ColorRect" parent="." unique_id=1988298309]
+[node name="BlockInput" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -45,122 +35,78 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0.6)
 
-[node name="PanelContainer" type="PanelContainer" parent="." unique_id=432357764]
+[node name="PanelContainer" type="PanelContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -448.0
-offset_top = -336.0
-offset_right = 448.0
-offset_bottom = 336.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.07
+anchor_right = 0.95
+anchor_bottom = 0.93
 mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+theme_type_variation = &"PaperPanel"
 
-[node name="MarginContainer" type="MarginContainer" parent="PanelContainer" unique_id=763769610]
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer"]
 layout_mode = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 16
 
-[node name="MainVBox" type="VBoxContainer" parent="PanelContainer/MarginContainer" unique_id=2053228084]
+[node name="MainVBox" type="VBoxContainer" parent="PanelContainer/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
 
-[node name="Header" type="HBoxContainer" parent="PanelContainer/MarginContainer/MainVBox" unique_id=1654264839]
+[node name="Chrome" type="HBoxContainer" parent="PanelContainer/MarginContainer/MainVBox"]
 layout_mode = 2
-size_flags_stretch_ratio = 0.22
 theme_override_constants/separation = 8
 
-[node name="CloseButton" type="TextureButton" parent="PanelContainer/MarginContainer/MainVBox/Header" unique_id=848937139]
+[node name="BackButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/Chrome"]
+layout_mode = 2
+text = "← Back"
+
+[node name="Spacer" type="Control" parent="PanelContainer/MarginContainer/MainVBox/Chrome"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CloseButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/Chrome"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
-texture_normal = SubResource("CompressedTexture2D_mpewa")
-ignore_texture_size = true
-stretch_mode = 0
+tooltip_text = "Close"
+text = "✕"
 
-[node name="Spacer" type="Control" parent="PanelContainer/MarginContainer/MainVBox/Header" unique_id=1409335517]
+[node name="HeaderRibbon" type="Label" parent="PanelContainer/MarginContainer/MainVBox"]
 layout_mode = 2
-size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "-"
 
-[node name="ContinentViewButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/Header" unique_id=626006663]
-layout_mode = 2
-disabled = true
-text = "Continent View"
-
-[node name="Content" type="HBoxContainer" parent="PanelContainer/MarginContainer/MainVBox" unique_id=943377977]
+[node name="Content" type="VBoxContainer" parent="PanelContainer/MarginContainer/MainVBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 16
-
-[node name="LeftColumn" type="VBoxContainer" parent="PanelContainer/MarginContainer/MainVBox/Content" unique_id=430779607]
-custom_minimum_size = Vector2(320, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.4
 theme_override_constants/separation = 12
 
-[node name="CellViewContainer" type="PanelContainer" parent="PanelContainer/MarginContainer/MainVBox/Content/LeftColumn" unique_id=380431746]
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.5
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-
-[node name="CellViewPanel" parent="PanelContainer/MarginContainer/MainVBox/Content/LeftColumn/CellViewContainer" unique_id=360264369 instance=ExtResource("2_cellview")]
+[node name="CellGeneralInfoPanel" parent="PanelContainer/MarginContainer/MainVBox/Content" instance=ExtResource("3_cellinfo")]
 layout_mode = 2
 
-[node name="CellGeneralInfoContainer" type="PanelContainer" parent="PanelContainer/MarginContainer/MainVBox/Content/LeftColumn" unique_id=193958064]
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.5
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-
-[node name="CellGeneralInfoPanel" parent="PanelContainer/MarginContainer/MainVBox/Content/LeftColumn/CellGeneralInfoContainer" unique_id=1188486062 instance=ExtResource("3_cellinfo")]
+[node name="CellResourcePanel" parent="PanelContainer/MarginContainer/MainVBox/Content" instance=ExtResource("4_cellresource")]
 layout_mode = 2
 
-[node name="RightColumn" type="VBoxContainer" parent="PanelContainer/MarginContainer/MainVBox/Content" unique_id=2106659184]
-custom_minimum_size = Vector2(480, 0)
+[node name="BuildingSummaryWidget" parent="PanelContainer/MarginContainer/MainVBox/Content" instance=ExtResource("5_buildingsummary")]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.6
+
+[node name="ActionBar" type="HBoxContainer" parent="PanelContainer/MarginContainer/MainVBox"]
+layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="CellResourceContainer" type="PanelContainer" parent="PanelContainer/MarginContainer/MainVBox/Content/RightColumn" unique_id=1243256572]
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.4
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-
-[node name="CellResourcePanel" parent="PanelContainer/MarginContainer/MainVBox/Content/RightColumn/CellResourceContainer" unique_id=767820553 instance=ExtResource("4_cellresource")]
-layout_mode = 2
-
-[node name="BuildingInfoContainer" type="PanelContainer" parent="PanelContainer/MarginContainer/MainVBox/Content/RightColumn" unique_id=257327716]
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.6
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-
-[node name="BuildingInfoPanel" parent="PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer" unique_id=822308389 instance=ExtResource("5_buildinginfo")]
-layout_mode = 2
-
-[node name="NoBuildingLabel" type="Label" parent="PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer" unique_id=1690910306]
+[node name="OpenBuildingButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/ActionBar"]
 visible = false
 layout_mode = 2
-text = "No Building"
-horizontal_alignment = 1
-vertical_alignment = 1
+theme_type_variation = &"ButtonPrimary"
+text = "Open Building"
 
-[node name="OpenBuildingDetailsButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/Content/RightColumn/BuildingInfoContainer"]
-visible = false
+[node name="OpenOrbitalBodyButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/ActionBar"]
 layout_mode = 2
-size_flags_vertical = 8
-text = "Open Building Details"
+text = "Open Orbital Body"
+
+[node name="Spacer" type="Control" parent="PanelContainer/MarginContainer/MainVBox/ActionBar"]
+layout_mode = 2
+size_flags_horizontal = 3

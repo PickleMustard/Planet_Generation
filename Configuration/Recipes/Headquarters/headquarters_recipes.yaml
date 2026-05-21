@@ -1,57 +1,40 @@
 recipes:
-  # All-in-one operation for early game
   - recipe_id: "hq_all_in_one_operation"
     display_name: "Emergency Operations"
-    description: "Combines power generation, material gathering, and basic fabrication using scavenged equipment."
+    description: Combines power generation, material gathering, and basic fabrication using scavenged equipment.
     category: headquarters
-    work_required: 1.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/headquarters/hq_all_in_one_operation"
-    input_resources: {} # No inputs needed
+    work_required: 1
     output_resources:
-      concrete: 2
-      iron: 1
-      copper: 1
-
-  # Power focus mode
+      - concrete: 2
+      - iron: 1
+      - aluminum: 1
   - recipe_id: "hq_power_focus"
     display_name: "Emergency Power Focus"
-    description: "Diverts all resources to power generation."
+    description: Diverts all resources to power generation.
     category: headquarters
-    work_required: 1.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/headquarters/hq_power_focus"
-    input_resources: {}
+    work_required: 1
     output_resources:
-      power: 40
-
-  # Extraction focus mode
+      - power: 40
   - recipe_id: "hq_extraction_focus"
     display_name: "Material Salvage"
-    description: "Focuses on gathering loose materials from the surrounding area."
+    description: Focuses on gathering loose materials from the surrounding area.
     category: headquarters
-    work_required: 2.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/headquarters/hq_extraction_focus"
+    work_required: 2
     input_resources:
-      power: 5
+      - power: 5
     output_resources:
-      clay: 8
-      iron_ore: 5
-      copper_ore: 3
-
-  # Manufacturing focus mode
+      - clay: 8
+      - iron_ore: 5
+      - copper_ore: 3
   - recipe_id: "hq_fabrication_focus"
     display_name: "Basic Fabrication"
-    description: "Processes raw materials into construction supplies."
+    description: Processes raw materials into construction supplies.
     category: headquarters
-    work_required: 2.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/headquarters/hq_fabrication_focus"
+    work_required: 2
     input_resources:
-      power: 8
-      clay: 10
-      iron_ore: 5
+      - power: 8
+      - clay: 10
+      - iron_ore: 5
     output_resources:
-      concrete: 5
-      iron: 3
+      - concrete: 5
+      - iron: 3

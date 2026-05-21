@@ -5,11 +5,12 @@ albedo_color = Color(0.6, 0.7, 0.8, 1)
 metallic = 0.8
 roughness = 0.2
 
-[sub_resource type="BoxMesh" id="BoxMesh_main"]
-size = Vector3(0.5, 0.2, 1.0)
-subdivide_width = 2
-subdivide_height = 1
-subdivide_depth = 3
+[sub_resource type="CylinderMesh" id="CylinderMesh_main"]
+top_radius = 0.075
+bottom_radius = 0.075
+height = 1.0
+radial_segments = 12
+rings = 2
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_nose"]
 top_radius = 0.0
@@ -21,7 +22,7 @@ rings = 2
 [node name="UnitModel" type="Node3D"]
 
 [node name="MainMesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("BoxMesh_main")
+mesh = SubResource("CylinderMesh_main")
 material_override = SubResource("UnitMat_default")
 
 [node name="Nose" type="MeshInstance3D" parent="MainMesh"]

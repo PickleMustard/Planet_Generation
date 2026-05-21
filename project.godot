@@ -25,7 +25,7 @@ RuntimeSettings="*res://Scripts/UtilityLibrary/Settings/RuntimeSettings.cs"
 SignalBus="*res://Scripts/UtilityLibrary/SignalBus.cs"
 ThreadPooler="*uid://db2n014kjjmur"
 TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
-DebugMenu="*res://UI/Debug/DebugMenu.tscn"
+DebugMenu="*res://Debug/DebugMenu.tscn"
 CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
 ConstructionManager="*res://Scripts/Constructables/ConstructionManager.cs"
 

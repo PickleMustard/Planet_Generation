@@ -3,46 +3,35 @@ resources:
     resource_tier: 0
     state_of_matter: solid
     max_stack_size: 200
-    display_color:
-      - 244
-      - 164
-      - 96
-    tags: [temperate, habitable, food]
-    icon:
-      base_path: "res://Assets/Icons/Resources/food/grain"
-
+    tags: [crop]
   - id_name: vegetable
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 200
-    display_color:
-      - 34
-      - 139
-      - 34
-    tags: [temperate, habitable, lush]
-    icon:
-      base_path: "res://Assets/Icons/Resources/food/vegetable"
-
+    max_stack_size: 201
+    tags: [crop]
   - id_name: protein
     resource_tier: 1
     state_of_matter: solid
     max_stack_size: 100
-    display_color:
-      - 255
-      - 182
-      - 193
-    tags: [temperate, habitable, food]
-    icon:
-      base_path: "res://Assets/Icons/Resources/food/protein"
-
+    tags: [unprocessed_food]
+  - id_name: fish
+    resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 200
+    tags: [aquatic, unprocessed_food]
+  - id_name: bread
+    resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 199
+    tags: [unprocessed_food]
   - id_name: mre
     resource_tier: 3
     state_of_matter: solid
     max_stack_size: 100
-    display_color:
-      - 255
-      - 0
-      - 255
     tags: [edible, military]
-    icon:
-      base_path: "res://Assets/Icons/Resources/food/mre"
+  - id_name: canned_good
+    resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
+    transport_weight: 3
+    tags: [processed_food]

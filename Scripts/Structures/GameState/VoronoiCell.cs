@@ -22,6 +22,13 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     public Dictionary<Edge, int> EdgeBoundaryMap { get; set; }
     public Vector2 MovementDirection { get; set; }
     public float Height { get; set; }
+
+    /// <summary>
+    /// Per-body normalized height in [0, 1]. 0 = lowest cell on this body, 1 = highest.
+    /// Computed once after continent heights are finalized; YAML placement constraints
+    /// (min_elevation/max_elevation) compare against this, not the raw world-unit Height.
+    /// </summary>
+    public float NormalizedHeight { get; set; }
     public Vector3 Center { get; set; }
     public float Stress { get; set; } = 0.0f;
     public int Increment { get; set; } = 1;
@@ -47,6 +54,14 @@ public partial class VoronoiCell : Resource, IVoronoiCell
     /// The building constructed on this cell, if any.
     /// </summary>
     public Building? Building { get; set; }
+
+    /// <summary>
+    /// True if a geothermal vent was placed on this cell during procedural
+    /// generation. Required for geothermal plant placement. Distribution favors
+    /// deep-ocean cells and divergent tectonic boundaries; penalized at
+    /// convergent boundaries and on mountain / plain terrain.
+    /// </summary>
+    public bool HasGeothermalVent { get; set; } = false;
 
     /// <summary>
     /// Priority order for biome tie-breaking. Higher values indicate higher priority.

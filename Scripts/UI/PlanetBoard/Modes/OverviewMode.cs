@@ -1,5 +1,4 @@
 using Godot;
-using ProceduralGeneration.PlanetGeneration;
 using Structures.Logistics;
 using Structures.Resources;
 
@@ -12,7 +11,7 @@ public sealed class OverviewMode : IPlanetBoardMode
 {
     public string DisplayName => "Overview";
 
-    public void OnEnter(PlanetBoardView view, CelestialBody body) { }
+    public void OnEnter(BoardWorld world, IOrbitalBody body) { }
     public void OnExit() { }
 
     public bool OnPortClick(ResourceNode port, MouseButton button) => false;
@@ -23,7 +22,7 @@ public sealed class OverviewMode : IPlanetBoardMode
     public bool OnEdgeClick(ResourceLink link, MouseButton button) => false;
     public bool OnEmptyClick(Vector2 boardPos, MouseButton button) => false;
 
-    public void DrawOverlay(CanvasItem ci, BoardCamera cam) { }
+    public void DrawOverlay(CanvasItem ci, BoardCameraController cam) { }
 
     public string? GetTooltip(object hovered) => null;
 }

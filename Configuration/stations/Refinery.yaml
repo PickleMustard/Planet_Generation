@@ -3,6 +3,14 @@ stations:
     station_type: Refinery
     construction_time: 45.0
     can_build_ships: false
+    behaviors:
+      - StorageHubBehavior
+      - TransferHubBehavior
+    storage_capacity: 30
+    transfer_station:
+      cargo_capacity: 500.0
+      vehicle_speed: 50.0
+      max_concurrent_transfers: 2
     required_resources:
       Steel: 800
       Electronics: 200
@@ -14,6 +22,14 @@ stations:
     station_type: Refinery
     construction_time: 120.0
     can_build_ships: false
+    behaviors:
+      - StorageHubBehavior
+      - TransferHubBehavior
+    storage_capacity: 30
+    transfer_station:
+      cargo_capacity: 500.0
+      vehicle_speed: 50.0
+      max_concurrent_transfers: 2
     required_resources:
       Steel: 4000
       Electronics: 1000

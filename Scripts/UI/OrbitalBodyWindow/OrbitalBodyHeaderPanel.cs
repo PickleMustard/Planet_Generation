@@ -1,91 +1,91 @@
-using Constructables;
 using Godot;
+using ProceduralGeneration;
+using UI.Components;
 
 namespace UI;
 
 /// <summary>
-/// Top-left panel displaying body name, type/subtype, and constructable counts.
+/// Top-left cartouche showing body name, designation, and a paper-style
+/// stats grid. Public API (Populate/Clear) is preserved so the parent window
+/// is unaffected.
 /// </summary>
-public partial class OrbitalBodyHeaderPanel : PanelContainer
+public partial class OrbitalBodyHeaderPanel : Control
 {
+    [Export]
+    private ChamferedPanel? _namePlate;
+
+    [Export]
+    private Label? _atlasBannerLabel;
+
     [Export]
     private Label? _bodyNameLabel;
 
     [Export]
-    private TextureRect? _typeIcon;
+    private Label? _aliasLabel;
 
     [Export]
-    private Label? _typeLabel;
+    private Label? _designationLabel;
 
     [Export]
-    private Label? _buildingCountLabel;
+    private ChamferedPanel? _statsBlock;
 
     [Export]
-    private Label? _stationCountLabel;
-
-    [Export]
-    private Label? _transferCountLabel;
+    private GridContainer? _statsGrid;
 
     public void Populate(IOrbitalBody body)
     {
-        GD.Print($"Populating body: {body.BodyName}");
         if (_bodyNameLabel != null)
-        {
-            GD.Print($"Populating body name: {body.BodyName}");
             _bodyNameLabel.Text = body.BodyName;
+
+        if (_aliasLabel != null)
+            _aliasLabel.Text = PlanetCartoucheData.GetClassification(body);
+
+        if (_designationLabel != null)
+        {
+            string sector = PlanetCartoucheData.GetDesignation(body);
+            _designationLabel.Text = string.IsNullOrEmpty(sector)
+                ? "BY THE SURVEYOR GENERAL"
+                : $"BY THE SURVEYOR GENERAL · {sector}";
         }
 
-        if (_typeLabel != null)
+        if (_statsGrid != null)
         {
-            string typeName = body.Classification.TypeName;
-            string? subtypeName = body.Classification.SubtypeAsObject?.ToString();
-            _typeLabel.Text = subtypeName != null ? $"{typeName} - {subtypeName}" : typeName;
-        }
-
-        // Count stations
-        int stationCount = 0;
-        if (body.SatellitesContainer != null)
-        {
-            foreach (var child in body.SatellitesContainer.GetChildren())
+            ClearStatsGrid();
+            var rows = PlanetCartoucheData.GetStatRows(body);
+            // 4-column grid: key/value/key/value so 8 rows fit in 4 visual rows.
+            foreach (var row in rows)
             {
-                if (child is StationSatellite)
-                    stationCount++;
+                _statsGrid.AddChild(BuildStatLabel(row.Key, isKey: true));
+                _statsGrid.AddChild(BuildStatLabel(row.Value, isKey: false));
             }
         }
-
-        // Count buildings across continents via economy registrations.
-        // Cell-based iteration would overcount multi-cell buildings (one building
-        // sets cell.Building on every OccupiedCell).
-        int buildingCount = 0;
-        if (body.Mesh?.Continents != null)
-        {
-            foreach (var continent in body.Mesh.Continents.Values)
-            {
-            }
-        }
-
-        // Active transfer count
-        int transferCount = body.TransferMgr?.ActiveTransferCount ?? 0;
-
-        if (_buildingCountLabel != null)
-            _buildingCountLabel.Text = buildingCount.ToString();
-        if (_stationCountLabel != null)
-            _stationCountLabel.Text = stationCount.ToString();
-        if (_transferCountLabel != null)
-            _transferCountLabel.Text = transferCount.ToString();
     }
 
     public void Clear()
     {
         if (_bodyNameLabel != null)
             _bodyNameLabel.Text = "";
-        if (_typeLabel != null)
-            _typeLabel.Text = "";
-        if (_buildingCountLabel != null)
-            _buildingCountLabel.Text = "0";
-        if (_stationCountLabel != null)
-            _stationCountLabel.Text = "0";
-        if (_transferCountLabel != null)
-            _transferCountLabel.Text = "0";
+        if (_aliasLabel != null)
+            _aliasLabel.Text = "";
+        if (_designationLabel != null)
+            _designationLabel.Text = "";
+        ClearStatsGrid();
+    }
+
+    private void ClearStatsGrid()
+    {
+        if (_statsGrid == null)
+            return;
+        foreach (var child in _statsGrid.GetChildren())
+            child.QueueFree();
+    }
+
+    private static Label BuildStatLabel(string text, bool isKey)
+    {
+        return new Label
+        {
+            Text = text,
+            ThemeTypeVariation = isKey ? "LabelFaint" : "LabelMono",
+        };
     }
 }

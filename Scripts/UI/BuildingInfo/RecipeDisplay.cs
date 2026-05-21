@@ -93,7 +93,7 @@ public partial class RecipeDisplay : HBoxContainer
     {
         if (recipe.Icon?.IsValid == true)
         {
-            return recipe.Icon.MediumTexture;
+            return recipe.Icon.LargeTexture ?? recipe.Icon.MediumTexture;
         }
 
         // Fallback: try to load from base path if defined
@@ -101,8 +101,8 @@ public partial class RecipeDisplay : HBoxContainer
         {
             try
             {
-                string mediumPath = recipe.Icon.BasePath + "_medium.png";
-                return ResourceLoader.Load<Texture2D>(mediumPath);
+                string iconPath = recipe.Icon.BasePath + ".png";
+                return ResourceLoader.Load<Texture2D>(iconPath);
             }
             catch
             {

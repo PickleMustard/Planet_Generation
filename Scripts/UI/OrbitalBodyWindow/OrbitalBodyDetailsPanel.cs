@@ -1,9 +1,15 @@
 using Constructables;
+using Constructables.Power;
+using Constructables.Stations.Behaviors;
 using Godot;
+using ProceduralGeneration;
+using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
 using System.Collections.Generic;
 using System.Linq;
 using UI.Components;
+using UI.GridWindow;
+using UtilityLibrary;
 
 namespace UI;
 
@@ -16,29 +22,34 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
     private Label? _titleLabel;
     private VBoxContainer? _contentContainer;
     private IOrbitalBody? _body;
+    private OrbitalBodyTabbedPanel? _tabbedPanel;
     private string? _lastItemType;
     private int _lastItemIndex = -1;
 
     public override void _Ready()
     {
-        _titleLabel = GetNode<Label>("VBoxContainer/DetailTitleLabel");
-        _contentContainer = GetNode<VBoxContainer>("VBoxContainer/DetailContent");
+        _titleLabel = GetNode<Label>("VBoxContainer/Ribbon/HBox/DetailTitleLabel");
+        _contentContainer = GetNode<VBoxContainer>("VBoxContainer/DetailScroll/DetailContent");
     }
 
     public void Initialize(IOrbitalBody body, OrbitalBodyTabbedPanel tabbedPanel)
     {
         _body = body;
+        _tabbedPanel = tabbedPanel;
         tabbedPanel.ItemSelected += OnItemSelected;
     }
 
     public void Disconnect(OrbitalBodyTabbedPanel tabbedPanel)
     {
         tabbedPanel.ItemSelected -= OnItemSelected;
+        if (_tabbedPanel == tabbedPanel)
+            _tabbedPanel = null;
     }
 
     public void Clear()
     {
         _body = null;
+        _tabbedPanel = null;
         _lastItemType = null;
         _lastItemIndex = -1;
         ClearContent();
@@ -56,6 +67,14 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
 
     private void OnItemSelected(string itemType, int itemIndex)
     {
+        // Planet Board opens its own window instead of populating the details pane.
+        if (itemType == "planet_board")
+        {
+            if (_body is CelestialBody cb)
+                SignalBus.Instance?.EmitOpenPlanetBoardRequested(cb, "ResourceLink");
+            return;
+        }
+
         _lastItemType = itemType;
         _lastItemIndex = itemIndex;
         ClearContent();
@@ -78,8 +97,21 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
             case "schedule":
                 ShowTransferDetails(itemType, itemIndex);
                 break;
+            case "economy":
             case "economy_summary":
                 ShowEconomySummary();
+                break;
+            case "resources":
+                ShowResourcesSummary();
+                break;
+            case "geography":
+                ShowGeographySummary();
+                break;
+            case "building":
+                ShowBuildingDetails(itemIndex);
+                break;
+            case "grid":
+                ShowGridDetails(itemIndex);
                 break;
             case "continent_economy":
                 ShowContinentEconomyDetails(itemIndex);
@@ -154,11 +186,12 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
                 AddAlertRow($"{deficitCount} CONTINENT(S) IN POWER DEFICIT");
         }
 
-        if (_body.TransferMgr != null)
+        int totalActive = _body.GetTotalActiveTransfers();
+        if (totalActive > 0)
         {
             AddSeparator();
             AddDetailHeader("Logistics");
-            AddDetailRow("Active Transfers", _body.TransferMgr.ActiveTransferCount.ToString());
+            AddDetailRow("Active Transfers", totalActive.ToString());
         }
     }
 
@@ -181,113 +214,258 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
         AddDetailRow("Avg Moisture", $"{continent.averageMoisture:F2}");
 
         // Transfers from hubs on this continent (per-building rollup).
-        if (_body.TransferMgr != null)
+        int activeFromHere = _body.GetActiveTransferCountOnContinent(continentIndex);
+        int scheduleCount = _body.GetSchedulesOnContinent(continentIndex).Count;
+        if (activeFromHere > 0)
         {
-            var hubIds = _body.TransferMgr.GetEndpointsOnContinent(continentIndex);
-            int activeFromHere = 0;
-            int scheduleCount = 0;
-            foreach (var id in hubIds)
-            {
-                activeFromHere += _body.TransferMgr.GetActiveTransferCountForOrigin(id);
-                scheduleCount += _body.TransferMgr.GetSchedulesForOrigin(id).Count;
-            }
-            if (activeFromHere > 0)
-            {
-                AddSeparator();
-                AddDetailRow("Active Transfers", activeFromHere.ToString());
-            }
-            if (scheduleCount > 0)
-                AddDetailRow("Schedules", scheduleCount.ToString());
+            AddSeparator();
+            AddDetailRow("Active Transfers", activeFromHere.ToString());
         }
+        if (scheduleCount > 0)
+            AddDetailRow("Schedules", scheduleCount.ToString());
     }
 
     // ───────── Station Details ─────────
 
     private void ShowStationDetails(int stationIndex)
     {
-        if (_body?.SatellitesContainer == null || _titleLabel == null || _contentContainer == null)
+        if (_titleLabel == null || _contentContainer == null)
             return;
 
-        int idx = 0;
-        foreach (var child in _body.SatellitesContainer.GetChildren())
+        var station = _tabbedPanel?.GetStationByIndex(stationIndex);
+        if (station == null)
+            return;
+
+        _titleLabel.Text = station.Name;
+
+        string typeName = !string.IsNullOrEmpty(station.StationType)
+            ? station.StationType!
+            : station.GetBehavior<ShipyardBehavior>() != null ? "Shipyard"
+            : station.GetBehavior<OrbitalConstructorBehavior>() != null ? "Orbital Architect"
+            : station.GetBehavior<TransferHubBehavior>() != null ? "Refinery"
+            : "Station";
+        AddDetailRow("Type", typeName);
+        AddDetailRow("Band", station.BandIndex.ToString());
+        AddDetailRow("Active", station.IsActive ? "Yes" : "No");
+        AddDetailRow("Can Build Ships", station.GetBehavior<ShipyardBehavior>() != null ? "Yes" : "No");
+
+        if (station.IsUnderConstruction)
         {
-            if (child is StationSatellite station)
-            {
-                if (idx == stationIndex)
-                {
-                    _titleLabel.Text = station.Name;
-
-                    AddDetailRow("Type", station.StationType);
-                    AddDetailRow("Band", station.BandIndex.ToString());
-                    AddDetailRow("Active", station.IsActive ? "Yes" : "No");
-                    AddDetailRow("Can Build Ships", station.CanBuildShips ? "Yes" : "No");
-
-                    if (station.IsUnderConstruction)
-                    {
-                        AddSeparator();
-                        AddDetailHeader("Construction");
-                        float progress = station.workDone / Mathf.Max(station.workRequired, 1f);
-                        AddDetailRow("Progress", $"{progress * 100:F0}%");
-                    }
-
-                    // Open Station button for cross-window transition
-                    AddSeparator();
-                    int capturedIndex = stationIndex;
-                    var openButton = new Button { Text = "Open Station" };
-                    openButton.AddThemeFontSizeOverride("font_size", 13);
-                    openButton.Pressed += () =>
-                    {
-                        OrbitalBodyWindow.Instance?.RequestStationInspect(capturedIndex);
-                    };
-                    _contentContainer?.AddChild(openButton);
-
-                    return;
-                }
-                idx++;
-            }
+            AddSeparator();
+            AddDetailHeader("Construction");
+            float progress = station.workDone / Mathf.Max(station.workRequired, 1f);
+            AddDetailRow("Progress", $"{progress * 100:F0}%");
         }
+
+        AddSeparator();
+        int captured = stationIndex;
+        var openButton = new Button { Text = "Open Station" };
+        openButton.AddThemeFontSizeOverride("font_size", 13);
+        openButton.Pressed += () => OrbitalBodyWindow.Instance?.RequestStationInspect(captured);
+        _contentContainer.AddChild(openButton);
     }
 
     // ───────── Logistics Unit Details ─────────
 
     private void ShowLogisticsUnitDetails(int unitIndex)
     {
-        if (_body?.SatellitesContainer == null || _titleLabel == null || _contentContainer == null)
+        if (_titleLabel == null || _contentContainer == null)
             return;
 
-        int idx = 0;
-        foreach (var child in _body.SatellitesContainer.GetChildren())
+        var unit = _tabbedPanel?.GetLogisticsUnitByIndex(unitIndex);
+        if (unit == null)
+            return;
+
+        _titleLabel.Text = unit.Name;
+
+        AddDetailRow("Type", unit.ShipDef?.Name ?? "Ship");
+        AddDetailRow("State", unit.State.ToString());
+        AddPercentRow("Fuel", unit.Fuel, unit.MaxFuel, "kg", DonutChart.ColorMode.RedToGreen);
+        AddDetailRow("Total Mass", $"{unit.GetTotalMass():F1} kg");
+
+        if (unit.CurrentEngine != null)
+            AddDetailRow("Engine Isp", $"{unit.CurrentEngine.EffectiveSpecificImpulse:F1} s");
+
+        AddSeparator();
+        int captured = unitIndex;
+        var openButton = new Button { Text = "Inspect Ship" };
+        openButton.AddThemeFontSizeOverride("font_size", 13);
+        openButton.Pressed += () => OrbitalBodyWindow.Instance?.RequestLogisticsUnitInspect(captured);
+        _contentContainer.AddChild(openButton);
+    }
+
+    // ───────── Resources Summary (Overview → Resources) ─────────
+
+    private void ShowResourcesSummary()
+    {
+        if (_body == null || _titleLabel == null || _contentContainer == null)
+            return;
+
+        _titleLabel.Text = "Resource Stockpiles";
+
+        var totals = new Dictionary<string, float>();
+
+        // Buildings: aggregate via BuildingResourceEndpoint (constructed per-building on demand).
+        foreach (var b in _body.GetAllBuildings())
         {
-            if (child is LogisticsUnit unit)
+            var endpoint = new Constructables.Buildings.BuildingResourceEndpoint(b);
+            foreach (var kvp in endpoint.GetAllStockpiles())
             {
-                if (idx == unitIndex)
-                {
-                    _titleLabel.Text = unit.Name;
-
-                    AddDetailRow("Type", unit.ShipDef?.Name ?? "Ship");
-                    AddDetailRow("State", unit.State.ToString());
-                    AddPercentRow("Fuel", unit.Fuel, unit.MaxFuel, "kg", DonutChart.ColorMode.RedToGreen);
-                    AddDetailRow("Total Mass", $"{unit.GetTotalMass():F1} kg");
-
-                    if (unit.CurrentEngine != null)
-                        AddDetailRow("Engine Isp", $"{unit.CurrentEngine.EffectiveSpecificImpulse:F1} s");
-
-                    // Open Unit button for cross-window transition
-                    AddSeparator();
-                    int capturedIndex = unitIndex;
-                    var openButton = new Button { Text = "Inspect Ship" };
-                    openButton.AddThemeFontSizeOverride("font_size", 13);
-                    openButton.Pressed += () =>
-                    {
-                        OrbitalBodyWindow.Instance?.RequestLogisticsUnitInspect(capturedIndex);
-                    };
-                    _contentContainer?.AddChild(openButton);
-
-                    return;
-                }
-                idx++;
+                if (!totals.ContainsKey(kvp.Key))
+                    totals[kvp.Key] = 0f;
+                totals[kvp.Key] += kvp.Value;
             }
         }
+
+        // Stations: aggregate via the station's ResourceEndpoint.
+        if (_body.SatellitesContainer != null)
+        {
+            foreach (var child in _body.SatellitesContainer.GetChildren())
+            {
+                if (child is StationSatellite s)
+                {
+                    foreach (var kvp in s.ResourceEndpoint.GetAllStockpiles())
+                    {
+                        if (!totals.ContainsKey(kvp.Key))
+                            totals[kvp.Key] = 0f;
+                        totals[kvp.Key] += kvp.Value;
+                    }
+                }
+            }
+        }
+
+        if (totals.Count == 0)
+        {
+            AddDetailRow("Status", "No resources stockpiled");
+            return;
+        }
+
+        AddDetailHeader("Aggregate Stockpiles");
+        int shown = 0;
+        foreach (var kvp in totals.OrderByDescending(k => k.Value))
+        {
+            if (kvp.Value <= 0f)
+                continue;
+            AddDetailRow(kvp.Key, $"{kvp.Value:F1}");
+            if (++shown >= 16)
+                break;
+        }
+    }
+
+    // ───────── Geography Summary (Overview → Geography) ─────────
+
+    private void ShowGeographySummary()
+    {
+        if (_body == null || _titleLabel == null || _contentContainer == null)
+            return;
+
+        _titleLabel.Text = "Geography";
+
+        var continents = _body.Mesh?.Continents;
+        if (continents == null || continents.Count == 0)
+        {
+            AddDetailRow("Status", "No surface data");
+            return;
+        }
+
+        int totalCells = 0;
+        float sumHeight = 0f;
+        float sumMoisture = 0f;
+        var elevationGroups = new Dictionary<Continent.CRUST_TYPE, int>();
+
+        foreach (var c in continents.Values)
+        {
+            totalCells += c.cells.Count;
+            sumHeight += c.averageHeight;
+            sumMoisture += c.averageMoisture;
+            if (!elevationGroups.ContainsKey(c.elevation))
+                elevationGroups[c.elevation] = 0;
+            elevationGroups[c.elevation]++;
+        }
+
+        AddDetailHeader("Surface");
+        AddDetailRow("Continents", continents.Count.ToString());
+        AddDetailRow("Surface Cells", totalCells.ToString());
+        AddDetailRow("Avg Height", $"{sumHeight / continents.Count:F2}");
+        AddDetailRow("Avg Moisture", $"{sumMoisture / continents.Count:F2}");
+
+        AddSeparator();
+        AddDetailHeader("Continent Elevation");
+        foreach (var kvp in elevationGroups.OrderByDescending(k => k.Value))
+            AddDetailRow(kvp.Key.ToString(), kvp.Value.ToString());
+    }
+
+    // ───────── Building Details (Buildings tab) ─────────
+
+    private void ShowBuildingDetails(int buildingIndex)
+    {
+        if (_titleLabel == null || _contentContainer == null)
+            return;
+
+        var b = _tabbedPanel?.GetBuildingByIndex(buildingIndex);
+        if (b == null)
+            return;
+
+        _titleLabel.Text = b.Name;
+
+        AddDetailRow("Category", b.Definition?.Category ?? "—");
+        AddDetailRow("Type", b.Definition?.DisplayName ?? "—");
+        AddDetailRow("Recipe", b.ActiveRecipeId ?? "—");
+        AddDetailRow("Powered", b.PoweredOn ? "Yes" : "No");
+        if (b.PrimaryCell != null)
+            AddDetailRow("Cell", b.PrimaryCell.Index.ToString());
+
+        if (b.IsUnderConstruction)
+        {
+            AddSeparator();
+            AddDetailHeader("Construction");
+            float progress = b.workDone / Mathf.Max(b.workRequired, 1f);
+            AddDetailRow("Progress", $"{progress * 100:F0}%");
+        }
+
+        AddSeparator();
+        var openButton = new Button { Text = "Open Building" };
+        openButton.AddThemeFontSizeOverride("font_size", 13);
+        openButton.Pressed += () => OrbitalBodyWindow.Instance?.RequestBuildingInspect(b);
+        _contentContainer.AddChild(openButton);
+    }
+
+    // ───────── Power Grid Details (Grids tab) ─────────
+
+    private void ShowGridDetails(int gridIndex)
+    {
+        if (_titleLabel == null || _contentContainer == null)
+            return;
+
+        var g = _tabbedPanel?.GetGridByIndex(gridIndex);
+        if (g == null)
+            return;
+
+        _titleLabel.Text = $"Grid {g.Id}";
+
+        AddDetailHeader("Power");
+        AddDetailRow("Generation", $"{g.LastGeneration:F1}/s");
+        AddDetailRow("Draw", $"{g.LastDraw:F1}/s");
+        AddDetailRow("Net", $"{(g.LastGeneration - g.LastDraw):F1}/s");
+        AddPercentRow("Battery", g.BatteryStored, g.BatteryCapacity, "kWh", DonutChart.ColorMode.RedToGreen);
+
+        AddSeparator();
+        AddDetailHeader("Members");
+        AddDetailRow("Contributors", g.Contributors.Count.ToString());
+        AddDetailRow("Consumers", g.Consumers.Count.ToString());
+        AddDetailRow("Covered Cells", g.CoveredCells.Count.ToString());
+
+        if (g.IsBrownedOut)
+        {
+            AddSeparator();
+            AddAlertRow("GRID IN BROWNOUT");
+        }
+
+        AddSeparator();
+        var openButton = new Button { Text = "Open Grid" };
+        openButton.AddThemeFontSizeOverride("font_size", 13);
+        openButton.Pressed += () => GridDetailWindow.Instance?.ShowGrid(g);
+        _contentContainer.AddChild(openButton);
     }
 
     // ───────── Economy Summary (Economies tab default) ─────────
@@ -402,37 +580,18 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
         }
 
         // Transfers (per-building rollup across hubs on this continent).
-        if (_body.TransferMgr != null)
-        {
-            var hubIds = _body.TransferMgr.GetEndpointsOnContinent(continentIndex);
-            int activeTransfers = 0;
-            int scheduleCount = 0;
-            foreach (var id in hubIds)
-            {
-                activeTransfers += _body.TransferMgr.GetActiveTransferCountForOrigin(id);
-                scheduleCount += _body.TransferMgr.GetSchedulesForOrigin(id).Count;
-            }
+        int activeTransfers = _body.GetActiveTransferCountOnContinent(continentIndex);
+        int scheduleCount = _body.GetSchedulesOnContinent(continentIndex).Count;
 
-            if (activeTransfers > 0 || scheduleCount > 0)
-            {
-                AddSeparator();
-                AddDetailHeader("Logistics");
-                if (activeTransfers > 0)
-                    AddDetailRow("Active Transfers", activeTransfers.ToString());
-                if (scheduleCount > 0)
-                    AddDetailRow("Schedules", scheduleCount.ToString());
-            }
+        if (activeTransfers > 0 || scheduleCount > 0)
+        {
+            AddSeparator();
+            AddDetailHeader("Logistics");
+            if (activeTransfers > 0)
+                AddDetailRow("Active Transfers", activeTransfers.ToString());
+            if (scheduleCount > 0)
+                AddDetailRow("Schedules", scheduleCount.ToString());
         }
-
-        // Button to open full continent window
-        AddSeparator();
-        var openButton = new Button { Text = "Open Continent Details" };
-        openButton.AddThemeFontSizeOverride("font_size", 13);
-        openButton.Pressed += () =>
-        {
-            OrbitalBodyWindow.Instance?.RequestContinentInspect(continentIndex);
-        };
-        _contentContainer.AddChild(openButton);
     }
 
     // ───────── Station Economy Details ─────────
@@ -499,7 +658,7 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
 
         _titleLabel.Text = type == "schedule" ? "Transfer Schedule" : "Transfer";
 
-        // For now, show basic info - can be expanded when BodyTransferManager
+        // For now, show basic info - can be expanded when TransferStationBehavior
         // exposes active transfer details
         AddDetailRow("Type", type);
         AddDetailRow("Index", index.ToString());

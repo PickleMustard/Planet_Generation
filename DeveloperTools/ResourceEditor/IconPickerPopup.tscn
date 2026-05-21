@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://llu2rtbsbqab"]
+
+[ext_resource type="Script" uid="uid://686rg3dp1jca" path="res://DeveloperTools/ResourceEditor/IconPickerPopup.cs" id="1_popup"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[node name="IconPickerPopup" type="PopupPanel" unique_id=1130945216]
+oversampling_override = 1.0
+size = Vector2i(320, 280)
+visible = true
+min_size = Vector2i(320, 280)
+theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
+script = ExtResource("1_popup")
+
+[node name="MainVBox" type="VBoxContainer" parent="." unique_id=1615134653]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 312.0
+offset_bottom = 272.0
+size_flags_horizontal = 3
+
+[node name="TitleLabel" type="Label" parent="MainVBox" unique_id=1642342931]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Select Icon"
+horizontal_alignment = 1
+
+[node name="BrowseButton" type="Button" parent="MainVBox" unique_id=1609080380]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Browse..."
+
+[node name="PreviewRect" type="TextureRect" parent="MainVBox" unique_id=831325321]
+unique_name_in_owner = true
+texture_filter = 3
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+size_flags_horizontal = 4
+expand_mode = 2
+stretch_mode = 5
+
+[node name="ButtonHBox" type="HBoxContainer" parent="MainVBox" unique_id=1875431970]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ConfirmButton" type="Button" parent="MainVBox/ButtonHBox" unique_id=1891456043]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Confirm"
+
+[node name="CancelButton" type="Button" parent="MainVBox/ButtonHBox" unique_id=1338047827]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cancel"
+
+[node name="IconFileDialog" type="FileDialog" parent="." unique_id=852903647]
+unique_name_in_owner = true
+title = "Open a File"
+file_mode = 0
+filters = PackedStringArray("*.svg ; SVG Images", "*.png ; PNG Images")

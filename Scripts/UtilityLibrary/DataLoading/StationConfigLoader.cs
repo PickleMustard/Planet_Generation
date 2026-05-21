@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Structures.Enums;
 using Structures.Logistics;
 using Structures.Resources;
+using Structures.Transfers;
 using UtilityLibrary;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -263,10 +265,16 @@ public static class StationConfigLoader
             MaxParallelShipBuilds = BaseConfigLoader.ReadInt(dict, "max_parallel_ship_builds", 1),
             CanBuildBuildings = BaseConfigLoader.ReadBool(dict, "can_build_buildings", false),
             BuildingWorkBudgetPerTick = BaseConfigLoader.ReadFloat(dict, "building_work_budget_per_tick", 1.0f),
-            BuildingScalingPenalty = BaseConfigLoader.ReadFloat(dict, "building_scaling_penalty", 0.05f),
+            RegularSlots = BaseConfigLoader.ReadInt(dict, "regular_slots", 1),
+            OvertimeSlots = BaseConfigLoader.ReadInt(dict, "overtime_slots", 0),
+            OvertimeCostPercent = BaseConfigLoader.ReadFloat(dict, "overtime_cost_percent", 0.10f),
             RequiredResources = BaseConfigLoader.ReadResourceDict(dict, "required_resources"),
             Visual = ParseVisualDefinition(dict),
             Icon = ParseIconDefinition(dict, $"station:{name}"),
+            BehaviorRefs = ParseBehaviorRefs(dict),
+            StorageCapacity = BaseConfigLoader.ReadInt(dict, "storage_capacity", 0),
+            SlotFilters = ParseSlotFilters(dict),
+            TransferStation = ParseTransferStationDefinition(dict),
         };
 
         // Apply fallback if icon failed to load
@@ -398,24 +406,103 @@ public static class StationConfigLoader
         visual.AnimationPath = BaseConfigLoader.ReadString(visualDict, "animation_path", "");
         visual.Scale = BaseConfigLoader.ReadFloat(visualDict, "scale", 1.0f);
         visual.RotationOffset = BaseConfigLoader.ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
-        visual.Shape = ParseShape(BaseConfigLoader.ReadString(visualDict, "shape", "hexagon"));
+        visual.ShapeId = BaseConfigLoader.ReadString(visualDict, "shape_id", "hexagon").Trim();
+        if (string.IsNullOrEmpty(visual.ShapeId)) visual.ShapeId = "hexagon";
         visual.ShapeSize = BaseConfigLoader.ReadFloat(visualDict, "shape_size", 64f);
         visual.ShapeColor = ReadColor(visualDict, "shape_color", visual.ShapeColor);
 
         return visual;
     }
 
-    private static readonly System.Collections.Generic.HashSet<string> AllowedShapes =
-        new() { "hexagon", "square", "rectangle", "pentagon", "triangle" };
-
-    private static string ParseShape(string raw)
+    private static Godot.Collections.Array<string> ParseBehaviorRefs(Dictionary<object, object> dict)
     {
-        string s = (raw ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrEmpty(s))
-            return "hexagon";
-        if (AllowedShapes.Contains(s))
-            return s;
-        GameLogger.Warning($"StationConfigLoader: unknown visual.shape '{raw}', falling back to 'hexagon'");
-        return "hexagon";
+        var refs = new Godot.Collections.Array<string>();
+
+        if (!dict.ContainsKey("behaviors"))
+            return refs;
+
+        if (dict["behaviors"] is not List<object> behaviorList)
+            return refs;
+
+        foreach (var entry in behaviorList)
+        {
+            if (entry is string s && !string.IsNullOrEmpty(s))
+                refs.Add(s);
+        }
+
+        return refs;
     }
+
+    /// <summary>
+    /// Parses the slot_filters YAML block into a list of (filter, count) pairs.
+    /// Keys use prefix syntax: "any", "state:solid", "state:fluid", "category:&lt;name&gt;",
+    /// "resource:&lt;id&gt;". A bare key falls back to category lookup (legacy behavior).
+    /// </summary>
+    private static List<SlotFilterSpec> ParseSlotFilters(Dictionary<object, object> dict)
+    {
+        var specs = new List<SlotFilterSpec>();
+
+        if (!dict.ContainsKey("slot_filters"))
+            return specs;
+
+        if (dict["slot_filters"] is not Dictionary<object, object> filtersDict)
+            return specs;
+
+        foreach (var kvp in filtersDict)
+        {
+            string key = ((string)kvp.Key).Trim();
+            int count = (int)NodeToFloat(kvp.Value, 0f);
+            if (count <= 0 || string.IsNullOrEmpty(key))
+                continue;
+
+            SlotFilter filter;
+            if (string.Equals(key, "any", StringComparison.OrdinalIgnoreCase))
+            {
+                filter = SlotFilter.Any();
+            }
+            else if (key.StartsWith("state:", StringComparison.OrdinalIgnoreCase))
+            {
+                string stateName = key.Substring("state:".Length);
+                filter = SlotFilter.ForState(StateOfMatterExtensions.Parse(stateName));
+            }
+            else if (key.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
+            {
+                filter = SlotFilter.ForCategory(key.Substring("category:".Length));
+            }
+            else if (key.StartsWith("resource:", StringComparison.OrdinalIgnoreCase))
+            {
+                filter = SlotFilter.ForResource(key.Substring("resource:".Length));
+            }
+            else
+            {
+                // Legacy bare key: treat as category name.
+                filter = SlotFilter.ForCategory(key);
+            }
+
+            specs.Add(new SlotFilterSpec(filter, count));
+        }
+
+        return specs;
+    }
+
+    private static TransferStationDefinition? ParseTransferStationDefinition(Dictionary<object, object> dict)
+    {
+        if (!dict.ContainsKey("transfer_station"))
+            return null;
+
+        var stationDict = dict["transfer_station"] as Dictionary<object, object>;
+        if (stationDict == null)
+        {
+            GameLogger.Warning("StationConfigLoader: transfer_station block is not a valid dictionary, skipping");
+            return null;
+        }
+
+        return new TransferStationDefinition
+        {
+            CargoCapacity = BaseConfigLoader.ReadFloat(stationDict, "cargo_capacity", 500.0f),
+            VehicleSpeed = BaseConfigLoader.ReadFloat(stationDict, "vehicle_speed", 50.0f),
+            MaxConcurrentTransfers = BaseConfigLoader.ReadInt(stationDict, "max_concurrent_transfers", 2),
+        };
+    }
+
 }

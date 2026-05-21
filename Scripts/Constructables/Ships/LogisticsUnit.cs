@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Constructables.Stations.Behaviors;
 using Godot;
 using Godot.Collections;
 using ProceduralGeneration.PlanetGeneration;
@@ -163,9 +164,9 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
         if (LocationDetails.ContainsKey("parent_station"))
         {
             var parentStation = LocationDetails["parent_station"].As<StationSatellite>();
-            if (parentStation != null && !parentStation.CanBuildShips)
+            if (parentStation != null && parentStation.GetBehavior<ShipyardBehavior>() == null)
             {
-                GameLogger.Warning($"LogisticsUnit: Parent station '{parentStation.Name}' cannot build ships");
+                GameLogger.Warning($"LogisticsUnit: Parent station '{parentStation.Name}' has no ShipyardBehavior");
                 return false;
             }
         }

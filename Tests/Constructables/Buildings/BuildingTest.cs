@@ -129,7 +129,6 @@ public class BuildingTest
         {
             IdName = "test_building",
             DisplayName = "Test Building",
-            StorageCapacity = 0,
         };
 
         var building = new Building();

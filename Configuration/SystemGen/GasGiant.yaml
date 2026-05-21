@@ -13,6 +13,9 @@ celestial:
     vertical_offset: 0
     mass: 17000
     size: 350
+    # Atmospheric pressure range in atmospheres. Gas giants are crushingly dense;
+    # standard wind turbines won't survive here — adapted variants pending.
+    atmosphere: [50.0, 200.0]
 
   mesh:
     base_mesh:

@@ -1,32 +1,55 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 
 namespace Constructables.Buildings;
 
 /// <summary>
 /// Reflection loader for IBuildingBehavior implementations referenced by
-/// BuildingDefinition.BehaviorRefs (parsed from YAML).
+/// BuildingDefinition.BehaviorEntries (parsed from YAML).
 /// Mirrors BuildingConfigLoader.InstantiateBehaviorByName for IPlacementBehavior.
 /// Accepts either a class name or a "res://...cs" script path.
 /// </summary>
 public static class BehaviorFactory
 {
-    public static IBuildingBehavior? Create(string nameOrPath)
+    /// <summary>
+    /// Creates a behavior instance and, if it implements IBehaviorConfigurable,
+    /// calls Configure() with the provided config dict before returning.
+    /// </summary>
+    public static IBuildingBehavior? Create(
+        string nameOrPath,
+        Dictionary<string, object>? config = null)
     {
         if (string.IsNullOrWhiteSpace(nameOrPath))
             return null;
 
         try
         {
+            IBuildingBehavior? behavior;
             if (nameOrPath.StartsWith("res://", StringComparison.OrdinalIgnoreCase))
-                return CreateFromScript(nameOrPath);
-            return CreateByName(nameOrPath);
+                behavior = CreateFromScript(nameOrPath);
+            else
+                behavior = CreateByName(nameOrPath);
+
+            if (behavior is IBehaviorConfigurable configurable && config != null)
+                configurable.Configure(config);
+
+            return behavior;
         }
         catch (Exception ex)
         {
             GD.PrintErr($"BehaviorFactory: Failed to instantiate behavior '{nameOrPath}': {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Legacy parameterless overload — callers without config dicts
+    /// (StationSatellite, tests) continue to use this.
+    /// </summary>
+    public static IBuildingBehavior? Create(string nameOrPath)
+    {
+        return Create(nameOrPath, config: null);
     }
 
     private static IBuildingBehavior? CreateFromScript(string filePath)

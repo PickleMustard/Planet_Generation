@@ -3,41 +3,35 @@ recipes:
     display_name: "Fusion Reaction"
     description: Sustained nuclear fusion generating massive amounts of power from hydrogen isotopes.
     category: power
-    work_required: 10.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/power/fusion_reaction"
-
+    work_required: 10
     input_resources:
       - tritium: 2
       - water: 5
-
     output_resources:
-      - power: 100
-
-  - recipe_id: "geothermal_drilling"
-    display_name: "Geothermal Drilling"
-    description: Deep-well geothermal energy extraction from underground heat sources.
+      - power: 1500
+  - recipe_id: "fission_reaction"
+    display_name: "Fission Reaction"
+    description: Pressurized water reactor splits uranium for steady high-output power.
     category: power
-    work_required: 10.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/power/geothermal_drilling"
-
+    work_required: 12
     input_resources:
+      - uranium: 1
       - water: 8
-
     output_resources:
-      - power: 50
-
-  - recipe_id: "heat_exchange"
-    display_name: "Heat Exchange"
-    description: Efficient heat transfer systems for sustained geothermal power generation.
+      - power: 1200
+  - recipe_id: "antimatter_reaction"
+    display_name: "Antimatter Reaction"
+    description: Antimatter-matter annihilation releases massive quantities of energy.
     category: power
-    work_required: 8.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/power/heat_exchange"
-
+    work_required: 15
     input_resources:
+      - antimatter: 1
       - water: 5
-
     output_resources:
-      - power: 35
+      - power: 3000
+  - recipe_id: "wind_harvesting"
+    display_name: "Wind Harvesting"
+    category: power
+    work_required: 1
+    output_resources:
+      - power: 10

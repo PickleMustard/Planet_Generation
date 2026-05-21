@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Structures.Logistics;
-using UI.Debug.DatabaseViewer;
+using Debug.DatabaseViewer;
 
 namespace Logistics.Resources
 {

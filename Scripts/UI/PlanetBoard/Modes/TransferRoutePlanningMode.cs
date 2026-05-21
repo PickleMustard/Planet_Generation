@@ -1,7 +1,6 @@
 using System;
 using Constructables;
 using Godot;
-using ProceduralGeneration.PlanetGeneration;
 using Structures.Logistics;
 using Structures.Resources;
 using UI.Wireframe;
@@ -12,7 +11,7 @@ namespace UI.PlanetBoard.Modes;
 /// <summary>
 /// Planet-board mode used by the Dispatch Slips "Pick Destination" step. Listens
 /// for clicks on transfer-station buildings and resolves the clicked endpoint via
-/// <see cref="BodyTransferManager.HasEndpoint"/>. Fires <see cref="DestinationPicked"/>
+/// <see cref="IOrbitalBody.HasTransferEndpoint"/>. Fires <see cref="DestinationPicked"/>
 /// with the destination building id when a remote transfer station is chosen.
 /// </summary>
 public sealed class TransferRoutePlanningMode : IPlanetBoardMode
@@ -36,20 +35,20 @@ public sealed class TransferRoutePlanningMode : IPlanetBoardMode
     /// </summary>
     public event Action<string>? DestinationPicked;
 
-    private PlanetBoardView? _view;
-    private CelestialBody? _body;
+    private BoardWorld? _world;
+    private IOrbitalBody? _body;
 
-    public void OnEnter(PlanetBoardView view, CelestialBody body)
+    public void OnEnter(BoardWorld world, IOrbitalBody body)
     {
-        _view = view;
+        _world = world;
         _body = body;
         SelectedBuildingId = "";
-        view.QueueRedraw();
+        world.QueueRedraw();
     }
 
     public void OnExit()
     {
-        _view = null;
+        _world = null;
         _body = null;
         SelectedBuildingId = "";
     }
@@ -67,20 +66,54 @@ public sealed class TransferRoutePlanningMode : IPlanetBoardMode
     public bool OnEdgeClick(ResourceLink link, MouseButton button) => false;
     public bool OnEmptyClick(Vector2 boardPos, MouseButton button) => false;
 
-    public void DrawOverlay(CanvasItem ci, BoardCamera cam)
+    public bool OnStationClick(StationNode2D node, MouseButton button)
     {
-        if (_view == null) return;
-        var mgr = _body?.TransferMgr;
-        if (mgr == null) return;
-
-        foreach (var bv in _view.BuildingViews)
+        if (button != MouseButton.Left || _body == null || node?.Station == null) return false;
+        string id = node.Station.Id ?? "";
+        if (string.IsNullOrEmpty(id) || !_body.HasTransferEndpoint(id))
         {
-            string id = bv.Building?.Id ?? "";
-            if (string.IsNullOrEmpty(id) || !mgr.HasEndpoint(id)) continue;
+            ToastSystem.Instance?.ShowWarning("Station has no transfer endpoint.");
+            return false;
+        }
+        if (id == OriginBuildingId)
+        {
+            ToastSystem.Instance?.ShowWarning("Cannot route back to the origin.");
+            return false;
+        }
+        SelectedBuildingId = id;
+        DestinationPicked?.Invoke(id);
+        _world?.QueueRedraw();
+        return true;
+    }
+
+    public void DrawOverlay(CanvasItem ci, BoardCameraController cam)
+    {
+        if (_world == null || _body == null) return;
+
+        foreach (var bn in _world.BuildingNodes)
+        {
+            string id = bn.Building?.Id ?? "";
+            if (string.IsNullOrEmpty(id) || !_body.HasTransferEndpoint(id)) continue;
             bool isOrigin = id == OriginBuildingId;
             bool isSelected = id == SelectedBuildingId;
-            var center = cam.BoardToScreen(bv.BoardPos);
-            float radiusScreen = bv.Radius * cam.Zoom + 6f;
+            var center = cam.BoardToScreen(bn.Position);
+            float radiusScreen = bn.Radius * cam.Zoom.X + 6f;
+            Color ring = isOrigin
+                ? WireColors.InkFaint
+                : isSelected
+                    ? WireColors.Orange
+                    : new Color(WireColors.Ink, 0.4f);
+            ci.DrawArc(center, radiusScreen, 0f, Mathf.Tau, 32, ring, 2f);
+        }
+
+        foreach (var sn in _world.StationNodes)
+        {
+            string id = sn.Station?.Id ?? "";
+            if (string.IsNullOrEmpty(id) || !_body.HasTransferEndpoint(id)) continue;
+            bool isOrigin = id == OriginBuildingId;
+            bool isSelected = id == SelectedBuildingId;
+            var center = cam.BoardToScreen(sn.Position);
+            float radiusScreen = sn.Radius * cam.Zoom.X + 8f;
             Color ring = isOrigin
                 ? WireColors.InkFaint
                 : isSelected
@@ -95,8 +128,9 @@ public sealed class TransferRoutePlanningMode : IPlanetBoardMode
         if (hovered is ResourceNode port)
         {
             string id = port.Owner?.Id ?? "";
-            var mgr = _body?.TransferMgr;
-            if (mgr != null && mgr.HasEndpoint(id) && id != OriginBuildingId)
+            if (_body != null
+                && _body.HasTransferEndpoint(id)
+                && id != OriginBuildingId)
             {
                 int continent = port.Owner?.PrimaryCell?.ContinentIndex ?? -1;
                 return continent >= 0
@@ -109,11 +143,9 @@ public sealed class TransferRoutePlanningMode : IPlanetBoardMode
 
     private bool TryPickFromBuilding(Building? building)
     {
-        if (building == null) return false;
-        var mgr = _body?.TransferMgr;
-        if (mgr == null) return false;
+        if (building == null || _body == null) return false;
         string id = building.Id ?? "";
-        if (string.IsNullOrEmpty(id) || !mgr.HasEndpoint(id))
+        if (string.IsNullOrEmpty(id) || !_body.HasTransferEndpoint(id))
         {
             ToastSystem.Instance?.ShowWarning("Pick a transfer-station building.");
             return false;
@@ -125,7 +157,7 @@ public sealed class TransferRoutePlanningMode : IPlanetBoardMode
         }
         SelectedBuildingId = id;
         DestinationPicked?.Invoke(id);
-        _view?.QueueRedraw();
+        _world?.QueueRedraw();
         return true;
     }
 }

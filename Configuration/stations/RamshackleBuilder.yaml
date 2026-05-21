@@ -5,7 +5,13 @@ stations:
     can_build_ships: false
     can_build_buildings: true
     building_work_budget_per_tick: 1.0
-    building_scaling_penalty: 0.1
+    regular_slots: 1
+    overtime_slots: 0
+    overtime_cost_percent: 0.10
+    behaviors:
+      - StorageHubBehavior
+      - OrbitalConstructorBehavior
+    storage_capacity: 10
     required_resources: {}
     icon:
       base_path: "res://Assets/Icons/Stations/architect/ramshackle_builder"

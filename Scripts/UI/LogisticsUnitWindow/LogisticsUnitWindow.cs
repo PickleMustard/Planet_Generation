@@ -17,6 +17,9 @@ public partial class LogisticsUnitWindow : Control
     private Button? _closeButton;
 
     [Export]
+    private Button? _backButton;
+
+    [Export]
     private LogisticsUnitHeaderPanel? _headerPanel;
 
     [Export]
@@ -36,6 +39,9 @@ public partial class LogisticsUnitWindow : Control
     [Signal]
     public delegate void WindowCloseRequestedEventHandler();
 
+    [Signal]
+    public delegate void BackRequestedEventHandler();
+
     public override void _Ready()
     {
         Instance = this;
@@ -43,11 +49,19 @@ public partial class LogisticsUnitWindow : Control
 
         if (_closeButton != null)
             _closeButton.Pressed += OnCloseButtonPressed;
+
+        if (_backButton != null)
+            _backButton.Pressed += OnBackPressed;
     }
 
     private void OnCloseButtonPressed()
     {
         EmitSignal(SignalName.WindowCloseRequested);
+    }
+
+    private void OnBackPressed()
+    {
+        EmitSignal(SignalName.BackRequested);
     }
 
     public override void _ExitTree()

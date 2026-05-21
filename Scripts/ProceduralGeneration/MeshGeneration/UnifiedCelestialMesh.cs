@@ -428,6 +428,12 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     private List<ShaderMaterial> _cellHighlightMaterials = new List<ShaderMaterial>();
     private List<ShaderMaterial> _continentHighlightMaterials = new List<ShaderMaterial>();
 
+    private Image? _placementImage;
+    private ImageTexture? _placementTexture;
+    private byte[]? _placementBuffer;
+    private int _placementWidth;
+    private int _placementHeight;
+
     /// <summary>
     /// Gets the list of cell highlight shader materials for this mesh.
     /// Each entry corresponds to one surface in the ArrayMesh.
@@ -451,28 +457,61 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     }
 
     /// <summary>
-    /// Sets placement highlight on multiple cells with per-cell validity coloring.
-    /// Overrides normal selection highlighting while active.
+    /// Uploads per-cell highlight codes for the placement preview, replacing the
+    /// previous fixed-size uniform arrays. The buffer is indexed by
+    /// <c>VoronoiCell.Index</c>. Codes: 0 = none, 1 = footprint valid, 2 = footprint
+    /// invalid, 3 = new coverage, 4 = dominant existing grid, 5 = absorbed existing
+    /// grid (see <c>cell_selection_highlight.gdshader</c>).
     /// </summary>
-    /// <param name="cellIds">Array of VoronoiCell indices to highlight.</param>
-    /// <param name="valid">Per-cell validity flags (true = green, false = red).</param>
-    public void SetPlacementHighlight(int[] cellIds, bool[] valid)
+    public void SetPlacementHighlightData(byte[] perCellCode, int width, int height)
     {
-        int count = Mathf.Min(cellIds.Length, 16);
-        float[] ids = new float[16];
-        float[] validity = new float[16];
-        for (int i = 0; i < count; i++)
+        if (_placementImage == null || _placementWidth != width || _placementHeight != height)
         {
-            ids[i] = cellIds[i];
-            validity[i] = valid[i] ? 1.0f : 0.0f;
+            _placementImage = Image.CreateFromData(width, height, false, Image.Format.R8, perCellCode);
+            if (_placementTexture == null)
+                _placementTexture = ImageTexture.CreateFromImage(_placementImage);
+            else
+                _placementTexture.SetImage(_placementImage);
+            _placementWidth = width;
+            _placementHeight = height;
+        }
+        else
+        {
+            _placementImage.SetData(width, height, false, Image.Format.R8, perCellCode);
+            _placementTexture!.Update(_placementImage);
         }
 
+        var size = new Vector2I(width, height);
         foreach (var mat in _cellHighlightMaterials)
         {
-            mat.SetShaderParameter("placement_cell_count", count);
-            mat.SetShaderParameter("placement_cell_ids", ids);
-            mat.SetShaderParameter("placement_cell_valid", validity);
+            mat.SetShaderParameter("placement_cell_data", _placementTexture);
+            mat.SetShaderParameter("placement_data_size", size);
+            mat.SetShaderParameter("placement_data_active", true);
         }
+    }
+
+    /// <summary>
+    /// Returns (and lazily allocates) a reusable byte buffer sized to hold one code
+    /// per Voronoi cell on this mesh. Callers receive a zeroed buffer they can
+    /// populate and pass back to <see cref="SetPlacementHighlightData"/>.
+    /// </summary>
+    public byte[] AcquirePlacementBuffer(out int width, out int height)
+    {
+        int cellCount = StrDb?.CellCount ?? 0;
+        if (cellCount <= 0)
+        {
+            width = 0;
+            height = 0;
+            return System.Array.Empty<byte>();
+        }
+        width = Mathf.Min(cellCount, 4096);
+        height = (cellCount + width - 1) / width;
+        int needed = width * height;
+        if (_placementBuffer == null || _placementBuffer.Length != needed)
+            _placementBuffer = new byte[needed];
+        else
+            System.Array.Clear(_placementBuffer, 0, _placementBuffer.Length);
+        return _placementBuffer;
     }
 
     /// <summary>
@@ -488,13 +527,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     }
 
     /// <summary>
-    /// Clears placement highlighting, returning to normal selection mode.
+    /// Clears placement highlighting, returning to normal selection mode. Keeps the
+    /// data texture allocated for reuse on the next placement preview.
     /// </summary>
     public void ClearPlacementHighlight()
     {
         foreach (var mat in _cellHighlightMaterials)
         {
-            mat.SetShaderParameter("placement_cell_count", 0);
+            mat.SetShaderParameter("placement_data_active", false);
         }
     }
 
@@ -1170,6 +1210,31 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         );
 
         builder.AddStep(
+            "AssignGeothermalVents",
+            () =>
+            {
+                GameLogger.EnterFunction("AssignGeothermalVents", "");
+                try
+                {
+                    if (StrDb == null || StrDb.VoronoiCells == null || StrDb.VoronoiCells.Count == 0)
+                    {
+                        GameLogger.ExitFunction("AssignGeothermalVents", "Skipped - no cells");
+                        return 0;
+                    }
+                    GeothermalVentGenerator.Generate(StrDb, rand);
+                    GameLogger.ExitFunction("AssignGeothermalVents", "OK");
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"AssignGeothermalVents Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"AssignGeothermalVents Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
             "AssignResources",
             () =>
             {
@@ -1698,7 +1763,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             {
                 foreach (Point p in cell.Points)
                 {
-                    p.Biome = _biomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
+                    float latitude = p.Position.Normalized().Y;
+                    p.Biome = _biomeAssigner.AssignBiome(this, p.Height, c.averageMoisture, latitude);
                 }
                 cell.CalculateCellBiome();
             }
@@ -1939,6 +2005,23 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     p.ContinentIndecies!.Add(continent.StartingIndex);
                 }
             }
+        }
+
+        // Normalize cell heights into [0, 1] for placement-constraint comparisons.
+        // Raw Height stays in world units for tectonics; NormalizedHeight is what
+        // YAML min_elevation/max_elevation values match against.
+        float minH = float.MaxValue, maxH = float.MinValue;
+        for (int i = 0; i < neighborChart.Length; i++)
+        {
+            if (neighborChart[i] == -1) continue;
+            minH = Mathf.Min(minH, cells[i].Height);
+            maxH = Mathf.Max(maxH, cells[i].Height);
+        }
+        float range = Mathf.Max(maxH - minH, 0.0001f);
+        for (int i = 0; i < neighborChart.Length; i++)
+        {
+            if (neighborChart[i] == -1) continue;
+            cells[i].NormalizedHeight = (cells[i].Height - minH) / range;
         }
 
         foreach (var keyValuePair in continents)

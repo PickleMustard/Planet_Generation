@@ -62,9 +62,17 @@ public partial class StructureDatabase
     public Dictionary<int, Point> VoronoiVertices = new Dictionary<int, Point>();
 
     /// <summary>
-    /// List of all Voronoi cells in the mesh.
+    /// List of all Voronoi cells in the mesh. Cleared by FinalizeDB to free memory
+    /// once the mesh is built; runtime code that needs cell count after finalization
+    /// should read <see cref="CellCount"/> instead.
     /// </summary>
     public List<VoronoiCell> VoronoiCells = new List<VoronoiCell>();
+
+    /// <summary>
+    /// Number of Voronoi cells generated for this body, captured at FinalizeDB time so
+    /// it survives the VoronoiCells clear. Used by placement-highlight buffer sizing.
+    /// </summary>
+    public int CellCount { get; private set; }
 
     /// <summary>
     /// Set of all vertices that are part of Voronoi cells.
@@ -1095,6 +1103,8 @@ public partial class StructureDatabase
 
     public void FinalizeDB()
     {
+        if (VoronoiCells.Count > 0)
+            CellCount = VoronoiCells.Count;
         worldHalfEdgeMap.Clear();
         VoronoiCells.Clear();
         VoronoiCellVertices.Clear();

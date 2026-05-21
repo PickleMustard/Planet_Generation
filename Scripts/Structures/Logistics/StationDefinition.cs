@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Structures.Resources;
+using Structures.Transfers;
 
 namespace Structures.Logistics;
 
@@ -41,16 +42,30 @@ public class StationDefinition
     public bool CanBuildBuildings { get; set; }
 
     /// <summary>
-    /// Amount of work budget available per tick for building construction.
-    /// Defaults to 1.0.
+    /// Per-slot work budget per tick. Each occupied slot (regular or overtime) advances
+    /// its building's construction by this much work per tick.
     /// </summary>
     public float BuildingWorkBudgetPerTick { get; set; } = 1.0f;
 
     /// <summary>
-    /// Penalty factor for building multiple buildings simultaneously.
-    /// Defaults to 0.05 (5% penalty per additional building).
+    /// Number of regular construction slots. Constant for the life of the station.
+    /// Regular slots consume the building's defined resource cost (no overtime multiplier).
     /// </summary>
-    public float BuildingScalingPenalty { get; set; } = 0.05f;
+    public int RegularSlots { get; set; } = 1;
+
+    /// <summary>
+    /// Initial number of overtime construction slots. Mutable at runtime via the
+    /// architect behavior. Each occupied overtime slot raises the resource cost
+    /// of every overtime build linearly with occupancy.
+    /// </summary>
+    public int OvertimeSlots { get; set; } = 0;
+
+    /// <summary>
+    /// Per-occupied-overtime-slot resource cost multiplier increment. With N overtime
+    /// slots currently occupied, each overtime build's required resources are multiplied
+    /// by (1 + N * OvertimeCostPercent). Regular slots are unaffected.
+    /// </summary>
+    public float OvertimeCostPercent { get; set; } = 0.10f;
 
     /// <summary>
     /// Dictionary of required resources for construction (resource name -> amount).
@@ -62,4 +77,29 @@ public class StationDefinition
 
     /// <summary>Separate Icon property for 2D icons (distinct from 3D Visual).</summary>
     public IconDefinition Icon { get; set; } = new();
+
+    /// <summary>
+    /// Behavior class names or script paths parsed from the <c>behaviors:</c> YAML block.
+    /// Station-specific counterpart of <see cref="BuildingDefinition.BehaviorEntries"/>.
+    /// </summary>
+    public Godot.Collections.Array<string> BehaviorRefs { get; set; } = new();
+
+    /// <summary>
+    /// Total number of bulk-storage slots this station exposes.
+    /// Defaults to 0 (no storage).
+    /// </summary>
+    public int StorageCapacity { get; set; } = 0;
+
+    /// <summary>
+    /// Filter mix for the bulk-storage slots. The sum of <see cref="SlotFilterSpec.Count"/>
+    /// values must be ≤ <see cref="StorageCapacity"/>; any remaining slots default to
+    /// <see cref="SlotFilter.Any"/>.
+    /// </summary>
+    public List<SlotFilterSpec> SlotFilters { get; set; } = new();
+
+    /// <summary>
+    /// Transfer station parameters parsed from the <c>transfer_station:</c> YAML block.
+    /// Null when the station has no transfer capability.
+    /// </summary>
+    public TransferStationDefinition? TransferStation { get; set; }
 }

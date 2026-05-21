@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Buildings.Behaviors;
 using Godot;
 using Structures.Resources;
 using Structures.Transfers;
@@ -22,13 +23,48 @@ public partial class SlipsListView : Control
     private VBoxContainer? _sidebarList;
     private GridContainer? _cardGrid;
     private Label? _summaryLabel;
-    private BodyTransferManager? _mgr;
+    private TransferStationBehavior? _behavior;
     private string _originBuildingId = "";
+    private const float RuntimeTickSeconds = 0.25f;
+    private Timer? _runtimeTimer;
+    private readonly Dictionary<string, SlipCard> _cardsByScheduleId = new();
+    private readonly Dictionary<string, SlipCardData> _dataByScheduleId = new();
 
     public override void _Ready()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         BuildLayout();
+
+        _runtimeTimer = new Timer
+        {
+            WaitTime = RuntimeTickSeconds,
+            Autostart = false,
+            OneShot = false,
+        };
+        _runtimeTimer.Timeout += OnRuntimeTick;
+        AddChild(_runtimeTimer);
+        VisibilityChanged += OnVisibilityChanged;
+        OnVisibilityChanged();
+    }
+
+    private void OnVisibilityChanged()
+    {
+        if (_runtimeTimer == null) return;
+        if (Visible && _behavior != null) _runtimeTimer.Start();
+        else _runtimeTimer.Stop();
+    }
+
+    private void OnRuntimeTick()
+    {
+        if (_behavior == null || _cardsByScheduleId.Count == 0) return;
+        var schedules = _behavior.GetSchedulesForOrigin(_originBuildingId);
+        foreach (var schedule in schedules)
+        {
+            if (!_cardsByScheduleId.TryGetValue(schedule.ScheduleId, out var card)) continue;
+            if (!_dataByScheduleId.TryGetValue(schedule.ScheduleId, out var data)) continue;
+            SlipDataBuilder.ApplyRuntime(data, schedule, _behavior);
+            card.UpdateRuntime(data.Status, data.ProgressFraction, data.ProgressLabel, data.StatusLabel);
+        }
     }
 
     private void BuildLayout()
@@ -150,10 +186,11 @@ public partial class SlipsListView : Control
         return area;
     }
 
-    public void Bind(BodyTransferManager? mgr, string originBuildingId)
+    public void Bind(TransferStationBehavior? behavior, string originBuildingId)
     {
-        _mgr = mgr;
+        _behavior = behavior;
         _originBuildingId = originBuildingId ?? "";
+        OnVisibilityChanged();
     }
 
     public void Refresh()
@@ -161,14 +198,16 @@ public partial class SlipsListView : Control
         if (_sidebarList == null || _cardGrid == null) return;
         foreach (var c in _sidebarList.GetChildren()) c.QueueFree();
         foreach (var c in _cardGrid.GetChildren()) c.QueueFree();
+        _cardsByScheduleId.Clear();
+        _dataByScheduleId.Clear();
 
-        if (_mgr == null)
+        if (_behavior == null)
         {
-            ShowEmpty("Transfer manager unavailable");
+            ShowEmpty("Transfer behavior unavailable");
             return;
         }
 
-        var schedules = _mgr.GetSchedulesForOrigin(_originBuildingId);
+        var schedules = _behavior.GetSchedulesForOrigin(_originBuildingId);
         if (schedules.Count == 0)
         {
             ShowEmpty("No slips on file. Tap ＋ Add Route to begin a manifest.");
@@ -184,7 +223,7 @@ public partial class SlipsListView : Control
         {
             var schedule = ordered[i];
             schedule.Priority = i + 1;
-            var data = SlipDataBuilder.BuildFromSchedule(schedule, _mgr, resourceDb);
+            var data = SlipDataBuilder.BuildFromSchedule(schedule, _behavior, resourceDb);
 
             var card = new SlipCard();
             card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -193,11 +232,15 @@ public partial class SlipsListView : Control
             _cardGrid!.AddChild(card);
             card.Bind(data);
 
+            _cardsByScheduleId[schedule.ScheduleId] = card;
+            _dataByScheduleId[schedule.ScheduleId] = data;
+
             var indexRow = BuildIndexRow(data);
             _sidebarList!.AddChild(indexRow);
         }
 
         UpdateSummary(ordered.Count);
+        OnVisibilityChanged();
     }
 
     private Control BuildIndexRow(SlipCardData data)

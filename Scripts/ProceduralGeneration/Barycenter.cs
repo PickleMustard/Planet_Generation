@@ -5,6 +5,10 @@ using ProceduralGeneration.MeshGeneration;
 using ProceduralGeneration.TextureGeneration;
 using Structures;
 using Structures.GameState;
+using Structures.Transfers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Generic;
 
 public partial class Barycenter : Node3D, IOrbitalBody
 {
@@ -18,6 +22,12 @@ public partial class Barycenter : Node3D, IOrbitalBody
     private OrbitalBody transform = new OrbitalBody();
     private Array<OrbitalBody> entries;
     private int totalBodies;
+
+    [Export]
+    public string SystemName { get; set; } = "";
+
+    [Export]
+    public string SectorId { get; set; } = "";
 
     public Vector3 Velocity
     {
@@ -54,14 +64,22 @@ public partial class Barycenter : Node3D, IOrbitalBody
     public BodyBillboardTextures BillboardTextures => throw new System.NotImplementedException();
     public UnifiedCelestialMesh Mesh => throw new System.NotImplementedException();
 
+    /// <summary>
+    /// Barycenters have no atmosphere — they are an abstract gravitational point.
+    /// </summary>
+    public float Atmosphere => 0f;
+
+    /// <summary>
+    /// Barycenters are system-root; never have an orbital parent.
+    /// </summary>
+    public IOrbitalBody? OrbitalParent { get => null; set { /* no-op */ } }
+
     public bool UsesBandPlacement => throw new System.NotImplementedException();
 
     public BuildingConstructionManager BuildingConstructionMgr =>
         throw new System.NotImplementedException();
 
     public BodyEconomyManager EconomyMgr => throw new System.NotImplementedException();
-
-    public BodyTransferManager TransferMgr => throw new System.NotImplementedException();
 
     public Barycenter(Vector3 position, Vector3 velocity, float weight)
     {
@@ -162,4 +180,19 @@ public partial class Barycenter : Node3D, IOrbitalBody
     {
         throw new System.NotImplementedException();
     }
+
+    #region TransferEndpointRegistry (stubs — barycenters never have surface buildings)
+
+    public void RegisterTransferEndpoint(string endpointId, TransferStationDefinition def, GodotObject owner) { }
+    public void UnregisterTransferEndpoint(string endpointId) { }
+    public bool HasTransferEndpoint(string endpointId) => false;
+    public TransferStationDefinition? GetTransferEndpointDef(string endpointId) => null;
+    [Obsolete("Use GetTransferEndpointOwner instead")]
+    public Building? GetTransferEndpointBuilding(string endpointId) => null;
+    public GodotObject? GetTransferEndpointOwner(string endpointId) => null;
+    public IReadOnlyList<string> GetAllTransferEndpoints() => System.Array.Empty<string>();
+    public IReadOnlyList<string> GetTransferEndpointsOnContinent(int continentIndex) => System.Array.Empty<string>();
+    public float GetTotalTransferCapacityOnContinent(int continentIndex) => 0f;
+
+    #endregion
 }

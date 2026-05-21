@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Constructables;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Resources;
+using UtilityLibrary;
 
 namespace Structures.Logistics;
 
@@ -43,13 +44,49 @@ public sealed class BuildingLinkService
     /// </summary>
     public bool TryConnect(ResourceNode? a, ResourceNode? b, LinkProfile profile, out ResourceLink? link)
     {
+        return TryConnect(a, b, profile, out link, out _);
+    }
+
+    /// <summary>
+    /// Overload that exposes a human-readable rejection reason when the connection cannot be made.
+    /// Used by the planning UI to surface feedback to the player.
+    /// </summary>
+    public bool TryConnect(
+        ResourceNode? a,
+        ResourceNode? b,
+        LinkProfile profile,
+        out ResourceLink? link,
+        out string? rejectionReason)
+    {
         link = null;
+        rejectionReason = null;
         if (a == null || b == null || profile == null)
+        {
+            rejectionReason = "missing node or profile";
             return false;
+        }
         if (!ResourceLink.CanConnect(a, b))
+        {
+            rejectionReason = "nodes are not compatible (same kind, or both Import / both Export)";
             return false;
+        }
         if (a.Link != null || b.Link != null)
+        {
+            rejectionReason = "one of the nodes already has a link";
             return false;
+        }
+        if (!ResourceLink.CanCarry(a, profile.StateOfMatter, out var reasonA))
+        {
+            rejectionReason = reasonA;
+            GameLogger.Warning($"Link rejected (source): {reasonA}");
+            return false;
+        }
+        if (!ResourceLink.CanCarry(b, profile.StateOfMatter, out var reasonB))
+        {
+            rejectionReason = reasonB;
+            GameLogger.Warning($"Link rejected (target): {reasonB}");
+            return false;
+        }
 
         // Orient so source is Export (or Flex), target is Import (or Flex).
         ResourceNode source, target;

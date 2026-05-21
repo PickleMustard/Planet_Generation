@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using Godot;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 
 namespace UtilityLibrary.TaskSystem

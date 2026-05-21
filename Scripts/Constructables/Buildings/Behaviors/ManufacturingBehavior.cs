@@ -13,9 +13,12 @@ namespace Constructables.Buildings.Behaviors;
 /// External ticking (ContinentEconomy/StationEconomy) drives StartCycle / OnManufactureTick
 /// based on the building's ManufacturingState.
 /// </summary>
-public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
+public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBehaviorConfigurable
 {
     private Building? _owner;
+
+    /// <summary>Cached max resource tier from the owner's BuildingDefinition. Updated in OnAttach.</summary>
+    private int _maxResourceTier;
 
     public Building? Owner => _owner;
 
@@ -34,14 +37,68 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
 
     private Dictionary<string, float> _pendingInputs = new();
 
+    /// <summary>Tag input key (e.g., "tag:ore") -> concrete resource id resolved at cycle start.</summary>
+    public Dictionary<string, string> ResolvedTagInputs { get; private set; } = new();
+
+    /// <summary>Tag output key (e.g., "tag:metal") -> concrete resource id resolved at cycle start.</summary>
+    public Dictionary<string, string> ResolvedTagOutputs { get; private set; } = new();
+
+    /// <summary>Material:* discriminator captured from the chosen tag-input resource. Null when no tag inputs were resolved.</summary>
+    public string? CycleMaterialDiscriminator { get; private set; }
+
+    /// <summary>Reference to the recipe active in the current cycle. Used for late tag-output resolution after delivery.</summary>
+    private RecipeDefinition? _currentRecipe;
+
+    /// <summary>The recipe of the cycle currently in flight, or null when no cycle is running.</summary>
+    public RecipeDefinition? CurrentRecipe => _currentRecipe;
+
     public int Priority { get; set; } = 5;
+
+    /// <summary>Default recipe read from YAML behavior config.</summary>
+    public string? DefaultRecipe { get; private set; }
+
+    /// <summary>Alternative recipes read from YAML behavior config.</summary>
+    private List<string> _alternativeRecipes = new();
+    public IReadOnlyList<string> AlternativeRecipes => _alternativeRecipes;
+
+    /// <summary>Production speed multiplier read from YAML behavior config.</summary>
+    public float ProductionSpeed { get; private set; } = 1.0f;
+
+    /// <summary>Optional environment-driven output scaler, sampled at OnRegister.</summary>
+    private EnvironmentalModifier? _environmentalModifier;
+
+    /// <summary>
+    /// Cached factor from the environmental modifier; 1.0 when none configured.
+    /// Multiplies every non-power output (literal and tag-resolved) at deposit time.
+    /// A value of 0 blocks new cycles from starting.
+    /// </summary>
+    public float EnvScaleFactor { get; private set; } = 1f;
+
+    public void Configure(Dictionary<string, object> config)
+    {
+        DefaultRecipe = BehaviorConfigHelper.ReadString(config, "default_recipe", null);
+        _alternativeRecipes = BehaviorConfigHelper.ReadStringList(config, "alternative_recipes");
+        ProductionSpeed = BehaviorConfigHelper.ReadFloat(config, "production_speed", 1.0f);
+        _environmentalModifier = EnvironmentalModifier.FromConfig(config);
+    }
 
     public void OnAttach(Building owner)
     {
         _owner = owner;
+        _maxResourceTier = owner.Definition?.MaxResourceTier ?? 0;
     }
 
-    public void OnRegister() { }
+    public void OnRegister()
+    {
+        if (_environmentalModifier == null)
+        {
+            EnvScaleFactor = 1f;
+            return;
+        }
+        EnvScaleFactor = _environmentalModifier.ComputeFactor(_owner);
+        GameLogger.Debug(
+            $"ManufacturingBehavior: env modifier {_environmentalModifier.Type} -> scale {EnvScaleFactor:F3}");
+    }
     public void OnUnregister() {}
 
     public void OnDetach()
@@ -57,6 +114,13 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         if (State != ManufacturingState.Idle && State != ManufacturingState.Outputting)
             return;
 
+        if (EnvScaleFactor <= 0f)
+        {
+            GameLogger.Debug(
+                $"ManufacturingBehavior: refusing cycle on recipe '{recipe.RecipeId}' — env scale factor is 0");
+            return;
+        }
+
         EnsureSlotsForRecipe(recipe);
 
         WorkRequired = recipe.WorkRequired / productionSpeed;
@@ -64,34 +128,96 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         InputsHeld.Clear();
         ExpectedOutputs.Clear();
         _pendingInputs.Clear();
+        ResolvedTagInputs.Clear();
+        ResolvedTagOutputs.Clear();
+        CycleMaterialDiscriminator = null;
+        _currentRecipe = recipe;
 
-        foreach (var output in recipe.OutputResources)
+        // Pass 1: pre-resolve tag inputs from current storage and capture the cycle's material discriminator.
+        var db = ResourceDatabase.Instance;
+        foreach (var input in recipe.InputResources)
         {
-            if (output.Key != "power")
-                ExpectedOutputs[output.Key] = output.Value;
+            if (!RecipeDefinition.IsTagInput(input.Key))
+                continue;
+            string tagName = RecipeDefinition.GetTagName(input.Key);
+            string? picked = PickTaggedResourceFromStorage(_owner, tagName, _maxResourceTier);
+            if (picked == null)
+                continue;
+            ResolvedTagInputs[input.Key] = picked;
+            if (CycleMaterialDiscriminator == null)
+                CycleMaterialDiscriminator = FindDiscriminatorTag(picked);
         }
 
+        // Pass 2: populate ExpectedOutputs for both literal and resolvable tag outputs.
+        foreach (var output in recipe.OutputResources)
+        {
+            if (output.Key == "power")
+                continue;
+            if (RecipeDefinition.IsTagInput(output.Key))
+            {
+                TryResolveAndQueueTagOutput(output.Key, output.Value);
+                continue;
+            }
+            // Block literal outputs exceeding the building's max resource tier
+            if (db != null && db.IsLoaded && db.TryGetResource(output.Key, out var outDef) && outDef != null)
+            {
+                if (outDef.ResourceTier > _maxResourceTier)
+                {
+                    GameLogger.Warning(
+                        $"ManufacturingBehavior: skipping literal output '{output.Key}' (tier {outDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
+                    continue;
+                }
+            }
+            ExpectedOutputs[output.Key] = output.Value * EnvScaleFactor;
+        }
+
+        // Pass 3: withdraw inputs, recording pending (under original key) for anything short.
         var missingInputs = new Dictionary<string, float>();
         foreach (var input in recipe.InputResources)
         {
-            if (input.Key != "power")
-            {
-                float amountNeeded = input.Value;
-                if (amountNeeded > 0)
-                {
-                    float available = _owner.InputStorage.GetQuantity(input.Key);
-                    float toWithdraw = Mathf.Min(available, amountNeeded);
-                    if (toWithdraw > 0)
-                    {
-                        _owner.InputStorage.Withdraw(input.Key, toWithdraw);
-                        InputsHeld[input.Key] = toWithdraw;
-                        amountNeeded -= toWithdraw;
-                    }
+            if (input.Key == "power")
+                continue;
 
-                    if (amountNeeded > 0)
-                        missingInputs[input.Key] = amountNeeded;
+            string? concreteId;
+            if (RecipeDefinition.IsTagInput(input.Key))
+            {
+                if (!ResolvedTagInputs.TryGetValue(input.Key, out concreteId))
+                {
+                    missingInputs[input.Key] = input.Value;
+                    continue;
                 }
             }
+            else
+            {
+                concreteId = input.Key;
+                // Block literal inputs exceeding the building's max resource tier
+                if (db != null && db.IsLoaded && db.TryGetResource(concreteId, out var inDef) && inDef != null)
+                {
+                    if (inDef.ResourceTier > _maxResourceTier)
+                    {
+                        GameLogger.Warning(
+                            $"ManufacturingBehavior: blocking literal input '{concreteId}' (tier {inDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
+                        missingInputs[input.Key] = input.Value;
+                        continue;
+                    }
+                }
+            }
+
+            float amountNeeded = input.Value;
+            if (amountNeeded <= 0)
+                continue;
+
+            float available = _owner.InputStorage.GetQuantity(concreteId);
+            float toWithdraw = Mathf.Min(available, amountNeeded);
+            if (toWithdraw > 0)
+            {
+                _owner.InputStorage.Withdraw(concreteId, toWithdraw);
+                InputsHeld[concreteId] = InputsHeld.GetValueOrDefault(concreteId) + toWithdraw;
+                amountNeeded -= toWithdraw;
+            }
+
+            if (amountNeeded > 0)
+                missingInputs[RecipeDefinition.IsTagInput(input.Key) ? input.Key : concreteId] = amountNeeded;
         }
 
         if (missingInputs.Count > 0)
@@ -103,6 +229,107 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         {
             State = ManufacturingState.Manufacturing;
         }
+    }
+
+    /// <summary>
+    /// Selects the highest-quantity resource in <paramref name="owner"/>'s InputStorage whose
+    /// ResourceDefinition carries <paramref name="tag"/> and has a tier at or below
+    /// <paramref name="maxTier"/>. Ties are broken alphabetically by resource id.
+    /// Returns null when no matching resource is currently in storage or the database is unavailable.
+    /// </summary>
+    private static string? PickTaggedResourceFromStorage(Building owner, string tag, int maxTier)
+    {
+        if (owner == null || string.IsNullOrEmpty(tag))
+            return null;
+        var db = ResourceDatabase.Instance;
+        if (db == null || !db.IsLoaded)
+            return null;
+
+        var quantities = owner.InputStorage.GetAllQuantities();
+        if (quantities.Count == 0)
+            return null;
+
+        var matching = db.GetResourcesByTagAndMaxTier(tag, maxTier);
+        if (matching.Count == 0)
+            return null;
+
+        string? best = null;
+        float bestQty = 0f;
+        foreach (var def in matching)
+        {
+            if (def == null || string.IsNullOrEmpty(def.IdName))
+                continue;
+            if (!quantities.TryGetValue(def.IdName, out var qty) || qty <= 0)
+                continue;
+            if (qty > bestQty
+                || (qty == bestQty && best != null && string.CompareOrdinal(def.IdName, best) < 0))
+            {
+                best = def.IdName;
+                bestQty = qty;
+            }
+        }
+        return best;
+    }
+
+    private static string? FindDiscriminatorTag(string resourceId)
+    {
+        var db = ResourceDatabase.Instance;
+        if (db == null || !db.IsLoaded)
+            return null;
+        if (!db.TryGetResource(resourceId, out var def) || def?.Tags == null)
+            return null;
+        foreach (var tag in def.Tags)
+        {
+            if (tag != null && tag.StartsWith(ResourceDatabase.DiscriminatorTagPrefix))
+                return tag;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves a tag-output key and appends it to ExpectedOutputs and OutputStorage slots.
+    /// Resolution uses the cycle's captured <c>material:*</c> discriminator tag (from a
+    /// tag input) to select the unique resource carrying both the output tag and the
+    /// discriminator (smelting-style).
+    /// No-op when the discriminator is not yet available — the caller can retry once a
+    /// tag input arrives.
+    /// </summary>
+    private void TryResolveAndQueueTagOutput(string tagOutputKey, float amount)
+    {
+        if (_owner == null)
+            return;
+        if (ResolvedTagOutputs.ContainsKey(tagOutputKey))
+            return;
+
+        string tagName = RecipeDefinition.GetTagName(tagOutputKey);
+
+        if (CycleMaterialDiscriminator == null)
+            return;
+        var db = ResourceDatabase.Instance;
+        if (db == null || !db.IsLoaded)
+            return;
+        if (!db.TryResolveTaggedOutput(tagName, CycleMaterialDiscriminator, _maxResourceTier, out var def) || def?.IdName == null)
+        {
+            GameLogger.Warning(
+                $"ManufacturingBehavior: could not resolve output '{tagOutputKey}' for discriminator '{CycleMaterialDiscriminator}' on recipe '{_currentRecipe?.RecipeId}'");
+            return;
+        }
+
+        ResolvedTagOutputs[tagOutputKey] = def.IdName;
+        ExpectedOutputs[def.IdName] = amount * EnvScaleFactor;
+        EnsureOutputSlotForResource(def.IdName);
+    }
+
+    private void EnsureOutputSlotForResource(string resourceId)
+    {
+        if (_owner == null) return;
+        foreach (var slot in _owner.OutputStorage.Slots)
+        {
+            if (slot.Filter.Kind == SlotFilterKind.Resource
+                && slot.Filter.ResourceId == resourceId)
+                return;
+        }
+        _owner.OutputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource(resourceId)));
     }
 
     public void SetState(ManufacturingState newState)
@@ -140,6 +367,10 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         InputsHeld.Clear();
         ExpectedOutputs.Clear();
         _pendingInputs.Clear();
+        ResolvedTagInputs.Clear();
+        ResolvedTagOutputs.Clear();
+        CycleMaterialDiscriminator = null;
+        _currentRecipe = null;
         WorkProgress = 0f;
         WorkRequired = 0f;
         State = ManufacturingState.Idle;
@@ -156,6 +387,8 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         if (_owner == null)
             return;
 
+        var db = ResourceDatabase.Instance;
+
         var existingIn = new HashSet<string>();
         foreach (var slot in _owner.InputStorage.Slots)
         {
@@ -165,6 +398,20 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         foreach (var input in recipe.InputResources.Keys)
         {
             if (input == "power") continue;
+            if (RecipeDefinition.IsTagInput(input))
+            {
+                if (db == null || !db.IsLoaded)
+                    continue;
+                var matching = db.GetResourcesByTagAndMaxTier(RecipeDefinition.GetTagName(input), _maxResourceTier);
+                foreach (var def in matching)
+                {
+                    if (def?.IdName == null || existingIn.Contains(def.IdName))
+                        continue;
+                    _owner.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource(def.IdName)));
+                    existingIn.Add(def.IdName);
+                }
+                continue;
+            }
             if (existingIn.Contains(input)) continue;
             _owner.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource(input)));
         }
@@ -178,6 +425,12 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         foreach (var output in recipe.OutputResources.Keys)
         {
             if (output == "power") continue;
+            if (RecipeDefinition.IsTagInput(output))
+            {
+                // Tag-output slots are created lazily once the cycle's material discriminator
+                // resolves the concrete output id (see TryResolveAndQueueTagOutput).
+                continue;
+            }
             if (existingOut.Contains(output)) continue;
             _owner.OutputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource(output)));
         }
@@ -210,25 +463,63 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
             return;
 
         var stillMissing = new Dictionary<string, float>();
+        bool discriminatorChanged = false;
         foreach (var kvp in _pendingInputs)
         {
-            string resourceId = kvp.Key;
+            string key = kvp.Key;
             float needed = kvp.Value;
 
-            float inStorage = owner.InputStorage.GetQuantity(resourceId);
+            string? concreteId;
+            if (RecipeDefinition.IsTagInput(key))
+            {
+                if (!ResolvedTagInputs.TryGetValue(key, out concreteId))
+                {
+                    concreteId = PickTaggedResourceFromStorage(owner, RecipeDefinition.GetTagName(key), _maxResourceTier);
+                    if (concreteId == null)
+                    {
+                        stillMissing[key] = needed;
+                        continue;
+                    }
+                    ResolvedTagInputs[key] = concreteId;
+                    if (CycleMaterialDiscriminator == null)
+                    {
+                        CycleMaterialDiscriminator = FindDiscriminatorTag(concreteId);
+                        if (CycleMaterialDiscriminator != null)
+                            discriminatorChanged = true;
+                    }
+                }
+            }
+            else
+            {
+                concreteId = key;
+            }
+
+            float inStorage = owner.InputStorage.GetQuantity(concreteId);
             float toWithdraw = Mathf.Min(inStorage, needed);
             if (toWithdraw > 0)
             {
-                owner.InputStorage.Withdraw(resourceId, toWithdraw);
-                InputsHeld[resourceId] = InputsHeld.GetValueOrDefault(resourceId) + toWithdraw;
+                owner.InputStorage.Withdraw(concreteId, toWithdraw);
+                InputsHeld[concreteId] = InputsHeld.GetValueOrDefault(concreteId) + toWithdraw;
                 needed -= toWithdraw;
             }
 
             if (needed > 0)
-                stillMissing[resourceId] = needed;
+                stillMissing[key] = needed;
         }
 
         _pendingInputs = stillMissing;
+
+        // If we just captured the cycle's discriminator, resolve any tag outputs that were deferred.
+        if (discriminatorChanged && _currentRecipe != null)
+        {
+            foreach (var output in _currentRecipe.OutputResources)
+            {
+                if (output.Key == "power" || !RecipeDefinition.IsTagInput(output.Key))
+                    continue;
+                TryResolveAndQueueTagOutput(output.Key, output.Value);
+            }
+        }
+
         if (_pendingInputs.Count == 0)
             State = ManufacturingState.Manufacturing;
     }
@@ -243,6 +534,10 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior
         InputsHeld.Clear();
         ExpectedOutputs.Clear();
         _pendingInputs.Clear();
+        ResolvedTagInputs.Clear();
+        ResolvedTagOutputs.Clear();
+        CycleMaterialDiscriminator = null;
+        _currentRecipe = null;
         WorkProgress = 0f;
         State = ManufacturingState.Idle;
     }

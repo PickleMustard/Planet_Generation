@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Constructables.Power;
 using Godot;
 using Structures.Enums;
@@ -11,7 +12,7 @@ namespace Constructables.Buildings.Behaviors;
 /// <see cref="BodyPowerGridManager"/>; when no grid covers the owner's cell, <see cref="Grid"/>
 /// is null.
 /// </summary>
-public partial class PowerConsumerBehavior : RefCounted, IBuildingBehavior, IPowerConsumer
+public partial class PowerConsumerBehavior : RefCounted, IBuildingBehavior, IPowerConsumer, IBehaviorConfigurable
 {
     private Building? _owner;
 
@@ -37,5 +38,10 @@ public partial class PowerConsumerBehavior : RefCounted, IBuildingBehavior, IPow
             return 0f;
 
         return mfg.State == ManufacturingState.Manufacturing ? BaseDraw : 0f;
+    }
+
+    public void Configure(Dictionary<string, object> config)
+    {
+        BaseDraw = BehaviorConfigHelper.ReadFloat(config, "base_draw", 0f);
     }
 }

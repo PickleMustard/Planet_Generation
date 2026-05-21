@@ -49,7 +49,10 @@ public partial class BuildingInfoHeader : HBoxContainer
 
         if (_buildingNameLabel != null)
         {
-            _buildingNameLabel.Text = definition?.DisplayName ?? definition?.IdName ?? "Unknown Building";
+            string name = definition?.DisplayName ?? definition?.IdName ?? "Unknown Building";
+            if (definition != null)
+                name += $"  [Tier {definition.MaxResourceTier}]";
+            _buildingNameLabel.Text = name;
         }
 
         if (_buildingIcon != null)
@@ -135,15 +138,15 @@ public partial class BuildingInfoHeader : HBoxContainer
     {
         if (definition?.Icon?.IsValid == true)
         {
-            return definition.Icon.MediumTexture ?? definition.Icon.SmallTexture;
+            return definition.Icon.LargeTexture ?? definition.Icon.MediumTexture ?? definition.Icon.SmallTexture;
         }
 
         if (!string.IsNullOrEmpty(definition?.Icon?.BasePath))
         {
             try
             {
-                string mediumPath = definition.Icon.BasePath + "_medium.png";
-                return ResourceLoader.Load<Texture2D>(mediumPath);
+                string iconPath = definition.Icon.BasePath + ".png";
+                return ResourceLoader.Load<Texture2D>(iconPath);
             }
             catch
             {

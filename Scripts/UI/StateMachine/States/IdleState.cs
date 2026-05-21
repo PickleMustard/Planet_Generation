@@ -30,7 +30,6 @@ public partial class IdleState : LimboState
     {
         // Hide info windows
         CellInfo.VoronoiCellInfoWindow.Instance?.Hide();
-        ContinentInfo.ContinentInfoWindow.Instance?.Hide();
         TransferPlanning.DispatchSlipsWindow.Instance?.Hide();
         OrbitalBodyWindow.Instance?.HideWindow();
 

@@ -94,27 +94,20 @@ public static class BuildingConfigLoader
             Description = ReadString(dict, "description", ""),
             Category = ReadString(dict, "category", ""),
             BuildingLimit = ReadInt(dict, "building_limit", -1),
-            BuildingTime = ReadFloat(dict, "building_time", 60.0f),
+            MaxResourceTier = ReadInt(dict, "max_resource_tier", 0),
             WorkRequired = ReadFloat(dict, "work_required", 100.0f),
             AllowedRecipeCategory = ReadString(dict, "allowed_recipe_category", ""),
             Placement = ParsePlacementRequirements(dict),
             RequiredResources = ParseRequiredResources(dict),
-            Production = ParseProductionDefinition(dict),
-            Power = ParsePowerDefinition(dict),
-            Extraction = ParseExtractionDefinition(dict),
             Visual = ParseVisualDefinition(dict),
             Icon = ParseIconDefinition(dict, $"building:{idName}"),
             Sound = ParseSoundDefinition(dict),
-            TransferStation = ParseTransferStationDefinition(dict),
-            StartingStockpiles = ParseStartingStockpiles(dict),
-            StorageCapacity = ParseStorageCapacity(dict),
-            SlotFilters = ParseSlotFilters(dict),
             Demolishable = ReadBool(dict, "demolishable", true),
             DefaultLinkProfile = ReadString(dict, "link_profile", ""),
         };
 
-        ParseNodeLayout(dict, definition);
-        ParseBehaviorRefs(dict, definition);
+        ParseBehaviorEntries(dict, definition);
+        PopulateNodeLayoutFromShape(definition);
 
         // Apply fallback if icon failed to load
         if (!definition.Icon.IsValid)
@@ -156,30 +149,21 @@ public static class BuildingConfigLoader
         return icon;
     }
 
-    private static void ParseNodeLayout(Dictionary<object, object> dict, BuildingDefinition definition)
+    private static void PopulateNodeLayoutFromShape(BuildingDefinition definition)
     {
-        if (!dict.ContainsKey("nodes"))
-            return;
-
-        if (dict["nodes"] is not List<object> nodesList)
-            return;
-
-        foreach (var entry in nodesList)
+        string shapeId = definition.Visual?.ShapeId ?? "hexagon";
+        var shape = BuildingShape2DDatabase.Instance.Get(shapeId);
+        if (shape == null)
         {
-            if (entry is not Dictionary<object, object> nodeDict)
-                continue;
-
-            var spec = new NodeSpec
-            {
-                Side = ParseBuildingSide(ReadString(nodeDict, "side", "top")),
-                Position = ReadVector3(nodeDict, "position", Vector3.Zero),
-                Kind = ParseResourceNodeKind(ReadString(nodeDict, "kind", "flex")),
-            };
-            definition.NodeLayout.Add(spec);
+            GameLogger.Warning(
+                $"BuildingConfigLoader: building '{definition.IdName}' references " +
+                $"unknown shape_id '{shapeId}'; no node layout populated");
+            return;
         }
+        definition.PopulateNodeLayoutFromShape(shape);
     }
 
-    private static void ParseBehaviorRefs(Dictionary<object, object> dict, BuildingDefinition definition)
+    private static void ParseBehaviorEntries(Dictionary<object, object> dict, BuildingDefinition definition)
     {
         if (!dict.ContainsKey("behaviors"))
             return;
@@ -190,101 +174,37 @@ public static class BuildingConfigLoader
         foreach (var entry in behaviorList)
         {
             if (entry is string s && !string.IsNullOrEmpty(s))
-                definition.BehaviorRefs.Add(s);
+            {
+                definition.BehaviorEntries.Add(new BuildingDefinition.BehaviorConfigEntry
+                {
+                    BehaviorId = s,
+                    Config = new Dictionary<string, object>()
+                });
+            }
+            else if (entry is Dictionary<object, object> entryDict)
+            {
+                string behaviorId = ReadString(entryDict, "behavior_id", "");
+                if (string.IsNullOrEmpty(behaviorId))
+                {
+                    GD.PrintErr("BuildingConfigLoader: behavior entry missing 'behavior_id' key");
+                    continue;
+                }
+
+                var config = new Dictionary<string, object>();
+                foreach (var kvp in entryDict)
+                {
+                    string key = kvp.Key?.ToString() ?? "";
+                    if (key == "behavior_id") continue;
+                    config[key] = kvp.Value;
+                }
+
+                definition.BehaviorEntries.Add(new BuildingDefinition.BehaviorConfigEntry
+                {
+                    BehaviorId = behaviorId,
+                    Config = config
+                });
+            }
         }
-    }
-
-    private static BuildingSide ParseBuildingSide(string value)
-    {
-        if (Enum.TryParse<BuildingSide>(value, ignoreCase: true, out var side))
-            return side;
-        return BuildingSide.Top;
-    }
-
-    private static ResourceNodeKind ParseResourceNodeKind(string value)
-    {
-        if (Enum.TryParse<ResourceNodeKind>(value, ignoreCase: true, out var kind))
-            return kind;
-        return ResourceNodeKind.Flex;
-    }
-
-    private static Dictionary<string, int> ParseStartingStockpiles(Dictionary<object, object> dict)
-    {
-        var stockpiles = new Dictionary<string, int>();
-
-        if (!dict.ContainsKey("starting_stockpiles"))
-            return stockpiles;
-
-        var stockpilesDict = dict["starting_stockpiles"] as Dictionary<object, object>;
-        if (stockpilesDict == null)
-            return stockpiles;
-
-        foreach (var kvp in stockpilesDict)
-        {
-            string resourceName = (string)kvp.Key;
-            int quantity = NodeToInt(kvp.Value, 0);
-            if (quantity > 0)
-                stockpiles[resourceName] = quantity;
-        }
-
-        return stockpiles;
-    }
-
-    private static int ParseStorageCapacity(Dictionary<object, object> dict)
-    {
-        return ReadInt(dict, "storage_capacity", 0);
-    }
-
-    /// <summary>
-    /// Parses the slot_filters YAML block into a list of (filter, count) pairs.
-    /// Keys use prefix syntax: "any", "state:solid", "state:fluid", "category:&lt;name&gt;",
-    /// "resource:&lt;id&gt;". A bare key falls back to category lookup (legacy behavior).
-    /// </summary>
-    private static List<SlotFilterSpec> ParseSlotFilters(Dictionary<object, object> dict)
-    {
-        var specs = new List<SlotFilterSpec>();
-
-        if (!dict.ContainsKey("slot_filters"))
-            return specs;
-
-        if (dict["slot_filters"] is not Dictionary<object, object> filtersDict)
-            return specs;
-
-        foreach (var kvp in filtersDict)
-        {
-            string key = ((string)kvp.Key).Trim();
-            int count = NodeToInt(kvp.Value, 0);
-            if (count <= 0 || string.IsNullOrEmpty(key))
-                continue;
-
-            SlotFilter filter;
-            if (string.Equals(key, "any", StringComparison.OrdinalIgnoreCase))
-            {
-                filter = SlotFilter.Any();
-            }
-            else if (key.StartsWith("state:", StringComparison.OrdinalIgnoreCase))
-            {
-                string stateName = key.Substring("state:".Length);
-                filter = SlotFilter.ForState(StateOfMatterExtensions.Parse(stateName));
-            }
-            else if (key.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
-            {
-                filter = SlotFilter.ForCategory(key.Substring("category:".Length));
-            }
-            else if (key.StartsWith("resource:", StringComparison.OrdinalIgnoreCase))
-            {
-                filter = SlotFilter.ForResource(key.Substring("resource:".Length));
-            }
-            else
-            {
-                // Legacy bare key: treat as category name.
-                filter = SlotFilter.ForCategory(key);
-            }
-
-            specs.Add(new SlotFilterSpec(filter, count));
-        }
-
-        return specs;
     }
 
     // Cache for biome categories - loaded once and reused
@@ -440,7 +360,8 @@ public static class BuildingConfigLoader
 
     /// <summary>
     /// Loads and instantiates a custom placement behavior from the configuration.
-    /// Supports both file paths (res://) and fully qualified class names.
+    /// Supports both file paths (res://), bare class names (legacy), and
+    /// inline config mappings (new format with behavior_class key).
     /// </summary>
     private static IPlacementBehavior? LoadPlacementBehavior(
         Dictionary<object, object> placementDict,
@@ -453,74 +374,64 @@ public static class BuildingConfigLoader
         if (behaviorValue == null)
             return null;
 
-        string? behaviorPath = behaviorValue.ToString();
-        if (string.IsNullOrWhiteSpace(behaviorPath))
+        // Support legacy bare string format (warn)
+        if (behaviorValue is string bareString)
+        {
+            GD.PushWarning(
+                "BuildingConfigLoader: Bare string 'configurable_behavior' is deprecated. " +
+                "Use mapping with 'behavior_class' key and inline config.");
+            return InstantiatePlacementBehavior(bareString, requirements);
+        }
+
+        if (behaviorValue is not Dictionary<object, object> behaviorDict)
             return null;
 
-        try
+        string className = ReadString(behaviorDict, "behavior_class", "");
+        if (string.IsNullOrWhiteSpace(className))
         {
-            // Check if it's a file path (starts with res://)
-            if (behaviorPath.StartsWith("res://", StringComparison.OrdinalIgnoreCase))
-            {
-                return LoadBehaviorFromFile(behaviorPath, requirements);
-            }
-            else
-            {
-                // It's a class name - try to find it in the current assembly
-                return InstantiateBehaviorByName(behaviorPath, requirements);
-            }
-        }
-        catch (Exception ex)
-        {
-            GD.PrintErr($"BuildingConfigLoader: Failed to load placement behavior '{behaviorPath}': {ex.Message}");
+            GD.PrintErr("BuildingConfigLoader: configurable_behavior mapping missing 'behavior_class' key");
             return null;
         }
+
+        // Extract config keys (everything except behavior_class)
+        var config = new Dictionary<string, object>();
+        foreach (var kvp in behaviorDict)
+        {
+            string key = kvp.Key?.ToString() ?? "";
+            if (key == "behavior_class") continue;
+            config[key] = kvp.Value;
+        }
+
+        var behavior = InstantiatePlacementBehavior(className, requirements);
+
+        // Apply inline config (e.g., min_atmosphere, max_atmosphere)
+        if (behavior is AtmospherePlacementBehavior atm)
+        {
+            if (config.TryGetValue("min_atmosphere", out var minAtm))
+                atm.MinAtmosphere = NodeToFloat(minAtm, atm.MinAtmosphere);
+            if (config.TryGetValue("max_atmosphere", out var maxAtm))
+                atm.MaxAtmosphere = NodeToFloat(maxAtm, atm.MaxAtmosphere);
+        }
+
+        return behavior;
     }
 
     /// <summary>
-    /// Loads a behavior from a C# script file using Godot's CSharpScript.
+    /// Instantiates a placement behavior by class name using reflection.
+    /// Supports both bare names and fully-qualified type names.
     /// </summary>
-    private static IPlacementBehavior? LoadBehaviorFromFile(string filePath, BuildingDefinition.PlacementRequirements requirements)
-    {
-        try
-        {
-            // Load the CSharpScript from file
-            var script = GD.Load<CSharpScript>(filePath);
-            if (script == null)
-            {
-                GD.PrintErr($"BuildingConfigLoader: Could not load script at '{filePath}'");
-                return null;
-            }
-
-            // Instantiate the script
-            var variant = script.New();
-            var godotObj = variant.AsGodotObject();
-
-            if (godotObj is not IPlacementBehavior behavior)
-            {
-                GD.PrintErr($"BuildingConfigLoader: Script '{filePath}' does not implement IPlacementBehavior");
-                godotObj.Free();
-                return null;
-            }
-
-            return behavior;
-        }
-        catch (Exception ex)
-        {
-            GD.PrintErr($"BuildingConfigLoader: Failed to load behavior from file '{filePath}': {ex.Message}");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Instantiates a behavior by class name using reflection.
-    /// </summary>
-    private static IPlacementBehavior? InstantiateBehaviorByName(
+    private static IPlacementBehavior? InstantiatePlacementBehavior(
         string className,
         BuildingDefinition.PlacementRequirements requirements)
     {
         try
         {
+            // Check if it's a file path (starts with res://)
+            if (className.StartsWith("res://", StringComparison.OrdinalIgnoreCase))
+            {
+                return LoadBehaviorFromFile(className, requirements);
+            }
+
             var assembly = typeof(IPlacementBehavior).Assembly;
 
             // Try various namespace prefixes
@@ -564,6 +475,39 @@ public static class BuildingConfigLoader
         }
     }
 
+    /// <summary>
+    /// Loads a placement behavior from a C# script file using Godot's CSharpScript.
+    /// </summary>
+    private static IPlacementBehavior? LoadBehaviorFromFile(string filePath, BuildingDefinition.PlacementRequirements requirements)
+    {
+        try
+        {
+            var script = GD.Load<CSharpScript>(filePath);
+            if (script == null)
+            {
+                GD.PrintErr($"BuildingConfigLoader: Could not load script at '{filePath}'");
+                return null;
+            }
+
+            var variant = script.New();
+            var godotObj = variant.AsGodotObject();
+
+            if (godotObj is not IPlacementBehavior behavior)
+            {
+                GD.PrintErr($"BuildingConfigLoader: Script '{filePath}' does not implement IPlacementBehavior");
+                godotObj.Free();
+                return null;
+            }
+
+            return behavior;
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"BuildingConfigLoader: Failed to load behavior from file '{filePath}': {ex.Message}");
+            return null;
+        }
+    }
+
     private static Dictionary<string, int> ParseRequiredResources(Dictionary<object, object> dict)
     {
         var resources = new Dictionary<string, int>();
@@ -583,68 +527,6 @@ public static class BuildingConfigLoader
         }
 
         return resources;
-    }
-
-    private static BuildingDefinition.ProductionDefinition ParseProductionDefinition(
-        Dictionary<object, object> dict
-    )
-    {
-        var production = new BuildingDefinition.ProductionDefinition();
-
-        if (!dict.ContainsKey("production"))
-            return production;
-
-        var productionDict = dict["production"] as Dictionary<object, object>;
-        if (productionDict == null)
-            return production;
-
-        production.DefaultRecipe = ReadString(productionDict, "default_recipe", "");
-        production.AlternativeRecipes = ReadStringList(productionDict, "alternative_recipes");
-        production.ProductionSpeed = ReadFloat(productionDict, "production_speed", 1.0f);
-
-        return production;
-    }
-
-    private static BuildingDefinition.PowerDefinition ParsePowerDefinition(
-        Dictionary<object, object> dict
-    )
-    {
-        var power = new BuildingDefinition.PowerDefinition();
-
-        if (!dict.ContainsKey("power"))
-            return power;
-
-        var powerDict = dict["power"] as Dictionary<object, object>;
-        if (powerDict == null)
-            return power;
-
-        power.GridRadius = ReadInt(powerDict, "grid_radius", 0);
-        power.Output = ReadFloat(powerDict, "output", 0f);
-        power.BaseDraw = ReadFloat(powerDict, "base_draw", 0f);
-        power.BatteryCapacity = ReadFloat(powerDict, "battery_capacity", 0f);
-        power.IsRenewable = ReadBool(powerDict, "is_renewable", false);
-
-        return power;
-    }
-
-    private static BuildingDefinition.ExtractionDefinition ParseExtractionDefinition(
-        Dictionary<object, object> dict
-    )
-    {
-        var extraction = new BuildingDefinition.ExtractionDefinition();
-
-        if (!dict.ContainsKey("extraction"))
-            return extraction;
-
-        var extractionDict = dict["extraction"] as Dictionary<object, object>;
-        if (extractionDict == null)
-            return extraction;
-
-        extraction.ExtractTypes = ReadInt(extractionDict, "extract_types", 1);
-        extraction.RatePerTick = ReadFloat(extractionDict, "rate_per_tick", 1f);
-        extraction.WorkPerCycle = ReadFloat(extractionDict, "work_per_cycle", 1f);
-
-        return extraction;
     }
 
     private static VisualDefinition ParseVisualDefinition(
@@ -699,27 +581,17 @@ public static class BuildingConfigLoader
             ReadString(visualDict, "animation_path", ""),
             "visual.animation_path"
         );
+        string animName = ReadString(visualDict, "animation_name", "");
+        visual.AnimationName = string.IsNullOrEmpty(animName) ? null : animName;
         visual.Scale = ReadFloat(visualDict, "scale", 1.0f);
         visual.RotationOffset = ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
-        visual.Shape = ParseShape(ReadString(visualDict, "shape", "hexagon"));
+        visual.ShapeId = ReadString(visualDict, "shape_id", "hexagon").Trim();
+        if (string.IsNullOrEmpty(visual.ShapeId))
+            visual.ShapeId = "hexagon";
         visual.ShapeSize = ReadFloat(visualDict, "shape_size", 64f);
         visual.ShapeColor = ReadColor(visualDict, "shape_color", visual.ShapeColor);
 
         return visual;
-    }
-
-    private static readonly System.Collections.Generic.HashSet<string> AllowedShapes =
-        new() { "hexagon", "square", "rectangle", "pentagon", "triangle" };
-
-    private static string ParseShape(string raw)
-    {
-        string s = (raw ?? "").Trim().ToLowerInvariant();
-        if (string.IsNullOrEmpty(s))
-            return "hexagon";
-        if (AllowedShapes.Contains(s))
-            return s;
-        GameLogger.Warning($"BuildingConfigLoader: unknown visual.shape '{raw}', falling back to 'hexagon'");
-        return "hexagon";
     }
 
     private static BuildingDefinition.SoundDefinition ParseSoundDefinition(
@@ -750,25 +622,6 @@ public static class BuildingConfigLoader
         );
 
         return sound;
-    }
-
-    private static TransferStationDefinition? ParseTransferStationDefinition(
-        Dictionary<object, object> dict
-    )
-    {
-        if (!dict.ContainsKey("transfer_station"))
-            return null;
-
-        var stationDict = dict["transfer_station"] as Dictionary<object, object>;
-        if (stationDict == null)
-            return null;
-
-        return new TransferStationDefinition
-        {
-            CargoCapacity = ReadFloat(stationDict, "cargo_capacity", 500.0f),
-            VehicleSpeed = ReadFloat(stationDict, "vehicle_speed", 50.0f),
-            MaxConcurrentTransfers = ReadInt(stationDict, "max_concurrent_transfers", 2),
-        };
     }
 
     private static string? ValidateFilePath(string? path, string fieldName)

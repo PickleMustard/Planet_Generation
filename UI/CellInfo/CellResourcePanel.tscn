@@ -1,7 +1,8 @@
 [gd_scene format=3 uid="uid://cujujlooijfau"]
 
 [ext_resource type="Script" uid="uid://ccnvd2ghq6fs1" path="res://Scripts/UI/CellInfo/CellResourcePanel.cs" id="1_cellres"]
-[ext_resource type="PackedScene" path="res://UI/CellInfo/ResourceListItem.tscn" id="2_resitem"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_xt8ny"]
+[ext_resource type="PackedScene" uid="uid://c8r1q2a3b4d5e" path="res://UI/CellInfo/ResourceListItem.tscn" id="2_resitem"]
 
 [node name="CellResourcePanel" type="Control" unique_id=767820553]
 custom_minimum_size = Vector2(200, 100)
@@ -11,6 +12,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_xt8ny")
 script = ExtResource("1_cellres")
 ResourceListItemScene = ExtResource("2_resitem")
 _resourcesListPath = NodePath("MarginContainer/VBoxContainer/ResourcesList")
@@ -23,6 +25,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_xt8ny")
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
@@ -30,10 +33,12 @@ theme_override_constants/margin_bottom = 8
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=1477726100]
 layout_mode = 2
+theme = ExtResource("1_xt8ny")
 theme_override_constants/separation = 4
 
 [node name="ResourcesLabel" type="Label" parent="MarginContainer/VBoxContainer" unique_id=1177776370]
 layout_mode = 2
+theme = ExtResource("1_xt8ny")
 theme_override_font_sizes/font_size = 14
 text = "Resources"
 horizontal_alignment = 1
@@ -41,11 +46,13 @@ horizontal_alignment = 1
 [node name="ResourcesList" type="VBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=584089886]
 layout_mode = 2
 size_flags_vertical = 3
+theme = ExtResource("1_xt8ny")
 theme_override_constants/separation = 2
 
 [node name="NoResourcesLabel" type="Label" parent="MarginContainer/VBoxContainer" unique_id=111698341]
 visible = false
 layout_mode = 2
+theme = ExtResource("1_xt8ny")
 theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
 text = "No natural resources"
 horizontal_alignment = 1

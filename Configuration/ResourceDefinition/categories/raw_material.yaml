@@ -2,152 +2,99 @@ resources:
   - id_name: iron
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 112
-      - 128
-      - 144
+    max_stack_size: 500
+    transport_weight: 2
+    tags: [metal, material:iron]
     icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/iron"
-
+      base_path: "res://Materials/Icons/ingot"
   - id_name: copper
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 140
-      - 0
+    max_stack_size: 500
+    transport_weight: 1.4
+    tags: [metal, conductive, material:copper]
     icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/copper"
-
+      base_path: "res://Materials/Icons/ingot"
   - id_name: gold
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 223
-      - 0
-    tags: [metal, valuables, conductive]
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [metal, valuables, conductive, material:gold]
     icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/gold"
-
+      base_path: "res://Materials/Icons/ingot"
   - id_name: nickel
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 192
-      - 203
-    tags: [metal, valuables, conductive]
+    max_stack_size: 500
+    transport_weight: 2
+    tags: [metal, valuables, conductive, material:nickel]
     icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/nickel"
-
+      base_path: "res://Materials/Icons/ingot"
   - id_name: clay
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 127
-      - 52
-      - 0
+    max_stack_size: 500
+    transport_weight: 1.2
     tags: [water, earth, mineral]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/clay"
-
   - id_name: silicon
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 255
-      - 255
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/silicon"
-
+    max_stack_size: 500
+    transport_weight: 0.8
   - id_name: plastic
     resource_tier: 1
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 215
-      - 0
+    max_stack_size: 500
+    transport_weight: 0.5
     tags: [raw_material, synthetic]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/plastic"
-
   - id_name: titanium
     resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 0
-      - 255
-    tags: [metal, high_metal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/titanium"
-
+    max_stack_size: 300
+    tags: [metal, high_metal, material:titanium]
   - id_name: tungsten
     resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 255
-      - 192
-    tags: [metal, high_metal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/tungsten"
-
+    max_stack_size: 300
+    transport_weight: 6
+    tags: [metal, high_metal, material:tungsten]
   - id_name: aluminum
     resource_tier: 1
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 255
-      - 224
-    tags: [metal, high_metal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/aluminum"
-
+    max_stack_size: 500
+    transport_weight: 0.8
+    tags: [metal, high_metal, material:aluminum]
   - id_name: silver
     resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 255
-      - 192
-    tags: [metal, valuables, high_metal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/silver"
-
+    max_stack_size: 300
+    transport_weight: 1.4
+    tags: [metal, valuables, high_metal, material:silver]
   - id_name: wood
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 255
-      - 160
+    max_stack_size: 500
+    transport_weight: 1.2
     tags: [timber, artisanal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/wood"
-
   - id_name: lead
     resource_tier: 1
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 255
-      - 128
-    tags: [metal, high_metal, toxic]
-    icon:
-      base_path: "res://Assets/Icons/Resources/raw_material/lead"
+    max_stack_size: 300
+    transport_weight: 5
+    tags: [metal, high_metal, toxic, material:lead]
+  - id_name: salt
+    resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 500
+    transport_weight: 1.8
+  - id_name: gravel
+    resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 499
+    transport_weight: 2
+  - id_name: fiber
+    resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 500
+    transport_weight: 0.3

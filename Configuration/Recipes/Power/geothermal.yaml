@@ -2,39 +2,25 @@ recipes:
   - recipe_id: "geothermal_drilling"
     display_name: "Geothermal Drilling"
     description: Deep-well geothermal energy extraction from underground heat sources.
-    work_required: 10.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/power/geothermal"
-
+    work_required: 10
     input_resources:
       - water: 8
-
     output_resources:
-      - power: 200
-
+      - power: 600
   - recipe_id: "magma_well"
     display_name: "Magma Well"
     description: The geothermal well is dug much deeper than a conventional well, allowing the generator to extract more heat from the magma.
-    work_required: 20.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/power/geothermal"
-
+    work_required: 20
     input_resources:
-      - high_capacity_coolant: 20
-
+      - adult: 20
     output_resources:
       - power: 1000
-
   - recipe_id: "mantle_currants"
     display_name: "Mantle Currants"
     description: The well is drilled directly into the mantle, allowing the generator to extract power from the planet's convection currents.
-    work_required: 50.0
-    icon:
-      base_path: "res://Assets/Icons/Recipes/power/geothermal"
-
+    work_required: 50
     input_resources:
-      - high_capacity_coolant: 100
+      - adult: 100
       - ignicite: 25
-
     output_resources:
       - power: 10000

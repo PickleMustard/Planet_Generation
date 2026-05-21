@@ -571,6 +571,7 @@ namespace UI.Loading
 
             // Compute barycenter from dominant body positions and masses
             var barycenter = ComputeBarycenter(templateData.Dominant);
+            AssignSystemIdentity(barycenter, _selectedTemplate);
 
             // Trigger generation through SignalBus (SystemGenerator listens to this)
             if (SignalBus.Instance != null)
@@ -625,6 +626,37 @@ namespace UI.Loading
             }
 
             return new Barycenter(Vector3.Zero, Vector3.Zero, 0f);
+        }
+
+        /// <summary>
+        /// Stamps the barycenter with a system name and sector identifier derived
+        /// from the loaded template name. Deterministic per template so the same
+        /// system always shows the same designation.
+        /// </summary>
+        private static void AssignSystemIdentity(Barycenter barycenter, string? templateName)
+        {
+            string baseName = string.IsNullOrEmpty(templateName) ? "system" : templateName;
+            int seed = StableHash(baseName);
+
+            barycenter.SystemName = !string.IsNullOrEmpty(templateName)
+                ? templateName!
+                : $"System-{seed % 9999:D4}";
+
+            const string roman = "I,II,III,IV,V,VI,VII,VIII,IX,X,XI,XII";
+            string[] romanNumerals = roman.Split(',');
+            barycenter.SectorId =
+                $"KP-{seed % 100:D2} · Sector {romanNumerals[seed % romanNumerals.Length]}";
+        }
+
+        private static int StableHash(string value)
+        {
+            unchecked
+            {
+                int hash = 23;
+                foreach (char c in value)
+                    hash = hash * 31 + c;
+                return Math.Abs(hash);
+            }
         }
 
         /// <summary>

@@ -1,5 +1,4 @@
 using Godot;
-using ProceduralGeneration.PlanetGeneration;
 using Structures.Logistics;
 using Structures.Resources;
 using UI;
@@ -16,18 +15,18 @@ public sealed class ResourceLinkPlanningMode : IPlanetBoardMode
 {
     public string DisplayName => "Resource Links";
 
-    private PlanetBoardView? _view;
-    private CelestialBody? _body;
+    private BoardWorld? _world;
+    private IOrbitalBody? _body;
 
-    public void OnEnter(PlanetBoardView view, CelestialBody body)
+    public void OnEnter(BoardWorld world, IOrbitalBody body)
     {
-        _view = view;
+        _world = world;
         _body = body;
     }
 
     public void OnExit()
     {
-        _view = null;
+        _world = null;
         _body = null;
     }
 
@@ -43,14 +42,14 @@ public sealed class ResourceLinkPlanningMode : IPlanetBoardMode
 
     public void OnPortDragUpdate(Vector2 boardPos, ResourceNode? hoverPort)
     {
-        // PlanetBoardView already redraws the preview line; nothing extra here.
+        // BoardWorld / BoardLinkRenderer already redraw the preview line; nothing extra here.
     }
 
     public bool OnPortDragEnd(ResourceNode? dropPort)
     {
-        if (_view == null || _view.DragSource == null)
+        if (_world == null || _world.DragSourcePort == null)
             return false;
-        var source = _view.DragSource.Node;
+        var source = _world.DragSourcePort.Node;
         if (dropPort == null || dropPort == source)
             return false;
         if (!ResourceLink.CanConnect(source, dropPort))
@@ -72,9 +71,10 @@ public sealed class ResourceLinkPlanningMode : IPlanetBoardMode
             return false;
         }
 
-        if (!BuildingLinkService.Instance.TryConnect(source, dropPort, profile, out _))
+        if (!BuildingLinkService.Instance.TryConnect(source, dropPort, profile, out _, out var rejection))
         {
-            ToastSystem.Instance?.ShowError("Link creation failed.");
+            ToastSystem.Instance?.ShowError(
+                string.IsNullOrEmpty(rejection) ? "Link creation failed." : rejection!);
             return false;
         }
         SignalBus.Instance?.EmitResourceLinkChanged();
@@ -92,12 +92,12 @@ public sealed class ResourceLinkPlanningMode : IPlanetBoardMode
 
     public bool OnEmptyClick(Vector2 boardPos, MouseButton button) => false;
 
-    public void DrawOverlay(CanvasItem ci, BoardCamera cam) { }
+    public void DrawOverlay(CanvasItem ci, BoardCameraController cam) { }
 
     public string? GetTooltip(object hovered)
     {
         if (hovered is ResourceNode port)
-            return $"Side: {port.Side}\nKind: {port.Kind}";
+            return $"Side: {port.SideIndex}.{port.SlotIndex}\nKind: {port.Kind}";
         return null;
     }
 

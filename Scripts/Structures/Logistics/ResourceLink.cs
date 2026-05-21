@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Constructables.Tick;
 using Godot;
+using Structures.Enums;
 using Structures.Resources;
 
 namespace Structures.Logistics;
@@ -75,6 +76,30 @@ public partial class ResourceLink : Resource, IManufactureTickable
         }
 
         return a.Kind != b.Kind;
+    }
+
+    /// <summary>
+    /// Checks whether the given node's declared <see cref="ResourceNode.StateOfMatter"/>
+    /// matches <paramref name="expected"/> — i.e. whether a link carrying that state can
+    /// legally attach here. Each node carries its state as an authored property on the
+    /// originating <see cref="BuildingShape2D.SlotSpec"/>.
+    /// </summary>
+    public static bool CanCarry(ResourceNode node, StateOfMatter expected, out string? reason)
+    {
+        reason = null;
+        if (node?.Owner == null)
+        {
+            reason = "node has no owner";
+            return false;
+        }
+
+        if (node.StateOfMatter != expected)
+        {
+            reason = $"{node.Kind} node on '{node.Owner.Name}' carries {node.StateOfMatter}; link carries {expected}.";
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>

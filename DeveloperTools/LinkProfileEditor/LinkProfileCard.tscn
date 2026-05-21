@@ -1,0 +1,122 @@
+[gd_scene load_steps=2 format=3 uid="uid://link_profile_card"]
+
+[ext_resource type="Script" path="res://DeveloperTools/LinkProfileEditor/LinkProfileCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.15, 0.15, 0.18, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.3, 1)
+
+[node name="LinkProfileCard" type="PanelContainer"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("1_card")
+
+[node name="CardMainVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderHBox" type="HBoxContainer" parent="CardMainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IdNameLabel" type="Label" parent="CardMainVBox/HeaderHBox"]
+layout_mode = 2
+text = "Id:"
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="IdNameEdit" type="LineEdit" parent="CardMainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "id_name (lowercase_with_underscores)"
+
+[node name="DeleteButton" type="Button" parent="CardMainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "✕"
+
+[node name="FieldsGrid" type="GridContainer" parent="CardMainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+columns = 4
+
+[node name="TierLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Tier:"
+
+[node name="TierSpin" type="SpinBox" parent="CardMainVBox/FieldsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+
+[node name="StateLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "State:"
+
+[node name="StateOption" type="OptionButton" parent="CardMainVBox/FieldsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TransportSpeedLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Transport Speed:"
+
+[node name="TransportSpeedSpin" type="SpinBox" parent="CardMainVBox/FieldsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 10.0
+step = 0.01
+allow_greater = false
+allow_lesser = false
+
+[node name="PackageSizeLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Package Size:"
+
+[node name="PackageSizeSpin" type="SpinBox" parent="CardMainVBox/FieldsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 9999.0
+
+[node name="BundleTimeLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Bundle Time:"
+
+[node name="BundleTimeSpin" type="SpinBox" parent="CardMainVBox/FieldsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 999.0
+
+[node name="SlotCapacityLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Slot Capacity:"
+
+[node name="SlotCapacitySpin" type="SpinBox" parent="CardMainVBox/FieldsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 999.0

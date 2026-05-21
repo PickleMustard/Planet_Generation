@@ -97,6 +97,7 @@ public partial class OrbitalBodyHSM : LimboHsm
     {
         base._Enter();
         GameLogger.EnterFunction(nameof(_Enter), "OrbitalBodyHSM");
+        WorldInputController.Instance?.PushDisable();
         GameLogger.ExitFunction(nameof(_Enter));
     }
 
@@ -104,6 +105,7 @@ public partial class OrbitalBodyHSM : LimboHsm
     {
         base._Exit();
         GameLogger.EnterFunction(nameof(_Exit), "OrbitalBodyHSM");
+        WorldInputController.Instance?.PopDisable();
         GameLogger.ExitFunction(nameof(_Exit));
     }
 }

@@ -2,6 +2,7 @@ using Constructables;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
+using UI.StateMachine;
 using UtilityLibrary;
 
 namespace UI.StateMachine;
@@ -27,10 +28,8 @@ public partial class CellOverviewState : LimboState
             return;
         }
 
-        // Read data from blackboard
         var cell = Blackboard?.Top().GetVar("SelectedCell").As<VoronoiCell>();
         var body = Blackboard?.Top().GetVar("SelectedBody").As<Node3D>();
-        var continent = Blackboard?.Top().GetVar("SelectedContinent").As<Continent>();
 
         if (cell == null || body == null)
         {
@@ -39,13 +38,12 @@ public partial class CellOverviewState : LimboState
             return;
         }
 
-        // Connect window signals
         _window.WindowCloseRequested += OnWindowCloseRequested;
-        _window.ContinentViewRequested += OnContinentViewRequested;
+        _window.BackRequested += OnBackRequested;
         _window.BuildingDetailsRequested += OnBuildingDetailsRequested;
+        _window.OrbitalBodyViewRequested += OnOrbitalBodyViewRequested;
 
-        // Show window with data
-        _window.ShowWindow(cell, body, continent);
+        _window.ShowWindow(cell, body);
 
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
         GameLogger.Debug("CellOverviewState: Cell info window shown");
@@ -58,8 +56,9 @@ public partial class CellOverviewState : LimboState
         if (_window != null)
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
-            _window.ContinentViewRequested -= OnContinentViewRequested;
+            _window.BackRequested -= OnBackRequested;
             _window.BuildingDetailsRequested -= OnBuildingDetailsRequested;
+            _window.OrbitalBodyViewRequested -= OnOrbitalBodyViewRequested;
             _window.HideWindow();
             _window.Clear();
         }
@@ -70,34 +69,21 @@ public partial class CellOverviewState : LimboState
     private void OnWindowCloseRequested()
     {
         GameLogger.Debug("CellOverviewState: Window close requested");
+        InteractionStack.Clear(Blackboard?.Top());
         Dispatch("window_closed");
     }
 
-    private void OnContinentViewRequested()
+    private void OnBackRequested()
     {
-        GameLogger.Debug("CellOverviewState: Continent view requested");
-
-        // Derive continent index for the ContinentViewState
-        var continent = Blackboard?.Top().GetVar("SelectedContinent").As<Continent>();
-        var body = Blackboard?.Top().GetVar("SelectedBody").As<Node3D>();
-
-        if (
-            continent != null
-            && body is ISelectableBody selectable
-            && selectable.Mesh?.Continents != null
-        )
+        var bb = Blackboard?.Top();
+        var returnEvent = InteractionStack.Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
         {
-            foreach (var kvp in selectable.Mesh.Continents)
-            {
-                if (kvp.Value == continent)
-                {
-                    Blackboard?.Top().SetVar("SelectedContinentIndex", kvp.Key);
-                    break;
-                }
-            }
+            InteractionStack.Clear(bb);
+            Dispatch("window_closed");
+            return;
         }
-
-        Dispatch("continent_selected");
+        Dispatch(returnEvent);
     }
 
     private void OnBuildingDetailsRequested(Building building)
@@ -105,7 +91,23 @@ public partial class CellOverviewState : LimboState
         if (building == null) return;
 
         Blackboard?.Top()?.SetVar("SelectedBuilding", building);
-        Blackboard?.Top()?.SetVar("BuildingReturnTo", "cell");
+        var bb = Blackboard?.Top();
+        if (bb != null)
+            InteractionStack.Push(bb, "cell_selected",
+                InteractionStack.SnapshotVars(bb, "SelectedCell", "SelectedBody", "BodyType"));
         Dispatch("building_details_opened");
+    }
+
+    private void OnOrbitalBodyViewRequested()
+    {
+        var bb = Blackboard?.Top();
+        if (bb == null)
+        {
+            Dispatch("window_closed");
+            return;
+        }
+        InteractionStack.Push(bb, "cell_selected",
+            InteractionStack.SnapshotVars(bb, "SelectedCell", "SelectedBody", "BodyType"));
+        Dispatch("orbital_body_selected");
     }
 }

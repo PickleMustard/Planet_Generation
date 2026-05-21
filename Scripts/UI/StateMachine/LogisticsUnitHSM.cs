@@ -34,6 +34,7 @@ public partial class LogisticsUnitHSM : LimboHsm
         GameLogger.EnterFunction(nameof(_Enter), "LogisticsUnitHSM");
 
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
+        WorldInputController.Instance?.PushDisable();
 
         GameLogger.ExitFunction(nameof(_Enter));
     }
@@ -46,6 +47,7 @@ public partial class LogisticsUnitHSM : LimboHsm
         Blackboard.Top()?.SetVar("SelectedLogisticsUnit", default(Variant));
 
         Input.SetMouseMode(Input.MouseModeEnum.Captured);
+        WorldInputController.Instance?.PopDisable();
 
         GameLogger.ExitFunction(nameof(_Exit));
     }

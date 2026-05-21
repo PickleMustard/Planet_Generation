@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Constructables.Stations.Behaviors;
 using Constructables.Tick;
 using Godot;
 using Godot.Collections;
@@ -108,10 +109,18 @@ public partial class ConstructionManager : Node
 
     /// <summary>
     /// Called by constructable entities when construction completes.
-    /// Handles finalization, registry removal, and signal emission.
+    /// Handles finalization, registry removal, and signal emission. Mutates SceneTree
+    /// state (Visible, ProcessMode, RemoveChild) and emits signals, so any call from
+    /// <c>ManufactureTickEngine</c> is marshaled onto the main thread.
     /// </summary>
     public void NotifyConstructionComplete(IConstructable entity)
     {
+        if (!SignalMarshal.IsOnMainThread)
+        {
+            Callable.From(() => NotifyConstructionComplete(entity)).CallDeferred();
+            return;
+        }
+
         if (entity is StationSatellite station)
         {
             _stationsUnderConstruction.Remove(station);
@@ -143,10 +152,17 @@ public partial class ConstructionManager : Node
 
     /// <summary>
     /// Called by constructable entities when construction is cancelled.
-    /// Handles cleanup, registry removal, and signal emission.
+    /// Handles cleanup, registry removal, and signal emission. SceneTree-mutating, so
+    /// off-main calls are marshaled to the main thread.
     /// </summary>
     public void NotifyConstructionCancelled(IConstructable entity)
     {
+        if (!SignalMarshal.IsOnMainThread)
+        {
+            Callable.From(() => NotifyConstructionCancelled(entity)).CallDeferred();
+            return;
+        }
+
         if (entity is StationSatellite station)
         {
             _stationsUnderConstruction.Remove(station);
@@ -177,11 +193,15 @@ public partial class ConstructionManager : Node
     }
 
     /// <summary>
-    /// Called by constructable entities to emit periodic progress updates.
+    /// Called by constructable entities to emit periodic progress updates. Reached every
+    /// tick from <see cref="OrbitalConstructorBehavior"/>; defers off-main automatically.
     /// </summary>
     public void NotifyProgressUpdate(string entityName, float progress, string status)
     {
-        EmitSignal(SignalName.ConstructionProgressUpdated, entityName, progress, status);
+        if (SignalMarshal.IsOnMainThread)
+            EmitSignal(SignalName.ConstructionProgressUpdated, entityName, progress, status);
+        else
+            CallDeferred(MethodName.NotifyProgressUpdate, entityName, progress, status);
     }
 
     public void EmitStationConstruct(StationSatellite inConstruction, Dictionary details)
@@ -479,18 +499,23 @@ public partial class ConstructionManager : Node
     private void RegisterBuildingWithEconomy(Building building)
     {
         var parentBody = building.VisualNode?.GetParent() as CelestialBody;
-        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
+        if (parentBody == null || building.PrimaryCell == null)
+            return;
+
+        // Grid notification fires unconditionally — ocean / edge cells without a continent
+        // still need the producer to come online and refresh brownout state on their grid.
+        // Transfer-station endpoints register themselves via TransferStationBehavior.OnRegister.
+        parentBody.PowerGridMgr?.OnBuildingCompleted(building);
+
+        if (parentBody.Mesh?.Continents == null)
             return;
 
         int continentIdx = building.PrimaryCell.ContinentIndex;
         if (continentIdx < 0)
             return;
 
-        if (!parentBody.Mesh.Continents.TryGetValue(continentIdx, out var continent))
+        if (!parentBody.Mesh.Continents.TryGetValue(continentIdx, out var _))
             return;
-
-        // Transfer-station endpoints register themselves via TransferStationBehavior.OnRegister.
-        parentBody.PowerGridMgr?.OnBuildingCompleted(building);
 
         SignalBus.Instance?.EmitBuildingConstructed(continentIdx);
     }
@@ -549,7 +574,7 @@ public partial class ConstructionManager : Node
         Node3D parentBody,
         BuildingDefinition definition,
         List<VoronoiCell>? additionalCells = null,
-        OrbitalArchitectStation? architectStation = null
+        StationSatellite? architectStation = null
     )
     {
         if (primaryCell == null)
@@ -572,17 +597,26 @@ public partial class ConstructionManager : Node
 
         var building = definition.Instantiate();
         building.SetPlacement(primaryCell, additionalCells);
-        building.Register();
-        foreach (var cell in building.OccupiedCells)
-            cell.Building = building;
 
         var visual = new BuildingNode { Name = definition.DisplayName ?? definition.IdName ?? "Building" };
         parentBody.AddChild(visual);
         visual.Bind(building, parentBody, bodyRadius);
 
+        foreach (var cell in building.OccupiedCells)
+            cell.Building = building;
+
+        building.Register();
+
         building.StartConstruction(new Dictionary());
         visual.ApplyConstructionMaterial();
         visual.Visible = true;
+
+        // Create / join / merge the power grid at placement so the coverage halo exists
+        // during construction. Output stays at 0 because PowerProducerBehavior.IsProducing
+        // gates on IsUnderConstruction; capacity comes online when FinalizeBuilding fires
+        // OnBuildingCompleted.
+        if (parentBody is CelestialBody celestialBodyForGrid)
+            celestialBodyForGrid.PowerGridMgr?.OnBuildingPlaced(building);
 
         // Emit signal to notify other systems
         EmitBuildingConstruct(
@@ -848,11 +882,11 @@ public partial class ConstructionManager : Node
         if (
             shipDefinition != null
             && parentStation != null
-            && parentStation is not ConstructionYardStation
+            && parentStation.GetBehavior<ShipyardBehavior>() == null
         )
         {
             throw new InvalidOperationException(
-                $"Station '{parentStation.Name}' is not a construction yard (type: {parentStation.StationType})"
+                $"Station '{parentStation.Name}' has no ShipyardBehavior"
             );
         }
 
@@ -897,12 +931,12 @@ public partial class ConstructionManager : Node
                 new Dictionary { { "ship", unit }, { "name", unit.Name.ToString() } }
             );
 
-            // If parent station is a construction yard, enqueue via the yard's build queue
-            if (parentStation is ConstructionYardStation yard)
+            // If parent station has a ShipyardBehavior, enqueue via the yard's build queue
+            if (parentStation.GetBehavior<ShipyardBehavior>() is { } shipyard)
             {
-                yard.EnqueueShipConstruction(unit);
+                shipyard.EnqueueShipConstruction(unit);
                 GameLogger.Debug(
-                    $"Enqueued ship '{name}' at construction yard '{yard.Name}' ({shipDefinition.ConstructionTime}s)"
+                    $"Enqueued ship '{name}' at construction yard '{parentStation.Name}' ({shipDefinition.ConstructionTime}s)"
                 );
             }
             else
@@ -925,19 +959,15 @@ public partial class ConstructionManager : Node
     }
 
     /// <summary>
-    /// Creates the appropriate station subclass based on the station definition's capabilities.
+    /// Creates a StationSatellite instance. Behavior composition replaces the former
+    /// subclass dispatch — all station types are now StationSatellite with behaviors
+    /// wired from the definition's BehaviorRefs.
     /// </summary>
     private static StationSatellite CreateStationInstance(
         string name,
         StationDefinition? definition
     )
     {
-        if (definition?.CanBuildShips == true)
-            return new ConstructionYardStation { Name = name };
-
-        if (definition?.CanBuildBuildings == true)
-            return new OrbitalArchitectStation { Name = name };
-
         return new StationSatellite { Name = name };
     }
 

@@ -24,6 +24,9 @@ public class VisualDefinition
     /// <summary>Path to animation resource.</summary>
     public string? AnimationPath { get; set; }
 
+    /// <summary>Name of a specific animation clip on the loaded model's AnimationPlayer.</summary>
+    public string? AnimationName { get; set; }
+
     /// <summary>Scale factor for the model.</summary>
     public float Scale { get; set; } = 1.0f;
 
@@ -45,15 +48,16 @@ public class VisualDefinition
     public Color IconTint { get; set; } = Colors.White;
 
     /// <summary>Target display size category for this icon.</summary>
-    public IconSize IconSize { get; set; } = IconSize.Medium;
+    public IconSize IconSize { get; set; } = IconSize.Large;
 
     // ========== 2D Board Shape Properties ==========
 
     /// <summary>
-    /// Polygon shape used to render this entity on the 2D PlanetBoard.
-    /// One of: hexagon, square, rectangle, pentagon, triangle. Default: hexagon.
+    /// Identifier of the <see cref="BuildingShape2D"/> in
+    /// <c>BuildingShape2DDatabase</c> used to render this entity on the 2D
+    /// PlanetBoard. Default: "hexagon".
     /// </summary>
-    public string Shape { get; set; } = "hexagon";
+    public string ShapeId { get; set; } = "hexagon";
 
     /// <summary>Board-space radius (circumscribed) of the shape in pixels.</summary>
     public float ShapeSize { get; set; } = 64f;

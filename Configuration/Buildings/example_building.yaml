@@ -1,205 +1,28 @@
-# Example Building Configuration - Shows all available fields
-# This file demonstrates the complete YAML schema for building definitions
-
 buildings:
-  - id_name: example_building
-    display_name: Example Building
-    description: This building demonstrates all available configuration fields in the YAML schema.
-    category: example
-    building_limit: -1 # Negative for no limit, positive #s define limit
-    building_time: 300.0 # Time in seconds to construct
-    work_required: 500.0 # Work units required for construction
-
-    # Placement requirements define where this building can be placed
-    placement_requirements:
-      # List of allowed biome types (from Biome.BiomeType enum)
-      # Use ["*"] to allow construction in any biome
-      # Use "category:{name}" to include all biomes in a category (e.g., category:mountain)
-      # Can mix categories and individual biomes: [category:flat, Ocean, Mountain]
-      biomes: [category:temperate, category:coastal]
-
-      # Elevation constraints (0-1, where 0 is lowest point, 1 is highest)
-      min_elevation: 0.2
-      max_elevation: 0.8
-
-      # Maximum slope angle in degrees for placement
-      max_slope: 20.0
-
-      # Number of Voronoi cells required for building footprint
-      cell_count: 1
-
-      # Whether adjacent cells must be available for expansion
-      requires_adjacent: false
-
-    # Resources required for construction
-    # Format: resource_name: quantity
-    # Can be empty for buildings with no construction cost
-    required_resources:
-      iron: 100
-      copper: 50
-      concrete: 200
-      electronics: 25
-      water: 100
-
-    # Production capabilities
-    production:
-      default_recipe: "recipe_id"
-      alternative_recipes: ["recipe_id"]
-      production_speed: 5
-
-    # Visual representation settings
-    visual:
-      # Path to 3D model resource (GLB/GLTF format recommended)
-      model_path: "res://Models/Buildings/example.glb"
-
-      # Path to material resource (GLB/GLTF format recommended)
-      model_material: "res://Textures/Buildings/example.tres"
-
-      # Path to animation resource (GLB/GLTF format recommended)
-      animation_path: "res://Animations/Buildings/example.glb"
-
-      # Scale factor for the model
-      scale: 1.0
-
-      # Rotation offset in degrees (Euler angles: X, Y, Z)
-      rotation_offset: [0, 90, 0]
-
-      # 2D PlanetBoard polygon: hexagon|square|rectangle|pentagon|triangle
-      shape: hexagon
-      # Board-space radius (px) of the shape
-      shape_size: 64
-      # Fill color [r, g, b] or [r, g, b, a]; values in [0,1] or [0,255]
-      shape_color: [0.30, 0.45, 0.60]
-
-    sound:
-      building: ""
-      finished: ""
-      idle: ""
-      fabricating: ""
-
-  - id_name: example_mixed_biomes
-    display_name: Mixed Biome Example
-    description: Demonstrates mixing biome categories with individual biome types.
-    category: example
-    building_time: 240.0
-    work_required: 400.0
-
-    placement_requirements:
-      # Mixing category references with individual biomes
-      # This building can be placed in: all arable biomes, all mountain biomes, AND the Ocean biome
-      biomes: [category:arable, category:mountain, Ocean]
-      min_elevation: 0.1
-      max_elevation: 0.9
-      max_slope: 25.0
-
-    # Resources required for construction
-    # Format: resource_name: quantity
-    # Can be empty for buildings with no construction cost
-    required_resources:
-      iron: 100
-      copper: 50
-      concrete: 200
-      electronics: 25
-      water: 100
-
-    # Production capabilities
-    production:
-      default_recipe: "recipe_id"
-      alternative_recipes: ["recipe_id"]
-      production_speed: 5
-
-    # Visual representation settings
-    visual:
-      # Path to 3D model resource (GLB/GLTF format recommended)
-      model_path: "res://Models/Buildings/example.glb"
-
-      # Path to material resource (GLB/GLTF format recommended)
-      model_material: "res://Textures/Buildings/example.tres"
-
-      # Path to animation resource (GLB/GLTF format recommended)
-      animation_path: "res://Animations/Buildings/example.glb"
-
-      # Scale factor for the model
-      scale: 1.0
-
-      # Rotation offset in degrees (Euler angles: X, Y, Z)
-      rotation_offset: [0, 90, 0]
-
-    sound:
-      building: ""
-      finished: ""
-      idle: ""
-      fabricating: ""
-
-  - id_name: universal_building
-    display_name: Universal Building Example
-    description: Shows a building that can be constructed in any biome using the wildcard operator.
-    category: universal
-
-    # Only id_name, display_name, and category are strictly required
-    # Other fields have sensible defaults
-
-    placement_requirements:
-      # Use ["*"] to allow construction in any biome
-      biomes: ["*"]
-      # Default elevation range is 0.0-1.0
-      # Default max_slope is 45.0
-      # Default cell_count is 1
-      # Default requires_adjacent is false
-
-    required_resources:
-      # Can be empty for buildings with no construction cost
-      iron: 10
-
-    production:
-      # Default extraction_rate is 0.0
-      # resources and recipes lists default to empty
-
-  - id_name: geothermal_plant_example
-    display_name: Geothermal Power Plant (Example)
+  - id_name: geothermal_plant
+    display_name: Geothermal Power Plant
     description: Demonstrates custom placement behavior for geothermal vents.
     category: power
-
+    max_resource_tier: 5
+    work_required: 100
     placement_requirements:
-      # Use custom placement behavior - specify the file path
-      # This replaces the default biome/elevation/slope checks with custom logic
-      configurable_behavior: "res://Scripts/Structures/Resources/GeothermalVentPlacementBehavior.cs"
-
-      # These serve as fallback/default requirements when behavior is null
-      # and for documentation purposes
-      biomes: [VolcanicPeak, VolcanicPlain, AshPlain, ObsidianField]
+      biomes: [AshPlain, ObsidianField, VolcanicPeak, VolcanicPlain]
       min_elevation: 0.4
-      max_elevation: 1.0
-      max_slope: 15.0
+      max_elevation: 1
+      max_slope: 15
       cell_count: 2
-
+      configurable_behavior: "GeothermalVentPlacementBehavior"
     required_resources:
       steel: 300
       titanium: 200
       copper: 150
       ceramics: 100
       water: 400
-
-    production:
-      default_recipe: "geothermal_drilling"
-      alternative_recipes: ["heat_exchange", "steam_management"]
-      production_speed: 3
-
+    behaviors:
+      - behavior_id: PowerProducerBehavior
+        grid_radius: 4
+        is_renewable: false
+        default_recipe: "geothermal_drilling"
+        production_speed: 3
     visual:
-      model_path: "res://Models/Buildings/geothermal_plant.glb"
       scale: 1.4
-      rotation_offset: [0, 0, 0]
-
-  - id_name: behavior_by_class_name_example
-    display_name: Behavior by Class Name Example
-    description: Demonstrates using class name instead of file path for configurable_behavior.
-    category: example
-
-    placement_requirements:
-      # Can also use just the class name (without file path)
-      # The loader will search in common namespaces
-      configurable_behavior: "GeothermalVentPlacementBehavior"
-      biomes: ["*"]
-
-    required_resources:
-      iron: 50

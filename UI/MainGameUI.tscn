@@ -36,6 +36,9 @@
 [ext_resource type="Script" uid="uid://b8ryhpdfpr2c4" path="res://Scripts/UI/StateMachine/BuildingHSM.cs" id="36_bldghsm"]
 [ext_resource type="PackedScene" uid="uid://bm7pd4sh2v07a" path="res://UI/Toast/ToastSystem.tscn" id="36_g7a5r"]
 [ext_resource type="PackedScene" uid="uid://dhak623yqy6ro" path="res://UI/BuildingInfo/BuildingInfoWindow.tscn" id="37_bldginfowin"]
+[ext_resource type="Script" path="res://Scripts/UI/StateMachine/States/PlanetBoardState.cs" id="39_pbstate"]
+[ext_resource type="Script" path="res://Scripts/UI/WorldInputController.cs" id="38_worldinput"]
+[ext_resource type="PackedScene" uid="uid://griddetail_window" path="res://UI/GridWindow/GridDetailWindow.tscn" id="40_gridwindow"]
 
 [sub_resource type="BlackboardPlan" id="BlackboardPlan_bstsa"]
 resource_name = "guiBlackboard"
@@ -51,7 +54,7 @@ mouse_filter = 1
 script = ExtResource("1_p5rbu")
 ToastSystem = NodePath("ToastSystem")
 
-[node name="GUIController" type="LimboHSM" parent="." unique_id=351927824 node_paths=PackedStringArray("HUD", "VoronoiCell", "OrbitalBody", "ConstructionMenu", "Station", "LogisticsUnit", "Building", "GameStart", "PauseMenu")]
+[node name="GUIController" type="LimboHSM" parent="." unique_id=351927824 node_paths=PackedStringArray("HUD", "VoronoiCell", "OrbitalBody", "ConstructionMenu", "Station", "LogisticsUnit", "Building", "PlanetBoard", "GameStart", "PauseMenu")]
 process_mode = 3
 blackboard_plan = SubResource("BlackboardPlan_bstsa")
 script = ExtResource("3_2pbdv")
@@ -62,6 +65,7 @@ ConstructionMenu = NodePath("ConstructionMenu")
 Station = NodePath("Station")
 LogisticsUnit = NodePath("LogisticsUnit")
 Building = NodePath("Building")
+PlanetBoard = NodePath("PlanetBoard")
 GameStart = NodePath("GameStartState")
 PauseMenu = NodePath("PauseMenu")
 
@@ -156,10 +160,11 @@ script = ExtResource("12_2pbdv")
 [node name="VoronoiCellInfoWindow" parent="GUIController/VoronoiCell/CellOverview" unique_id=405348774 instance=ExtResource("4_cellwindow")]
 visible = false
 
-[node name="Building" type="LimboHSM" parent="GUIController" unique_id=1930596445 node_paths=PackedStringArray("BuildingDetails")]
+[node name="Building" type="LimboHSM" parent="GUIController" unique_id=1930596445 node_paths=PackedStringArray("BuildingDetails", "TransferPlanning")]
 blackboard_plan = SubResource("BlackboardPlan_bstsa")
 script = ExtResource("36_bldghsm")
 BuildingDetails = NodePath("BuildingDetails")
+TransferPlanning = NodePath("TransferPlanning")
 
 [node name="BuildingDetails" type="LimboState" parent="GUIController/Building" unique_id=369406700]
 blackboard_plan = SubResource("BlackboardPlan_bstsa")
@@ -173,6 +178,10 @@ blackboard_plan = SubResource("BlackboardPlan_bstsa")
 script = ExtResource("8_anjjt")
 
 [node name="DispatchSlipsWindow" parent="GUIController/Building/TransferPlanning" unique_id=146288282 instance=ExtResource("23_31frm")]
+
+[node name="PlanetBoard" type="LimboState" parent="GUIController"]
+blackboard_plan = SubResource("BlackboardPlan_bstsa")
+script = ExtResource("39_pbstate")
 
 [node name="ConstructionMenu" type="LimboHSM" parent="GUIController" unique_id=1168915891 node_paths=PackedStringArray("ConstructablesMenu", "PlanetSelection", "OrbitalPlacement", "StationSelection", "BuildingPlacement")]
 blackboard_plan = SubResource("BlackboardPlan_bstsa")
@@ -252,6 +261,12 @@ settingsButton = NodePath("PauseMenu/CenterContainer/Panel/Margin/VBox/SettingsB
 quitButton = NodePath("PauseMenu/CenterContainer/Panel/Margin/VBox/QuitButton")
 
 [node name="PauseMenu" parent="GUIController/PauseMenu" unique_id=436212190 instance=ExtResource("35_pausemenu")]
+visible = false
+
+[node name="WorldInputController" type="Node" parent="."]
+script = ExtResource("38_worldinput")
+
+[node name="GridDetailWindow" parent="." instance=ExtResource("40_gridwindow")]
 visible = false
 
 [node name="ToastSystem" parent="." unique_id=30436794 instance=ExtResource("36_g7a5r")]

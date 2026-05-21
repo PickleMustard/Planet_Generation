@@ -1,128 +1,120 @@
 using System.Collections.Generic;
+using Constructables.Stations.Behaviors;
 using Godot;
-using Structures.Enums;
 using UtilityLibrary;
 
 namespace Constructables;
 
 /// <summary>
-/// Centralized per-body manager that distributes construction work across all buildings
-/// on a celestial body. Orbital architect stations register with this manager to contribute
-/// their work budgets. Buildings register here and are ticked from an aggregated pool.
-///
-/// If no architects are registered, buildings queue in a pending state and begin ticking
-/// once the first architect registers.
+/// Per-body router for building construction. Holds the set of <see cref="OrbitalConstructorBehavior"/>
+/// architects on the body and assigns newly-placed buildings to the least-loaded architect.
+/// Buildings without an available architect queue body-wide; they drain into architects as soon
+/// as one registers. The architects themselves own the work loop (driven by
+/// <see cref="Constructables.Tick.ManufactureTickEngine"/>); this manager is pure routing.
 /// </summary>
 public partial class BuildingConstructionManager : Node
 {
-    private struct ArchitectRegistration
-    {
-        public StationSatellite Station;
-        public float BaseBudgetPerTick;
-        public float ScalingPenalty;
-        public float WasteFactor;
-    }
-
-    private readonly List<ArchitectRegistration> _architects = new();
-    private readonly List<Building> _activeBuildings = new();
+    private readonly List<OrbitalConstructorBehavior> _architects = new();
     private readonly List<Building> _pendingBuildings = new();
-
-    private float _progressTimer;
-    private const float PROGRESS_SIGNAL_INTERVAL = 0.5f;
+    private readonly Dictionary<Building, OrbitalConstructorBehavior> _ownership = new();
 
     public int ArchitectCount => _architects.Count;
-    public int ActiveBuildingCount => _activeBuildings.Count;
     public int PendingBuildingCount => _pendingBuildings.Count;
 
-    public IReadOnlyList<Building> GetActiveBuildings() => _activeBuildings;
+    public IReadOnlyList<OrbitalConstructorBehavior> GetArchitects() => _architects;
+    public IReadOnlyList<Building> GetPendingBuildings() => _pendingBuildings;
 
     /// <summary>
-    /// Registers an orbital architect station, contributing its work budget to the aggregated pool.
-    /// If buildings are pending, they are activated.
+    /// Aggregated active-building view across every registered architect, kept for legacy
+    /// UI/tests that previously read from a centralized list.
     /// </summary>
-    public void RegisterArchitect(
-        StationSatellite station,
-        float baseBudgetPerTick,
-        float scalingPenalty,
-        float wasteFactor = 1.0f)
+    public virtual IReadOnlyList<Building> GetActiveBuildings()
     {
-        // Prevent duplicate registration
-        for (int i = 0; i < _architects.Count; i++)
+        var result = new List<Building>();
+        foreach (var arch in _architects)
         {
-            if (_architects[i].Station == station)
-                return;
+            foreach (var slot in arch.RegularSlots)
+                if (slot.Building != null) result.Add(slot.Building);
+            foreach (var slot in arch.OvertimeSlots)
+                if (slot.Building != null) result.Add(slot.Building);
         }
+        return result;
+    }
 
-        _architects.Add(new ArchitectRegistration
+    public int ActiveBuildingCount
+    {
+        get
         {
-            Station = station,
-            BaseBudgetPerTick = baseBudgetPerTick,
-            ScalingPenalty = scalingPenalty,
-            WasteFactor = wasteFactor,
-        });
+            int n = 0;
+            foreach (var arch in _architects)
+                n += arch.OccupiedSlotCount;
+            return n;
+        }
+    }
+
+    /// <summary>
+    /// Registers an architect behavior. If buildings are pending, they drain into the new
+    /// architect (and any siblings) via least-loaded routing.
+    /// </summary>
+    public void RegisterArchitect(OrbitalConstructorBehavior architect)
+    {
+        if (architect == null) return;
+        if (_architects.Contains(architect)) return;
+
+        _architects.Add(architect);
+        GameLogger.Info(
+            $"BuildingConstructionManager: Registered architect "
+            + $"'{architect.Owner?.Name ?? "?"}'. Total: {_architects.Count}"
+        );
+
+        if (_pendingBuildings.Count > 0)
+            DrainPending();
+    }
+
+    /// <summary>
+    /// Unregisters an architect. Any buildings it owns are moved back to the pending pool
+    /// (or rerouted to another architect via least-loaded selection).
+    /// </summary>
+    public void UnregisterArchitect(OrbitalConstructorBehavior architect)
+    {
+        if (architect == null) return;
+        if (!_architects.Remove(architect)) return;
+
+        var displaced = new List<Building>();
+        foreach (var slot in architect.RegularSlots)
+            if (slot.Building != null) displaced.Add(slot.Building);
+        foreach (var slot in architect.OvertimeSlots)
+            if (slot.Building != null) displaced.Add(slot.Building);
+        foreach (var b in architect.Queue)
+            displaced.Add(b);
+
+        foreach (var b in displaced)
+        {
+            architect.RemoveBuilding(b);
+            _ownership.Remove(b);
+        }
 
         GameLogger.Info(
-            $"BuildingConstructionManager: Registered architect '{station.Name}' " +
-            $"(budget={baseBudgetPerTick}/tick, penalty={scalingPenalty}, waste={wasteFactor}). " +
-            $"Total architects: {_architects.Count}");
+            $"BuildingConstructionManager: Unregistered architect "
+            + $"'{architect.Owner?.Name ?? "?"}'. Displaced {displaced.Count} buildings. "
+            + $"Remaining architects: {_architects.Count}"
+        );
 
-        // Activate any pending buildings now that we have an architect
-        if (_pendingBuildings.Count > 0)
-            ActivatePendingBuildings();
+        foreach (var b in displaced)
+            RouteOrPend(b);
     }
 
     /// <summary>
-    /// Unregisters an orbital architect station. If no architects remain,
-    /// active buildings move to pending (retaining progress).
-    /// </summary>
-    public void UnregisterArchitect(StationSatellite station)
-    {
-        for (int i = _architects.Count - 1; i >= 0; i--)
-        {
-            if (_architects[i].Station == station)
-            {
-                _architects.RemoveAt(i);
-                GameLogger.Info(
-                    $"BuildingConstructionManager: Unregistered architect '{station.Name}'. " +
-                    $"Remaining: {_architects.Count}");
-                break;
-            }
-        }
-
-        if (_architects.Count == 0 && _activeBuildings.Count > 0)
-        {
-            GameLogger.Info(
-                "BuildingConstructionManager: No architects remaining, " +
-                $"moving {_activeBuildings.Count} buildings to pending");
-            _pendingBuildings.AddRange(_activeBuildings);
-            _activeBuildings.Clear();
-        }
-    }
-
-    /// <summary>
-    /// Registers a building for construction. If architects are available it becomes
-    /// active immediately; otherwise it queues as pending.
+    /// Registers a building for construction. Routes to the least-loaded architect if any
+    /// exist; otherwise queues body-wide pending.
     /// </summary>
     public void RegisterBuilding(Building building)
     {
-        if (_activeBuildings.Contains(building) || _pendingBuildings.Contains(building))
+        if (building == null) return;
+        if (_ownership.ContainsKey(building) || _pendingBuildings.Contains(building))
             return;
 
-        if (_architects.Count > 0)
-        {
-            ApplyWasteFactor(building);
-            _activeBuildings.Add(building);
-            GameLogger.Info(
-                $"BuildingConstructionManager: Building '{building.Name}' registered as active " +
-                $"(active: {_activeBuildings.Count})");
-        }
-        else
-        {
-            _pendingBuildings.Add(building);
-            GameLogger.Info(
-                $"BuildingConstructionManager: Building '{building.Name}' registered as pending " +
-                $"(no architects available, pending: {_pendingBuildings.Count})");
-        }
+        RouteOrPend(building);
     }
 
     /// <summary>
@@ -130,104 +122,69 @@ public partial class BuildingConstructionManager : Node
     /// </summary>
     public void UnregisterBuilding(Building building)
     {
-        if (!_activeBuildings.Remove(building))
-            _pendingBuildings.Remove(building);
+        if (building == null) return;
+        if (_ownership.TryGetValue(building, out var owner))
+        {
+            owner.RemoveBuilding(building);
+            _ownership.Remove(building);
+            return;
+        }
+        _pendingBuildings.Remove(building);
     }
 
-    public override void _PhysicsProcess(double delta)
+    /// <summary>Returns the architect that owns the building, or null if pending/unknown.</summary>
+    public OrbitalConstructorBehavior? GetOwner(Building building)
     {
-        if (_architects.Count == 0 || _activeBuildings.Count == 0)
-            return;
+        if (building == null) return null;
+        _ownership.TryGetValue(building, out var owner);
+        return owner;
+    }
 
-        float dt = (float)delta;
-
-        // Compute aggregated budget from all architects
-        float totalBaseBudget = 0f;
-        float weightedPenaltySum = 0f;
+    /// <summary>Picks the architect with the lowest <see cref="OrbitalConstructorBehavior.Load"/>.</summary>
+    public OrbitalConstructorBehavior? FindLeastLoadedArchitect()
+    {
+        OrbitalConstructorBehavior? best = null;
+        int bestLoad = int.MaxValue;
         foreach (var arch in _architects)
         {
-            totalBaseBudget += arch.BaseBudgetPerTick;
-            weightedPenaltySum += arch.BaseBudgetPerTick * arch.ScalingPenalty;
-        }
-
-        float avgPenalty = totalBaseBudget > 0f ? weightedPenaltySum / totalBaseBudget : 0f;
-
-        // Count eligible (non-blocked) buildings
-        int eligibleCount = 0;
-        foreach (var building in _activeBuildings)
-        {
-            if (building.CheckRequiredResourcesAvailable())
-                eligibleCount++;
-        }
-
-        if (eligibleCount == 0)
-            return;
-
-        // Diminishing returns formula (same as former BuildingWorkBudget)
-        float scalingFactor = 1.0f / (1.0f + avgPenalty * (eligibleCount - 1));
-        float effectiveBudget = totalBaseBudget * dt * scalingFactor;
-        float workPerBuilding = effectiveBudget / eligibleCount;
-
-        _progressTimer += dt;
-        bool emitProgress = _progressTimer >= PROGRESS_SIGNAL_INTERVAL;
-        if (emitProgress)
-            _progressTimer = 0f;
-
-        for (int i = _activeBuildings.Count - 1; i >= 0; i--)
-        {
-            var building = _activeBuildings[i];
-
-            if (building.CheckRequiredResourcesAvailable())
+            int load = arch.Load;
+            if (load < bestLoad)
             {
-                building.UpdateProgress(workPerBuilding);
-            }
-
-            if (emitProgress)
-            {
-                ConstructionManager.Instance?.NotifyProgressUpdate(
-                    building.Name.ToString(), building.GetProgress(), building.GetStatus());
-            }
-
-            if (building.GetStatus() == ConstructionStatus.Complete.ToString())
-            {
-                _activeBuildings.RemoveAt(i);
-                ConstructionManager.Instance?.NotifyConstructionComplete(building);
-                GameLogger.Info(
-                    $"BuildingConstructionManager: Building '{building.Name}' construction complete");
+                bestLoad = load;
+                best = arch;
             }
         }
+        return best;
     }
 
-    private void ActivatePendingBuildings()
+    private void RouteOrPend(Building building)
     {
+        var target = FindLeastLoadedArchitect();
+        if (target == null)
+        {
+            _pendingBuildings.Add(building);
+            GameLogger.Info(
+                $"BuildingConstructionManager: '{building.Name}' pending "
+                + $"(no architects, pending: {_pendingBuildings.Count})"
+            );
+            return;
+        }
+
+        target.AssignBuilding(building);
+        _ownership[building] = target;
         GameLogger.Info(
-            $"BuildingConstructionManager: Activating {_pendingBuildings.Count} pending buildings");
-
-        foreach (var building in _pendingBuildings)
-        {
-            ApplyWasteFactor(building);
-            _activeBuildings.Add(building);
-        }
-        _pendingBuildings.Clear();
+            $"BuildingConstructionManager: Routed '{building.Name}' to architect "
+            + $"'{target.Owner?.Name ?? "?"}' (load {target.Load})"
+        );
     }
 
-    /// <summary>
-    /// Applies the worst waste factor among registered architects to a building's work required.
-    /// </summary>
-    private void ApplyWasteFactor(Building building)
+    private void DrainPending()
     {
-        float worstWaste = 1.0f;
-        foreach (var arch in _architects)
-        {
-            if (arch.WasteFactor > worstWaste)
-                worstWaste = arch.WasteFactor;
-        }
+        if (_architects.Count == 0) return;
 
-        if (worstWaste > 1.0f)
-        {
-            building.workRequired *= worstWaste;
-            GameLogger.Debug(
-                $"BuildingConstructionManager: Applied waste factor {worstWaste}x to '{building.Name}'");
-        }
+        var snapshot = new List<Building>(_pendingBuildings);
+        _pendingBuildings.Clear();
+        foreach (var b in snapshot)
+            RouteOrPend(b);
     }
 }

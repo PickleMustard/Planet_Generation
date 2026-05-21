@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://6cu37byqa6it" path="res://Scripts/PlayerInteraction/ShipMovement.cs" id="1_bc0l8"]
 [ext_resource type="Script" uid="uid://ccfxuom517kn0" path="res://Scripts/PlayerInteraction/PlayerController.cs" id="3_2llaf"]
-[ext_resource type="Script" uid="uid://biapc0eaifxvd" path="res://Scripts/PlayerInteraction/InputHandler.cs" id="4_bce5k"]
 [ext_resource type="ArrayMesh" uid="uid://ck1odkdr604ba" path="res://Mesh/player_ship.res" id="5_rool1"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_nd1sr"]
@@ -33,10 +32,6 @@ script = ExtResource("3_2llaf")
 MaxSpeed = 100.0
 Acceleration = 4.0
 DecelerationTime = 1.4
-
-[node name="InputHandler" type="Node3D" parent="." unique_id=378932319]
-transform = Transform3D(-0.596936, 5.21858e-08, 2.28111e-15, 0, -2.60929e-08, 0.596936, 5.21858e-08, 0.596936, 2.60929e-08, 0, 0, 0)
-script = ExtResource("4_bce5k")
 
 [node name="ShipMesh" type="MeshInstance3D" parent="." unique_id=167466139]
 transform = Transform3D(-1, 8.74228e-08, -3.82137e-15, 0, -4.37114e-08, -1, -8.74228e-08, -1, 4.37114e-08, 0, 0, 0)

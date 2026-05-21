@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Stations.Behaviors;
 using Godot;
 using Logistics.Resources;
 using ProceduralGeneration.PlanetGeneration;
@@ -125,7 +126,7 @@ public partial class StationSelectionState : LimboState
             {
                 if (
                     child is StationSatellite station
-                    && station.CanBuildShips
+                    && station.GetBehavior<ShipyardBehavior>() != null
                     && !station.IsUnderConstruction
                 )
                 {

@@ -30,6 +30,8 @@ public partial class SlipCard : PanelContainer
     private Label? _slotLabel;
     private Button? _editButton;
     private Button? _deleteButton;
+    private ProgressBar? _progressBar;
+    private Label? _progressLabel;
 
     public override void _Ready()
     {
@@ -181,6 +183,28 @@ public partial class SlipCard : PanelContainer
         _stateLabel.AddThemeFontSizeOverride("font_size", 13);
         footerRow.AddChild(_stateLabel);
 
+        var progressRow = new HBoxContainer();
+        progressRow.AddThemeConstantOverride("separation", 8);
+        col.AddChild(progressRow);
+
+        _progressBar = new ProgressBar
+        {
+            ShowPercentage = false,
+            MinValue = 0,
+            MaxValue = 1,
+            Step = 0.001,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 8),
+        };
+        progressRow.AddChild(_progressBar);
+
+        _progressLabel = new Label { ThemeTypeVariation = "LabelMono" };
+        _progressLabel.AddThemeFontSizeOverride("font_size", 10);
+        _progressLabel.AddThemeColorOverride("font_color", WireColors.InkFaint);
+        _progressLabel.CustomMinimumSize = new Vector2(110f, 0f);
+        _progressLabel.HorizontalAlignment = HorizontalAlignment.Right;
+        progressRow.AddChild(_progressLabel);
+
         if (ShowDragRail)
         {
             BuildDragRail();
@@ -322,28 +346,69 @@ public partial class SlipCard : PanelContainer
         if (_footerLabel != null)
             _footerLabel.Text = $"weight {data.WeightTons:0.#} t · last {data.LastRun} ago";
 
-        if (_stateDot != null) _stateDot.State = data.State;
-        if (_stateLabel != null)
-        {
-            _stateLabel.Text = data.State switch
-            {
-                StateDot.DotState.Block => "starved",
-                StateDot.DotState.Idle => "idle",
-                _ => "running",
-            };
-            _stateLabel.AddThemeColorOverride("font_color", data.State switch
-            {
-                StateDot.DotState.Block => WireColors.Red,
-                StateDot.DotState.Idle => WireColors.InkFaint,
-                _ => WireColors.Green,
-            });
-        }
+        ApplyRuntime(data.Status, data.ProgressFraction, data.ProgressLabel, data.StatusLabel, data.State);
 
         if (ShowDragRail && _slotLabel != null)
             _slotLabel.Text = $"#{data.Priority}";
 
         var slotNumber = GetNodeOrNull<Label>("SlotNumber");
         if (slotNumber != null) slotNumber.Text = data.Priority.ToString();
+    }
+
+    /// <summary>
+    /// Lightweight per-tick update: refreshes status text, color, state dot, and progress bar
+    /// without rebuilding the manifest / destination rows. Caller is responsible for keeping
+    /// the bound <see cref="SlipCardData"/> in sync.
+    /// </summary>
+    public void UpdateRuntime(SlipStatus status, float progress, string progressLabel, string statusLabel)
+    {
+        if (_data != null)
+        {
+            _data.Status = status;
+            _data.ProgressFraction = progress;
+            _data.ProgressLabel = progressLabel;
+            _data.StatusLabel = statusLabel;
+            _data.State = MapDotState(status, _data.State);
+        }
+        ApplyRuntime(status, progress, progressLabel, statusLabel, _data?.State ?? StateDot.DotState.Idle);
+    }
+
+    private void ApplyRuntime(SlipStatus status, float progress, string progressLabel, string statusLabel, StateDot.DotState dotState)
+    {
+        if (_stateDot != null) _stateDot.State = dotState;
+        if (_stateLabel != null)
+        {
+            _stateLabel.Text = statusLabel;
+            _stateLabel.AddThemeColorOverride("font_color", StatusColor(status));
+        }
+        if (_progressLabel != null)
+        {
+            _progressLabel.Text = progressLabel;
+            _progressLabel.AddThemeColorOverride("font_color", WireColors.InkFaint);
+        }
+        if (_progressBar != null)
+        {
+            bool indeterminate = progress < 0f;
+            _progressBar.Value = indeterminate ? 0 : Mathf.Clamp(progress, 0f, 1f);
+            Color tint = StatusColor(status);
+            if (indeterminate) tint = new Color(tint, 0.5f);
+            _progressBar.Modulate = tint;
+        }
+    }
+
+    private static Color StatusColor(SlipStatus status) => status switch
+    {
+        SlipStatus.InTransit => WireColors.Green,
+        SlipStatus.Loading => WireColors.Orange,
+        SlipStatus.Blocked => WireColors.Red,
+        _ => WireColors.InkFaint,
+    };
+
+    private static StateDot.DotState MapDotState(SlipStatus status, StateDot.DotState fallback)
+    {
+        if (status == SlipStatus.Blocked) return StateDot.DotState.Block;
+        if (status == SlipStatus.InTransit || status == SlipStatus.Loading) return StateDot.DotState.Run;
+        return fallback;
     }
 
     private static StyleBoxFlat BuildWatchedPillStyle()

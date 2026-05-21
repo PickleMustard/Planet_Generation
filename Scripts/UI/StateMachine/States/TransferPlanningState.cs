@@ -2,6 +2,7 @@ using Constructables;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
+using UI.StateMachine;
 using UtilityLibrary;
 
 namespace UI.StateMachine;
@@ -28,57 +29,78 @@ public partial class TransferPlanningState : LimboState
             return;
         }
 
-        var continentIndex = Blackboard?.Top().GetVar("SelectedContinentIndex").AsInt32() ?? -1;
         var body = Blackboard?.Top().GetVar("SelectedBody").As<Node3D>();
         var continent = Blackboard?.Top().GetVar("SelectedContinent").As<Continent>();
+        var continentIndex = Blackboard?.Top().GetVar("SelectedContinentIndex").AsInt32() ?? -1;
 
-        if (body == null || continentIndex < 0)
+        if (body == null)
         {
-            GameLogger.Warning("TransferPlanningState: Missing body/continent data in blackboard");
+            GameLogger.Warning("TransferPlanningState: SelectedBody missing in blackboard");
             Dispatch("transfer_closed");
             return;
         }
 
-        var transferMgr = body switch
+        if (body is not IOrbitalBody orbitalBody)
         {
-            CelestialBody cb => cb.TransferMgr,
-            SatelliteBody sb => sb.TransferMgr,
-            _ => null,
-        };
-        if (transferMgr == null)
-        {
-            GameLogger.Warning("TransferPlanningState: body has no transfer manager");
+            GameLogger.Warning("TransferPlanningState: body does not implement IOrbitalBody");
             Dispatch("transfer_closed");
             return;
         }
 
-        var hubIds = transferMgr.GetEndpointsOnContinent(continentIndex);
-        if (hubIds.Count == 0)
-        {
-            GameLogger.Warning(
-                $"TransferPlanningState: continent {continentIndex} has no transfer hubs"
-            );
-            Dispatch("transfer_closed");
-            return;
-        }
-
-        // Pick the first hub on the continent. Per-building dispatch is the new
-        // norm; multi-hub UI ergonomics belong in HubPanelDetails.
-        var originBuilding = transferMgr.GetEndpointBuilding(hubIds[0]);
+        Building? originBuilding = ResolveSelectedBuilding(orbitalBody);
         if (originBuilding == null)
         {
-            GameLogger.Warning("TransferPlanningState: hub building reference missing");
-            Dispatch("transfer_closed");
-            return;
+            if (continentIndex < 0)
+            {
+                GameLogger.Warning("TransferPlanningState: no SelectedBuilding and no SelectedContinentIndex");
+                Dispatch("transfer_closed");
+                return;
+            }
+
+            var hubIds = orbitalBody.GetTransferEndpointsOnContinent(continentIndex);
+            if (hubIds.Count == 0)
+            {
+                GameLogger.Warning(
+                    $"TransferPlanningState: continent {continentIndex} has no transfer hubs"
+                );
+                Dispatch("transfer_closed");
+                return;
+            }
+
+            GameLogger.Warning(
+                $"TransferPlanningState: SelectedBuilding missing; falling back to first hub on continent {continentIndex}"
+            );
+            var originOwner = orbitalBody.GetTransferEndpointOwner(hubIds[0]);
+            originBuilding = originOwner as Building;
+            if (originBuilding == null)
+            {
+                GameLogger.Warning("TransferPlanningState: hub owner missing or not a Building");
+                Dispatch("transfer_closed");
+                return;
+            }
         }
 
         _window.WindowCloseRequested += OnWindowCloseRequested;
+        _window.HudCloseRequested += OnHudCloseRequested;
         _window.ShowWindow(originBuilding, body, continent);
 
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
         GameLogger.Debug(
-            $"TransferPlanningState: Window shown for hub '{originBuilding.Name}' on continent {continentIndex}"
+            $"TransferPlanningState: Window shown for hub '{originBuilding.Name}' (continent {continentIndex})"
         );
+    }
+
+    private Building? ResolveSelectedBuilding(IOrbitalBody orbitalBody)
+    {
+        var buildingVariant = Blackboard?.Top()?.GetVar("SelectedBuilding");
+        if (buildingVariant == null || buildingVariant.Value.VariantType == Variant.Type.Nil)
+            return null;
+        var building = buildingVariant.Value.As<Building>();
+        if (building == null || string.IsNullOrEmpty(building.Id))
+            return null;
+        if (!orbitalBody.HasTransferEndpoint(building.Id))
+            return null;
+        return building;
     }
 
     public override void _Exit()
@@ -88,6 +110,7 @@ public partial class TransferPlanningState : LimboState
         if (_window != null)
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
+            _window.HudCloseRequested -= OnHudCloseRequested;
             _window.HideWindow();
         }
 
@@ -96,7 +119,14 @@ public partial class TransferPlanningState : LimboState
 
     private void OnWindowCloseRequested()
     {
-        GameLogger.Debug("TransferPlanningState: Window close requested");
+        GameLogger.Debug("TransferPlanningState: Window close requested (back to building details)");
         Dispatch("transfer_closed");
+    }
+
+    private void OnHudCloseRequested()
+    {
+        GameLogger.Debug("TransferPlanningState: HUD close requested (return to HUD)");
+        InteractionStack.Clear(Blackboard?.Top());
+        Dispatch("window_closed");
     }
 }

@@ -3,6 +3,7 @@ using Constructables;
 using Godot;
 using PlayerInteraction.CellSelection;
 using ProceduralGeneration.PlanetGeneration;
+using UI.Components;
 using UtilityLibrary;
 
 namespace UI;
@@ -21,6 +22,9 @@ public partial class OrbitalBodyWindow : Control
     private Button? _closeButton;
 
     [Export]
+    private Button? _backButton;
+
+    [Export]
     private OrbitalBodyHeaderPanel? _headerPanel;
 
     [Export]
@@ -28,6 +32,19 @@ public partial class OrbitalBodyWindow : Control
 
     [Export]
     private OrbitalBodyDetailsPanel? _detailsPanel;
+
+    [Export]
+    private CompassRose? _compassRose;
+
+    [Export]
+    private ReticleOverlay? _reticleOverlay;
+
+    // Negative-space layout: the planet should sit centered inside the
+    // unobstructed region (viewport minus tab strip on the right and details
+    // pane along the bottom). These pixel constants are mirrored in the .tscn
+    // anchors of TabbedPanel and DetailsPanel.
+    private const float TAB_PANEL_WIDTH = 540f + 32f;   // panel + right gutter
+    private const float DETAILS_PANEL_HEIGHT = 290f;
 
     private IOrbitalBody? _currentBody;
     private Camera3D? _playerCamera;
@@ -45,8 +62,7 @@ public partial class OrbitalBodyWindow : Control
     private bool _ignoreNextRelease;
 
     /// <summary>
-    /// Whether this window is currently open. Checked by InputHandler to decide
-    /// whether left-click should select cells or open the window.
+    /// Whether this window is currently open.
     /// </summary>
     public bool IsOpen { get; private set; }
 
@@ -57,13 +73,13 @@ public partial class OrbitalBodyWindow : Control
     public delegate void WindowCloseRequestedEventHandler();
 
     [Signal]
+    public delegate void BackRequestedEventHandler();
+
+    [Signal]
     public delegate void StationInspectRequestedEventHandler(int stationIndex);
 
     [Signal]
     public delegate void LogisticsUnitInspectRequestedEventHandler(int unitIndex);
-
-    [Signal]
-    public delegate void ContinentInspectRequestedEventHandler(int continentIndex);
 
     [Signal]
     public delegate void BuildingInspectRequestedEventHandler(Building building);
@@ -79,11 +95,40 @@ public partial class OrbitalBodyWindow : Control
 
         if (_closeButton != null)
             _closeButton.Pressed += OnCloseButtonPressed;
+
+        if (_backButton != null)
+            _backButton.Pressed += OnBackPressed;
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!IsOpen)
+            return;
+
+        if (_compassRose != null && _orbitCamera != null)
+            _compassRose.RotationRadians = _orbitCamera.GetPlanetNorthScreenAngle();
+    }
+
+    /// <summary>
+    /// Returns the pixel offset to apply to the orbit camera so the body
+    /// projects to the negative-space center (the unobstructed area of the
+    /// window) rather than the geometric viewport center.
+    /// </summary>
+    private Vector2 ComputeCameraOffset()
+    {
+        // Shift the body left by half the tab strip's width and up by half
+        // the bottom pane's height.
+        return new Vector2(TAB_PANEL_WIDTH * 0.5f, -DETAILS_PANEL_HEIGHT * 0.5f);
     }
 
     private void OnCloseButtonPressed()
     {
         EmitSignal(SignalName.WindowCloseRequested);
+    }
+
+    private void OnBackPressed()
+    {
+        EmitSignal(SignalName.BackRequested);
     }
 
     public override void _ExitTree()
@@ -108,7 +153,11 @@ public partial class OrbitalBodyWindow : Control
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
 
         // Begin camera orbit
-        _orbitCamera?.BeginOrbit(playerCamera, body);
+        if (_orbitCamera != null)
+        {
+            _orbitCamera.ScreenOffset = ComputeCameraOffset();
+            _orbitCamera.BeginOrbit(playerCamera, body);
+        }
 
         // Populate panels
         _headerPanel?.Populate(body);
@@ -192,7 +241,6 @@ public partial class OrbitalBodyWindow : Control
             {
                 // Start tracking for drag detection
                 _orbitCamera?.HandleDragInput(@event);
-                // Consume so InputHandler._UnhandledInput doesn't fire
                 GetViewport().SetInputAsHandled();
                 return;
             }
@@ -278,7 +326,6 @@ public partial class OrbitalBodyWindow : Control
         {
             CellSelectionManager.Instance?.SelectCell(
                 selectionResult.Cell,
-                selectionResult.CellContinent,
                 (Node3D)selectableBody
             );
         }
@@ -291,7 +338,6 @@ public partial class OrbitalBodyWindow : Control
             {
                 CellSelectionManager.Instance?.SelectCell(
                     fallback.Cell,
-                    fallback.CellContinent,
                     (Node3D)selectableBody
                 );
             }
@@ -328,15 +374,6 @@ public partial class OrbitalBodyWindow : Control
     public void RequestLogisticsUnitInspect(int unitIndex)
     {
         EmitSignal(SignalName.LogisticsUnitInspectRequested, unitIndex);
-    }
-
-    /// <summary>
-    /// Called by OrbitalBodyDetailsPanel when the user wants to inspect a specific continent.
-    /// Emits ContinentInspectRequested so the HSM can handle the cross-window transition.
-    /// </summary>
-    public void RequestContinentInspect(int continentIndex)
-    {
-        EmitSignal(SignalName.ContinentInspectRequested, continentIndex);
     }
 
     /// <summary>
@@ -440,7 +477,9 @@ public partial class OrbitalBodyWindow : Control
             return;
 
         int tab = _tabbedPanel?.ActiveTabIndex ?? -1;
-        if (tab == 0 || tab == 1 || tab == 3)
+        // Power deficit affects Overview (Economy summary), Buildings (powered state),
+        // Grids (brownout flag), and Stations (active state).
+        if (tab == 0 || tab == 1 || tab == 2 || tab == 3)
             _tabbedPanel?.RefreshCurrentTab();
 
         _detailsPanel?.RefreshCurrentDetails();
@@ -519,7 +558,8 @@ public partial class OrbitalBodyWindow : Control
         _headerPanel?.Populate(_currentBody);
 
         int tab = _tabbedPanel?.ActiveTabIndex ?? -1;
-        if (tab == 0 || tab == 2)
+        // Overview surfaces station counts; Stations tab (3) lists stations directly.
+        if (tab == 0 || tab == 3)
             _tabbedPanel?.RefreshCurrentTab();
 
         _detailsPanel?.RefreshCurrentDetails();

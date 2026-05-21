@@ -1,0 +1,6 @@
+resources:
+  - id_name: can
+    resource_tier: 1
+    state_of_matter: solid
+    max_stack_size: 100
+    tags: [processed]

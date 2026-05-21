@@ -1,5 +1,6 @@
 using Constructables;
 using Godot;
+using ProceduralGeneration.PlanetGeneration;
 using UtilityLibrary;
 
 namespace UI.BuildingInfo;
@@ -18,6 +19,7 @@ public partial class BuildingInfoWindow : Control
     [Export] private Button? _backButton;
     [Export] private Button? _upgradeButton;
     [Export] private Button? _reconfigureButton;
+    [Export] private Button? _planetBoardButton;
     [Export] private Button? _demolishButton;
     [Export] private BuildingInfoPanel? _panel;
     [Export] private RecipeSelectionPopup? _recipeSelectionPopup;
@@ -31,6 +33,9 @@ public partial class BuildingInfoWindow : Control
 
     [Signal]
     public delegate void BackRequestedEventHandler();
+
+    [Signal]
+    public delegate void ManageRoutesRequestedEventHandler();
 
     public override void _EnterTree()
     {
@@ -50,6 +55,7 @@ public partial class BuildingInfoWindow : Control
         if (_backButton != null) _backButton.Pressed += OnBackPressed;
         if (_upgradeButton != null) _upgradeButton.Pressed += OnUpgradePressed;
         if (_reconfigureButton != null) _reconfigureButton.Pressed += OnReconfigurePressed;
+        if (_planetBoardButton != null) _planetBoardButton.Pressed += OnPlanetBoardPressed;
         if (_demolishButton != null) _demolishButton.Pressed += OnDemolishPressed;
 
         if (_blockInput != null) _blockInput.GuiInput += OnBackdropInput;
@@ -151,11 +157,11 @@ public partial class BuildingInfoWindow : Control
         if (_currentBuilding.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>() != null)
             return;
 
-        var production = _currentBuilding.Definition?.Production;
-        if (production == null) return;
+        var mfg = _currentBuilding.GetBehavior<Constructables.Buildings.Behaviors.ManufacturingBehavior>();
+        if (mfg == null) return;
 
-        bool hasAny = !string.IsNullOrEmpty(production.DefaultRecipe)
-            || production.AlternativeRecipes.Count > 0;
+        bool hasAny = !string.IsNullOrEmpty(mfg.DefaultRecipe)
+            || mfg.AlternativeRecipes.Count > 0;
         if (!hasAny) return;
 
         _recipeSelectionPopup.Populate(_currentBuilding);
@@ -197,6 +203,16 @@ public partial class BuildingInfoWindow : Control
         if (_currentBuilding == null) return;
         // Reuse the recipe-swap popup as the reconfigure entry point.
         OnRecipeClicked();
+    }
+
+    private void OnPlanetBoardPressed()
+    {
+        if (_currentBuilding?.VisualNode == null) return;
+        Node? n = _currentBuilding.VisualNode;
+        while (n != null && n is not IOrbitalBody)
+            n = n.GetParentOrNull<Node>();
+        if (n is CelestialBody body)
+            SignalBus.Instance?.EmitOpenPlanetBoardRequested(body, "ResourceLink");
     }
 
     private void OnDemolishPressed()

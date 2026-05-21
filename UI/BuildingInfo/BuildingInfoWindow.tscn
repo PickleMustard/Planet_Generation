@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" uid="uid://bgyhcotp3x40o" path="res://Scripts/UI/BuildingInfo/BuildingInfoWindow.cs" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://sn5ksr7arjsu" path="res://UI/BuildingInfo/BuildingInfoPanel.tscn" id="2_panel"]
-[ext_resource type="PackedScene" path="res://UI/BuildingInfo/RecipeSelectionPopup.tscn" id="3_recipe_popup"]
+[ext_resource type="PackedScene" uid="uid://bybc75cgcmlht" path="res://UI/BuildingInfo/RecipeSelectionPopup.tscn" id="3_recipe_popup"]
 [ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="4_paper_theme"]
 
-[node name="BuildingInfoWindow" type="Control" unique_id=1256387208 node_paths=PackedStringArray("_blockInput", "_closeButton", "_backButton", "_upgradeButton", "_reconfigureButton", "_demolishButton", "_panel", "_recipeSelectionPopup")]
+[node name="BuildingInfoWindow" type="Control" unique_id=1256387208 node_paths=PackedStringArray("_blockInput", "_closeButton", "_backButton", "_upgradeButton", "_reconfigureButton", "_planetBoardButton", "_demolishButton", "_panel", "_recipeSelectionPopup")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,6 +19,7 @@ _closeButton = NodePath("PanelContainer/MarginContainer/MainVBox/Chrome/CloseBut
 _backButton = NodePath("PanelContainer/MarginContainer/MainVBox/Chrome/BackButton")
 _upgradeButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar/UpgradeButton")
 _reconfigureButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar/ReconfigureButton")
+_planetBoardButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar/PlanetBoardButton")
 _demolishButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar/DemolishButton")
 _panel = NodePath("PanelContainer/MarginContainer/MainVBox/BuildingInfoPanel")
 _recipeSelectionPopup = NodePath("RecipeSelectionPopup")
@@ -74,7 +75,6 @@ text = "✕"
 
 [node name="BuildingInfoPanel" parent="PanelContainer/MarginContainer/MainVBox" unique_id=1577341282 instance=ExtResource("2_panel")]
 layout_mode = 2
-size_flags_vertical = 3
 
 [node name="ActionBar" type="HBoxContainer" parent="PanelContainer/MarginContainer/MainVBox" unique_id=1571310056]
 layout_mode = 2
@@ -88,6 +88,10 @@ text = "▲ Upgrade"
 [node name="ReconfigureButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/ActionBar" unique_id=1155255759]
 layout_mode = 2
 text = "⟲ Reconfigure"
+
+[node name="PlanetBoardButton" type="Button" parent="PanelContainer/MarginContainer/MainVBox/ActionBar" unique_id=520566090]
+layout_mode = 2
+text = "◇ Planet Board"
 
 [node name="Spacer" type="Control" parent="PanelContainer/MarginContainer/MainVBox/ActionBar" unique_id=1197961972]
 layout_mode = 2

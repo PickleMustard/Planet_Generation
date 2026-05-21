@@ -13,11 +13,19 @@ namespace UI
         private Button? _startButton;
         private Button? _settingsButton;
         private Button? _debugButton;
+        private Button? _developerToolsButton;
         private Button? _exitButton;
 
         // Popup references
         private Control? _settingsPanel;
         private Control? _debugMenu;
+        private Control? _developerToolsMenu;
+        private Control? _resourceEditorOverlay;
+        private Control? _recipeEditorOverlay;
+        private Control? _buildingEditorOverlay;
+        private Control? _building2DEditorOverlay;
+        private Control? _linkProfileEditorOverlay;
+        private Control? _biomeEditorOverlay;
         private Control? _templateMenu;
 
         public override void _Ready()
@@ -47,6 +55,7 @@ namespace UI
                 _startButton = vboxContainer.GetNodeOrNull<Button>("StartButton");
                 _settingsButton = vboxContainer.GetNodeOrNull<Button>("SettingsButton");
                 _debugButton = vboxContainer.GetNodeOrNull<Button>("DebugButton");
+                _developerToolsButton = vboxContainer.GetNodeOrNull<Button>("DeveloperToolsButton");
                 _exitButton = vboxContainer.GetNodeOrNull<Button>("ExitButton");
             }
 
@@ -77,6 +86,11 @@ namespace UI
             if (_debugButton != null)
             {
                 _debugButton.Pressed += OnDebugButtonPressed;
+            }
+
+            if (_developerToolsButton != null)
+            {
+                _developerToolsButton.Pressed += OnDeveloperToolsButtonPressed;
             }
 
             if (_exitButton != null)
@@ -259,7 +273,7 @@ namespace UI
             try
             {
                 var settingsPanelPrefab = ResourceLoader.Load<PackedScene>(
-                    "res://UI/Debug/Settings/SettingsPanel.tscn"
+                    "res://DeveloperTools/Settings/SettingsPanel.tscn"
                 );
                 if (settingsPanelPrefab != null)
                 {
@@ -332,27 +346,6 @@ namespace UI
             titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
             vbox.AddChild(titleLabel);
 
-            // System Generation debug scene
-            if (ResourceLoader.Exists("res://Scenes/SystemGeneration.tscn"))
-            {
-                var sysGenButton = new Button();
-                sysGenButton.Text = "System Generation";
-                sysGenButton.Pressed += () =>
-                {
-                    try
-                    {
-                        GetTree().ChangeSceneToFile("res://Scenes/SystemGeneration.tscn");
-                        GameLogger.Info("Transitioning to SystemGeneration.tscn");
-                    }
-                    catch (Exception ex)
-                    {
-                        GameLogger.Error($"Failed to load SystemGeneration.tscn: {ex.Message}");
-                        ShowNotification($"Error: {ex.Message}");
-                    }
-                };
-                vbox.AddChild(sysGenButton);
-            }
-
             // Planet Generation debug scene
             if (ResourceLoader.Exists("res://Scenes/PlanetGeneration.tscn"))
             {
@@ -395,6 +388,27 @@ namespace UI
                 vbox.AddChild(testSceneButton);
             }
 
+            // PlanetBoard test harness
+            if (ResourceLoader.Exists("res://Scenes/TestPlanetBoard.tscn"))
+            {
+                var planetBoardTestBtn = new Button();
+                planetBoardTestBtn.Text = "Test PlanetBoard";
+                planetBoardTestBtn.Pressed += () =>
+                {
+                    try
+                    {
+                        GetTree().ChangeSceneToFile("res://Scenes/TestPlanetBoard.tscn");
+                        GameLogger.Info("Transitioning to TestPlanetBoard.tscn");
+                    }
+                    catch (Exception ex)
+                    {
+                        GameLogger.Error($"Failed to load TestPlanetBoard.tscn: {ex.Message}");
+                        ShowNotification($"Error: {ex.Message}");
+                    }
+                };
+                vbox.AddChild(planetBoardTestBtn);
+            }
+
             // Close button
             var closeButton = new Button();
             closeButton.Text = "Close";
@@ -410,6 +424,586 @@ namespace UI
             GameLogger.Info("Created simple debug menu");
             GameLogger.ExitFunction(nameof(CreateSimpleDebugMenu));
         }
+
+        /// <summary>
+        /// Called when the Developer Tools button is pressed.
+        /// </summary>
+        private void OnDeveloperToolsButtonPressed()
+        {
+            GameLogger.EnterFunction(nameof(OnDeveloperToolsButtonPressed));
+            GameLogger.Info("Developer Tools button pressed");
+
+            if (_developerToolsMenu != null)
+            {
+                _developerToolsMenu.Visible = true;
+            }
+            else
+            {
+                CreateDeveloperToolsMenu();
+            }
+
+            GameLogger.ExitFunction(nameof(OnDeveloperToolsButtonPressed));
+        }
+
+        /// <summary>
+        /// Creates the Developer Tools menu containing System Generation and Resource Editor entries.
+        /// </summary>
+        private void CreateDeveloperToolsMenu()
+        {
+            GameLogger.EnterFunction(nameof(CreateDeveloperToolsMenu));
+
+            var panel = new Panel();
+            panel.Name = "DeveloperToolsMenu";
+            panel.Size = new Vector2(400, 300);
+            panel.Position = (new Vector2(Size.X, Size.Y) - panel.Size) / 2;
+            AddChild(panel);
+
+            var vbox = new VBoxContainer();
+            vbox.Name = "VBoxContainer";
+            vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            vbox.Alignment = BoxContainer.AlignmentMode.Center;
+            panel.AddChild(vbox);
+
+            var titleLabel = new Label();
+            titleLabel.Text = "Developer Tools";
+            titleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            vbox.AddChild(titleLabel);
+
+            // System Generation
+            if (ResourceLoader.Exists("res://Scenes/SystemGeneration.tscn"))
+            {
+                var sysGenButton = new Button();
+                sysGenButton.Text = "System Generation";
+                sysGenButton.Pressed += () =>
+                {
+                    try
+                    {
+                        GetTree().ChangeSceneToFile("res://Scenes/SystemGeneration.tscn");
+                        GameLogger.Info("Transitioning to SystemGeneration.tscn");
+                    }
+                    catch (Exception ex)
+                    {
+                        GameLogger.Error($"Failed to load SystemGeneration.tscn: {ex.Message}");
+                        ShowNotification($"Error: {ex.Message}");
+                    }
+                };
+                vbox.AddChild(sysGenButton);
+            }
+
+#if DEBUG
+            // Resource Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/ResourceEditor/ResourceEditorModule.tscn"))
+            {
+                var resourceEditorButton = new Button();
+                resourceEditorButton.Text = "Resource Editor";
+                resourceEditorButton.Pressed += OnResourceEditorButtonPressed;
+                vbox.AddChild(resourceEditorButton);
+            }
+
+            // Recipe Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/RecipeEditor/RecipeEditorModule.tscn"))
+            {
+                var recipeEditorButton = new Button();
+                recipeEditorButton.Text = "Recipe Editor";
+                recipeEditorButton.Pressed += OnRecipeEditorButtonPressed;
+                vbox.AddChild(recipeEditorButton);
+            }
+
+            // Building Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/BuildingEditor/BuildingEditorModule.tscn"))
+            {
+                var buildingEditorButton = new Button();
+                buildingEditorButton.Text = "Building Editor";
+                buildingEditorButton.Pressed += OnBuildingEditorButtonPressed;
+                vbox.AddChild(buildingEditorButton);
+            }
+
+            // Building2D Shape Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/Building2DEditor/Building2DEditorModule.tscn"))
+            {
+                var building2DEditorButton = new Button();
+                building2DEditorButton.Text = "Building Shape (2D) Editor";
+                building2DEditorButton.Pressed += OnBuilding2DEditorButtonPressed;
+                vbox.AddChild(building2DEditorButton);
+            }
+
+            // Link Profile Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/LinkProfileEditor/LinkProfileEditorModule.tscn"))
+            {
+                var linkProfileEditorButton = new Button();
+                linkProfileEditorButton.Text = "Link Profile Editor";
+                linkProfileEditorButton.Pressed += OnLinkProfileEditorButtonPressed;
+                vbox.AddChild(linkProfileEditorButton);
+            }
+
+            // Biome Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/BiomeEditor/BiomeEditorModule.tscn"))
+            {
+                var biomeEditorButton = new Button();
+                biomeEditorButton.Text = "Biome Editor";
+                biomeEditorButton.Pressed += OnBiomeEditorButtonPressed;
+                vbox.AddChild(biomeEditorButton);
+            }
+#endif
+
+            // Close button
+            var closeButton = new Button();
+            closeButton.Text = "Close";
+            closeButton.Pressed += () =>
+            {
+                panel.QueueFree();
+                _developerToolsMenu = null;
+            };
+            vbox.AddChild(closeButton);
+
+            _developerToolsMenu = panel;
+
+            GameLogger.Info("Created Developer Tools menu");
+            GameLogger.ExitFunction(nameof(CreateDeveloperToolsMenu));
+        }
+
+#if DEBUG
+        /// <summary>
+        /// Opens the Resource Editor as a fullscreen overlay with a close button.
+        /// </summary>
+        private void OnResourceEditorButtonPressed()
+        {
+            GameLogger.EnterFunction(nameof(OnResourceEditorButtonPressed));
+
+            if (_resourceEditorOverlay != null)
+            {
+                _resourceEditorOverlay.Visible = true;
+                GameLogger.ExitFunction(nameof(OnResourceEditorButtonPressed));
+                return;
+            }
+
+            try
+            {
+                var prefab = ResourceLoader.Load<PackedScene>(
+                    "res://DeveloperTools/ResourceEditor/ResourceEditorModule.tscn"
+                );
+                if (prefab == null)
+                {
+                    GameLogger.Warning("ResourceEditorModule.tscn not found");
+                    ShowNotification("Resource Editor not available.");
+                    GameLogger.ExitFunction(nameof(OnResourceEditorButtonPressed));
+                    return;
+                }
+
+                var overlay = new Panel();
+                overlay.Name = "ResourceEditorOverlay";
+                overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                AddChild(overlay);
+
+                var vbox = new VBoxContainer();
+                vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                overlay.AddChild(vbox);
+
+                var headerBar = new HBoxContainer();
+                headerBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                vbox.AddChild(headerBar);
+
+                var titleLabel = new Label();
+                titleLabel.Text = "Resource Editor";
+                titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                headerBar.AddChild(titleLabel);
+
+                var backButton = new Button();
+                backButton.Text = "Back";
+                backButton.Pressed += () =>
+                {
+                    overlay.QueueFree();
+                    _resourceEditorOverlay = null;
+                };
+                headerBar.AddChild(backButton);
+
+                var moduleInstance = prefab.Instantiate<Control>();
+                moduleInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                moduleInstance.SizeFlagsVertical = SizeFlags.ExpandFill;
+                vbox.AddChild(moduleInstance);
+
+                // BaseDebugModule._Ready() hides the module by default (TabContainer un-hides
+                // the active tab in the debug menu). Outside that context, force-show after
+                // _Ready runs so the panel renders.
+                moduleInstance.CallDeferred(Control.MethodName.Show);
+
+                _resourceEditorOverlay = overlay;
+                GameLogger.Info("Resource Editor overlay opened");
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Resource Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+
+            GameLogger.ExitFunction(nameof(OnResourceEditorButtonPressed));
+        }
+
+        /// <summary>
+        /// Opens the Recipe Editor as a fullscreen overlay with a close button.
+        /// </summary>
+        private void OnRecipeEditorButtonPressed()
+        {
+            GameLogger.EnterFunction(nameof(OnRecipeEditorButtonPressed));
+
+            if (_recipeEditorOverlay != null)
+            {
+                _recipeEditorOverlay.Visible = true;
+                GameLogger.ExitFunction(nameof(OnRecipeEditorButtonPressed));
+                return;
+            }
+
+            try
+            {
+                var prefab = ResourceLoader.Load<PackedScene>(
+                    "res://DeveloperTools/RecipeEditor/RecipeEditorModule.tscn"
+                );
+                if (prefab == null)
+                {
+                    GameLogger.Warning("RecipeEditorModule.tscn not found");
+                    ShowNotification("Recipe Editor not available.");
+                    GameLogger.ExitFunction(nameof(OnRecipeEditorButtonPressed));
+                    return;
+                }
+
+                var overlay = new Panel();
+                overlay.Name = "RecipeEditorOverlay";
+                overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                AddChild(overlay);
+
+                var vbox = new VBoxContainer();
+                vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                overlay.AddChild(vbox);
+
+                var headerBar = new HBoxContainer();
+                headerBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                vbox.AddChild(headerBar);
+
+                var titleLabel = new Label();
+                titleLabel.Text = "Recipe Editor";
+                titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                headerBar.AddChild(titleLabel);
+
+                var backButton = new Button();
+                backButton.Text = "Back";
+                backButton.Pressed += () =>
+                {
+                    overlay.QueueFree();
+                    _recipeEditorOverlay = null;
+                };
+                headerBar.AddChild(backButton);
+
+                var moduleInstance = prefab.Instantiate<Control>();
+                moduleInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                moduleInstance.SizeFlagsVertical = SizeFlags.ExpandFill;
+                vbox.AddChild(moduleInstance);
+
+                moduleInstance.CallDeferred(Control.MethodName.Show);
+
+                _recipeEditorOverlay = overlay;
+                GameLogger.Info("Recipe Editor overlay opened");
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Recipe Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+
+            GameLogger.ExitFunction(nameof(OnRecipeEditorButtonPressed));
+        }
+
+        /// <summary>
+        /// Opens the Building Editor as a fullscreen overlay with a close button.
+        /// </summary>
+        private void OnBuildingEditorButtonPressed()
+        {
+            GameLogger.EnterFunction(nameof(OnBuildingEditorButtonPressed));
+
+            if (_buildingEditorOverlay != null)
+            {
+                _buildingEditorOverlay.Visible = true;
+                GameLogger.ExitFunction(nameof(OnBuildingEditorButtonPressed));
+                return;
+            }
+
+            try
+            {
+                var prefab = ResourceLoader.Load<PackedScene>(
+                    "res://DeveloperTools/BuildingEditor/BuildingEditorModule.tscn"
+                );
+                if (prefab == null)
+                {
+                    GameLogger.Warning("BuildingEditorModule.tscn not found");
+                    ShowNotification("Building Editor not available.");
+                    GameLogger.ExitFunction(nameof(OnBuildingEditorButtonPressed));
+                    return;
+                }
+
+                var overlay = new Panel();
+                overlay.Name = "BuildingEditorOverlay";
+                overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                AddChild(overlay);
+
+                var vbox = new VBoxContainer();
+                vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                overlay.AddChild(vbox);
+
+                var headerBar = new HBoxContainer();
+                headerBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                vbox.AddChild(headerBar);
+
+                var titleLabel = new Label();
+                titleLabel.Text = "Building Editor";
+                titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                headerBar.AddChild(titleLabel);
+
+                var backButton = new Button();
+                backButton.Text = "Back";
+                backButton.Pressed += () =>
+                {
+                    overlay.QueueFree();
+                    _buildingEditorOverlay = null;
+                };
+                headerBar.AddChild(backButton);
+
+                var moduleInstance = prefab.Instantiate<Control>();
+                moduleInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                moduleInstance.SizeFlagsVertical = SizeFlags.ExpandFill;
+                vbox.AddChild(moduleInstance);
+
+                moduleInstance.CallDeferred(Control.MethodName.Show);
+
+                _buildingEditorOverlay = overlay;
+                GameLogger.Info("Building Editor overlay opened");
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Building Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+
+            GameLogger.ExitFunction(nameof(OnBuildingEditorButtonPressed));
+        }
+
+        /// <summary>
+        /// Opens the Building Shape (2D) Editor as a fullscreen overlay with a close button.
+        /// </summary>
+        private void OnBuilding2DEditorButtonPressed()
+        {
+            GameLogger.EnterFunction(nameof(OnBuilding2DEditorButtonPressed));
+
+            if (_building2DEditorOverlay != null)
+            {
+                _building2DEditorOverlay.Visible = true;
+                GameLogger.ExitFunction(nameof(OnBuilding2DEditorButtonPressed));
+                return;
+            }
+
+            try
+            {
+                var prefab = ResourceLoader.Load<PackedScene>(
+                    "res://DeveloperTools/Building2DEditor/Building2DEditorModule.tscn"
+                );
+                if (prefab == null)
+                {
+                    GameLogger.Warning("Building2DEditorModule.tscn not found");
+                    ShowNotification("Building Shape (2D) Editor not available.");
+                    GameLogger.ExitFunction(nameof(OnBuilding2DEditorButtonPressed));
+                    return;
+                }
+
+                var overlay = new Panel();
+                overlay.Name = "Building2DEditorOverlay";
+                overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                AddChild(overlay);
+
+                var vbox = new VBoxContainer();
+                vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                overlay.AddChild(vbox);
+
+                var headerBar = new HBoxContainer();
+                headerBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                vbox.AddChild(headerBar);
+
+                var titleLabel = new Label();
+                titleLabel.Text = "Building Shape (2D) Editor";
+                titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                headerBar.AddChild(titleLabel);
+
+                var backButton = new Button();
+                backButton.Text = "Back";
+                backButton.Pressed += () =>
+                {
+                    overlay.QueueFree();
+                    _building2DEditorOverlay = null;
+                };
+                headerBar.AddChild(backButton);
+
+                var moduleInstance = prefab.Instantiate<Control>();
+                moduleInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                moduleInstance.SizeFlagsVertical = SizeFlags.ExpandFill;
+                vbox.AddChild(moduleInstance);
+
+                moduleInstance.CallDeferred(Control.MethodName.Show);
+
+                _building2DEditorOverlay = overlay;
+                GameLogger.Info("Building Shape (2D) Editor overlay opened");
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Building Shape (2D) Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+
+            GameLogger.ExitFunction(nameof(OnBuilding2DEditorButtonPressed));
+        }
+
+        /// <summary>
+        /// Opens the Link Profile Editor as a fullscreen overlay with a close button.
+        /// </summary>
+        private void OnLinkProfileEditorButtonPressed()
+        {
+            GameLogger.EnterFunction(nameof(OnLinkProfileEditorButtonPressed));
+
+            if (_linkProfileEditorOverlay != null)
+            {
+                _linkProfileEditorOverlay.Visible = true;
+                GameLogger.ExitFunction(nameof(OnLinkProfileEditorButtonPressed));
+                return;
+            }
+
+            try
+            {
+                var prefab = ResourceLoader.Load<PackedScene>(
+                    "res://DeveloperTools/LinkProfileEditor/LinkProfileEditorModule.tscn"
+                );
+                if (prefab == null)
+                {
+                    GameLogger.Warning("LinkProfileEditorModule.tscn not found");
+                    ShowNotification("Link Profile Editor not available.");
+                    GameLogger.ExitFunction(nameof(OnLinkProfileEditorButtonPressed));
+                    return;
+                }
+
+                var overlay = new Panel();
+                overlay.Name = "LinkProfileEditorOverlay";
+                overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                AddChild(overlay);
+
+                var vbox = new VBoxContainer();
+                vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                overlay.AddChild(vbox);
+
+                var headerBar = new HBoxContainer();
+                headerBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                vbox.AddChild(headerBar);
+
+                var titleLabel = new Label();
+                titleLabel.Text = "Link Profile Editor";
+                titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                headerBar.AddChild(titleLabel);
+
+                var backButton = new Button();
+                backButton.Text = "Back";
+                backButton.Pressed += () =>
+                {
+                    overlay.QueueFree();
+                    _linkProfileEditorOverlay = null;
+                };
+                headerBar.AddChild(backButton);
+
+                var moduleInstance = prefab.Instantiate<Control>();
+                moduleInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                moduleInstance.SizeFlagsVertical = SizeFlags.ExpandFill;
+                vbox.AddChild(moduleInstance);
+
+                moduleInstance.CallDeferred(Control.MethodName.Show);
+
+                _linkProfileEditorOverlay = overlay;
+                GameLogger.Info("Link Profile Editor overlay opened");
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Link Profile Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+
+            GameLogger.ExitFunction(nameof(OnLinkProfileEditorButtonPressed));
+        }
+
+        /// <summary>
+        /// Opens the Biome Editor as a fullscreen overlay with a close button.
+        /// </summary>
+        private void OnBiomeEditorButtonPressed()
+        {
+            GameLogger.EnterFunction(nameof(OnBiomeEditorButtonPressed));
+
+            if (_biomeEditorOverlay != null)
+            {
+                _biomeEditorOverlay.Visible = true;
+                GameLogger.ExitFunction(nameof(OnBiomeEditorButtonPressed));
+                return;
+            }
+
+            try
+            {
+                var prefab = ResourceLoader.Load<PackedScene>(
+                    "res://DeveloperTools/BiomeEditor/BiomeEditorModule.tscn"
+                );
+                if (prefab == null)
+                {
+                    GameLogger.Warning("BiomeEditorModule.tscn not found");
+                    ShowNotification("Biome Editor not available.");
+                    GameLogger.ExitFunction(nameof(OnBiomeEditorButtonPressed));
+                    return;
+                }
+
+                var overlay = new Panel();
+                overlay.Name = "BiomeEditorOverlay";
+                overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                AddChild(overlay);
+
+                var vbox = new VBoxContainer();
+                vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+                overlay.AddChild(vbox);
+
+                var headerBar = new HBoxContainer();
+                headerBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                vbox.AddChild(headerBar);
+
+                var titleLabel = new Label();
+                titleLabel.Text = "Biome Editor";
+                titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                headerBar.AddChild(titleLabel);
+
+                var backButton = new Button();
+                backButton.Text = "Back";
+                backButton.Pressed += () =>
+                {
+                    overlay.QueueFree();
+                    _biomeEditorOverlay = null;
+                };
+                headerBar.AddChild(backButton);
+
+                var moduleInstance = prefab.Instantiate<Control>();
+                moduleInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                moduleInstance.SizeFlagsVertical = SizeFlags.ExpandFill;
+                vbox.AddChild(moduleInstance);
+
+                moduleInstance.CallDeferred(Control.MethodName.Show);
+
+                _biomeEditorOverlay = overlay;
+                GameLogger.Info("Biome Editor overlay opened");
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Biome Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+
+            GameLogger.ExitFunction(nameof(OnBiomeEditorButtonPressed));
+        }
+#endif
 
         /// <summary>
         /// Called when the Exit button is pressed.
@@ -495,6 +1089,8 @@ namespace UI
                 _settingsButton.Pressed -= OnSettingsButtonPressed;
             if (_debugButton != null)
                 _debugButton.Pressed -= OnDebugButtonPressed;
+            if (_developerToolsButton != null)
+                _developerToolsButton.Pressed -= OnDeveloperToolsButtonPressed;
             if (_exitButton != null)
                 _exitButton.Pressed -= OnExitButtonPressed;
 

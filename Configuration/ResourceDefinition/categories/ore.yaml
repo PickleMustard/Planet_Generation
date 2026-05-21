@@ -2,119 +2,90 @@ resources:
   - id_name: iron_ore
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 139
-      - 69
-      - 19
-    tags: [ore, metallic]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/iron_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, material:iron]
   - id_name: copper_ore
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 184
-      - 115
-      - 51
-    tags: [ore, metallic, conductive]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/copper_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, conductive, material:copper]
   - id_name: gold_ore
-    resource_tier: 0
+    resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 255
-      - 215
-      - 0
-    tags: [ore, metallic, valuables, conductive]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/gold_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, valuables, conductive, material:gold]
   - id_name: water_ice
     resource_tier: 0
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 173
-      - 216
-      - 230
+    max_stack_size: 500
+    transport_weight: 2.5
     tags: [frozen, water]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/water_ice"
-
   - id_name: uranium_ore
-    resource_tier: 1
+    resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 0
-      - 255
-      - 0
-    tags: [ore, metallic, radioactive]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/uranium_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, radioactive, material:uranium]
   - id_name: platinum_ore
-    resource_tier: 1
+    resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 229
-      - 228
-      - 226
-    tags: [ore, metallic, valuables, high_metal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/platinum_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, valuables, high_metal, material:platinum]
   - id_name: cobalt_ore
     resource_tier: 1
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 0
-      - 71
-      - 171
-    tags: [ore, metallic, valuables, high_metal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/cobalt_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, valuables, high_metal, material:cobalt]
   - id_name: nickel_ore
     resource_tier: 1
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 121
-      - 150
-      - 92
-    tags: [ore, metallic, high_metal]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/nickel_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, high_metal, material:nickel]
   - id_name: lithium_ore
     resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 27
-      - 200
-      - 15
-    tags: [ore, metallic, radioactive, conductive]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/lithium_ore"
-
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metallic, radioactive, conductive, material:lithium]
   - id_name: loadstone_ore
+    resource_tier: 3
+    state_of_matter: solid
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, valuabes, supernatural, material:loadstone]
+  - id_name: bauxite_ore
+    resource_tier: 0
+    state_of_matter: solid
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [ore, metal, material:aluminum]
+  - id_name: titanium_ore
     resource_tier: 2
     state_of_matter: solid
-    max_stack_size: 100
-    display_color:
-      - 47
-      - 79
-      - 79
-    tags: [ore, valuabes, supernatural]
-    icon:
-      base_path: "res://Assets/Icons/Resources/ore/loadstone_ore"
+    max_stack_size: 499
+    transport_weight: 2.5
+    tags: [material:titanium, metal, ore]
+  - id_name: tungsten_ore
+    resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [material:tungsten, metal, ore]
+  - id_name: silver_ore
+    resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 500
+    transport_weight: 2.4
+    tags: [material:silver, metal, ore]
+  - id_name: lead_ore
+    resource_tier: 2
+    state_of_matter: solid
+    max_stack_size: 500
+    transport_weight: 2.5
+    tags: [material:lead, metal, ore]

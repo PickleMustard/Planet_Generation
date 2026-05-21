@@ -1,266 +1,451 @@
-[gd_scene load_steps=3 format=3 uid="uid://power_panel_details"]
+[gd_scene format=3 uid="uid://b7ypcljfms5v5"]
 
-[ext_resource type="Script" path="res://Scripts/UI/BuildingInfo/PowerPanelDetails.cs" id="1_powerpanel"]
-[ext_resource type="PackedScene" uid="uid://recipe_display" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_2l8rk"]
+[ext_resource type="Script" uid="uid://mbkaqw0mnfe2" path="res://Scripts/UI/BuildingInfo/PowerPanelDetails.cs" id="1_powerpanel"]
+[ext_resource type="PackedScene" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
 
-[node name="PowerPanelDetails" type="Control"]
+[node name="PowerPanelDetails" type="Control" unique_id=2131492281]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_2l8rk")
 script = ExtResource("1_powerpanel")
 
-[node name="Layout" type="VBoxContainer" parent="."]
+[node name="Layout" type="VBoxContainer" parent="." unique_id=62285494]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 10
 
-[node name="TopStrip" type="HBoxContainer" parent="Layout"]
+[node name="StatStrip" type="HBoxContainer" parent="Layout" unique_id=203953804]
 layout_mode = 2
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.55
-theme_override_constants/separation = 12
-
-[node name="RenderTile" type="PanelContainer" parent="Layout/TopStrip"]
-custom_minimum_size = Vector2(220, 220)
-layout_mode = 2
-theme_type_variation = &"PaperPanel"
-
-[node name="RenderIcon" type="TextureRect" parent="Layout/TopStrip/RenderTile"]
-layout_mode = 2
-expand_mode = 1
-stretch_mode = 5
-
-[node name="RightVBox" type="VBoxContainer" parent="Layout/TopStrip"]
-layout_mode = 2
-size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 8
 
-[node name="Header" type="HBoxContainer" parent="Layout/TopStrip/RightVBox"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="StateTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
+[node name="StateTile" type="PanelContainer" parent="Layout/StatStrip" unique_id=2096521343]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.4
+theme = ExtResource("1_2l8rk")
 theme_type_variation = &"PaperPanel"
 
-[node name="Row" type="HBoxContainer" parent="Layout/TopStrip/RightVBox/Header/StateTile"]
+[node name="VBox" type="VBoxContainer" parent="Layout/StatStrip/StateTile" unique_id=195096046]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Layout/StatStrip/StateTile/VBox" unique_id=358273369]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "STATE"
+
+[node name="Row" type="HBoxContainer" parent="Layout/StatStrip/StateTile/VBox" unique_id=1510736460]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 6
 
-[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
-layout_mode = 2
-text = "POWER · STATE"
-theme_type_variation = &"LabelMono"
-
-[node name="StateDot" type="ColorRect" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
+[node name="StateDot" type="ColorRect" parent="Layout/StatStrip/StateTile/VBox/Row" unique_id=1539863289]
 custom_minimum_size = Vector2(10, 10)
 layout_mode = 2
 size_flags_vertical = 4
+theme = ExtResource("1_2l8rk")
 color = Color(0.353, 0.314, 0.282, 1)
 
-[node name="StateLabel" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
+[node name="StateLabel" type="Label" parent="Layout/StatStrip/StateTile/VBox/Row" unique_id=1481126459]
 layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
 text = "Idle"
 
-[node name="CycleLabel" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row"]
+[node name="OutputTile" type="PanelContainer" parent="Layout/StatStrip" unique_id=699244807]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "cycle · 0%"
-theme_type_variation = &"LabelMono"
-
-[node name="OutputTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
 theme_type_variation = &"PaperPanel"
 
-[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/OutputTile"]
+[node name="VBox" type="VBoxContainer" parent="Layout/StatStrip/OutputTile" unique_id=698247499]
 layout_mode = 2
-
-[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/OutputTile/VBox"]
-layout_mode = 2
-text = "OUTPUT"
-theme_type_variation = &"LabelMono"
-
-[node name="OutputValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/OutputTile/VBox"]
-layout_mode = 2
-text = "—"
-
-[node name="FuelTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"PaperPanel"
-
-[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/FuelTile"]
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/FuelTile/VBox"]
-layout_mode = 2
-text = "FUEL"
-theme_type_variation = &"LabelMono"
-
-[node name="FuelValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/FuelTile/VBox"]
-layout_mode = 2
-text = "—"
-
-[node name="GridTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"PaperPanel"
-
-[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/GridTile"]
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/GridTile/VBox"]
-layout_mode = 2
-text = "GRID"
-theme_type_variation = &"LabelMono"
-
-[node name="GridValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/GridTile/VBox"]
-layout_mode = 2
-text = "—"
-
-[node name="CycleRow" type="HBoxContainer" parent="Layout/TopStrip/RightVBox"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="CycleBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/CycleRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="CycleCaption" type="Label" parent="Layout/TopStrip/RightVBox/CycleRow/CycleBox"]
-layout_mode = 2
-text = "CYCLE"
-theme_type_variation = &"LabelMono"
-
-[node name="CycleBar" type="ProgressBar" parent="Layout/TopStrip/RightVBox/CycleRow/CycleBox"]
-custom_minimum_size = Vector2(0, 22)
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-
-[node name="FuelBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/CycleRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="FuelCaption" type="Label" parent="Layout/TopStrip/RightVBox/CycleRow/FuelBox"]
-layout_mode = 2
-text = "FUEL"
-theme_type_variation = &"LabelMono"
-
-[node name="FuelBar" type="ProgressBar" parent="Layout/TopStrip/RightVBox/CycleRow/FuelBox"]
-custom_minimum_size = Vector2(0, 22)
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-
-[node name="Detail" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/CycleRow"]
-layout_mode = 2
-size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 2
 
-[node name="OutputDetail" type="Label" parent="Layout/TopStrip/RightVBox/CycleRow/Detail"]
+[node name="Caption" type="Label" parent="Layout/StatStrip/OutputTile/VBox" unique_id=586757873]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "OUTPUT"
+
+[node name="OutputValue" type="Label" parent="Layout/StatStrip/OutputTile/VBox" unique_id=1637704274]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
 text = "—"
 
-[node name="BatteryDetail" type="Label" parent="Layout/TopStrip/RightVBox/CycleRow/Detail"]
+[node name="FuelTile" type="PanelContainer" parent="Layout/StatStrip" unique_id=254298135]
 layout_mode = 2
-text = ""
-theme_type_variation = &"LabelMono"
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"PaperPanel"
 
-[node name="Bottom" type="HSplitContainer" parent="Layout"]
+[node name="VBox" type="VBoxContainer" parent="Layout/StatStrip/FuelTile" unique_id=1173870580]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Layout/StatStrip/FuelTile/VBox" unique_id=297262617]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "FUEL"
+
+[node name="FuelValue" type="Label" parent="Layout/StatStrip/FuelTile/VBox" unique_id=772863681]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "—"
+
+[node name="GridTile" type="PanelContainer" parent="Layout/StatStrip" unique_id=692705406]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/StatStrip/GridTile" unique_id=1627221734]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Layout/StatStrip/GridTile/VBox" unique_id=1178156555]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "GRID"
+
+[node name="GridValue" type="Label" parent="Layout/StatStrip/GridTile/VBox" unique_id=2043275016]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "—"
+
+[node name="Body" type="HBoxContainer" parent="Layout" unique_id=851399720]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.45
-
-[node name="FuelPane" type="VBoxContainer" parent="Layout/Bottom"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="FuelHeader" type="Label" parent="Layout/Bottom/FuelPane"]
-layout_mode = 2
-text = "RECIPE · FUEL"
-theme_type_variation = &"LabelMono"
-
-[node name="RecipeDisplay" parent="Layout/Bottom/FuelPane" instance=ExtResource("2_recipe")]
-layout_mode = 2
-
-[node name="Scroll" type="ScrollContainer" parent="Layout/Bottom/FuelPane"]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="FuelList" type="VBoxContainer" parent="Layout/Bottom/FuelPane/Scroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="GridPane" type="VBoxContainer" parent="Layout/Bottom"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="GridHeader" type="Label" parent="Layout/Bottom/GridPane"]
-layout_mode = 2
-text = "POWER GRID"
-theme_type_variation = &"LabelMono"
-
-[node name="Scroll" type="ScrollContainer" parent="Layout/Bottom/GridPane"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="Sections" type="VBoxContainer" parent="Layout/Bottom/GridPane/Scroll"]
-layout_mode = 2
-size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 12
 
-[node name="Producers" type="VBoxContainer" parent="Layout/Bottom/GridPane/Scroll/Sections"]
+[node name="LeftColumn" type="VBoxContainer" parent="Layout/Body" unique_id=857319436]
+custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 8
+
+[node name="RenderTile" type="PanelContainer" parent="Layout/Body/LeftColumn" unique_id=358522652]
+custom_minimum_size = Vector2(0, 210)
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"PaperPanel"
+
+[node name="RenderIcon" type="TextureRect" parent="Layout/Body/LeftColumn/RenderTile" unique_id=1304561207]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ConnectionsPane" type="VBoxContainer" parent="Layout/Body/LeftColumn" unique_id=132706964]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 4
 
-[node name="Header" type="Label" parent="Layout/Bottom/GridPane/Scroll/Sections/Producers"]
+[node name="ConnectionsHeader" type="Label" parent="Layout/Body/LeftColumn/ConnectionsPane" unique_id=919559122]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "CONNECTIONS"
+
+[node name="ConnectionsScroll" type="ScrollContainer" parent="Layout/Body/LeftColumn/ConnectionsPane" unique_id=2107137245]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_2l8rk")
+horizontal_scroll_mode = 0
+
+[node name="ConnectionsList" type="VBoxContainer" parent="Layout/Body/LeftColumn/ConnectionsPane/ConnectionsScroll" unique_id=2145273303]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 2
+
+[node name="CenterColumn" type="VBoxContainer" parent="Layout/Body" unique_id=1019977652]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 10
+
+[node name="RecipeHeader" type="Label" parent="Layout/Body/CenterColumn" unique_id=1958507456]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "RECIPE · FUEL"
+
+[node name="RecipeDisplay" parent="Layout/Body/CenterColumn" unique_id=1472639811 instance=ExtResource("2_recipe")]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+
+[node name="FuelScroll" type="ScrollContainer" parent="Layout/Body/CenterColumn" unique_id=1231888651]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_2l8rk")
+horizontal_scroll_mode = 0
+
+[node name="FuelList" type="VBoxContainer" parent="Layout/Body/CenterColumn/FuelScroll" unique_id=105235651]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 4
+
+[node name="CycleStrip" type="PanelContainer" parent="Layout/Body/CenterColumn" unique_id=788523731]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"PaperPanel"
+
+[node name="CycleHBox" type="HBoxContainer" parent="Layout/Body/CenterColumn/CycleStrip" unique_id=29373651]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 12
+
+[node name="CycleIcon" type="Label" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox" unique_id=1949415758]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "⚡"
+
+[node name="CycleDetail" type="VBoxContainer" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox" unique_id=1495606122]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 4
+
+[node name="OutputBig" type="Label" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail" unique_id=1702410937]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "—"
+
+[node name="CycleBar" type="ProgressBar" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail" unique_id=1414292199]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+max_value = 1.0
+
+[node name="FuelBar" type="ProgressBar" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail" unique_id=285481673]
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+max_value = 1.0
+
+[node name="CycleFooter" type="HBoxContainer" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail" unique_id=1256792034]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 8
+
+[node name="CycleFooterState" type="Label" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail/CycleFooter" unique_id=464548]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+text = "Idle"
+
+[node name="CycleLabel" type="Label" parent="Layout/Body/CenterColumn/CycleStrip/CycleHBox/CycleDetail/CycleFooter" unique_id=2051546413]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "cycle · 0%"
+horizontal_alignment = 2
+
+[node name="RightColumn" type="VBoxContainer" parent="Layout/Body" unique_id=1891747903]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 6
+
+[node name="GridHeaderBox" type="VBoxContainer" parent="Layout/Body/RightColumn" unique_id=2082321319]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 4
+
+[node name="GridTitleRow" type="HBoxContainer" parent="Layout/Body/RightColumn/GridHeaderBox" unique_id=71692567]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 8
+
+[node name="GridTitle" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridTitleRow" unique_id=1295493993]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "GRID"
+
+[node name="GridDetailsBtn" type="Button" parent="Layout/Body/RightColumn/GridHeaderBox/GridTitleRow" unique_id=655191314]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "⊞ Details"
+
+[node name="GridStatsRow" type="HBoxContainer" parent="Layout/Body/RightColumn/GridHeaderBox" unique_id=206335385]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 8
+
+[node name="GenStat" type="VBoxContainer" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow" unique_id=997126281]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 1
+
+[node name="Caption" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/GenStat" unique_id=194603609]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "GEN"
+
+[node name="GenValue" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/GenStat" unique_id=258626190]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "—"
+
+[node name="GenHint" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/GenStat" unique_id=717316291]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "produced"
+
+[node name="DrawStat" type="VBoxContainer" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow" unique_id=1959403668]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 1
+
+[node name="Caption" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/DrawStat" unique_id=1653082636]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "DRAW"
+
+[node name="DrawValue" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/DrawStat" unique_id=41555184]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "—"
+
+[node name="DrawHint" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/DrawStat" unique_id=191868092]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "consumed"
+
+[node name="BatteryStat" type="VBoxContainer" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow" unique_id=784824078]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 1
+
+[node name="Caption" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/BatteryStat" unique_id=2098159538]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "BATT"
+
+[node name="BatteryValue" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/BatteryStat" unique_id=782571573]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+text = "—"
+
+[node name="BatteryHint" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/GridStatsRow/BatteryStat" unique_id=1670608794]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "stored"
+
+[node name="BalanceRow" type="HBoxContainer" parent="Layout/Body/RightColumn/GridHeaderBox" unique_id=2001704601]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 6
+
+[node name="BalanceCaption" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/BalanceRow" unique_id=567772915]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "BAL"
+
+[node name="BalanceBar" type="ProgressBar" parent="Layout/Body/RightColumn/GridHeaderBox/BalanceRow" unique_id=1776311348]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+max_value = 1.0
+show_percentage = false
+
+[node name="BalanceValue" type="Label" parent="Layout/Body/RightColumn/GridHeaderBox/BalanceRow" unique_id=716646483]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
+text = "—"
+
+[node name="SectionsScroll" type="ScrollContainer" parent="Layout/Body/RightColumn" unique_id=2109766695]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_2l8rk")
+
+[node name="Sections" type="VBoxContainer" parent="Layout/Body/RightColumn/SectionsScroll" unique_id=448137010]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 12
+
+[node name="Producers" type="VBoxContainer" parent="Layout/Body/RightColumn/SectionsScroll/Sections" unique_id=109414805]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="Layout/Body/RightColumn/SectionsScroll/Sections/Producers" unique_id=585795]
+layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
 text = "PRODUCERS"
-theme_type_variation = &"LabelMono"
 
-[node name="List" type="VBoxContainer" parent="Layout/Bottom/GridPane/Scroll/Sections/Producers"]
+[node name="List" type="VBoxContainer" parent="Layout/Body/RightColumn/SectionsScroll/Sections/Producers" unique_id=927707884]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 2
 
-[node name="Consumers" type="VBoxContainer" parent="Layout/Bottom/GridPane/Scroll/Sections"]
+[node name="Consumers" type="VBoxContainer" parent="Layout/Body/RightColumn/SectionsScroll/Sections" unique_id=1443792491]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 4
 
-[node name="Header" type="Label" parent="Layout/Bottom/GridPane/Scroll/Sections/Consumers"]
+[node name="Header" type="Label" parent="Layout/Body/RightColumn/SectionsScroll/Sections/Consumers" unique_id=855211152]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
+theme_type_variation = &"LabelMono"
 text = "CONSUMERS"
-theme_type_variation = &"LabelMono"
 
-[node name="List" type="VBoxContainer" parent="Layout/Bottom/GridPane/Scroll/Sections/Consumers"]
+[node name="List" type="VBoxContainer" parent="Layout/Body/RightColumn/SectionsScroll/Sections/Consumers" unique_id=1772282117]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 2
 
-[node name="Batteries" type="VBoxContainer" parent="Layout/Bottom/GridPane/Scroll/Sections"]
+[node name="Batteries" type="VBoxContainer" parent="Layout/Body/RightColumn/SectionsScroll/Sections" unique_id=1052046573]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 4
 
-[node name="Header" type="Label" parent="Layout/Bottom/GridPane/Scroll/Sections/Batteries"]
+[node name="Header" type="Label" parent="Layout/Body/RightColumn/SectionsScroll/Sections/Batteries" unique_id=2102636782]
 layout_mode = 2
-text = "BATTERIES"
+theme = ExtResource("1_2l8rk")
 theme_type_variation = &"LabelMono"
+text = "BATTERIES"
 
-[node name="List" type="VBoxContainer" parent="Layout/Bottom/GridPane/Scroll/Sections/Batteries"]
+[node name="List" type="VBoxContainer" parent="Layout/Body/RightColumn/SectionsScroll/Sections/Batteries" unique_id=243671931]
 layout_mode = 2
+theme = ExtResource("1_2l8rk")
 theme_override_constants/separation = 2

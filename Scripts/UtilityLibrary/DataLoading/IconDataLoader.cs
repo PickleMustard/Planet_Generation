@@ -44,7 +44,7 @@ public static class IconDataLoader
             return icon; // Return empty - data loader will apply fallback
         }
 
-        // Load all three sizes
+        // Load all three sizes (Off skips in LoadIconTexture)
         icon.SmallTexture = LoadIconTexture(basePath, IconSize.Small, context);
         icon.MediumTexture = LoadIconTexture(basePath, IconSize.Medium, context);
         icon.LargeTexture = LoadIconTexture(basePath, IconSize.Large, context);
@@ -54,6 +54,8 @@ public static class IconDataLoader
 
     /// <summary>
     /// Loads a single icon texture for a specific size.
+    /// Large uses the base name with no suffix; Medium adds "_med"; Small adds "_small".
+    /// Returns null immediately for Off.
     /// </summary>
     /// <param name="basePath">Base path without size suffix</param>
     /// <param name="size">Icon size to load</param>
@@ -61,17 +63,18 @@ public static class IconDataLoader
     /// <returns>Loaded Texture2D or null if loading fails</returns>
     public static Texture2D? LoadIconTexture(string basePath, IconSize size, string context)
     {
-        string fullPath = $"{basePath}{size.GetSuffix()}.svg";
+        string suffix = size.GetSuffix();
+        string fullPath = $"{basePath}{suffix}.svg";
 
         try
         {
             if (!Godot.FileAccess.FileExists(fullPath))
             {
                 // Try PNG fallback
-                fullPath = $"{basePath}{size.GetSuffix()}.png";
+                fullPath = $"{basePath}{suffix}.png";
                 if (!Godot.FileAccess.FileExists(fullPath))
                 {
-                    GameLogger.Warning($"Icon not found for {context}: {basePath} ({size})");
+                    GameLogger.Warning($"Icon not found for {context}: {basePath}{suffix} ({size})");
                     IconsFailed++;
                     return null;
                 }
@@ -106,7 +109,7 @@ public static class IconDataLoader
     public static Texture2D GetFallbackIcon(IconSize size)
     {
         InitializeFallbacks();
-        return _fallbackTextures.GetValueOrDefault(size, _fallbackTextures[IconSize.Medium]);
+        return _fallbackTextures.GetValueOrDefault(size, _fallbackTextures[IconSize.Large]);
     }
 
     /// <summary>

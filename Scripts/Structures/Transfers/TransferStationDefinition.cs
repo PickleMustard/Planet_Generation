@@ -21,4 +21,11 @@ public class TransferStationDefinition
     /// Maximum number of transfers that can be in-flight simultaneously from this station.
     /// </summary>
     public int MaxConcurrentTransfers { get; set; } = 2;
+
+    /// <summary>
+    /// Stub definition for stations that are valid transfer destinations but cannot
+    /// originate transfers. Origin-side dispatch checks reject zero capacity/speed/concurrency.
+    /// </summary>
+    public static TransferStationDefinition DestinationOnly() =>
+        new() { CargoCapacity = 0f, VehicleSpeed = 0f, MaxConcurrentTransfers = 0 };
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Buildings.Behaviors;
 using Godot;
 using Structures.GameState;
 using Structures.Resources;
@@ -22,7 +23,7 @@ public partial class ManifestEditorView : Control
 
     private const float DefaultProportion = 0.20f;
 
-    private BodyTransferManager? _mgr;
+    private TransferStationBehavior? _behavior;
     private string _originBuildingId = "";
     private TransferDestination? _draftDestination;
     private TransferSchedule? _editTarget;
@@ -46,9 +47,9 @@ public partial class ManifestEditorView : Control
         BuildLayout();
     }
 
-    public void Bind(BodyTransferManager? mgr, string originBuildingId, Theme? _)
+    public void Bind(TransferStationBehavior? behavior, string originBuildingId, Theme? _)
     {
-        _mgr = mgr;
+        _behavior = behavior;
         _originBuildingId = originBuildingId ?? "";
         Reset();
     }
@@ -259,9 +260,13 @@ public partial class ManifestEditorView : Control
             ContentMarginBottom = 10,
         });
 
+        var stack = new VBoxContainer();
+        stack.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(stack);
+
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 12);
-        panel.AddChild(row);
+        stack.AddChild(row);
 
         var labelStack = new VBoxContainer();
         labelStack.AddThemeConstantOverride("separation", 0);
@@ -290,7 +295,7 @@ public partial class ManifestEditorView : Control
 
         var description = new VBoxContainer();
         description.AddThemeConstantOverride("separation", 4);
-        panel.AddChild(description);
+        stack.AddChild(description);
         _conditionDescription = new Label { ThemeTypeVariation = "LabelSub" };
         _conditionDescription.AddThemeFontSizeOverride("font_size", 13);
         _conditionDescription.AddThemeColorOverride("font_color", WireColors.InkSoft);
@@ -346,17 +351,18 @@ public partial class ManifestEditorView : Control
     {
         if (_stockpileList == null) return;
         foreach (var c in _stockpileList.GetChildren()) c.QueueFree();
+        var endpoint = _behavior?.ResourceEndpoint;
+        if (endpoint == null) return;
         var db = ResourceDatabase.Instance;
-        if (db == null || !db.IsLoaded) return;
-        foreach (var kvp in db.GetAllResources())
+        foreach (var kvp in endpoint.GetAllStockpiles())
         {
-            var def = kvp.Value;
-            if (def.IdName == null) continue;
+            if (kvp.Value <= 0f) continue;
+            var id = kvp.Key;
             var row = new StockpileRow
             {
-                ResourceId = def.IdName,
-                Label = def.IdName,
-                Weight = def.TransportWeight,
+                ResourceId = id,
+                Label = SlipDataBuilder.LookupResourceLabel(db, id),
+                Weight = SlipDataBuilder.LookupTransportWeight(db, id),
             };
             _stockpileList.AddChild(row);
         }
@@ -430,8 +436,8 @@ public partial class ManifestEditorView : Control
 
     private void UpdateScale()
     {
-        if (_scale == null || _mgr == null) return;
-        float capacity = _mgr.GetCapacity(_originBuildingId);
+        if (_scale == null || _behavior == null) return;
+        float capacity = _behavior.GetCapacity(_originBuildingId);
         if (capacity <= 0f) capacity = 1200f;
         _scale.Limit = capacity;
 
@@ -474,7 +480,7 @@ public partial class ManifestEditorView : Control
 
     private void OnFinish()
     {
-        if (_mgr == null || _draftDestination == null)
+        if (_behavior == null || _draftDestination == null)
         {
             ToastSystem.Instance?.ShowError("Destination is not set.");
             return;
@@ -487,11 +493,11 @@ public partial class ManifestEditorView : Control
 
         if (_editTarget != null)
         {
-            _mgr.RemoveSchedule(_editTarget.ScheduleId);
+            _behavior.RemoveSchedule(_editTarget.ScheduleId);
             _editTarget = null;
         }
 
-        string? id = _mgr.CreateSchedule(
+        string? id = _behavior.CreateSchedule(
             _originBuildingId,
             _draftDestination,
             _proportions,
@@ -503,7 +509,7 @@ public partial class ManifestEditorView : Control
             ToastSystem.Instance?.ShowError("Failed to file route.");
             return;
         }
-        _mgr.StartSchedule(id);
+        _behavior.StartSchedule(id);
         EmitSignal(SignalName.RouteFiled);
     }
 
@@ -540,7 +546,18 @@ public partial class ManifestEditorView : Control
         float updated = Mathf.Clamp(current + delta, 0.05f, 1f);
         _proportions[resourceId] = updated;
         UpdateScale();
-        // Avoid full rebuild: row updates its own readout via callback.
+
+        if (_manifestRows == null) return;
+        float capacity = _behavior?.GetCapacity(_originBuildingId) ?? 1200f;
+        if (capacity <= 0f) capacity = 1200f;
+        foreach (var child in _manifestRows.GetChildren())
+        {
+            if (child is ManifestRow row && row.ResourceId == resourceId)
+            {
+                row.RefreshValues(updated, capacity);
+                break;
+            }
+        }
     }
 
     public sealed partial class StockpileRow : PanelContainer
@@ -712,7 +729,7 @@ public partial class ManifestEditorView : Control
             plus.Pressed += () => Owner?.AdjustProportion(ResourceId, 0.05f);
             counter.AddChild(plus);
 
-            float capacity = Owner?._mgr?.GetCapacity(Owner._originBuildingId) ?? 1200f;
+            float capacity = Owner?._behavior?.GetCapacity(Owner._originBuildingId) ?? 1200f;
             _weightLabel = new Label
             {
                 Text = $"{capacity * proportion:0.#} t",
@@ -726,6 +743,14 @@ public partial class ManifestEditorView : Control
             var remove = new Button { Text = "✕", ThemeTypeVariation = "ButtonDanger" };
             remove.Pressed += () => Owner?.RemoveFromManifest(ResourceId);
             row.AddChild(remove);
+        }
+
+        public void RefreshValues(float proportion, float capacity)
+        {
+            if (_shareLabel != null)
+                _shareLabel.Text = $"{(int)(proportion * 100)}%";
+            if (_weightLabel != null)
+                _weightLabel.Text = $"{capacity * proportion:0.#} t";
         }
 
         private void ClearChildren()

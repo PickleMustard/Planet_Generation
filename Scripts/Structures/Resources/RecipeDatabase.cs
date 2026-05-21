@@ -5,7 +5,7 @@ using Structures.Enums;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 namespace Structures.Resources
 {
@@ -264,7 +264,7 @@ namespace Structures.Resources
         /// Gets the icon for a recipe at a specific size.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetRecipeIcon(string recipeId, IconSize size = IconSize.Medium)
+        public Texture2D GetRecipeIcon(string recipeId, IconSize size = IconSize.Large)
         {
             EnsureLoaded();
             if (TryGetRecipe(recipeId, out var recipe) && recipe != null)

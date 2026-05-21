@@ -1,3 +1,5 @@
+using Structures.Enums;
+
 namespace Structures.Logistics;
 
 /// <summary>
@@ -10,6 +12,12 @@ public class LinkProfile
     /// Unique identifier for this link profile (e.g. "conveyor_belt_mk1").
     /// </summary>
     public string IdName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Physical state of matter this link can carry. One state per link — a Solid
+    /// link cannot carry fluids and vice versa.
+    /// </summary>
+    public StateOfMatter StateOfMatter { get; set; }
 
     /// <summary>
     /// Technology tier of the link. Higher tiers generally offer better throughput.

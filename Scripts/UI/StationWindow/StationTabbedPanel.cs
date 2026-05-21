@@ -1,39 +1,40 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Stations;
 using Godot;
-using Structures.GameState;
+using UtilityLibrary;
 
 namespace UI.StationWindow;
 
 /// <summary>
-/// Right-side tabbed panel with conditionally-visible tabs based on station type.
-/// Switching tabs populates the content area; clicking items emits ItemSelected.
+/// Behavior-driven tabbed panel. Builds one tab per attached <see cref="IStationBehavior"/>,
+/// sorted by <see cref="IStationBehavior.Priority"/> descending. The first tab — the
+/// signature behavior — additionally exposes the station's bulk storage; the remaining
+/// tabs focus solely on their behavior. Mirrors the dynamic tab pattern in
+/// <see cref="UI.BuildingInfo.Administration.AdministrationTabbedPanel"/>.
 /// </summary>
 public partial class StationTabbedPanel : PanelContainer
 {
     [Signal]
     public delegate void ItemSelectedEventHandler(string itemType, int itemIndex);
 
-    private enum StationTab
-    {
-        Overview = 0,
-        Inventory = 1,
-        Buildings = 2,
-        Manufacturing = 3,
-        ConstructionQueue = 4,
-    }
+    [Export]
+    private PackedScene? _behaviorTabScene;
 
-    private struct TabEntry
+    private sealed class TabSpec
     {
-        public StationTab Tab;
-        public Button Button;
+        public string Label = "";
+        public IStationBehavior? Behavior;
+        public bool ShowStorage;
+        public StationBehaviorTab? Cached;
     }
 
     private StationSatellite? _station;
-    private int _activeTabIndex = -1;
-    private readonly List<TabEntry> _visibleTabs = new();
     private HBoxContainer? _tabBar;
-    private VBoxContainer? _contentContainer;
+    private VBoxContainer? _tabBodyContainer;
+    private int _activeIndex = -1;
+    private readonly List<TabSpec> _tabs = new();
+    private readonly List<Button> _tabButtons = new();
 
     private StyleBox? _activeTabStyle;
     private StyleBox? _inactiveTabStyle;
@@ -41,477 +42,202 @@ public partial class StationTabbedPanel : PanelContainer
     public override void _Ready()
     {
         _tabBar = GetNode<HBoxContainer>("VBoxContainer/TabBar");
-        _contentContainer = GetNode<VBoxContainer>(
-            "VBoxContainer/TabContent/ContentContainer"
-        );
+        _tabBodyContainer = GetNode<VBoxContainer>("VBoxContainer/TabBodyContainer");
+        BuildTabStyles();
     }
 
     public void Initialize(StationSatellite station)
     {
+        Clear();
         _station = station;
-        RebuildTabs();
-        if (_visibleTabs.Count > 0)
+
+        BuildTabSpecsFromBehaviors();
+        RebuildTabBar();
+
+        if (_tabs.Count > 0)
+        {
+            _activeIndex = -1;
             SwitchTab(0);
+        }
     }
 
     public void Clear()
     {
+        DropCachedTabs();
+        ClearTabButtons();
+        _activeIndex = -1;
         _station = null;
-        ClearContent();
-        ClearTabs();
-        _activeTabIndex = -1;
-    }
 
-    // ───────── Tab Management ─────────
-
-    private void RebuildTabs()
-    {
-        ClearTabs();
-
-        if (_station == null || _tabBar == null)
-            return;
-
-        // Determine which tabs to show
-        var allTabs = new[]
+        if (_tabBodyContainer != null)
         {
-            StationTab.Overview,
-            StationTab.Inventory,
-            StationTab.Buildings,
-            StationTab.Manufacturing,
-            StationTab.ConstructionQueue,
-        };
-
-        bool isFirst = true;
-        foreach (var tab in allTabs)
-        {
-            if (!ShouldShowTab(tab, _station))
-                continue;
-
-            var button = new Button
-            {
-                Text = GetTabName(tab),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            };
-            button.AddThemeFontSizeOverride("font_size", 13);
-
-            // Cache styles from first two buttons
-            if (isFirst)
-            {
-                var activeStyle = new StyleBoxFlat
-                {
-                    ContentMarginLeft = 8,
-                    ContentMarginTop = 4,
-                    ContentMarginRight = 8,
-                    ContentMarginBottom = 4,
-                    BgColor = new Color(0.25f, 0.25f, 0.3f, 1f),
-                    CornerRadiusTopLeft = 4,
-                    CornerRadiusTopRight = 4,
-                };
-                var inactiveStyle = new StyleBoxFlat
-                {
-                    ContentMarginLeft = 8,
-                    ContentMarginTop = 4,
-                    ContentMarginRight = 8,
-                    ContentMarginBottom = 4,
-                    BgColor = new Color(0.12f, 0.12f, 0.14f, 0.8f),
-                    CornerRadiusTopLeft = 4,
-                    CornerRadiusTopRight = 4,
-                };
-                _activeTabStyle = activeStyle;
-                _inactiveTabStyle = inactiveStyle;
-                isFirst = false;
-            }
-
-            int visibleIndex = _visibleTabs.Count;
-            button.Pressed += () => SwitchTab(visibleIndex);
-
-            _tabBar.AddChild(button);
-            _visibleTabs.Add(new TabEntry { Tab = tab, Button = button });
+            foreach (var child in _tabBodyContainer.GetChildren())
+                if (child is Node node && node.GetParent() == _tabBodyContainer)
+                    _tabBodyContainer.RemoveChild(node);
         }
     }
 
-    private void ClearTabs()
+    private void BuildTabSpecsFromBehaviors()
+    {
+        _tabs.Clear();
+        if (_station == null)
+            return;
+
+        var ordered = new List<IStationBehavior>(_station.Behaviors);
+        ordered.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+
+        if (ordered.Count == 0)
+        {
+            _tabs.Add(new TabSpec
+            {
+                Label = "Overview",
+                Behavior = null,
+                ShowStorage = true,
+            });
+            return;
+        }
+
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            _tabs.Add(new TabSpec
+            {
+                Label = LabelForBehavior(ordered[i]),
+                Behavior = ordered[i],
+                ShowStorage = i == 0,
+            });
+        }
+    }
+
+    private static string LabelForBehavior(IStationBehavior behavior) => behavior switch
+    {
+        Constructables.Stations.Behaviors.ShipyardBehavior => "Shipyard",
+        Constructables.Stations.Behaviors.OrbitalConstructorBehavior => "Architect",
+        Constructables.Stations.Behaviors.TransferHubBehavior => "Transfers",
+        Constructables.Stations.Behaviors.StorageHubBehavior => "Storage",
+        _ => behavior.GetType().Name.Replace("Behavior", ""),
+    };
+
+    private void RebuildTabBar()
+    {
+        ClearTabButtons();
+        if (_tabBar == null)
+            return;
+
+        for (int i = 0; i < _tabs.Count; i++)
+        {
+            int idx = i;
+            var spec = _tabs[i];
+            var btn = new Button
+            {
+                Text = i == 0 ? "★ " + spec.Label : spec.Label,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            };
+            btn.AddThemeFontSizeOverride("font_size", 13);
+            btn.Pressed += () => SwitchTab(idx);
+            _tabBar.AddChild(btn);
+            _tabButtons.Add(btn);
+        }
+    }
+
+    public void SwitchTab(int idx)
+    {
+        if (idx < 0 || idx >= _tabs.Count || _station == null || _tabBodyContainer == null)
+            return;
+        if (idx == _activeIndex)
+            return;
+
+        // Detach previously active instance from the body container without freeing.
+        if (_activeIndex >= 0 && _activeIndex < _tabs.Count)
+        {
+            var prev = _tabs[_activeIndex].Cached;
+            if (prev != null && IsInstanceValid(prev) && prev.GetParent() != null)
+                prev.GetParent().RemoveChild(prev);
+        }
+
+        _activeIndex = idx;
+        UpdateTabButtonStyles();
+
+        var spec = _tabs[idx];
+        if (spec.Cached == null)
+        {
+            if (_behaviorTabScene == null)
+            {
+                GameLogger.Warning("StationTabbedPanel: no BehaviorTab scene configured");
+                return;
+            }
+            spec.Cached = _behaviorTabScene.Instantiate<StationBehaviorTab>();
+            spec.Cached.ItemSelected += OnNestedItemSelected;
+        }
+
+        spec.Cached.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        spec.Cached.SizeFlagsVertical = SizeFlags.ExpandFill;
+        _tabBodyContainer.AddChild(spec.Cached);
+        spec.Cached.Initialize(_station, spec.Behavior, spec.ShowStorage);
+    }
+
+    private void OnNestedItemSelected(string itemType, int itemIndex)
+        => EmitSignal(SignalName.ItemSelected, itemType, itemIndex);
+
+    private void DropCachedTabs()
+    {
+        foreach (var spec in _tabs)
+        {
+            if (spec.Cached != null && IsInstanceValid(spec.Cached))
+            {
+                spec.Cached.ItemSelected -= OnNestedItemSelected;
+                if (spec.Cached.GetParent() != null)
+                    spec.Cached.GetParent().RemoveChild(spec.Cached);
+                spec.Cached.QueueFree();
+            }
+            spec.Cached = null;
+        }
+        _tabs.Clear();
+    }
+
+    private void ClearTabButtons()
     {
         if (_tabBar != null)
         {
-            foreach (var child in _tabBar.GetChildren())
-                child.QueueFree();
+            foreach (var btn in _tabButtons)
+                if (IsInstanceValid(btn))
+                    btn.QueueFree();
         }
-        _visibleTabs.Clear();
+        _tabButtons.Clear();
     }
 
-    private static bool ShouldShowTab(StationTab tab, StationSatellite station)
+    private void BuildTabStyles()
     {
-        return tab switch
+        _activeTabStyle = new StyleBoxFlat
         {
-            StationTab.Overview => true,
-            // Show Buildings tab when station has either a construction architect (in-progress)
-            // or any operational buildings registered with its economy.
-            StationTab.Manufacturing => station.StationType == "Refinery",
-            StationTab.ConstructionQueue => station is ConstructionYardStation,
-            _ => false,
+            ContentMarginLeft = 8,
+            ContentMarginTop = 4,
+            ContentMarginRight = 8,
+            ContentMarginBottom = 4,
+            BgColor = new Color(0.25f, 0.25f, 0.3f, 1f),
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
         };
-    }
-
-    private static string GetTabName(StationTab tab)
-    {
-        return tab switch
+        _inactiveTabStyle = new StyleBoxFlat
         {
-            StationTab.Overview => "Overview",
-            StationTab.Inventory => "Inventory",
-            StationTab.Buildings => "Buildings",
-            StationTab.Manufacturing => "Manufacturing",
-            StationTab.ConstructionQueue => "Build Queue",
-            _ => tab.ToString(),
+            ContentMarginLeft = 8,
+            ContentMarginTop = 4,
+            ContentMarginRight = 8,
+            ContentMarginBottom = 4,
+            BgColor = new Color(0.12f, 0.12f, 0.14f, 0.8f),
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
         };
-    }
-
-    public void SwitchTab(int visibleTabIndex)
-    {
-        if (visibleTabIndex < 0 || visibleTabIndex >= _visibleTabs.Count)
-            return;
-
-        if (visibleTabIndex == _activeTabIndex)
-            return;
-
-        _activeTabIndex = visibleTabIndex;
-        UpdateTabButtonStyles();
-        ClearContent();
-
-        if (_station == null || _contentContainer == null)
-            return;
-
-        var tab = _visibleTabs[visibleTabIndex].Tab;
-        switch (tab)
-        {
-            case StationTab.Overview:
-                PopulateOverview();
-                break;
-            case StationTab.Inventory:
-                PopulateInventory();
-                break;
-            case StationTab.Buildings:
-                PopulateBuildings();
-                break;
-            case StationTab.Manufacturing:
-                PopulateManufacturing();
-                break;
-            case StationTab.ConstructionQueue:
-                PopulateConstructionQueue();
-                break;
-        }
     }
 
     private void UpdateTabButtonStyles()
     {
         if (_activeTabStyle == null || _inactiveTabStyle == null)
             return;
-
-        for (int i = 0; i < _visibleTabs.Count; i++)
+        for (int i = 0; i < _tabButtons.Count; i++)
         {
-            _visibleTabs[i].Button.AddThemeStyleboxOverride(
+            _tabButtons[i].AddThemeStyleboxOverride(
                 "normal",
-                i == _activeTabIndex ? _activeTabStyle : _inactiveTabStyle
+                i == _activeIndex ? _activeTabStyle : _inactiveTabStyle
             );
         }
-    }
-
-    private void ClearContent()
-    {
-        if (_contentContainer == null)
-            return;
-        foreach (var child in _contentContainer.GetChildren())
-            child.QueueFree();
-    }
-
-    // ───────── Overview Tab ─────────
-
-    private void PopulateOverview()
-    {
-        if (_station == null || _contentContainer == null)
-            return;
-
-        AddSectionHeader("Station Info");
-        AddInfoRow("Name", _station.Name);
-        AddInfoRow("Type", _station.StationType);
-        AddInfoRow("Band", _station.BandIndex.ToString());
-        AddInfoRow("Active", _station.IsActive ? "Yes" : "No");
-
-        if (_station.IsUnderConstruction)
-        {
-            AddSectionHeader("Construction");
-            AddInfoRow("Status", _station.GetStatus());
-            AddInfoRow("Progress", $"{_station.GetProgress() * 100:F0}%");
-            AddInfoRow("Work Done", $"{_station.workDone:F1} / {_station.workRequired:F1}");
-
-            if (_station.requiredResources.Count > 0)
-            {
-                AddSectionHeader("Required Resources");
-                foreach (var kvp in _station.requiredResources)
-                {
-                    int delivered = _station.availableResources.ContainsKey(kvp.Key)
-                        ? _station.availableResources[kvp.Key]
-                        : 0;
-                    AddInfoRow(kvp.Key, $"{delivered} / {kvp.Value}");
-                }
-            }
-        }
-
-        if (_station.CanBuildShips)
-            AddInfoRow("Can Build Ships", "Yes");
-
-        // Orbital info
-        AddSectionHeader("Orbital Parameters");
-        AddInfoRow("Radius", $"{_station.OrbitalRadius:F2}");
-        AddInfoRow("Speed", $"{_station.OrbitalSpeed:F6} rad/s");
-
-    }
-
-    // ───────── Inventory Tab ─────────
-
-    private void PopulateInventory()
-    {
-        if (_contentContainer == null)
-            return;
-
-        //var stockpiles = eco.GetAllStockpiles();
-        //var netRates = eco.GetAllNetRates();
-
-        //if (stockpiles.Count == 0)
-        //{
-        //    AddEmptyLabel("No resources in inventory");
-        //    return;
-        //}
-
-        //AddSectionHeader("Stockpiles");
-        //int index = 0;
-        //foreach (var kvp in stockpiles)
-        //{
-        //    if (kvp.Value <= 0 && (!netRates.TryGetValue(kvp.Key, out float rate) || rate == 0))
-        //        continue;
-
-        //    var row = CreateClickableRow(index, "resource");
-
-        //    float netRate = netRates.TryGetValue(kvp.Key, out float nr) ? nr : 0f;
-        //    string rateStr = netRate >= 0 ? $"+{netRate:F2}" : $"{netRate:F2}";
-
-        //    var label = new Label
-        //    {
-        //        Text = $"{kvp.Key}:  {kvp.Value:F1}  ({rateStr}/s)",
-        //    };
-        //    label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-        //    label.AddThemeFontSizeOverride("font_size", 13);
-        //    row.AddChild(label);
-
-        //    _contentContainer.AddChild(row);
-        //    index++;
-        //}
-
-        // Power section
-        AddSectionHeader("Power");
-    }
-
-    // ───────── Buildings Tab (Orbital Architect + station operational buildings) ─────────
-
-    private void PopulateBuildings()
-    {
-        if (_station == null || _contentContainer == null)
-            return;
-
-        // OrbitalArchitectStation: building construction queue.
-        var parentBody = _station.ParentBody;
-        var constructionMgr = parentBody?.BuildingConstructionMgr;
-
-        if (constructionMgr != null)
-        {
-            var activeBuildings = constructionMgr.GetActiveBuildings();
-            int pendingCount = constructionMgr.PendingBuildingCount;
-
-            if (activeBuildings.Count > 0 || pendingCount > 0)
-            {
-                AddInfoRow("Architects", constructionMgr.ArchitectCount.ToString());
-            }
-
-            if (activeBuildings.Count > 0)
-            {
-                AddSectionHeader($"Active Construction ({activeBuildings.Count})");
-                for (int i = 0; i < activeBuildings.Count; i++)
-                {
-                    var building = activeBuildings[i];
-                    var row = CreateClickableRow(i, "active_building");
-
-                    float progress = building.GetProgress();
-                    var label = new Label
-                    {
-                        Text = $"{building.Name}  |  {progress * 100:F0}%",
-                    };
-                    label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                    label.AddThemeFontSizeOverride("font_size", 13);
-                    row.AddChild(label);
-
-                    _contentContainer.AddChild(row);
-                }
-            }
-
-            if (pendingCount > 0)
-            {
-                AddSectionHeader($"Pending ({pendingCount})");
-                AddEmptyLabel($"{pendingCount} building(s) waiting for architect assignment");
-            }
-        }
-
-        // Operational buildings registered with the station's own economy.
-        if (_contentContainer.GetChildCount() == 0)
-            AddEmptyLabel("No buildings on this station");
-    }
-
-    // ───────── Manufacturing Tab (Refinery) ─────────
-
-    private void PopulateManufacturing()
-    {
-        if (_station == null || _contentContainer == null)
-            return;
-
-        AddSectionHeader("Manufacturing Facilities");
-        AddEmptyLabel("Manufacturing configuration coming soon");
-    }
-
-    // ───────── Construction Queue Tab (Shipyard) ─────────
-
-    private void PopulateConstructionQueue()
-    {
-        if (_station is not ConstructionYardStation shipyard || _contentContainer == null)
-            return;
-
-        var activeBuilds = shipyard.GetActiveBuilds();
-        var queuedShips = shipyard.GetShipBuildQueue();
-
-        if (activeBuilds.Count == 0 && queuedShips.Count == 0)
-        {
-            AddEmptyLabel("No ships in build queue");
-            return;
-        }
-
-        if (activeBuilds.Count > 0)
-        {
-            AddSectionHeader($"Building ({activeBuilds.Count})");
-            for (int i = 0; i < activeBuilds.Count; i++)
-            {
-                var ship = activeBuilds[i];
-                var row = CreateClickableRow(i, "active_ship");
-
-                float progress = ship.GetProgress();
-                string status = ship.GetStatus();
-                var label = new Label
-                {
-                    Text = $"{ship.Name}  |  {progress * 100:F0}%  |  {status}",
-                };
-                label.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.9f));
-                label.AddThemeFontSizeOverride("font_size", 13);
-                row.AddChild(label);
-
-                _contentContainer.AddChild(row);
-            }
-        }
-
-        if (queuedShips.Count > 0)
-        {
-            AddSectionHeader($"Queued ({queuedShips.Count})");
-            for (int i = 0; i < queuedShips.Count; i++)
-            {
-                var ship = queuedShips[i];
-                var row = CreateClickableRow(i, "queued_ship");
-
-                var label = new Label
-                {
-                    Text = $"{ship.Name}  |  Waiting...",
-                };
-                label.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.55f));
-                label.AddThemeFontSizeOverride("font_size", 13);
-                row.AddChild(label);
-
-                _contentContainer.AddChild(row);
-            }
-        }
-    }
-
-    // ───────── Helpers ─────────
-
-    private HBoxContainer CreateClickableRow(int index, string itemType)
-    {
-        var row = new HBoxContainer();
-        row.MouseFilter = MouseFilterEnum.Stop;
-        row.AddThemeConstantOverride("separation", 4);
-
-        row.GuiInput += (InputEvent @event) =>
-        {
-            if (
-                @event is InputEventMouseButton btn
-                && btn.ButtonIndex == MouseButton.Left
-                && btn.Pressed
-            )
-            {
-                EmitSignal(SignalName.ItemSelected, itemType, index);
-                row.GetViewport().SetInputAsHandled();
-            }
-        };
-
-        return row;
-    }
-
-    private void AddSectionHeader(string text)
-    {
-        if (_contentContainer == null)
-            return;
-
-        var header = new Label { Text = text };
-        header.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 0.95f));
-        header.AddThemeFontSizeOverride("font_size", 15);
-        _contentContainer.AddChild(header);
-
-        _contentContainer.AddChild(new HSeparator());
-    }
-
-    private void AddInfoRow(string labelText, string value)
-    {
-        if (_contentContainer == null)
-            return;
-
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
-
-        var keyLabel = new Label { Text = labelText + ":" };
-        keyLabel.AddThemeColorOverride("font_color", new Color(0.6f, 0.6f, 0.65f));
-        keyLabel.AddThemeFontSizeOverride("font_size", 13);
-        keyLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        row.AddChild(keyLabel);
-
-        var valLabel = new Label { Text = value };
-        valLabel.AddThemeFontSizeOverride("font_size", 13);
-        row.AddChild(valLabel);
-
-        _contentContainer.AddChild(row);
-    }
-
-    private void AddEmptyLabel(string text)
-    {
-        if (_contentContainer == null)
-            return;
-
-        var label = new Label { Text = text };
-        label.AddThemeColorOverride("font_color", new Color(0.5f, 0.5f, 0.5f));
-        label.AddThemeFontSizeOverride("font_size", 13);
-        _contentContainer.AddChild(label);
-    }
-
-    private void AddAlertRow(string message)
-    {
-        if (_contentContainer == null)
-            return;
-
-        var label = new Label { Text = $"[!] {message}" };
-        label.AddThemeColorOverride("font_color", new Color(1f, 0.4f, 0.3f));
-        label.AddThemeFontSizeOverride("font_size", 12);
-        _contentContainer.AddChild(label);
     }
 }

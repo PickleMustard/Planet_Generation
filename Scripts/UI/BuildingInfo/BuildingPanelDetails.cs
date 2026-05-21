@@ -1,7 +1,10 @@
+using Constructables;
 using Constructables.Buildings.Behaviors;
+using Constructables.Power;
 using Godot;
 using Structures.Enums;
 using Structures.Resources;
+using UI.GridWindow;
 using UtilityLibrary;
 
 namespace UI.BuildingInfo;
@@ -23,6 +26,10 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
     private Label? _powerValueLabel;
     private Label? _efficiencyValueLabel;
 
+    private Label? _gridValueLabel;
+    private Label? _gridStatusLabel;
+    private Button? _openGridBtn;
+
     private GridContainer? _inputSlotsGrid;
     private GridContainer? _outputSlotsGrid;
     private ProgressBar? _workProgressBar;
@@ -42,6 +49,10 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
     private static readonly Color StateDotRun = new(0.29f, 0.65f, 0.32f);
     private static readonly Color StateDotBlock = new(0.78f, 0.32f, 0.21f);
     private static readonly Color StateDotFull = new(0.85f, 0.62f, 0.25f);
+    private static readonly Color StatusOk = new(0.29f, 0.65f, 0.32f);
+    private static readonly Color StatusDeficit = new(0.85f, 0.55f, 0.25f);
+    private static readonly Color StatusBrownout = new(0.85f, 0.20f, 0.20f);
+    private static readonly Color StatusMuted = new(0.55f, 0.55f, 0.6f);
 
     private int _refreshCounter;
     public override void _PhysicsProcess(double delta)
@@ -60,6 +71,12 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
         _cycleValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/CycleTile/VBox/CycleValue");
         _powerValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/PowerTile/VBox/PowerValue");
         _efficiencyValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/EfficiencyTile/VBox/EfficiencyValue");
+
+        _gridValueLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/GridTile/VBox/GridValue");
+        _gridStatusLabel = GetNodeOrNull<Label>("Layout/TopStrip/RightVBox/Header/GridTile/VBox/GridStatus");
+        _openGridBtn = GetNodeOrNull<Button>("Layout/TopStrip/RightVBox/Header/GridTile/VBox/OpenBtn");
+        if (_openGridBtn != null)
+            _openGridBtn.Pressed += OnOpenGridPressed;
 
         _inputSlotsGrid = GetNodeOrNull<GridContainer>("Layout/TopStrip/RightVBox/AssemblyLine/InputSlotsGrid");
         _outputSlotsGrid = GetNodeOrNull<GridContainer>("Layout/TopStrip/RightVBox/AssemblyLine/OutputSlotsGrid");
@@ -85,10 +102,74 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
 
         var recipe = GetActiveRecipe();
         var mfg = _building.GetBehavior<ManufacturingBehavior>();
-        UpdateHeader(mfg, recipe);
-        UpdateAssemblyLine(mfg);
-        UpdateRecipePane(recipe);
+        var ext = _building.GetBehavior<ExtractionBehavior>();
+        UpdateHeader(mfg, ext, recipe);
+        UpdateGridTile();
+        UpdateAssemblyLine(mfg, ext);
+        UpdateRecipePane(recipe, mfg, ext);
         UpdateNodesList();
+    }
+
+    private void UpdateGridTile()
+    {
+        if (_building == null) return;
+        var grid = FindGridForBuilding(_building);
+        var consumer = _building.GetBehavior<PowerConsumerBehavior>();
+
+        if (grid == null)
+        {
+            if (_gridValueLabel != null) _gridValueLabel.Text = "—";
+            if (_gridStatusLabel != null) { _gridStatusLabel.Text = "no grid"; _gridStatusLabel.Modulate = StatusMuted; }
+            if (_openGridBtn != null) _openGridBtn.Disabled = true;
+            return;
+        }
+
+        float myDraw = consumer?.GetCurrentDraw() ?? 0f;
+        float gridDraw = grid.LastDraw;
+        float gridCap = grid.LastGeneration;
+        if (_gridValueLabel != null)
+            _gridValueLabel.Text = $"{myDraw:F0} / {gridDraw:F0} kW";
+        if (_gridStatusLabel != null)
+        {
+            float net = grid.LastGeneration - grid.LastDraw;
+            if (grid.IsBrownedOut) { _gridStatusLabel.Text = $"cap {gridCap:F0} · BROWNOUT"; _gridStatusLabel.Modulate = StatusBrownout; }
+            else if (net < 0f) { _gridStatusLabel.Text = $"cap {gridCap:F0} · DEFICIT"; _gridStatusLabel.Modulate = StatusDeficit; }
+            else { _gridStatusLabel.Text = $"cap {gridCap:F0} · OK"; _gridStatusLabel.Modulate = StatusOk; }
+        }
+        if (_openGridBtn != null) _openGridBtn.Disabled = false;
+    }
+
+    private void OnOpenGridPressed()
+    {
+        if (_building == null) return;
+        var grid = FindGridForBuilding(_building);
+        if (grid != null)
+            GridDetailWindow.Instance?.ShowGrid(grid);
+    }
+
+    private static PowerGrid? FindGridForBuilding(Building building)
+    {
+        var consumer = building.GetBehavior<PowerConsumerBehavior>();
+        if (consumer?.Grid != null) return consumer.Grid;
+
+        var tree = building.VisualNode?.GetTree();
+        if (tree == null) return null;
+        foreach (var node in tree.Root.GetChildren())
+            if (TryFindGrid(node, building, out var g)) return g;
+        return null;
+    }
+
+    private static bool TryFindGrid(Node node, Building building, out PowerGrid? grid)
+    {
+        if (node is BodyPowerGridManager mgr)
+        {
+            grid = mgr.GetGridForBuilding(building);
+            if (grid != null) return true;
+        }
+        foreach (var child in node.GetChildren())
+            if (TryFindGrid(child, building, out grid)) return true;
+        grid = null;
+        return false;
     }
 
     public override void Clear()
@@ -103,6 +184,9 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
         if (_cycleValueLabel != null) _cycleValueLabel.Text = "—";
         if (_powerValueLabel != null) _powerValueLabel.Text = "—";
         if (_efficiencyValueLabel != null) _efficiencyValueLabel.Text = "—";
+        if (_gridValueLabel != null) _gridValueLabel.Text = "—";
+        if (_gridStatusLabel != null) { _gridStatusLabel.Text = "no grid"; _gridStatusLabel.Modulate = StatusMuted; }
+        if (_openGridBtn != null) _openGridBtn.Disabled = true;
         ClearChildren(_inputSlotsGrid);
         ClearChildren(_outputSlotsGrid);
         ClearChildren(_busInputsList);
@@ -116,19 +200,19 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
         if (_renderIcon == null || _building?.Definition == null) return;
         var iconDef = _building.Definition.Icon;
         Texture2D? tex = iconDef?.IsValid == true
-            ? (iconDef.MediumTexture ?? iconDef.SmallTexture)
+            ? (iconDef.LargeTexture ?? iconDef.MediumTexture ?? iconDef.SmallTexture)
             : null;
         if (tex == null && !string.IsNullOrEmpty(iconDef?.BasePath))
         {
-            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + "_medium.png"); }
+            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + ".png"); }
             catch { tex = null; }
         }
         _renderIcon.Texture = tex;
     }
 
-    private void UpdateHeader(ManufacturingBehavior? mfg, RecipeDefinition? recipe)
+    private void UpdateHeader(ManufacturingBehavior? mfg, ExtractionBehavior? ext, RecipeDefinition? recipe)
     {
-        var state = mfg?.State ?? ManufacturingState.Idle;
+        var state = mfg?.State ?? ext?.State ?? ManufacturingState.Idle;
         (string label, Color dot) = state switch
         {
             ManufacturingState.Manufacturing => ("Manufacturing", StateDotRun),
@@ -140,9 +224,11 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
         if (_stateValueLabel != null) _stateValueLabel.Text = label;
         if (_stateDot != null) _stateDot.Color = dot;
 
+        float workProgress = mfg?.WorkProgress ?? ext?.WorkProgress ?? 0f;
+        float workRequired = mfg?.WorkRequired ?? ext?.WorkRequired ?? 0f;
         float pct = 0f;
-        if (mfg != null && mfg.WorkRequired > 0f)
-            pct = Mathf.Clamp(mfg.WorkProgress / mfg.WorkRequired, 0f, 1f);
+        if (workRequired > 0f)
+            pct = Mathf.Clamp(workProgress / workRequired, 0f, 1f);
         if (_workValueLabel != null) _workValueLabel.Text = $"{Mathf.RoundToInt(pct * 100f)}%";
 
         if (_cycleValueLabel != null)
@@ -160,42 +246,49 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
 
         if (_efficiencyValueLabel != null)
         {
-            float speed = _building?.Definition?.Production?.ProductionSpeed ?? 1f;
+            float speed = mfg?.ProductionSpeed ?? ext?.ProductionSpeed ?? 1f;
             _efficiencyValueLabel.Text = $"{speed:P0}";
         }
     }
 
-    private void UpdateAssemblyLine(ManufacturingBehavior? mfg)
+    private void UpdateAssemblyLine(ManufacturingBehavior? mfg, ExtractionBehavior? ext)
     {
         PopulateSlotGrid(_inputSlotsGrid, _building?.InputStorage, _resourceSlotItemScene);
         PopulateSlotGrid(_outputSlotsGrid, _building?.OutputStorage, _resourceSlotItemScene);
+
+        float workProgress = mfg?.WorkProgress ?? ext?.WorkProgress ?? 0f;
+        float workRequired = mfg?.WorkRequired ?? ext?.WorkRequired ?? 0f;
 
         if (_workProgressBar != null)
         {
             _workProgressBar.MinValue = 0;
             _workProgressBar.MaxValue = 1;
-            float frac = (mfg != null && mfg.WorkRequired > 0f)
-                ? Mathf.Clamp(mfg.WorkProgress / mfg.WorkRequired, 0f, 1f) : 0f;
+            float frac = workRequired > 0f
+                ? Mathf.Clamp(workProgress / workRequired, 0f, 1f) : 0f;
             _workProgressBar.Value = frac;
         }
 
         if (_workNumLabel != null)
-            _workNumLabel.Text = $"work · {(mfg?.WorkProgress ?? 0f):F0}";
+            _workNumLabel.Text = $"work · {workProgress:F0}";
         if (_workDenomLabel != null)
-            _workDenomLabel.Text = $"req · {(mfg?.WorkRequired ?? 0f):F0}";
+            _workDenomLabel.Text = $"req · {workRequired:F0}";
     }
 
-    private void UpdateRecipePane(RecipeDefinition? recipe)
+    private void UpdateRecipePane(RecipeDefinition? recipe, ManufacturingBehavior? mfg, ExtractionBehavior? ext)
     {
         _recipeDisplay?.SetRecipe(recipe);
-        bool isExtraction = _building?.GetBehavior<ExtractionBehavior>() != null;
-        _recipeDisplay?.SetEnabled(!isExtraction);
+        // Enable recipe swap when either behavior has alternative recipes
+        bool hasAlternatives = (mfg != null && mfg.AlternativeRecipes.Count > 0)
+                            || (ext != null && ext.AlternativeRecipes.Count > 0);
+        _recipeDisplay?.SetEnabled(hasAlternatives);
 
         ClearChildren(_busInputsList);
         ClearChildren(_busOutputsList);
         if (recipe == null || _resourceRateItemScene == null) return;
 
-        var (inputRates, outputRates) = ComputeRecipeRates(recipe, _building?.Definition);
+        var (inputRates, outputRates, tagContext) = mfg != null
+            ? ComputeRecipeRatesWithTagContext(recipe, mfg)
+            : ComputeRecipeRatesWithTagContext(recipe, ext);
 
         if (_busInputsList != null)
         {
@@ -204,7 +297,11 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
                 var item = _resourceRateItemScene.Instantiate<ResourceRateItem>();
                 if (item == null) continue;
                 _busInputsList.AddChild(item);
-                item.SetResourceRate(kvp.Key, -kvp.Value);
+
+                bool isTag = tagContext.TryGetValue(kvp.Key, out var ctx) && ctx.IsTag;
+                string? tagName = isTag ? ctx.TagName : null;
+                string? resolvedId = isTag ? ctx.ResolvedId : null;
+                item.SetResourceRate(kvp.Key, -kvp.Value, isTag, tagName, resolvedId);
             }
         }
         if (_busOutputsList != null)
@@ -214,7 +311,11 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
                 var item = _resourceRateItemScene.Instantiate<ResourceRateItem>();
                 if (item == null) continue;
                 _busOutputsList.AddChild(item);
-                item.SetResourceRate(kvp.Key, kvp.Value);
+
+                bool isTag = tagContext.TryGetValue(kvp.Key, out var ctx) && ctx.IsTag;
+                string? tagName = isTag ? ctx.TagName : null;
+                string? resolvedId = isTag ? ctx.ResolvedId : null;
+                item.SetResourceRate(kvp.Key, kvp.Value, isTag, tagName, resolvedId);
             }
         }
     }
@@ -229,7 +330,7 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
             var row = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             row.AddThemeConstantOverride("separation", 2);
 
-            var head = new Label { Text = $"{node.Kind} · {node.Side}" };
+            var head = new Label { Text = $"{node.Kind} · side {node.SideIndex}.{node.SlotIndex}" };
             row.AddChild(head);
 
             var link = node.Link;

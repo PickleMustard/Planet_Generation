@@ -14,6 +14,15 @@ public partial class ConstructionMenu : PanelContainer
     [Signal]
     public delegate void MenuClosedEventHandler();
 
+    [Signal]
+    public delegate void BackRequestedEventHandler();
+
+    [Export]
+    private Button? _backButton;
+
+    [Export]
+    private Button? _closeToHudButton;
+
     [Export]
     private TabContainer _tabContainer = null!;
 
@@ -46,6 +55,12 @@ public partial class ConstructionMenu : PanelContainer
         _buildingsList.ItemSelected += OnBuildingItemSelected;
         _buildButton.Pressed += OnBuildPressed;
         _cancelButton.Pressed += OnCancelPressed;
+
+        if (_backButton != null)
+            _backButton.Pressed += OnBackPressed;
+
+        if (_closeToHudButton != null)
+            _closeToHudButton.Pressed += OnCancelPressed;
 
         // Refresh per-building enabled state when the placement count changes,
         // so a building hitting its limit grays out without reopening the menu.
@@ -216,7 +231,7 @@ public partial class ConstructionMenu : PanelContainer
         var text = $"[b]{def.DisplayName ?? def.IdName}[/b]";
         if (!string.IsNullOrEmpty(def.Category))
             text += $"  ({def.Category})";
-        text += $"\nBuild Time: {def.BuildingTime}s  |  Cells: {def.Placement.CellCount}";
+        text += $"\nMax Tier: {def.MaxResourceTier}  |  Cells: {def.Placement.CellCount}";
         if (def.BuildingLimit > 0)
         {
             int placed = BuildingDatabase.Instance.GetGlobalPlacementCount(def.IdName ?? "");
@@ -248,6 +263,11 @@ public partial class ConstructionMenu : PanelContainer
         ClearSelection();
         Visible = false;
         EmitSignal(SignalName.MenuClosed);
+    }
+
+    private void OnBackPressed()
+    {
+        EmitSignal(SignalName.BackRequested);
     }
 
     public void ClearSelection()

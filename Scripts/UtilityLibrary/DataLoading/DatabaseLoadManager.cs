@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Godot;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 
 namespace UtilityLibrary.DataLoading

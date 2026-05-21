@@ -1,16 +1,21 @@
 using System;
 using Godot;
 using Godot.Collections;
+using Constructables.Stations;
+using Constructables.Stations.Behaviors;
+using Constructables.Tick;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.Logistics;
 using Structures.Resources;
+using Structures.Transfers;
 using UtilityLibrary;
+using STBList = System.Collections.Generic.List<Constructables.Stations.IStationBehavior>;
 
 namespace Constructables;
 
-public partial class StationSatellite : Node3D, IArtificialSatellite, IConstructable
+public partial class StationSatellite : Node3D, IArtificialSatellite, IConstructable, IManufactureTickable
 {
     [Signal]
     public delegate void OnCompletionEventHandler();
@@ -59,9 +64,18 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     private float _rotationSpeed = 0.5f;
     protected IOrbitalBody? _parentBody;
 
+    /// <summary>
+    /// Camera anchor attached to this station. Created on demand by <see cref="GetOrCreateCameraAnchor"/>
+    /// for the diegetic StationWindow SubViewport. Mirrors the celestial-body anchor pattern
+    /// without requiring the full <see cref="ISelectableBody"/> contract (which is cell-specific).
+    /// </summary>
+    public Node3D? CameraAnchor { get; private set; }
+
     // Construction state
     protected ConstructionState? _constructionState;
     protected StationDefinition? _stationDefinition;
+    public string? StationType => _stationDefinition?.StationType;
+    public StationDefinition? Definition => _stationDefinition;
     protected bool _isUnderConstruction;
     protected StandardMaterial3D? _originalMaterial;
 
@@ -69,11 +83,37 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     private float _progressTimer;
     private const float PROGRESS_SIGNAL_INTERVAL = 0.5f;
 
-    /// <summary>Whether this station type can build ships (from station definition).</summary>
-    public bool CanBuildShips => _stationDefinition?.CanBuildShips ?? false;
+    /// <summary>Tick priority from IManufactureTickable.</summary>
+    public int TickPriority { get; set; } = 0;
 
-    /// <summary>The station type from the definition.</summary>
-    public string StationType => _stationDefinition?.StationType ?? "";
+    /// <summary>Bulk storage for this station (shared by attached behaviors).</summary>
+    public Storage BulkStorage { get; } = new();
+
+    private StationResourceEndpoint? _resourceEndpoint;
+
+    /// <summary>
+    /// Endpoint adapter that exposes <see cref="BulkStorage"/> via <see cref="IResourceEndpoint"/>.
+    /// Lazily created; guarantees every station can be a transfer destination regardless of behaviors.
+    /// </summary>
+    public IResourceEndpoint ResourceEndpoint
+        => _resourceEndpoint ??= new StationResourceEndpoint(this);
+
+    /// <summary>Attached behaviors, sorted by Priority after registration.</summary>
+    public STBList Behaviors { get; } = new();
+
+    /// <summary>
+    /// Returns the first attached behavior of type T, or null. Replaces legacy
+    /// subclass-specific queries — use GetBehavior&lt;ShipyardBehavior&gt;() instead of
+    /// checking CanBuildShips.
+    /// </summary>
+    public T? GetBehavior<T>()
+        where T : class, IStationBehavior
+    {
+        foreach (var b in Behaviors)
+            if (b is T match)
+                return match;
+        return null;
+    }
 
 
     #region IConstructable
@@ -239,14 +279,14 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
                 && previousStatus == ConstructionStatus.InProgress
             )
             {
-                EmitSignal(SignalName.OnConstructionBlocked);
+                SignalMarshal.EmitNode(this, SignalName.OnConstructionBlocked);
             }
             else if (
                 _constructionState.Status == ConstructionStatus.InProgress
                 && previousStatus == ConstructionStatus.Blocked
             )
             {
-                EmitSignal(SignalName.OnConstructionResumed);
+                SignalMarshal.EmitNode(this, SignalName.OnConstructionResumed);
             }
             else if (_constructionState.Status == ConstructionStatus.Complete)
             {
@@ -288,6 +328,38 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         float bodyRadius = _parentBody?.Radius ?? 1.0f;
         Node3D? model = definition.Visual?.CreateModelInstance(bodyRadius);
         InstallModel(model, definition.Name);
+
+        // Wire behaviors from definition refs
+        foreach (var refName in definition.BehaviorRefs)
+        {
+            var behavior = StationBehaviorFactory.Create(refName);
+            if (behavior == null) continue;
+            Behaviors.Add(behavior);
+            behavior.OnAttach(this);
+
+            // Inject definition values before OnRegister
+            if (behavior is StorageHubBehavior hub)
+            {
+                hub.StorageCapacity = definition.StorageCapacity;
+                hub.SlotFilters = definition.SlotFilters;
+            }
+            else if (behavior is OrbitalConstructorBehavior ctor)
+            {
+                ctor.WorkBudgetPerTick = definition.BuildingWorkBudgetPerTick;
+                ctor.RegularSlotCount = definition.RegularSlots;
+                ctor.OvertimeCostPercent = definition.OvertimeCostPercent;
+                ctor.SetOvertimeTarget(definition.OvertimeSlots);
+            }
+            else if (behavior is ShipyardBehavior shipyard)
+            {
+                shipyard.MaxParallelShipBuilds = definition.MaxParallelShipBuilds;
+            }
+            else if (behavior is TransferHubBehavior transfer)
+            {
+                transfer.EndpointDef = definition.TransferStation;
+            }
+        }
+        BulkStorage.StorageUpdated += OnStationStorageUpdated;
     }
 
     /// <summary>
@@ -308,8 +380,48 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         // Restore original material
         RestoreOriginalMaterial();
 
-        EmitSignal(SignalName.OnCompletion);
+        RegisterBehaviors();
+        RegisterAsTransferEndpoint();
+        ManufactureTickEngine.Instance?.Register(this);
+
+        SignalMarshal.EmitNode(this, SignalName.OnCompletion);
+        SignalBus.Instance?.SafeEmitStationConstructed(this);
         GameLogger.Info($"StationSatellite {Name}: Construction complete");
+    }
+
+    private void ResolveParentBody()
+    {
+        if (_parentBody != null) return;
+        Node? cursor = GetParent();
+        while (cursor != null)
+        {
+            if (cursor is IOrbitalBody body) { _parentBody = body; return; }
+            cursor = cursor.GetParent();
+        }
+    }
+
+    /// <summary>
+    /// Registers this station with its parent body's transfer-endpoint registry. If
+    /// <see cref="TransferHubBehavior"/> already registered during <see cref="RegisterBehaviors"/>,
+    /// this skips so the hub's full <see cref="TransferStationDefinition"/> wins. Otherwise the
+    /// station is registered with <see cref="TransferStationDefinition.DestinationOnly"/>.
+    /// </summary>
+    private void RegisterAsTransferEndpoint()
+    {
+        ResolveParentBody();
+        if (_parentBody == null || string.IsNullOrEmpty(Id)) return;
+        if (_parentBody.HasTransferEndpoint(Id)) return;
+
+        var def = _stationDefinition?.TransferStation
+            ?? TransferStationDefinition.DestinationOnly();
+        _parentBody.RegisterTransferEndpoint(Id, def, this);
+    }
+
+    private void UnregisterAsTransferEndpoint()
+    {
+        if (_parentBody == null || string.IsNullOrEmpty(Id)) return;
+        if (!_parentBody.HasTransferEndpoint(Id)) return;
+        _parentBody.UnregisterTransferEndpoint(Id);
     }
 
     private void ApplyConstructionMaterial()
@@ -478,6 +590,51 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     #endregion
 
 
+    #region CameraAnchor
+
+    /// <summary>
+    /// Gets or creates the camera anchor for this station. Anchor is a child
+    /// <see cref="Node3D"/> named "CameraAnchor", positioned at a sensible
+    /// inspection offset on first creation.
+    /// </summary>
+    public Node3D GetOrCreateCameraAnchor()
+    {
+        if (CameraAnchor == null)
+        {
+            CameraAnchor = new Node3D { Name = "CameraAnchor" };
+            AddChild(CameraAnchor);
+            FrameInspectionCamera();
+        }
+        return CameraAnchor;
+    }
+
+    /// <summary>
+    /// Positions the camera anchor a few model-radii back along +Z, looking at the station origin.
+    /// Recomputed each call so the anchor adapts if the model is swapped after first creation.
+    /// </summary>
+    public void FrameInspectionCamera()
+    {
+        if (CameraAnchor == null)
+            return;
+
+        float radius = GetVisualRadius();
+        float distance = Mathf.Max(radius * 4.0f, 6.0f);
+        Vector3 local = new Vector3(0, radius * 0.5f, distance);
+        CameraAnchor.Position = local;
+        CameraAnchor.LookAt(GlobalPosition, Vector3.Up);
+    }
+
+    /// <summary>Approximate radius of the installed model mesh, in world units.</summary>
+    private float GetVisualRadius()
+    {
+        if (_meshInstance?.Mesh == null)
+            return 1.0f;
+        var aabb = _meshInstance.GetAabb();
+        return aabb.Size.Length() * 0.5f;
+    }
+
+    #endregion
+
     #region GodotBuiltin
 
     public override void _EnterTree()
@@ -487,6 +644,12 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     public override void _ExitTree()
     {
+        UnregisterAsTransferEndpoint();
+        UnregisterBehaviors();
+        DetachBehaviors();
+        ManufactureTickEngine.Instance?.Unregister(this);
+        SignalBus.Instance?.EmitStationRemoved(this);
+
         GameLogger.Debug($"StationSatellite destroying: {Name}");
         _isInitialized = false;
         base._ExitTree();
@@ -511,8 +674,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
             return;
         }
 
-        // Tick subclass operational behavior (ship queues, building budgets, etc.)
-        TickOperational(dt);
+        // TickOperational removed — operational ticking now driven by IStationBehavior.OnManufactureTick
 
         if (!_isInitialized || !IsActive)
             return;
@@ -568,11 +730,97 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         }
     }
 
+    #endregion
+
+    #region BehaviorLifecycle
+
     /// <summary>
-    /// Called each physics tick when the station is NOT under construction.
-    /// Override in subclasses for operational behavior (e.g. ship build queues, building work budgets).
+    /// Sorts behaviors by Priority, then fans OnRegister across all.
+    /// Call after <see cref="SetStationDefinition"/> so behaviors can query the owner's scene tree.
     /// </summary>
-    protected virtual void TickOperational(float delta) { }
+    public void RegisterBehaviors()
+    {
+        Behaviors.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+        foreach (var b in Behaviors)
+            b.OnRegister();
+    }
+
+    /// <summary>
+    /// Fans OnUnregister across behaviors in reverse priority order.
+    /// </summary>
+    public void UnregisterBehaviors()
+    {
+        for (int i = Behaviors.Count - 1; i >= 0; i--)
+            Behaviors[i].OnUnregister();
+    }
+
+    /// <summary>
+    /// Fans OnDetach across all behaviors and clears the list.
+    /// </summary>
+    public void DetachBehaviors()
+    {
+        foreach (var b in Behaviors)
+            b.OnDetach();
+        Behaviors.Clear();
+    }
+
+    /// <summary>
+    /// Called at end of <see cref="OnManufactureTick"/>. Unregisters from the tick engine if no
+    /// behavior currently wants ticks. Construction-in-progress and inactive stations
+    /// short-circuit so existing register/unregister wiring stays authoritative.
+    /// </summary>
+    private void EvaluateTickRegistration()
+    {
+        if (_isUnderConstruction || !IsActive)
+            return;
+
+        foreach (var b in Behaviors)
+        {
+            if (b.WantsTick)
+                return;
+        }
+
+        ManufactureTickEngine.Instance?.Unregister(this);
+    }
+
+    /// <summary>
+    /// Storage change wake-up. Any quantity change signals that a sleeping behavior may now be
+    /// able to make progress; register the station so it gets at least one tick to re-evaluate.
+    /// </summary>
+    private void OnStationStorageUpdated(string resourceId, float delta)
+    {
+        if (_isUnderConstruction || !IsActive)
+            return;
+        ManufactureTickEngine.Instance?.Register(this);
+    }
+
+    /// <summary>
+    /// Per-tick hook driven by ManufactureTickEngine on its dedicated background thread.
+    /// Dispatches to each behavior in Priority order; exceptions are logged and swallowed so one
+    /// misbehaving behavior cannot corrupt the tick for its siblings.
+    /// </summary>
+    public void OnManufactureTick(float delta)
+    {
+        if (!IsActive || _isUnderConstruction)
+            return;
+
+        foreach (var behavior in Behaviors)
+        {
+            try
+            {
+                behavior.OnManufactureTick(delta, this);
+            }
+            catch (System.Exception ex)
+            {
+                GameLogger.Error(
+                    $"StationSatellite {Name}: behavior {behavior.GetType().Name} "
+                    + $"threw on tick: {ex.GetType().Name}: {ex.Message}"
+                );
+            }
+        }
+
+        EvaluateTickRegistration();
+    }
 
     #endregion
 

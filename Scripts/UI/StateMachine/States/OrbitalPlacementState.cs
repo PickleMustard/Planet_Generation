@@ -340,10 +340,11 @@ public partial class OrbitalPlacementState : LimboState
 
         if (_ghostNode == null)
         {
-            float fallbackSize = 2f;
+            float fallbackHeight = 2f;
+            float fallbackRadius = fallbackHeight * 0.15f;
             _ghostNode = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(fallbackSize, fallbackSize, fallbackSize) },
+                Mesh = new CylinderMesh { Height = fallbackHeight, TopRadius = fallbackRadius, BottomRadius = fallbackRadius },
                 Name = "GhostFallbackMesh",
             };
             GameLogger.Warning(

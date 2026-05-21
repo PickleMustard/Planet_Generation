@@ -4,13 +4,17 @@ namespace UI.Components;
 
 public static class DetailRowBuilder
 {
-    private static readonly Color KeyColor = new Color(0.6f, 0.6f, 0.65f);
-    private static readonly Color ValueColor = new Color(0.9f, 0.9f, 0.95f);
-    private static readonly Color HeaderColor = new Color(0.7f, 0.8f, 0.95f);
-    private static readonly Color AlertColor = new Color(1f, 0.4f, 0.3f);
+    // Paper-theme palette (wireframe_paper.tres):
+    //   ink        #2a2520
+    //   ink-faint  #2a2520 @ 45%
+    //   alert      #b03a1f
+    private static readonly Color KeyColor = new Color(0.165f, 0.145f, 0.125f, 0.45f);
+    private static readonly Color ValueColor = new Color(0.165f, 0.145f, 0.125f);
+    private static readonly Color HeaderColor = new Color(0.165f, 0.145f, 0.125f);
+    private static readonly Color AlertColor = new Color(0.69f, 0.227f, 0.122f);
 
-    private const int RowFontSize = 12;
-    private const int HeaderFontSize = 13;
+    private const int RowFontSize = 13;
+    private const int HeaderFontSize = 18;
     private const int DonutPx = 20;
 
     private static readonly PackedScene DonutChartScene =

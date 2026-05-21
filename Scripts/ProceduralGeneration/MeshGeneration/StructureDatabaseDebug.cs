@@ -1,7 +1,7 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
-using UI.Debug.DatabaseViewer;
+using Debug.DatabaseViewer;
 
 namespace ProceduralGeneration.MeshGeneration;
 

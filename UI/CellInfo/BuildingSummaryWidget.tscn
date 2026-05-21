@@ -1,0 +1,89 @@
+[gd_scene format=3 uid="uid://cn2vbsh1g3xqw"]
+
+[ext_resource type="Script" path="res://Scripts/UI/CellInfo/BuildingSummaryWidget.cs" id="1_script"]
+
+[node name="BuildingSummaryWidget" type="Control" node_paths=PackedStringArray("_nameValue", "_statusBadge", "_typeValue", "_recipeRow", "_recipeValue", "_noBuildingLabel", "_detailsBox")]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_script")
+_nameValue = NodePath("MarginContainer/Root/DetailsBox/HeaderRow/NameValue")
+_statusBadge = NodePath("MarginContainer/Root/DetailsBox/HeaderRow/StatusBadge")
+_typeValue = NodePath("MarginContainer/Root/DetailsBox/TypeRow/TypeValue")
+_recipeRow = NodePath("MarginContainer/Root/DetailsBox/RecipeRow")
+_recipeValue = NodePath("MarginContainer/Root/DetailsBox/RecipeRow/RecipeValue")
+_noBuildingLabel = NodePath("MarginContainer/Root/NoBuildingLabel")
+_detailsBox = NodePath("MarginContainer/Root/DetailsBox")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="Root" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="DetailsBox" type="VBoxContainer" parent="MarginContainer/Root"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HeaderRow" type="HBoxContainer" parent="MarginContainer/Root/DetailsBox"]
+layout_mode = 2
+
+[node name="NameValue" type="Label" parent="MarginContainer/Root/DetailsBox/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-"
+
+[node name="StatusBadge" type="Label" parent="MarginContainer/Root/DetailsBox/HeaderRow"]
+layout_mode = 2
+text = "-"
+horizontal_alignment = 2
+
+[node name="TypeRow" type="HBoxContainer" parent="MarginContainer/Root/DetailsBox"]
+layout_mode = 2
+
+[node name="TypeLabel" type="Label" parent="MarginContainer/Root/DetailsBox/TypeRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Type"
+
+[node name="TypeValue" type="Label" parent="MarginContainer/Root/DetailsBox/TypeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-"
+horizontal_alignment = 2
+
+[node name="RecipeRow" type="HBoxContainer" parent="MarginContainer/Root/DetailsBox"]
+visible = false
+layout_mode = 2
+
+[node name="RecipeLabel" type="Label" parent="MarginContainer/Root/DetailsBox/RecipeRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Recipe"
+
+[node name="RecipeValue" type="Label" parent="MarginContainer/Root/DetailsBox/RecipeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-"
+horizontal_alignment = 2
+
+[node name="NoBuildingLabel" type="Label" parent="MarginContainer/Root"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+text = "No Building"
+horizontal_alignment = 1
+vertical_alignment = 1

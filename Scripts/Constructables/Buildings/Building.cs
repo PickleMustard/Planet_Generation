@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Constructables.Buildings;
 using Constructables.Buildings.Behaviors;
 using Constructables.Tick;
@@ -122,6 +123,41 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
         }
     }
 
+    /// <summary>
+    /// Snapshot of <c>_constructionState.RequiredResources</c> as a plain C# dictionary.
+    /// Safe to read from any thread; used by background-thread tickers that need to avoid
+    /// the Godot Variant round-trip of the <see cref="requiredResources"/> property.
+    /// </summary>
+    public Dictionary<string, int> SnapshotRequiredResources()
+    {
+        var dict = new Dictionary<string, int>();
+        if (_constructionState != null)
+            foreach (var kvp in _constructionState.RequiredResources)
+                dict[kvp.Key] = kvp.Value;
+        return dict;
+    }
+
+    public Dictionary<string, int> SnapshotAvailableResources()
+    {
+        var dict = new Dictionary<string, int>();
+        if (_constructionState != null)
+            foreach (var kvp in _constructionState.AvailableResources)
+                dict[kvp.Key] = kvp.Value;
+        return dict;
+    }
+
+    /// <summary>
+    /// Directly mutates <c>_constructionState.RequiredResources</c> without going through
+    /// the Godot.Collections.Dictionary bridge. Intended for background-thread callers.
+    /// </summary>
+    public void ReplaceRequiredResources(Dictionary<string, int> values)
+    {
+        if (_constructionState == null) return;
+        _constructionState.RequiredResources.Clear();
+        foreach (var kvp in values)
+            _constructionState.RequiredResources[kvp.Key] = kvp.Value;
+    }
+
     public GodotTypedDict availableResources
     {
         get
@@ -194,19 +230,19 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
                 && previousStatus == ConstructionStatus.InProgress
             )
             {
-                EmitSignal(SignalName.OnConstructionBlocked);
+                SignalMarshal.EmitNode(this, SignalName.OnConstructionBlocked);
             }
             else if (
                 _constructionState.Status == ConstructionStatus.InProgress
                 && previousStatus == ConstructionStatus.Blocked
             )
             {
-                EmitSignal(SignalName.OnConstructionResumed);
+                SignalMarshal.EmitNode(this, SignalName.OnConstructionResumed);
             }
             else if (_constructionState.Status == ConstructionStatus.Complete)
             {
                 _isUnderConstruction = false;
-                EmitSignal(SignalName.OnCompletion);
+                SignalMarshal.EmitNode(this, SignalName.OnCompletion);
                 GameLogger.Info($"Building {Name}: Construction complete");
                 if (PoweredOn)
                     ManufactureTickEngine.Instance?.Register(this);
@@ -260,21 +296,10 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
         // InputStorage / OutputStorage start empty. Recipe-aware behaviors
         // (ManufacturingBehavior, ExtractionBehavior) populate them with slots
         // sized to the active recipe. StorageHubBehavior populates BulkStorage
-        // from the definition's storage_capacity + slot_filters block.
+        // from the behavior's config at registration time.
         InputStorage.StorageUpdated += OnStorageUpdated;
         OutputStorage.StorageUpdated += OnStorageUpdated;
         BulkStorage.StorageUpdated += OnStorageUpdated;
-
-        // Auto-attach bulk routing whenever the definition declares bulk slots, so links
-        // route through BulkStorage rather than InputStorage/OutputStorage. Behaviors
-        // already loaded by Definition.Instantiate above are not visible here — that loop
-        // adds them after this method returns — so the duplicate-check is defensive only.
-        if (definition.StorageCapacity > 0 && GetBehavior<BulkStorageRoutingBehavior>() == null)
-        {
-            var routing = new BulkStorageRoutingBehavior();
-            Behaviors.Add(routing);
-            routing.OnAttach(this);
-        }
     }
 
     /// <summary>
@@ -339,7 +364,7 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
     /// Fans <see cref="IBuildingBehavior.OnUnregister"/> across all attached behaviors in
     /// reverse priority order. Called by <see cref="DestroyConstructable"/> so behaviors
     /// can release any external registrations (e.g. <c>TransferStationBehavior</c>'s
-    /// endpoint registration with <see cref="BodyTransferManager"/>).
+    /// endpoint registration with <see cref="IOrbitalBody"/>).
     /// </summary>
     public void Unregister()
     {
@@ -366,24 +391,34 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
     /// recipes (default + alternatives), cancels any in-flight manufacturing cycle (returning
     /// held inputs to InputStorage), updates ActiveRecipeId, emits OnRecipeChanged, and
     /// re-registers with the tick engine so the next tick starts a new cycle.
-    /// Returns false if the swap is rejected (same recipe, unknown id, extraction building, etc.).
+    /// Returns false if the swap is rejected (same recipe, unknown id, etc.).
     /// </summary>
     public bool SwapRecipe(string recipeId)
     {
         if (string.IsNullOrEmpty(recipeId) || recipeId == ActiveRecipeId)
             return false;
 
-        if (Definition?.Production == null)
-            return false;
+        // Check ManufacturingBehavior
+        var mfg = GetBehavior<ManufacturingBehavior>();
+        bool mfgHasRecipe = false;
+        if (mfg != null)
+        {
+            bool isDefault = !string.IsNullOrEmpty(mfg.DefaultRecipe) && mfg.DefaultRecipe == recipeId;
+            bool isAlternative = mfg.AlternativeRecipes.Contains(recipeId);
+            mfgHasRecipe = isDefault || isAlternative;
+        }
 
-        if (GetBehavior<ExtractionBehavior>() != null)
-            return false;
+        // Check ExtractionBehavior
+        var ext = GetBehavior<ExtractionBehavior>();
+        bool extHasRecipe = false;
+        if (ext != null)
+        {
+            bool isDefault = !string.IsNullOrEmpty(ext.DefaultRecipe) && ext.DefaultRecipe == recipeId;
+            bool isAlternative = ext.AlternativeRecipes.Contains(recipeId);
+            extHasRecipe = isDefault || isAlternative;
+        }
 
-        var production = Definition.Production;
-        bool isDefault = !string.IsNullOrEmpty(production.DefaultRecipe)
-            && production.DefaultRecipe == recipeId;
-        bool isAlternative = production.AlternativeRecipes.Contains(recipeId);
-        if (!isDefault && !isAlternative)
+        if (!mfgHasRecipe && !extHasRecipe)
         {
             GameLogger.Warning(
                 $"Building {Name}: SwapRecipe rejected, '{recipeId}' not in default or alternative recipes."
@@ -400,10 +435,11 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
             return false;
         }
 
-        var mfg = GetBehavior<ManufacturingBehavior>();
         mfg?.CancelCycle(returnHeldInputs: true);
+        ext?.CancelCycle(returnHeldInputs: true);
 
         ActiveRecipeId = recipeId;
+        ext?.OnRecipeChanged(recipeId);
         EmitSignal(SignalName.OnRecipeChanged, recipeId);
 
         if (PoweredOn && !_isUnderConstruction)
@@ -451,23 +487,20 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
 
     private void TryStartManufacturingCycleFromRegistration()
     {
+        TryStartManufacturingBehaviorCycle();
+        TryStartExtractionBehaviorCycle();
+    }
+
+    private void TryStartManufacturingBehaviorCycle()
+    {
         var mfg = GetBehavior<ManufacturingBehavior>();
         if (mfg == null || mfg.State != ManufacturingState.Idle)
             return;
 
-        // ExtractionBehavior takes precedence: its synthetic recipe is built from the cell
-        // resource mix and supersedes the YAML default for extraction buildings.
-        var extraction = GetBehavior<ExtractionBehavior>();
-        if (extraction?.SyntheticRecipe != null)
-        {
-            mfg.StartCycle(extraction.SyntheticRecipe, SpeedModifier);
-            return;
-        }
-
-        if (Definition?.Production == null)
+        if (mfg.DefaultRecipe == null)
             return;
 
-        string? recipeId = ActiveRecipeId ?? Definition.Production.DefaultRecipe;
+        string? recipeId = ActiveRecipeId ?? mfg.DefaultRecipe;
 
         if (
             string.IsNullOrEmpty(recipeId)
@@ -478,6 +511,28 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
             return;
 
         mfg.StartCycle(recipe, SpeedModifier);
+    }
+
+    private void TryStartExtractionBehaviorCycle()
+    {
+        var ext = GetBehavior<ExtractionBehavior>();
+        if (ext == null || ext.State != ManufacturingState.Idle)
+            return;
+
+        if (ext.DefaultRecipe == null)
+            return;
+
+        string? recipeId = ActiveRecipeId ?? ext.DefaultRecipe;
+
+        if (
+            string.IsNullOrEmpty(recipeId)
+            || RecipeDatabase.Instance == null
+            || !RecipeDatabase.Instance.TryGetRecipe(recipeId, out var recipe)
+            || recipe == null
+        )
+            return;
+
+        ext.StartCycle(recipe, SpeedModifier);
     }
 
     /// <summary>

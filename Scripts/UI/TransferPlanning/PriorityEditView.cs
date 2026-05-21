@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Buildings.Behaviors;
 using Godot;
 using Structures.Resources;
 using Structures.Transfers;
@@ -10,13 +11,13 @@ namespace UI.TransferPlanning;
 /// <summary>
 /// View 2 — Edit Priority. Renders the same slip cards but with drag-rail
 /// chrome and reorders them via drag/drop. Persists changes through
-/// <see cref="BodyTransferManager.ReorderSchedules"/>.
+/// <see cref="TransferStationBehavior.ReorderSchedules"/>.
 /// </summary>
 public partial class PriorityEditView : Control
 {
     [Signal] public delegate void DoneRequestedEventHandler();
 
-    private BodyTransferManager? _mgr;
+    private TransferStationBehavior? _behavior;
     private string _originBuildingId = "";
 
     private Label? _titleLabel;
@@ -29,19 +30,19 @@ public partial class PriorityEditView : Control
         BuildLayout();
     }
 
-    public void Bind(BodyTransferManager? mgr, string originBuildingId)
+    public void Bind(TransferStationBehavior? behavior, string originBuildingId)
     {
-        _mgr = mgr;
+        _behavior = behavior;
         _originBuildingId = originBuildingId ?? "";
     }
 
     public void Refresh()
     {
-        if (_cardGrid == null || _mgr == null) return;
+        if (_cardGrid == null || _behavior == null) return;
         foreach (var c in _cardGrid.GetChildren()) c.QueueFree();
         _orderedIds.Clear();
 
-        var schedules = new List<TransferSchedule>(_mgr.GetSchedulesForOrigin(_originBuildingId));
+        var schedules = new List<TransferSchedule>(_behavior.GetSchedulesForOrigin(_originBuildingId));
         schedules.Sort((a, b) => a.Priority.CompareTo(b.Priority));
         var resourceDb = ResourceDatabase.Instance;
 
@@ -51,7 +52,7 @@ public partial class PriorityEditView : Control
             schedule.Priority = i + 1;
             _orderedIds.Add(schedule.ScheduleId);
 
-            var data = SlipDataBuilder.BuildFromSchedule(schedule, _mgr, resourceDb);
+            var data = SlipDataBuilder.BuildFromSchedule(schedule, _behavior, resourceDb);
             var card = new DraggableSlipCard
             {
                 ScheduleId = schedule.ScheduleId,
@@ -159,13 +160,13 @@ public partial class PriorityEditView : Control
 
     internal void OnCardSwapRequested(string draggedId, string targetId)
     {
-        if (_mgr == null) return;
+        if (_behavior == null) return;
         int dragIdx = _orderedIds.IndexOf(draggedId);
         int targetIdx = _orderedIds.IndexOf(targetId);
         if (dragIdx < 0 || targetIdx < 0 || dragIdx == targetIdx) return;
         _orderedIds.RemoveAt(dragIdx);
         _orderedIds.Insert(targetIdx, draggedId);
-        _mgr.ReorderSchedules(_originBuildingId, _orderedIds);
+        _behavior.ReorderSchedules(_originBuildingId, _orderedIds);
         Refresh();
     }
 

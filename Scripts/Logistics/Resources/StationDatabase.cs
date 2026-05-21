@@ -8,7 +8,7 @@ using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.TaskSystem;
 #if DEBUG
-using UI.Debug;
+using Debug;
 #endif
 
 namespace Logistics.Resources
@@ -242,7 +242,7 @@ namespace Logistics.Resources
         /// Gets the icon for a station at a specific size.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetStationIcon(string name, IconSize size = IconSize.Medium)
+        public Texture2D GetStationIcon(string name, IconSize size = IconSize.Large)
         {
             EnsureLoaded();
             if (TryGetStation(name, out var station) && station != null)

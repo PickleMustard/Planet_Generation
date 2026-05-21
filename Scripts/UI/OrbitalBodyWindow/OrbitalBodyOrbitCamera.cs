@@ -43,6 +43,38 @@ public partial class OrbitalBodyOrbitCamera : Node
 
     public bool IsDragging => _isDragging;
 
+    /// <summary>
+    /// Screen-space offset (pixels) used to keep the planet centered in the
+    /// unobstructed area of the window — set by the surrounding UI once it
+    /// knows the tab strip and bottom-pane geometry.
+    /// </summary>
+    public Vector2 ScreenOffset { get; set; }
+
+    /// <summary>
+    /// Returns the on-screen angle (radians) of the planet's north pole,
+    /// measured clockwise from screen-up. Used to spin the compass rose so
+    /// its needle tracks the planet's actual N. Returns 0 if the camera or
+    /// target isn't available.
+    /// </summary>
+    public float GetPlanetNorthScreenAngle()
+    {
+        if (_camera == null || _targetBody == null)
+            return 0f;
+
+        Vector3 center = _cameraAnchor != null
+            ? _cameraAnchor.GlobalPosition
+            : _targetBody.BodyPosition;
+        Vector3 north = center + Vector3.Up * Mathf.Max(_targetBody.Radius, 1f);
+
+        Vector2 centerScreen = _camera.UnprojectPosition(center);
+        Vector2 northScreen = _camera.UnprojectPosition(north);
+        Vector2 delta = northScreen - centerScreen;
+        if (delta.LengthSquared() < 1e-6f)
+            return 0f;
+        // Atan2(x, -y): 0 = pointing up on screen, positive = clockwise.
+        return Mathf.Atan2(delta.X, -delta.Y);
+    }
+
     public void BeginOrbit(Camera3D camera, IOrbitalBody body)
     {
         _camera = camera;
@@ -176,7 +208,32 @@ public partial class OrbitalBodyOrbitCamera : Node
         var camPos = center - dir * _orbitDistance;
 
         var up = Mathf.Abs(dir.Y) > 0.999f ? Vector3.Forward : Vector3.Up;
-        return new Transform3D(Basis.LookingAt(center - camPos, up), camPos);
+        var basis = Basis.LookingAt(center - camPos, up);
+
+        // Slide the camera laterally so the body projects to the negative-space
+        // center instead of the geometric viewport center. ScreenOffset is the
+        // desired pixel offset of the body's screen position from the actual
+        // viewport center. We convert pixels → world units using the camera's
+        // vertical frustum extent at the orbit distance.
+        if (_camera != null && (ScreenOffset.X != 0f || ScreenOffset.Y != 0f))
+        {
+            float vpHeight = _camera.GetViewport().GetVisibleRect().Size.Y;
+            if (vpHeight > 0f)
+            {
+                float fovRad = Mathf.DegToRad(_camera.Fov);
+                float worldPerPixel = (2f * _orbitDistance * Mathf.Tan(fovRad * 0.5f)) / vpHeight;
+                Vector3 right = basis.X;
+                Vector3 upAxis = basis.Y;
+                // Negative X offset because shifting the camera right moves the
+                // body left on screen; matching signs for Y because screen Y is
+                // inverted relative to world Y.
+                camPos += -right * (ScreenOffset.X * worldPerPixel)
+                       +  upAxis * (ScreenOffset.Y * worldPerPixel);
+                basis = Basis.LookingAt(center - camPos, up);
+            }
+        }
+
+        return new Transform3D(basis, camPos);
     }
 
     public void HandleDragInput(InputEvent @event)
