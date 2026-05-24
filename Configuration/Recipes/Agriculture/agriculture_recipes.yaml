@@ -7,7 +7,32 @@ recipes:
     input_resources:
       - water: 5
     output_resources:
-      - vegetable: 10
+      - vegetable: 2
+    conditional_outputs:
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 1
+        resource: vegetable
+        amount: 8
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 2
+        resource: grain
+        amount: 8
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 3
+        resource: protein
+        amount: 5
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 4
+        resource: wood
+        amount: 6
   - recipe_id: "pesticides"
     display_name: "Pesticide Spraying"
     description: Liberal application of pesticides helps to stem losses from local fauna

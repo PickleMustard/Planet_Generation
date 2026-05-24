@@ -32,6 +32,21 @@ public class RecipeEditorModel
         public float Amount { get; set; } = 1f;
     }
 
+    public class ConditionalOutputSlot
+    {
+        public List<ConditionRule> Rules { get; set; } = new();
+
+        /// <summary>
+        /// Set only for legacy expressions the rule builder cannot represent
+        /// (arithmetic, parens, etc.). Rendered read-only by the editor and
+        /// written back to YAML verbatim. Null/empty otherwise.
+        /// </summary>
+        public string? LegacyCondition { get; set; }
+
+        public string Resource { get; set; } = "";
+        public float Amount { get; set; } = 1f;
+    }
+
     public class RecipeEditEntry
     {
         public string RecipeId { get; set; } = "";
@@ -41,6 +56,7 @@ public class RecipeEditorModel
         public float WorkRequired { get; set; } = 10f;
         public List<InputSlot> Inputs { get; set; } = new();
         public List<OutputSlot> Outputs { get; set; } = new();
+        public List<ConditionalOutputSlot> ConditionalOutputs { get; set; } = new();
         public HashSet<string> Tags { get; set; } = new();
         public string? IconBasePath { get; set; }
         public float IconScale { get; set; } = 1.0f;
@@ -294,6 +310,40 @@ public class RecipeEditorModel
         _categories[categoryName].IsDirty = true;
     }
 
+    public void AddConditionalOutputSlot(string categoryName, int index, ConditionalOutputSlot slot)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        entry.ConditionalOutputs.Add(slot);
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
+    }
+
+    public void UpdateConditionalOutputSlot(string categoryName, int index, int slotIndex,
+        List<ConditionRule> rules, string resource, float amount)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        if (slotIndex < 0 || slotIndex >= entry.ConditionalOutputs.Count)
+            throw new ArgumentOutOfRangeException(nameof(slotIndex));
+        var s = entry.ConditionalOutputs[slotIndex];
+        s.Rules = rules ?? new List<ConditionRule>();
+        // Editing through the rule UI always supersedes any legacy expression.
+        s.LegacyCondition = null;
+        s.Resource = resource;
+        s.Amount = amount;
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
+    }
+
+    public void DeleteConditionalOutputSlot(string categoryName, int index, int slotIndex)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        if (slotIndex < 0 || slotIndex >= entry.ConditionalOutputs.Count)
+            throw new ArgumentOutOfRangeException(nameof(slotIndex));
+        entry.ConditionalOutputs.RemoveAt(slotIndex);
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
+    }
+
     /// <summary>All resource IDs known to ResourceDatabase plus the special 'power' key.</summary>
     public static List<string> GetAllResourceIds()
     {
@@ -435,6 +485,65 @@ public class RecipeEditorModel
                     }
                 }
 
+                for (int s = 0; s < entry.ConditionalOutputs.Count; s++)
+                {
+                    var co = entry.ConditionalOutputs[s];
+                    bool hasRules = co.Rules.Count > 0;
+                    bool hasLegacy = !string.IsNullOrWhiteSpace(co.LegacyCondition);
+
+                    if (!hasRules && !hasLegacy)
+                    {
+                        errors.Add(
+                            $"Recipe '{entry.RecipeId}' conditional output {s} has empty condition");
+                    }
+                    else if (hasLegacy)
+                    {
+                        try
+                        {
+                            Structures.Resources.RecipeExpressionEvaluator.Compile(co.LegacyCondition!);
+                        }
+                        catch (Structures.Resources.RecipeExpressionException ex)
+                        {
+                            errors.Add(
+                                $"Recipe '{entry.RecipeId}' conditional output {s} has invalid legacy condition: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        for (int r = 0; r < co.Rules.Count; r++)
+                        {
+                            var rule = co.Rules[r];
+                            if (string.IsNullOrWhiteSpace(rule.Variable))
+                            {
+                                errors.Add(
+                                    $"Recipe '{entry.RecipeId}' conditional output {s} rule {r} has empty variable");
+                                continue;
+                            }
+                            bool known = false;
+                            foreach (var v in Structures.Resources.RecipeExpressionEvaluator.AllowedVariables)
+                            {
+                                if (v == rule.Variable) { known = true; break; }
+                            }
+                            if (!known)
+                            {
+                                errors.Add(
+                                    $"Recipe '{entry.RecipeId}' conditional output {s} rule {r} references unknown variable '{rule.Variable}'");
+                            }
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(co.Resource))
+                    {
+                        errors.Add(
+                            $"Recipe '{entry.RecipeId}' conditional output {s} has empty resource");
+                    }
+                    else if (!resourceIds.Contains(co.Resource))
+                    {
+                        errors.Add(
+                            $"Recipe '{entry.RecipeId}' conditional output {s} references unknown resource '{co.Resource}'");
+                    }
+                }
+
                 if (!string.IsNullOrEmpty(entry.IconBasePath) && !entry.IconBasePath.StartsWith("res://"))
                 {
                     errors.Add(
@@ -540,6 +649,36 @@ public class RecipeEditorModel
                     Amount = kvp.Value
                 });
             }
+        }
+
+        foreach (var co in def.ConditionalOutputs)
+        {
+            var slot = new ConditionalOutputSlot
+            {
+                Resource = co.Resource ?? "",
+                Amount = co.Amount,
+            };
+
+            if (co.Rules != null && co.Rules.Count > 0)
+            {
+                // Deep copy so editor mutations don't leak back into the loaded definition.
+                foreach (var rule in co.Rules)
+                {
+                    slot.Rules.Add(new ConditionRule
+                    {
+                        Join = rule.Join,
+                        Variable = rule.Variable,
+                        Operator = rule.Operator,
+                        Value = rule.Value,
+                    });
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(co.Condition))
+            {
+                slot.LegacyCondition = co.Condition;
+            }
+
+            entry.ConditionalOutputs.Add(slot);
         }
 
         return entry;

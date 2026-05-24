@@ -85,10 +85,10 @@ public class ManufacturingBehaviorTagResolutionTest
         building.InputStorage.Deposit("iron_ore", 3f);
 
         mfg.StartCycle(recipe, productionSpeed: 10f);
-        AssertThat(building.InputStorage.GetQuantity("iron_ore")).IsEqual(2f);
+        AssertThat(building.InputStorage.GetQuantity("iron_ore")).IsEqual(2);
         mfg.OnManufactureTick(1f, building);
 
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1f);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1);
     }
 
     [TestCase]
@@ -111,7 +111,7 @@ public class ManufacturingBehaviorTagResolutionTest
         mfg.StartCycle(recipe, productionSpeed: 10f);
         mfg.OnManufactureTick(1f, building);
 
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1f);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1);
         AssertThat(mfg.ResolvedTagInputs.Count).IsEqual(0);
         AssertThat(mfg.ResolvedTagOutputs.Count).IsEqual(0);
         AssertThat(mfg.CycleMaterialDiscriminator).IsNull();
@@ -249,7 +249,7 @@ public class ManufacturingBehaviorTagResolutionTest
         mfg.OnManufactureTick(1f, building);
 
         // iron (tier 0) should be deposited; titanium (tier 2) should be skipped
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1f);
-        AssertThat(building.OutputStorage.GetQuantity("titanium")).IsEqual(0f);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1);
+        AssertThat(building.OutputStorage.GetQuantity("titanium")).IsEqual(0);
     }
 }

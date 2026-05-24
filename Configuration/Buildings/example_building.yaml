@@ -6,7 +6,7 @@ buildings:
     max_resource_tier: 5
     work_required: 100
     placement_requirements:
-      biomes: [AshPlain, ObsidianField, VolcanicPeak, VolcanicPlain]
+      biomes: [biome_ash_plain, biome_obsidian_field, biome_volcanic_peak, biome_volcanic_plain]
       min_elevation: 0.4
       max_elevation: 1
       max_slope: 15

@@ -469,20 +469,20 @@ namespace Structures.Resources
         }
 
         /// <summary>
-        /// Gets the icon for a resource at a specific size.
+        /// Gets the icon for a resource. Godot mipmaps handle runtime scaling.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetResourceIcon(string resourceId, IconSize size = IconSize.Large)
+        public Texture2D GetResourceIcon(string resourceId)
         {
             EnsureLoaded();
             if (TryGetResource(resourceId, out var resource) && resource != null)
             {
-                var texture = resource.Icon?.GetTexture(size);
+                var texture = resource.Icon?.Texture;
                 if (texture != null)
                     return texture;
             }
 
-            return IconDataLoader.GetFallbackIcon(size);
+            return IconDataLoader.GetFallbackIcon();
         }
 
         /// <summary>

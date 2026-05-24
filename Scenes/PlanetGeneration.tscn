@@ -12,15 +12,6 @@
 environment = ExtResource("1_env")
 camera_attributes = SubResource("CameraAttributesPractical_1")
 
-[node name="IndividualPlanetGeneratorUI" parent="." unique_id=1006264755 node_paths=PackedStringArray("PlanetContainer", "PreviewCamera") instance=ExtResource("2_ipg")]
-anchors_preset = -1
-anchor_right = 0.411
-offset_right = 0.5279846
-offset_bottom = 0.0
-grow_horizontal = 1
-PlanetContainer = NodePath("../planet_container")
-PreviewCamera = NodePath("../Camera3D")
-
 [node name="SceneNavigator" type="CanvasLayer" parent="." unique_id=689994973]
 script = ExtResource("3_scenenav")
 
@@ -32,3 +23,18 @@ transform = Transform3D(0.86601907, -0.25000688, 0.43302146, 0, 0.8660238, 0.500
 shadow_enabled = true
 
 [node name="planet_container" type="Node3D" parent="." unique_id=1726764726]
+
+[node name="Template GUI" type="SplitContainer" parent="." unique_id=1230388013]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+split_offsets = PackedInt32Array(0, 0)
+
+[node name="IndividualPlanetGeneratorUI" parent="Template GUI" unique_id=1006264755 node_paths=PackedStringArray("PlanetContainer", "PreviewCamera") instance=ExtResource("2_ipg")]
+layout_mode = 2
+size_flags_horizontal = 1
+PlanetContainer = NodePath("../../planet_container")
+PreviewCamera = NodePath("../../Camera3D")
+
+[node name="Empty Spacer" type="Container" parent="Template GUI" unique_id=1318244259]
+layout_mode = 2

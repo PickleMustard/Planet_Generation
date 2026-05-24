@@ -136,9 +136,9 @@ public partial class BuildingInfoHeader : HBoxContainer
 
     private Texture2D? LoadBuildingIcon(BuildingDefinition? definition)
     {
-        if (definition?.Icon?.IsValid == true)
+        if (definition?.Icon?.Texture != null)
         {
-            return definition.Icon.LargeTexture ?? definition.Icon.MediumTexture ?? definition.Icon.SmallTexture;
+            return definition.Icon.Texture;
         }
 
         if (!string.IsNullOrEmpty(definition?.Icon?.BasePath))

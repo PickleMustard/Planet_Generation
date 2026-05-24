@@ -1,0 +1,21 @@
+buildings:
+  - id_name: small_storage_hub
+    display_name: Small Storage Hub
+    category: logistics
+    max_resource_tier: 1
+    work_required: 30
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      concrete: 50
+      iron: 50
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: 10
+        slot_filters: {}
+    visual:
+      shape_id: small_collection_hub

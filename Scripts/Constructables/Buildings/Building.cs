@@ -4,6 +4,7 @@ using Constructables.Buildings;
 using Constructables.Buildings.Behaviors;
 using Constructables.Tick;
 using Godot;
+using ProceduralGeneration;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.Logistics;
@@ -64,6 +65,52 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
     public BuildingNode? VisualNode { get; internal set; }
 
     public float SpeedModifier { get; set; } = 1f;
+
+    /// <summary>
+    /// Per-instance integer chosen at construction time. Exposed to recipe
+    /// conditional outputs via <see cref="BuildRecipeContext"/> as the
+    /// <c>specifier</c> variable. Default 0 means no specifier was selected.
+    /// </summary>
+    public int Specifier { get; set; }
+
+    /// <summary>
+    /// Builds the five-variable context used to evaluate recipe conditional output
+    /// expressions: temperature, moisture, elevation, atmosphere, specifier.
+    /// Values are averaged across <see cref="OccupiedCells"/> where applicable.
+    /// Atmosphere is read from the owning <see cref="IOrbitalBody"/>.
+    /// </summary>
+    public IReadOnlyDictionary<string, float> BuildRecipeContext()
+    {
+        float elevation = 0f;
+        int count = OccupiedCells.Count;
+        if (count > 0)
+        {
+            float sum = 0f;
+            foreach (var cell in OccupiedCells)
+                sum += cell.NormalizedHeight;
+            elevation = sum / count;
+        }
+
+        // No per-cell moisture/temperature today. Moisture currently lives on the
+        // continent (Continent.averageMoisture) and isn't directly reachable from
+        // a cell without a mesh handle; temperature has no stored field at all.
+        // Until we wire those through, fall back to standard proxies: a neutral
+        // moisture and a "lower elevation = warmer" temperature curve.
+        float moisture = 0.5f;
+        float temperature = 1f - elevation;
+
+        var body = Constructables.Buildings.Behaviors.ProducerBodyResolver.FindOwningBody(this);
+        float atmosphere = body?.Atmosphere ?? 0f;
+
+        return new Dictionary<string, float>
+        {
+            { "temperature", temperature },
+            { "moisture", moisture },
+            { "elevation", elevation },
+            { "atmosphere", atmosphere },
+            { "specifier", Specifier },
+        };
+    }
 
     /// <summary>
     /// Returns the first attached behavior of type T, or null. Replaces the legacy
@@ -292,6 +339,7 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
             definition.RequiredResources
         );
         Name = definition.DisplayName ?? definition.IdName ?? "Building";
+        Specifier = definition.Specifier?.Default ?? 0;
 
         // InputStorage / OutputStorage start empty. Recipe-aware behaviors
         // (ManufacturingBehavior, ExtractionBehavior) populate them with slots
@@ -308,7 +356,7 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
     /// End-of-tick <see cref="EvaluateTickRegistration"/> will put it back to sleep if no behavior
     /// wants to keep ticking.
     /// </summary>
-    private void OnStorageUpdated(string resourceId, float delta)
+    private void OnStorageUpdated(string resourceId, int delta)
     {
         if (_isUnderConstruction || !PoweredOn)
             return;
@@ -558,7 +606,7 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
         }
 
         string resourceId = package.ResourceId;
-        float amount = package.Quantity;
+        int amount = package.Quantity;
 
         if (!InputStorage.HasSpace(resourceId, amount))
         {

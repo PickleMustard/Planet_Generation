@@ -369,7 +369,7 @@ public partial class TransferStationBehaviorTest
         // After another 0.6s (total 1.1s): should have arrived
         originBh.OnManufactureTick(0.6f, origin);
         AssertThat(originBh.IsTransferActive(orderId!)).IsFalse();
-        AssertThat(dest.BulkStorage.GetQuantity("iron")).IsGreater(0f);
+        AssertThat(dest.BulkStorage.GetQuantity("iron")).IsGreater(0);
     }
 
     [TestCase]
@@ -421,7 +421,7 @@ public partial class TransferStationBehaviorTest
         origin.BulkStorage.Deposit("iron", 100f);
         dest.BulkStorage.Deposit("iron", 999f); // fill destination so it cannot accept more
 
-        float originBefore = origin.BulkStorage.GetQuantity("iron");
+        int originBefore = origin.BulkStorage.GetQuantity("iron");
 
         var orderId = originBh.DispatchOneTimeTransfer(
             "origin",
@@ -434,7 +434,7 @@ public partial class TransferStationBehaviorTest
         originBh.OnManufactureTick(1f, origin);
 
         // Because destination is full, cargo should revert to origin
-        float originAfter = origin.BulkStorage.GetQuantity("iron");
+        int originAfter = origin.BulkStorage.GetQuantity("iron");
         AssertThat(originAfter).IsEqual(originBefore);
     }
 
@@ -446,7 +446,7 @@ public partial class TransferStationBehaviorTest
         var (dest, destBh) = MakeStation("dest", body);
 
         origin.BulkStorage.Deposit("iron", 100f);
-        float originBefore = origin.BulkStorage.GetQuantity("iron");
+        int originBefore = origin.BulkStorage.GetQuantity("iron");
 
         var orderId = originBh.DispatchOneTimeTransfer(
             "origin",
@@ -472,7 +472,7 @@ public partial class TransferStationBehaviorTest
         var (dest, destBh) = MakeStation("dest", body);
 
         origin.BulkStorage.Deposit("iron", 100f);
-        float originBefore = origin.BulkStorage.GetQuantity("iron");
+        int originBefore = origin.BulkStorage.GetQuantity("iron");
 
         var orderId = originBh.DispatchOneTimeTransfer(
             "origin",

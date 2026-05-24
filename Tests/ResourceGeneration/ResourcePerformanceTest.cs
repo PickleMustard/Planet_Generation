@@ -15,6 +15,13 @@ namespace Tests.ResourceGeneration;
 [TestSuite]
 public class ResourcePerformanceTest
 {
+    [BeforeTest]
+    public void Setup()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+    }
+
     private const int PERFORMANCE_ITERATIONS = 100;
 
     private Godot.Collections.Dictionary CreateMockSatelliteConfig()

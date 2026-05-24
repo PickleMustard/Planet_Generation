@@ -1,81 +1,104 @@
 dominant:
-  - type: BlackHole
-    name: void
-    template:
-      mass: 1000000.0
-      size: 50
-      position: [0.0, 0.0, 0.0]
-      velocity: [0.0, 0.0, 0.0]
-    central_parameters:
-      inclination: 0
-      starting_angle: 0
-    base_mesh:
-      subdivisions: 1
-      vertices_per_edge: [[5, 12]]
-      num_abberations: 1
-      num_deformation_cycles: 1
-
+- type: BlackHole
+  name: void
+  template:
+    mass: 1000000.0
+    size: 50
+    position:
+    - 0.0
+    - 0.0
+    - 0.0
+    velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+  central_parameters:
+    inclination: 0
+    starting_angle: 0
+  subtype_weights:
+    subtype_black_hole_charged: 0.1667
+    subtype_black_hole_intermediate: 0.1667
+    subtype_black_hole_primordial: 0.1667
+    subtype_black_hole_rotating: 0.1667
+    subtype_black_hole_stellar_mass: 0.1667
+    subtype_black_hole_supermassive: 0.1667
 belts:
-  - type: AsteroidBelt
-    ring_apogee: 8000.0
-    ring_perigee: 250.0
-    ring_velocity: [0.0, 1.0, 0.0]
-    size_min: 5.0
-    size_max: 15.0
-    mass_min: 10.0
-    mass_max: 30.0
-    lower_range: 6
-    upper_range: 15
-    grouping: Balanced
-    orbital_center_index: 0
-
+- type: AsteroidBelt
+  ring_apogee: 8000.0
+  ring_perigee: 250.0
+  ring_velocity:
+  - 0.0
+  - 1.0
+  - 0.0
+  size_min: 5.0
+  size_max: 15.0
+  mass_min: 10.0
+  mass_max: 30.0
+  lower_range: 6
+  upper_range: 15
+  grouping: Balanced
+  orbital_center_index: 0
+  subtype_weights:
+    subtype_belt_asteroid_belt: 0.1667
+    subtype_belt_debris_disk: 0.1667
+    subtype_belt_dust_ring: 0.1667
+    subtype_belt_ice_belt: 0.1667
+    subtype_belt_resonant_belt: 0.1667
+    subtype_belt_shepherd_belt: 0.1667
 planetary:
-  - type: RockyPlanet
-    name: terra
+- type: RockyPlanet
+  name: terra
+  template:
+    mass: 1000.0
+    size: 150
+  orbital_parameters:
+    apogee: 500
+    perigee: 150
+    starting_angle: 0
+    vertical_offset: 0
+    orbital_center_index: 0
+    parent_body: void
+  subtype_weights:
+    subtype_rocky_cool: 0.1111
+    subtype_rocky_desert: 0.1111
+    subtype_rocky_ice: 0.1111
+    subtype_rocky_ocean: 0.1111
+    subtype_rocky_rusted: 0.1111
+    subtype_rocky_scoured: 0.1111
+    subtype_rocky_temperate: 0.1111
+    subtype_rocky_tropical: 0.1111
+    subtype_rocky_volcanic: 0.1111
+  satellites:
+  - type: Asteroid
+    name: rock
     template:
-      mass: 1000.0
-      size: 150
-    orbital_parameters:
       apogee: 500
-      perigee: 150
+      perigee: 300
       starting_angle: 0
       vertical_offset: 0
-      orbital_center_index: 0
-      parent_body: void
-    base_mesh:
-      subdivisions: 2
-      vertices_per_edge: [[4, 6], [2, 3]]
-      num_abberations: 3
-      num_deformation_cycles: 3
-    tectonics:
-      num_continents: [13, 25]
-      stress_scale: [1.1, 1.1]
-      shear_scale: [1.1, 1.1]
-      max_propagation_distance: [0.01, 0.01]
-      propagation_falloff: [0.2, 0.2]
-      inactive_stress_threshold: [0.01, 0.01]
-      general_height_scale: [0.6, 0.6]
-      general_shear_scale: [1.1, 1.1]
-      general_compression_scale: [1.2, 1.2]
-      general_transform_scale: [1.0, 1.2]
-    satellites:
-      - type: Asteroid
-        name: rock
-        template:
-          apogee: 500
-          perigee: 300
-          starting_angle: 0
-          vertical_offset: 0
-          mass: 20.0
-          size: 10
-        base_mesh:
-          subdivisions: 1
-          vertices_per_edge: [[2, 3]]
-          num_abberations: 0
-          num_deformation_cycles: 0
-        spherical_harmonics_settings:
-          amplitude_range: [0.3, 0.7]
-        noise_settings:
-          amplitude_range: [0.05, 0.15]
-          scaling_range: [0.5, 1.5]
-          octave_range: [2, 4]
+      mass: 20.0
+      size: 10
+    subtype_weights:
+      subtype_satellite_captured_asteroid: 0.0769
+      subtype_satellite_carbonaceous: 0.0769
+      subtype_satellite_encke_type: 0.0769
+      subtype_satellite_halley_type: 0.0769
+      subtype_satellite_ice_asteroid: 0.0769
+      subtype_satellite_icy_moon: 0.0769
+      subtype_satellite_long_period: 0.0769
+      subtype_satellite_metallic: 0.0769
+      subtype_satellite_rocky_moon: 0.0769
+      subtype_satellite_short_period: 0.0769
+      subtype_satellite_silicate: 0.0769
+      subtype_satellite_tidally_locked: 0.0769
+      subtype_satellite_volcanic_moon: 0.0769
+    noise_settings:
+      amplitude_range:
+      - 0.05
+      - 0.15
+      scaling_range:
+      - 0.5
+      - 1.5
+      octave_range:
+      - 2
+      - 4

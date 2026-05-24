@@ -6,7 +6,7 @@ buildings:
     max_resource_tier: 1
     work_required: 10
     placement_requirements:
-      biomes: [Coastal, Forest, Grassland, Rainforest, Swamp]
+      biomes: [biome_coastal, biome_forest, biome_grassland, biome_rainforest, biome_swamp]
       min_elevation: 0
       max_elevation: 1
       max_slope: 45
@@ -25,8 +25,13 @@ buildings:
         production_speed: 1
       - behavior_id: PowerConsumerBehavior
         base_draw: 1
+    specifier:
+      values: [1]
+      labels: ["Crop"]
+      default: 1
     visual:
       model_path: "res://Mesh/external/factory_a.glb"
+      shape_id: small_manufacturing
 
   - id_name: fishmonger
     display_name: Fish Monger
@@ -35,7 +40,7 @@ buildings:
     max_resource_tier: 1
     work_required: 50
     placement_requirements:
-      biomes: [Coastal, DeepOcean, Ocean, ShallowOcean]
+      biomes: [biome_coastal, biome_deep_ocean, biome_ocean, biome_shallow_ocean]
       min_elevation: 0
       max_elevation: 1
       max_slope: 45

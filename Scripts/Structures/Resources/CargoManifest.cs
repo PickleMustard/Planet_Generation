@@ -5,6 +5,7 @@ namespace Structures.Resources;
 
 /// <summary>
 /// Represents a cargo manifest that tracks resources being transported or stored.
+/// Resource quantities are whole units.
 /// </summary>
 public class CargoManifest
 {
@@ -14,19 +15,19 @@ public class CargoManifest
     private const float DefaultMassPerUnit = 1.0f;
 
     /// <summary>
-    /// Dictionary mapping resource IDs to their quantities.
+    /// Dictionary mapping resource IDs to their integer quantities.
     /// </summary>
-    private Dictionary<string, float> _resources = new();
+    private Dictionary<string, int> _resources = new();
 
     /// <summary>
     /// Gets the dictionary of resources in this manifest.
-    /// Resource ID mapped to quantity.
+    /// Resource ID mapped to whole-unit quantity.
     /// </summary>
-    public Dictionary<string, float> Resources => _resources;
+    public Dictionary<string, int> Resources => _resources;
 
     /// <summary>
     /// Gets the total mass of all resources in the manifest.
-    /// Calculated by summing the mass of each resource quantity.
+    /// Mass is float because per-unit mass is a real-valued coefficient.
     /// </summary>
     public float TotalCargoMass
     {
@@ -49,11 +50,11 @@ public class CargoManifest
     /// <summary>
     /// Gets the total number of resource units across all types.
     /// </summary>
-    public float TotalUnits
+    public int TotalUnits
     {
         get
         {
-            float total = 0.0f;
+            int total = 0;
             foreach (var quantity in _resources.Values)
             {
                 total += quantity;
@@ -66,9 +67,9 @@ public class CargoManifest
     /// Loads a resource into the manifest.
     /// </summary>
     /// <param name="resourceId">The unique identifier of the resource.</param>
-    /// <param name="quantity">The quantity to add (must be positive).</param>
+    /// <param name="quantity">The quantity to add (must be positive whole units).</param>
     /// <returns>True if the resource was loaded successfully, false otherwise.</returns>
-    public bool LoadResource(string resourceId, float quantity)
+    public bool LoadResource(string resourceId, int quantity)
     {
         if (string.IsNullOrEmpty(resourceId))
         {
@@ -76,7 +77,7 @@ public class CargoManifest
             return false;
         }
 
-        if (quantity <= 0.0f)
+        if (quantity <= 0)
         {
             GD.PrintErr($"CargoManifest: Cannot load resource '{resourceId}' with non-positive quantity: {quantity}");
             return false;
@@ -98,9 +99,9 @@ public class CargoManifest
     /// Unloads (removes) a resource from the manifest.
     /// </summary>
     /// <param name="resourceId">The unique identifier of the resource.</param>
-    /// <param name="quantity">The quantity to remove (must be positive).</param>
+    /// <param name="quantity">The quantity to remove (must be positive whole units).</param>
     /// <returns>True if the resource was successfully unloaded, false if insufficient quantity or invalid input.</returns>
-    public bool UnloadResource(string resourceId, float quantity)
+    public bool UnloadResource(string resourceId, int quantity)
     {
         if (string.IsNullOrEmpty(resourceId))
         {
@@ -108,13 +109,13 @@ public class CargoManifest
             return false;
         }
 
-        if (quantity <= 0.0f)
+        if (quantity <= 0)
         {
             GD.PrintErr($"CargoManifest: Cannot unload resource '{resourceId}' with non-positive quantity: {quantity}");
             return false;
         }
 
-        if (!_resources.TryGetValue(resourceId, out float currentQuantity))
+        if (!_resources.TryGetValue(resourceId, out int currentQuantity))
         {
             GD.PrintErr($"CargoManifest: Cannot unload resource '{resourceId}' - resource not found in manifest.");
             return false;
@@ -128,7 +129,7 @@ public class CargoManifest
 
         _resources[resourceId] -= quantity;
 
-        if (_resources[resourceId] <= 0.0f)
+        if (_resources[resourceId] <= 0)
         {
             _resources.Remove(resourceId);
         }
@@ -141,21 +142,19 @@ public class CargoManifest
     /// </summary>
     /// <param name="resourceId">The unique identifier of the resource.</param>
     /// <returns>The quantity of the resource, or 0 if not present.</returns>
-    public float GetResourceQuantity(string resourceId)
+    public int GetResourceQuantity(string resourceId)
     {
         if (string.IsNullOrEmpty(resourceId))
         {
-            return 0.0f;
+            return 0;
         }
 
-        return _resources.TryGetValue(resourceId, out float quantity) ? quantity : 0.0f;
+        return _resources.TryGetValue(resourceId, out int quantity) ? quantity : 0;
     }
 
     /// <summary>
     /// Checks if a specific resource exists in the manifest.
     /// </summary>
-    /// <param name="resourceId">The unique identifier of the resource.</param>
-    /// <returns>True if the resource is present in the manifest.</returns>
     public bool HasResource(string resourceId)
     {
         return !string.IsNullOrEmpty(resourceId) && _resources.ContainsKey(resourceId);
@@ -173,15 +172,10 @@ public class CargoManifest
     /// Gets the mass of a single unit of the specified resource.
     /// Falls back to default mass if resource definition is not found.
     /// </summary>
-    /// <param name="resourceId">The unique identifier of the resource.</param>
-    /// <returns>The mass per unit of the resource.</returns>
     private float GetResourceMass(string resourceId)
     {
-        // Try to get mass from ResourceDatabase if available
         if (ResourceDatabase.Instance.TryGetResource(resourceId, out var definition) && definition != null)
         {
-            // Check if ResourceDefinition has a Mass property
-            // For now, return default - this can be extended when Mass is added to ResourceDefinition
             return DefaultMassPerUnit;
         }
 
@@ -191,7 +185,6 @@ public class CargoManifest
     /// <summary>
     /// Gets a string representation of the cargo manifest.
     /// </summary>
-    /// <returns>A string listing all resources and their quantities.</returns>
     public override string ToString()
     {
         if (_resources.Count == 0)
@@ -202,7 +195,7 @@ public class CargoManifest
         var lines = new List<string> { $"CargoManifest (Total Mass: {TotalCargoMass:F2}, Resources: {_resources.Count})" };
         foreach (var kvp in _resources)
         {
-            lines.Add($"  - {kvp.Key}: {kvp.Value:F2} (Mass: {GetResourceMass(kvp.Key) * kvp.Value:F2})");
+            lines.Add($"  - {kvp.Key}: {kvp.Value} (Mass: {GetResourceMass(kvp.Key) * kvp.Value:F2})");
         }
 
         return string.Join("\n", lines);

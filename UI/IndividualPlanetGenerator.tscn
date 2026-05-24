@@ -3,10 +3,10 @@
 [ext_resource type="Script" uid="uid://yekutbohkq0b" path="res://UI/IndividualPlanetGenerator.cs" id="1_ipg"]
 [ext_resource type="PackedScene" uid="uid://dyc62w6o73sgm" path="res://UI/DetailPanel.tscn" id="2_q8yhv"]
 [ext_resource type="PackedScene" uid="uid://b3q8gfkqfva6o" path="res://UI/Generation/TextureViewerPanel.tscn" id="2_ys7io"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/SubtypeEditorTab.tscn" id="4_fktc5"]
 
-[node name="IndividualPlanetGeneratorUI" type="Control" unique_id=1095119676 node_paths=PackedStringArray("_bodyTypeOption", "_mass", "_size", "_subdivisions", "_subdivisionsContainer", "_num_abberation", "_num_deformation", "_num_continents", "_stress_scale", "_shear_scale", "_max_propagation_distance", "_propagation_falloff", "_inactive_stress_threshold", "_height_factor", "_shear_factor", "_compression_factor", "_transform_factor", "_generateBtn", "_resetBtn", "_detailPanel", "_templatesList", "_textureViewer")]
+[node name="IndividualPlanetGeneratorUI" type="SplitContainer" unique_id=297984126 node_paths=PackedStringArray("_bodyTypeOption", "_mass", "_size", "_subdivisions", "_subdivisionsContainer", "_num_abberation", "_num_deformation", "_num_continents", "_stress_scale", "_shear_scale", "_max_propagation_distance", "_propagation_falloff", "_inactive_stress_threshold", "_height_factor", "_shear_factor", "_compression_factor", "_transform_factor", "_generateBtn", "_resetBtn", "_detailPanel", "_templatesList", "_textureViewer", "_subtypeEditorTab")]
 layout_direction = 2
-layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -16,6 +16,8 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+split_offsets = PackedInt32Array(1, 1)
+split_offset = 1
 script = ExtResource("1_ipg")
 _bodyTypeOption = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/BodyTypeSection/BodyTypeOption")
 _mass = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/PhysicalSection/MassContent/MassSpinBox")
@@ -39,12 +41,11 @@ _resetBtn = NodePath("TabContainer/Parameters/GenerationRow/ResetButton")
 _detailPanel = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/DetailPanel")
 _templatesList = NodePath("TabContainer/Templates/TemplatesScroll/TemplatesList")
 _textureViewer = NodePath("TabContainer/Textures/TextureViewerPanel")
+_subtypeEditorTab = NodePath("TabContainer/SubtypeEditorTab")
 
 [node name="TabContainer" type="TabContainer" parent="." unique_id=2063354945]
 custom_minimum_size = Vector2(380, 0)
-layout_mode = 0
-offset_right = 1149.0
-offset_bottom = 648.0
+layout_mode = 2
 current_tab = 0
 
 [node name="Parameters" type="VBoxContainer" parent="TabContainer" unique_id=1339622909]
@@ -402,3 +403,8 @@ metadata/_tab_index = 2
 [node name="TextureViewerPanel" parent="TabContainer/Textures" unique_id=988168659 instance=ExtResource("2_ys7io")]
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="SubtypeEditorTab" parent="TabContainer" unique_id=1072398649 instance=ExtResource("4_fktc5")]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3

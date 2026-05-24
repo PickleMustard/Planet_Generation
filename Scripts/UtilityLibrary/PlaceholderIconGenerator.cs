@@ -1,16 +1,17 @@
 using Godot;
 using System.Collections.Generic;
 using System.IO;
-using Structures.Enums;
 
 namespace UtilityLibrary;
 
 /// <summary>
 /// Generates placeholder SVG icons for development/testing.
-/// Creates colored squares with entity initials for all three sizes.
+/// Emits a single 512px SVG per entity; Godot mipmaps handle runtime scaling.
 /// </summary>
 public static class PlaceholderIconGenerator
 {
+    private const int PlaceholderPixels = 512;
+
     private static readonly Dictionary<string, Color> CategoryColors = new()
     {
         ["ore"] = new Color(0.54f, 0.27f, 0.07f),        // Brown
@@ -34,32 +35,26 @@ public static class PlaceholderIconGenerator
     };
 
     /// <summary>
-    /// Generates placeholder icons for all three sizes.
+    /// Generates a placeholder icon at the given base path.
     /// </summary>
     /// <param name="entityName">Name of the entity (for initial and label)</param>
     /// <param name="category">Category for color selection</param>
-    /// <param name="outputBasePath">Base path without size suffix (e.g., ".../iron_ore")</param>
+    /// <param name="outputBasePath">Base path without extension (e.g., ".../iron_ore")</param>
     public static void GeneratePlaceholders(string entityName, string category, string outputBasePath)
     {
         string initial = string.IsNullOrEmpty(entityName) ? "?" : entityName[..1].ToUpper();
         Color bgColor = CategoryColors.GetValueOrDefault(category.ToLower(), new Color(0.5f, 0.5f, 0.5f));
 
-        foreach (IconSize size in System.Enum.GetValues<IconSize>())
-        {
-            GeneratePlaceholderSvg(entityName, initial, bgColor, size, outputBasePath);
-        }
+        GeneratePlaceholderSvg(initial, bgColor, outputBasePath);
 
-        GameLogger.Info($"Generated placeholder icons for {entityName}");
+        GameLogger.Info($"Generated placeholder icon for {entityName}");
     }
 
-    private static void GeneratePlaceholderSvg(
-        string entityName, string initial, Color bgColor, IconSize size, string outputBasePath)
+    private static void GeneratePlaceholderSvg(string initial, Color bgColor, string outputBasePath)
     {
-        int pixels = size.GetPixels();
-        string suffix = size.GetSuffix();
-        string outputPath = $"{outputBasePath}{suffix}.svg";
+        const int pixels = PlaceholderPixels;
+        string outputPath = $"{outputBasePath}.svg";
 
-        // Ensure directory exists
         string? dir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
         {
@@ -68,12 +63,12 @@ public static class PlaceholderIconGenerator
 
         string svg = $"<svg width=\"{pixels}\" height=\"{pixels}\" viewBox=\"0 0 {pixels} {pixels}\" xmlns=\"http://www.w3.org/2000/svg\">\n" +
             $"    <defs>\n" +
-            $"        <linearGradient id=\"bg{suffix}\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">\n" +
+            $"        <linearGradient id=\"bg\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">\n" +
             $"            <stop offset=\"0%\" style=\"stop-color:{bgColor.Lightened(0.2f).ToHtml(false)};stop-opacity:1\" />\n" +
             $"            <stop offset=\"100%\" style=\"stop-color:{bgColor.ToHtml(false)};stop-opacity:1\" />\n" +
             $"        </linearGradient>\n" +
             $"    </defs>\n" +
-            $"    <rect width=\"{pixels}\" height=\"{pixels}\" fill=\"url(#bg{suffix})\" rx=\"{pixels / 8}\" ry=\"{pixels / 8}\"/>\n" +
+            $"    <rect width=\"{pixels}\" height=\"{pixels}\" fill=\"url(#bg)\" rx=\"{pixels / 8}\" ry=\"{pixels / 8}\"/>\n" +
             $"    <rect x=\"{pixels / 32}\" y=\"{pixels / 32}\" width=\"{pixels - pixels / 16}\" height=\"{pixels - pixels / 16}\"\n" +
             $"          fill=\"none\" stroke=\"white\" stroke-width=\"{pixels / 64}\" rx=\"{pixels / 10}\" ry=\"{pixels / 10}\" opacity=\"0.3\"/>\n" +
             $"    <text x=\"{pixels / 2}\" y=\"{pixels / 2 + pixels / 6}\" font-family=\"Arial, sans-serif\" font-size=\"{pixels / 2}\"\n" +

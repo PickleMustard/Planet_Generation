@@ -10,20 +10,31 @@ namespace Structures.Logistics;
 /// A container of typed slots. Each slot's <see cref="StorageSlot.Filter"/> decides
 /// which resources may ever occupy it; the slot then locks to the first resource
 /// deposited until it empties. Slot capacity is the occupant's MaxStackSize.
+/// Resources are stored as whole units. Sub-unit deposits accumulate in a per-resource
+/// fractional buffer that is invisible to readers; whole units flow into slots
+/// as the buffer crosses 1.0.
 /// </summary>
 public partial class Storage : Resource
 {
     private readonly List<StorageSlot> _slots = new();
 
     /// <summary>
-    /// Raised after any quantity-changing operation (Deposit, Withdraw, AddSlot/RemoveSlot of a
-    /// non-empty slot). Arguments: resource id, signed delta (positive on deposit, negative on
-    /// withdraw). Subscribers must be tolerant of being invoked from the manufacture tick thread.
-    /// Exceptions thrown by subscribers are logged and swallowed so they cannot corrupt accounting.
+    /// Per-resource fractional accumulator. Fractional deposits stay here until the
+    /// summed amount yields at least one whole unit. Never observable from outside
+    /// the storage; <see cref="GetQuantity"/> and friends only report whole units in slots.
     /// </summary>
-    public event Action<string, float>? StorageUpdated;
+    private readonly Dictionary<string, float> _fractionalBuffer = new();
 
-    private void RaiseStorageUpdated(string resourceId, float delta)
+    /// <summary>
+    /// Raised after any whole-unit change to slot contents (Deposit, Withdraw,
+    /// AddSlot/RemoveSlot of a non-empty slot). Arguments: resource id, signed integer
+    /// delta. Subscribers must be tolerant of being invoked from the manufacture tick
+    /// thread. Exceptions thrown by subscribers are logged and swallowed so they cannot
+    /// corrupt accounting. Fractional buffer changes never fire this event.
+    /// </summary>
+    public event Action<string, int>? StorageUpdated;
+
+    private void RaiseStorageUpdated(string resourceId, int delta)
     {
         var handler = StorageUpdated;
         if (handler == null)
@@ -66,19 +77,34 @@ public partial class Storage : Resource
 
     /// <summary>
     /// Attempts to deposit <paramref name="amount"/> of <paramref name="resourceId"/>.
-    /// Fills slots already occupied by that resource first, then claims empty slots
-    /// whose filter accepts the resource. Each slot caps at the resource's MaxStackSize.
+    /// Accepts a fractional amount: the fractional remainder accumulates in an internal
+    /// buffer that is invisible to readers. Whole units (current floor of buffer) are
+    /// placed into slots — top off slots already locked to this resource first, then
+    /// claim empty slots whose filter accepts. Each slot caps at the resource's
+    /// MaxStackSize. Whole units that don't fit (slots full) remain buffered and will
+    /// flow in on subsequent deposits that free or open capacity.
     /// </summary>
-    public float Deposit(string resourceId, float amount)
+    /// <returns>Whole units actually placed in slots this call.</returns>
+    public int Deposit(string resourceId, float amount)
     {
-        if (amount <= 0 || string.IsNullOrEmpty(resourceId))
-            return 0f;
+        if (amount <= 0f || string.IsNullOrEmpty(resourceId))
+            return 0;
+
+        _fractionalBuffer.TryGetValue(resourceId, out float buffered);
+        buffered += amount;
+
+        int wholeAvailable = (int)Mathf.Floor(buffered);
+        if (wholeAvailable <= 0)
+        {
+            _fractionalBuffer[resourceId] = buffered;
+            return 0;
+        }
 
         var def = ResolveResource(resourceId);
-        float stackSize = def?.MaxStackSize ?? StorageSlot.FallbackCapacity;
+        int stackSize = def?.MaxStackSize ?? StorageSlot.FallbackCapacity;
 
-        float remaining = amount;
-        float deposited = 0f;
+        int remaining = wholeAvailable;
+        int deposited = 0;
 
         // First pass: top off slots already locked to this resource.
         foreach (var slot in _slots)
@@ -87,10 +113,10 @@ public partial class Storage : Resource
             if (!string.Equals(slot.OccupiedResourceId, resourceId, StringComparison.Ordinal))
                 continue;
 
-            float space = stackSize - slot.Quantity;
+            int space = stackSize - slot.Quantity;
             if (space <= 0) continue;
 
-            float toDeposit = Mathf.Min(space, remaining);
+            int toDeposit = System.Math.Min(space, remaining);
             slot.Quantity += toDeposit;
             remaining -= toDeposit;
             deposited += toDeposit;
@@ -114,12 +140,20 @@ public partial class Storage : Resource
                 continue;
             }
 
-            float toDeposit = Mathf.Min(stackSize, remaining);
+            int toDeposit = System.Math.Min(stackSize, remaining);
             slot.OccupiedResourceId = resourceId;
             slot.Quantity = toDeposit;
             remaining -= toDeposit;
             deposited += toDeposit;
         }
+
+        // Subtract the units we actually placed from the buffer. Whole units that did
+        // not fit (slots full) stay buffered alongside the original fractional residue.
+        float newBuffer = buffered - deposited;
+        if (newBuffer > 0f)
+            _fractionalBuffer[resourceId] = newBuffer;
+        else
+            _fractionalBuffer.Remove(resourceId);
 
         if (deposited > 0)
             RaiseStorageUpdated(resourceId, deposited);
@@ -128,17 +162,17 @@ public partial class Storage : Resource
     }
 
     /// <summary>
-    /// Withdraws up to <paramref name="amount"/> of <paramref name="resourceId"/> from
-    /// matching slots. Slots that drain to zero are unlocked (free for any future
-    /// resource the filter accepts).
+    /// Withdraws up to <paramref name="amount"/> whole units of <paramref name="resourceId"/>
+    /// from matching slots. Slots that drain to zero are unlocked (free for any future
+    /// resource the filter accepts). The fractional buffer is never touched.
     /// </summary>
-    public float Withdraw(string resourceId, float amount)
+    public int Withdraw(string resourceId, int amount)
     {
         if (amount <= 0 || string.IsNullOrEmpty(resourceId))
-            return 0f;
+            return 0;
 
-        float remaining = amount;
-        float withdrawn = 0f;
+        int remaining = amount;
+        int withdrawn = 0;
 
         foreach (var slot in _slots)
         {
@@ -147,7 +181,7 @@ public partial class Storage : Resource
                 continue;
             if (slot.Quantity <= 0) continue;
 
-            float toWithdraw = Mathf.Min(slot.Quantity, remaining);
+            int toWithdraw = System.Math.Min(slot.Quantity, remaining);
             slot.Quantity -= toWithdraw;
             remaining -= toWithdraw;
             withdrawn += toWithdraw;
@@ -162,12 +196,12 @@ public partial class Storage : Resource
         return withdrawn;
     }
 
-    public float GetQuantity(string resourceId)
+    public int GetQuantity(string resourceId)
     {
         if (string.IsNullOrEmpty(resourceId))
-            return 0f;
+            return 0;
 
-        float total = 0f;
+        int total = 0;
         foreach (var slot in _slots)
         {
             if (string.Equals(slot.OccupiedResourceId, resourceId, StringComparison.Ordinal))
@@ -176,7 +210,7 @@ public partial class Storage : Resource
         return total;
     }
 
-    public bool HasSpace(string resourceId, float amount)
+    public bool HasSpace(string resourceId, int amount)
     {
         return GetFreeSpace(resourceId) >= amount;
     }
@@ -186,14 +220,14 @@ public partial class Storage : Resource
     /// occupied-by-this-resource slot, plus MaxStackSize for every empty slot whose
     /// filter accepts the resource.
     /// </summary>
-    public float GetCapacity(string resourceId)
+    public int GetCapacity(string resourceId)
     {
         if (string.IsNullOrEmpty(resourceId))
-            return 0f;
+            return 0;
 
         var def = ResolveResource(resourceId);
-        float stackSize = def?.MaxStackSize ?? StorageSlot.FallbackCapacity;
-        float total = 0f;
+        int stackSize = def?.MaxStackSize ?? StorageSlot.FallbackCapacity;
+        int total = 0;
 
         foreach (var slot in _slots)
         {
@@ -205,14 +239,14 @@ public partial class Storage : Resource
         return total;
     }
 
-    public float GetFreeSpace(string resourceId)
+    public int GetFreeSpace(string resourceId)
     {
         if (string.IsNullOrEmpty(resourceId))
-            return 0f;
+            return 0;
 
         var def = ResolveResource(resourceId);
-        float stackSize = def?.MaxStackSize ?? StorageSlot.FallbackCapacity;
-        float total = 0f;
+        int stackSize = def?.MaxStackSize ?? StorageSlot.FallbackCapacity;
+        int total = 0;
 
         foreach (var slot in _slots)
         {
@@ -224,9 +258,9 @@ public partial class Storage : Resource
         return total;
     }
 
-    public IReadOnlyDictionary<string, float> GetAllQuantities()
+    public IReadOnlyDictionary<string, int> GetAllQuantities()
     {
-        var result = new Dictionary<string, float>();
+        var result = new Dictionary<string, int>();
         foreach (var slot in _slots)
         {
             if (string.IsNullOrEmpty(slot.OccupiedResourceId) || slot.Quantity <= 0)

@@ -25,7 +25,7 @@ public static class Building2DEditorYamlIO
         var written = new HashSet<string>();
         foreach (var entry in shapes)
         {
-            string path = string.IsNullOrEmpty(entry.SourceFilePath)
+            string path = (entry.IsNew || string.IsNullOrEmpty(entry.SourceFilePath))
                 ? $"{root}{entry.Id}.yaml"
                 : entry.SourceFilePath;
             entry.SourceFilePath = path;

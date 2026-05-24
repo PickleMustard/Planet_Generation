@@ -27,13 +27,13 @@ public class BuildingResourceEndpointTest
 
         var endpoint = new BuildingResourceEndpoint(building);
 
-        float deposited = endpoint.DepositResource("iron", 50f);
-        AssertThat(deposited).IsGreater(0f);
+        int deposited = endpoint.DepositResource("iron", 50f);
+        AssertThat(deposited).IsGreater(0);
         AssertThat(endpoint.GetStockpile("iron")).IsEqual(deposited);
 
-        float withdrawn = endpoint.WithdrawResource("iron", deposited);
+        int withdrawn = endpoint.WithdrawResource("iron", deposited);
         AssertThat(withdrawn).IsEqual(deposited);
-        AssertThat(endpoint.GetStockpile("iron")).IsEqual(0f);
+        AssertThat(endpoint.GetStockpile("iron")).IsEqual(0);
     }
 
     [TestCase]
@@ -58,7 +58,7 @@ public class BuildingResourceEndpointTest
         var all = endpoint.GetAllStockpiles();
         AssertThat(all.ContainsKey("iron")).IsTrue();
         AssertThat(all.ContainsKey("copper")).IsTrue();
-        AssertThat(all["iron"]).IsGreater(0f);
-        AssertThat(all["copper"]).IsGreater(0f);
+        AssertThat(all["iron"]).IsGreater(0);
+        AssertThat(all["copper"]).IsGreater(0);
     }
 }

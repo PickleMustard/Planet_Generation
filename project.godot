@@ -56,6 +56,12 @@ report/godot/push_error=true
 
 theme/custom="uid://cdh68r2entt7h"
 
+[importer_defaults]
+
+texture={
+&"mipmaps/generate": true
+}
+
 [logging]
 
 level="INFO"

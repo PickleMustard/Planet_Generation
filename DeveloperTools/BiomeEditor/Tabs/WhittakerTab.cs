@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
+using Structures.Resources;
 
 namespace DeveloperTools.BiomeEditor.Tabs;
 
@@ -60,7 +62,8 @@ public partial class WhittakerTab : Control
         var ctrlRow = new HBoxContainer();
         ctrlRow.AddChild(new Label { Text = "Subtype:" });
         _subtypeOpt = new OptionButton();
-        foreach (var s in Enum.GetNames<RockyPlanetSubtype>()) _subtypeOpt.AddItem(s);
+        foreach (var id in GetRockySubtypeIds())
+            _subtypeOpt.AddItem(id);
         _subtypeOpt.ItemSelected += _ => RegenerateImage();
         ctrlRow.AddChild(_subtypeOpt);
 
@@ -103,9 +106,28 @@ public partial class WhittakerTab : Control
         scroll.AddChild(_legend);
     }
 
+    private List<string> GetRockySubtypeIds()
+    {
+        if (_model != null)
+            return _model.Subtypes.Values
+                .Where(s => s.Family == BodyFamily.RockyPlanet)
+                .Select(s => s.Id)
+                .OrderBy(s => s, StringComparer.Ordinal)
+                .ToList();
+        // Fallback when called pre-Initialize: derive from enum so dropdown isn't empty.
+        return Enum.GetValues<RockyPlanetSubtype>()
+            .Select(BiomeIdMapper.RockyPlanetSubtypeToId)
+            .ToList();
+    }
+
+    private string SelectedSubtypeId =>
+        _subtypeOpt.Selected >= 0 && _subtypeOpt.Selected < _subtypeOpt.ItemCount
+            ? _subtypeOpt.GetItemText(_subtypeOpt.Selected)
+            : "";
+
     private void OnAssignerChanged(RockyPlanetSubtype subtype)
     {
-        if (subtype != (RockyPlanetSubtype)_subtypeOpt.Selected) return;
+        if (BiomeIdMapper.RockyPlanetSubtypeToId(subtype) != SelectedSubtypeId) return;
         CallDeferred(nameof(RegenerateImage));
     }
 
@@ -114,8 +136,10 @@ public partial class WhittakerTab : Control
         if (_model == null) return;
         _latLabel.Text = ((float)_latSlider.Value).ToString("0.00");
 
-        var subtype = (RockyPlanetSubtype)_subtypeOpt.Selected;
-        if (!_model.Assigners.TryGetValue(subtype, out var entry)) return;
+        string subId = SelectedSubtypeId;
+        var subtypeEnum = BiomeIdMapper.IdToRockyPlanetSubtype(subId);
+        if (subtypeEnum == null || !_model.Assigners.TryGetValue(subtypeEnum.Value, out var entry)) return;
+        var subtype = subtypeEnum.Value;
 
         float lat = (float)_latSlider.Value;
         float maxM = entry.Moisture.MaxMoisture > 0.01f ? entry.Moisture.MaxMoisture : 1f;

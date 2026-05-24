@@ -17,6 +17,106 @@ internal static class SlipDataBuilder
     /// <summary>Seconds without an accumulating-progress advance before the slip is marked Blocked.</summary>
     public const double BlockedStallSeconds = 5.0;
 
+    public static SlipCardData BuildFromOrder(
+        TransferOrder order,
+        TransferStationBehavior? behavior,
+        ResourceDatabase? resources,
+        bool completed,
+        int displayPriority)
+    {
+        var data = new SlipCardData
+        {
+            IsOneTime = true,
+            IsCompleted = completed,
+            OrderId = order.OrderId,
+            ScheduleId = order.OrderId,
+            Priority = displayPriority > 0 ? displayPriority : 1,
+            DestinationName = DescribeDestination(order.Destination),
+            DestinationCode = ShortDestinationCode(order.Destination),
+            DestinationVia = "rail",
+            DestinationDistance = order.TravelTimeSeconds > 0f
+                ? $"{order.TravelTimeSeconds:0.#}s ETA"
+                : "—",
+            ConditionLabel = "One-time order",
+            ConditionShort = "one-shot",
+            LastRun = "—",
+        };
+
+        float weight = 0f;
+        foreach (var kvp in order.Manifest.Resources)
+        {
+            string id = kvp.Key;
+            int units = kvp.Value;
+            float perUnitWeight = LookupTransportWeight(resources, id);
+            data.Manifest.Add(new SlipCardData.ManifestEntry
+            {
+                Icon = ShortResourceIcon(id),
+                Label = LookupResourceLabel(resources, id),
+                Units = units,
+            });
+            weight += units * perUnitWeight;
+        }
+        data.WeightTons = weight;
+
+        ApplyOrderRuntime(data, order, completed);
+        return data;
+    }
+
+    public static void ApplyOrderRuntime(SlipCardData data, TransferOrder order, bool completed)
+    {
+        if (completed)
+        {
+            data.Status = SlipStatus.Waiting;
+            data.ProgressFraction = 1f;
+            data.ProgressLabel = "delivered";
+            data.StatusLabel = "delivered";
+            data.State = StateDot.DotState.Idle;
+            return;
+        }
+
+        switch (order.State)
+        {
+            case SurfaceTransferState.InTransit:
+                {
+                    float remaining = System.Math.Max(0f, order.TravelTimeSeconds - order.ElapsedTimeSeconds);
+                    data.Status = SlipStatus.InTransit;
+                    data.ProgressFraction = order.Progress;
+                    data.ProgressLabel = $"{remaining:0.#}s left";
+                    data.StatusLabel = "in transit";
+                    data.State = StateDot.DotState.Run;
+                    break;
+                }
+            case SurfaceTransferState.Loading:
+                data.Status = SlipStatus.Loading;
+                data.ProgressFraction = -1f;
+                data.ProgressLabel = "loading";
+                data.StatusLabel = "loading";
+                data.State = StateDot.DotState.Run;
+                break;
+            case SurfaceTransferState.Unloading:
+                data.Status = SlipStatus.Loading;
+                data.ProgressFraction = -1f;
+                data.ProgressLabel = "unloading";
+                data.StatusLabel = "unloading";
+                data.State = StateDot.DotState.Run;
+                break;
+            case SurfaceTransferState.Reverting:
+                data.Status = SlipStatus.Loading;
+                data.ProgressFraction = -1f;
+                data.ProgressLabel = "returning";
+                data.StatusLabel = "returning";
+                data.State = StateDot.DotState.Run;
+                break;
+            default:
+                data.Status = SlipStatus.Waiting;
+                data.ProgressFraction = 1f;
+                data.ProgressLabel = "delivered";
+                data.StatusLabel = "delivered";
+                data.State = StateDot.DotState.Idle;
+                break;
+        }
+    }
+
     public static SlipCardData BuildFromSchedule(
         TransferSchedule schedule,
         TransferStationBehavior? behavior,
@@ -167,16 +267,15 @@ internal static class SlipDataBuilder
         foreach (var kvp in schedule.ResourceProportions)
         {
             string id = kvp.Key;
-            float perUnitWeight = behavior != null ? 1f : 1f; // placeholder; see below
-            float weightDb = LookupTransportWeight(ResourceDatabase.Instance, id);
-            if (weightDb > 0f) perUnitWeight = weightDb;
+            float perUnitWeight = LookupTransportWeight(ResourceDatabase.Instance, id);
+            if (perUnitWeight <= 0f) continue;
 
             float capacityForResource = totalCapacity * kvp.Value;
-            float targetUnits = perUnitWeight > 0f ? capacityForResource / perUnitWeight : 0f;
+            int targetUnits = (int)System.Math.Floor(capacityForResource / perUnitWeight);
             float required = targetUnits * thresholdFraction;
             if (required <= 0f) continue;
 
-            float stockpile = behavior.GetCurrentStockpile(id);
+            int stockpile = behavior.GetCurrentStockpile(id);
             float ratio = System.Math.Clamp(stockpile / required, 0f, 1f);
             sawTarget = true;
             if (anyMode)

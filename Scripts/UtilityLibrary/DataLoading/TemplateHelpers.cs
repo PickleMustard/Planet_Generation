@@ -1140,15 +1140,8 @@ public static class TemplateHelpers
                 dict["central_parameters"] = cpDict;
             }
 
-            // base_mesh
-            if (body.ContainsKey("base_mesh"))
-                dict["base_mesh"] = ConvertBaseMeshToYaml((Dictionary)body["base_mesh"]);
-
-            // spherical_harmonics_settings
-            if (body.ContainsKey("spherical_harmonics_settings"))
-                dict["spherical_harmonics_settings"] = ConvertFloatRangeDictToYaml(
-                    (Dictionary)body["spherical_harmonics_settings"]
-                );
+            // Phase 6: subtype + subtype_weights replace per-body gen-range blocks
+            EmitSubtypeSlot(body, dict);
 
             result.Add(dict);
         }
@@ -1187,6 +1180,10 @@ public static class TemplateHelpers
                 dict["grouping"] = (string)belt["grouping"];
             if (belt.ContainsKey("orbital_center_index"))
                 dict["orbital_center_index"] = (int)belt["orbital_center_index"];
+
+            // Phase 6: belts now also carry subtype / subtype_weights
+            EmitSubtypeSlot(belt, dict);
+
             result.Add(dict);
         }
         return result;
@@ -1234,19 +1231,8 @@ public static class TemplateHelpers
                 dict["orbital_parameters"] = opDict;
             }
 
-            // base_mesh
-            if (body.ContainsKey("base_mesh"))
-                dict["base_mesh"] = ConvertBaseMeshToYaml((Dictionary)body["base_mesh"]);
-
-            // tectonics
-            if (body.ContainsKey("tectonics"))
-                dict["tectonics"] = ConvertTectonicsToYaml((Dictionary)body["tectonics"]);
-
-            // spherical_harmonics_settings
-            if (body.ContainsKey("spherical_harmonics_settings"))
-                dict["spherical_harmonics_settings"] = ConvertFloatRangeDictToYaml(
-                    (Dictionary)body["spherical_harmonics_settings"]
-                );
+            // Phase 6: subtype + subtype_weights replace per-body gen-range blocks
+            EmitSubtypeSlot(body, dict);
 
             // satellites
             if (body.ContainsKey("satellites"))
@@ -1291,19 +1277,8 @@ public static class TemplateHelpers
             dict["template"] = tDict;
         }
 
-        // base_mesh
-        if (sat.ContainsKey("base_mesh"))
-            dict["base_mesh"] = ConvertBaseMeshToYaml((Dictionary)sat["base_mesh"]);
-
-        // tectonics
-        if (sat.ContainsKey("tectonics"))
-            dict["tectonics"] = ConvertTectonicsToYaml((Dictionary)sat["tectonics"]);
-
-        // spherical_harmonics_settings
-        if (sat.ContainsKey("spherical_harmonics_settings"))
-            dict["spherical_harmonics_settings"] = ConvertFloatRangeDictToYaml(
-                (Dictionary)sat["spherical_harmonics_settings"]
-            );
+        // Phase 6: subtype + subtype_weights replace per-body gen-range blocks
+        EmitSubtypeSlot(sat, dict);
 
         // scaling_settings
         if (sat.ContainsKey("scaling_settings"))
@@ -1316,6 +1291,35 @@ public static class TemplateHelpers
             dict["noise_settings"] = ConvertFloatRangeDictToYaml((Dictionary)sat["noise_settings"]);
 
         return dict;
+    }
+
+    /// <summary>
+    /// Phase 6 slim-shape emitter. Writes <c>subtype</c> (explicit id) or
+    /// <c>subtype_weights</c> (id → weight map) into the output dict when the source
+    /// body carries either key. No-op when both are absent.
+    /// </summary>
+    private static void EmitSubtypeSlot(Dictionary body, SysDict outDict)
+    {
+        if (body.ContainsKey("subtype"))
+        {
+            var raw = (string)body["subtype"];
+            if (!string.IsNullOrEmpty(raw))
+                outDict["subtype"] = raw;
+        }
+
+        if (body.ContainsKey("subtype_weights"))
+        {
+            var weights = (Dictionary)body["subtype_weights"];
+            var outWeights = new SysDict();
+            foreach (var key in weights.Keys)
+            {
+                string id = key.AsString();
+                if (string.IsNullOrEmpty(id)) continue;
+                outWeights[id] = (float)weights[key];
+            }
+            if (outWeights.Count > 0)
+                outDict["subtype_weights"] = outWeights;
+        }
     }
 
     private static bool ShouldSaveName(Dictionary body)

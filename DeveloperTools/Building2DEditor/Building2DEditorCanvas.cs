@@ -48,12 +48,15 @@ public partial class Building2DEditorCanvas : Control
         for (int i = 0; i < verts.Length; i++)
             verts[i] = center + _entry.Vertices[i] * _displayRadius;
 
-        DrawColoredPolygon(verts, new Color(0.30f, 0.45f, 0.60f, 0.7f));
+        bool drawable = Building2DEditorGeometry.IsDrawablePolygon(_entry.Vertices);
+        if (drawable)
+            DrawColoredPolygon(verts, new Color(0.30f, 0.45f, 0.60f, 0.7f));
 
         var loop = new Vector2[verts.Length + 1];
         Array.Copy(verts, loop, verts.Length);
         loop[verts.Length] = verts[0];
-        DrawPolyline(loop, new Color(0, 0, 0, 0.85f), 1.5f);
+        Color outlineColor = drawable ? new Color(0, 0, 0, 0.85f) : new Color(0.95f, 0.25f, 0.25f, 0.95f);
+        DrawPolyline(loop, outlineColor, 1.5f);
 
         for (int i = 0; i < _entry.Sides.Count && i < verts.Length; i++)
         {
@@ -142,13 +145,23 @@ public partial class Building2DEditorCanvas : Control
                 else
                 {
                     Vector2 unit = (local - center) / _displayRadius;
+                    unit = new Vector2(
+                        Mathf.Round(unit.X * 100f) / 100f,
+                        Mathf.Round(unit.Y * 100f) / 100f);
                     int insertAt = FindClosestEdge(local, center);
-                    _entry.Vertices.Insert(insertAt + 1, unit);
-                    _entry.Sides.Insert(insertAt + 1, new Building2DEditorModel.SideEdit());
-                    _entry.EnsureSideCount();
-                    _entry.IsDirty = true;
-                    ShapeMutated?.Invoke();
-                    QueueRedraw();
+                    int n = _entry.Vertices.Count;
+                    Vector2 edgeA = _entry.Vertices[insertAt];
+                    Vector2 edgeB = _entry.Vertices[(insertAt + 1) % n];
+                    float eps2 = Building2DEditorGeometry.DegenerateEpsilon * Building2DEditorGeometry.DegenerateEpsilon;
+                    if (unit.DistanceSquaredTo(edgeA) >= eps2 && unit.DistanceSquaredTo(edgeB) >= eps2)
+                    {
+                        _entry.Vertices.Insert(insertAt + 1, unit);
+                        _entry.Sides.Insert(insertAt + 1, new Building2DEditorModel.SideEdit());
+                        _entry.EnsureSideCount();
+                        _entry.IsDirty = true;
+                        ShapeMutated?.Invoke();
+                        QueueRedraw();
+                    }
                     AcceptEvent();
                 }
             }
@@ -162,10 +175,13 @@ public partial class Building2DEditorCanvas : Control
                 unit = new Vector2(
                     Mathf.Round(unit.X * 100f) / 100f,
                     Mathf.Round(unit.Y * 100f) / 100f);
-                _entry.Vertices[_draggingVertex] = unit;
-                _entry.IsDirty = true;
-                ShapeMutated?.Invoke();
-                QueueRedraw();
+                if (!CollidesWithNeighbor(_draggingVertex, unit))
+                {
+                    _entry.Vertices[_draggingVertex] = unit;
+                    _entry.IsDirty = true;
+                    ShapeMutated?.Invoke();
+                    QueueRedraw();
+                }
                 AcceptEvent();
             }
             else
@@ -196,6 +212,17 @@ public partial class Building2DEditorCanvas : Control
             }
         }
         return best;
+    }
+
+    private bool CollidesWithNeighbor(int vertexIndex, Vector2 unit)
+    {
+        if (_entry == null) return false;
+        int n = _entry.Vertices.Count;
+        if (n < 2) return false;
+        float eps2 = Building2DEditorGeometry.DegenerateEpsilon * Building2DEditorGeometry.DegenerateEpsilon;
+        Vector2 prev = _entry.Vertices[(vertexIndex - 1 + n) % n];
+        Vector2 next = _entry.Vertices[(vertexIndex + 1) % n];
+        return unit.DistanceSquaredTo(prev) < eps2 || unit.DistanceSquaredTo(next) < eps2;
     }
 
     private int FindClosestEdge(Vector2 local, Vector2 center)

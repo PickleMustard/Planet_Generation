@@ -1,0 +1,9 @@
+recipes:
+  - recipe_id: "metal_can"
+    display_name: "Metal Cans"
+    category: commodities
+    work_required: 10
+    input_resources:
+      - tag:metal: 1
+    output_resources:
+      - can: 5

@@ -111,7 +111,7 @@ public partial class RecipeSelectionPopup : PanelContainer
                 ?? recipeId;
             bool isActive = recipeId == _activeRecipeId;
             string label = isActive ? $"[Active] {displayName}" : displayName;
-            Texture2D? icon = recipe?.Icon?.SmallTexture;
+            Texture2D? icon = recipe?.Icon?.Texture;
 
             int idx = icon != null
                 ? _recipeList.AddItem(label, icon)

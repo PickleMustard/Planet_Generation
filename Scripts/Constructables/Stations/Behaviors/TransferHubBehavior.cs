@@ -239,29 +239,32 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
         foreach (var kvp in requestedResources)
         {
             string resourceId = kvp.Key;
-            float requestedAmount = kvp.Value;
-            if (requestedAmount <= 0f)
+            int requestedAmount = Mathf.FloorToInt(kvp.Value);
+            if (requestedAmount <= 0)
                 continue;
 
             requestedManifest.LoadResource(resourceId, requestedAmount);
 
             float weight = GetTransportWeight(resourceId);
-            float remainingCapacity = totalCapacity - usedCapacity;
-            float maxUnits = weight > 0f ? remainingCapacity / weight : 0f;
-            float toLoad = Math.Min(requestedAmount, maxUnits);
-
-            if (toLoad <= 0f)
+            if (weight <= 0f)
                 continue;
 
-            float actualWithdrawn = _endpoint.WithdrawResource(resourceId, toLoad);
-            if (actualWithdrawn > 0f)
+            float remainingCapacity = totalCapacity - usedCapacity;
+            int maxUnits = (int)Mathf.Floor(remainingCapacity / weight);
+            int toLoad = System.Math.Min(requestedAmount, maxUnits);
+
+            if (toLoad <= 0)
+                continue;
+
+            int actualWithdrawn = _endpoint.WithdrawResource(resourceId, toLoad);
+            if (actualWithdrawn > 0)
             {
                 manifest.LoadResource(resourceId, actualWithdrawn);
                 usedCapacity += actualWithdrawn * weight;
             }
         }
 
-        if (manifest.TotalUnits <= 0f)
+        if (manifest.TotalUnits <= 0)
         {
             GameLogger.Warning(
                 "[TransferHubBehavior] Cannot dispatch: no resources available to load"
@@ -287,7 +290,7 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
         GameLogger.Info(
             $"[TransferHubBehavior] Dispatched transfer {order.OrderId[..8]}... "
             + $"from '{originBuildingId[..Math.Min(8, originBuildingId.Length)]}' to {destination} "
-            + $"({manifest.TotalUnits:F1} units, ETA {travelTime:F1}s)"
+            + $"({manifest.TotalUnits} units, ETA {travelTime:F1}s)"
         );
 
         return order.OrderId;
@@ -370,30 +373,30 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
         IResourceEndpoint? destEndpoint = ResolveEndpoint(order.Destination);
         IResourceEndpoint? originEndpoint = _endpoint;
 
-        float totalReverted = 0f;
+        int totalReverted = 0;
 
         foreach (var kvp in order.Manifest.Resources)
         {
             string resourceId = kvp.Key;
-            float amount = kvp.Value;
+            int amount = kvp.Value;
 
             if (destEndpoint != null)
             {
-                float deposited = destEndpoint.DepositResource(resourceId, amount);
-                float remainder = amount - deposited;
+                int deposited = destEndpoint.DepositResource(resourceId, amount);
+                int remainder = amount - deposited;
 
-                if (remainder > 0f)
+                if (remainder > 0)
                 {
                     if (originEndpoint != null)
                     {
-                        float reverted = originEndpoint.DepositResource(resourceId, remainder);
-                        float lost = remainder - reverted;
+                        int reverted = originEndpoint.DepositResource(resourceId, remainder);
+                        int lost = remainder - reverted;
                         totalReverted += reverted;
 
-                        if (lost > 0f)
+                        if (lost > 0)
                         {
                             GameLogger.Warning(
-                                $"[TransferHubBehavior] {lost:F1} units of '{resourceId}' "
+                                $"[TransferHubBehavior] {lost} units of '{resourceId}' "
                                 + "lost (both destination and origin full)"
                             );
                         }
@@ -401,7 +404,7 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
                     else
                     {
                         GameLogger.Warning(
-                            $"[TransferHubBehavior] {remainder:F1} units of '{resourceId}' "
+                            $"[TransferHubBehavior] {remainder} units of '{resourceId}' "
                             + "lost (origin endpoint gone)"
                         );
                     }
@@ -411,25 +414,25 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
             {
                 if (originEndpoint != null)
                 {
-                    float reverted = originEndpoint.DepositResource(resourceId, amount);
+                    int reverted = originEndpoint.DepositResource(resourceId, amount);
                     totalReverted += reverted;
                 }
                 else
                 {
                     GameLogger.Warning(
-                        $"[TransferHubBehavior] {amount:F1} units of '{resourceId}' "
+                        $"[TransferHubBehavior] {amount} units of '{resourceId}' "
                         + "lost (destination and origin endpoints both gone)"
                     );
                 }
             }
         }
 
-        bool fullyAccepted = totalReverted <= 0f;
+        bool fullyAccepted = totalReverted <= 0;
         order.State = SurfaceTransferState.Complete;
 
         GameLogger.Info(
             $"[TransferHubBehavior] Transfer {order.OrderId[..8]}... completed. "
-            + $"Accepted: {fullyAccepted}, Reverted: {totalReverted:F1}"
+            + $"Accepted: {fullyAccepted}, Reverted: {totalReverted}"
         );
     }
 
@@ -478,8 +481,9 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
             string resourceId = kvp.Key;
             float proportion = kvp.Value;
             float weight = GetTransportWeight(resourceId);
+            if (weight <= 0f) continue;
             float capacityForResource = totalCapacity * proportion;
-            float targetUnits = weight > 0f ? capacityForResource / weight : 0f;
+            int targetUnits = (int)Mathf.Floor(capacityForResource / weight);
             targetQuantities[resourceId] = targetUnits;
         }
 
@@ -501,7 +505,7 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
                 shouldDepart = false;
                 foreach (var kvp in targetQuantities)
                 {
-                    float stockpile = _endpoint.GetStockpile(kvp.Key);
+                    int stockpile = _endpoint.GetStockpile(kvp.Key);
                     float required = kvp.Value * thresholdFraction;
                     if (stockpile >= required && required > 0f)
                     {
@@ -515,7 +519,7 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
                 shouldDepart = true;
                 foreach (var kvp in targetQuantities)
                 {
-                    float stockpile = _endpoint.GetStockpile(kvp.Key);
+                    int stockpile = _endpoint.GetStockpile(kvp.Key);
                     float required = kvp.Value * thresholdFraction;
                     if (stockpile < required || required <= 0f)
                     {

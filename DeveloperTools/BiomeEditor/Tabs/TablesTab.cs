@@ -1,7 +1,9 @@
 #if DEBUG
 using System;
+using System.Linq;
 using Godot;
 using Structures.Enums;
+using Structures.Resources;
 using DeveloperTools.BiomeEditor.Cards;
 
 namespace DeveloperTools.BiomeEditor.Tabs;
@@ -13,6 +15,8 @@ public partial class TablesTab : Control
 {
     private static readonly string[] Sections =
     {
+        "Biomes",
+        "Subtypes",
         "Assigners",
         "Biome Resources",
         "Subtype Resources",
@@ -38,8 +42,22 @@ public partial class TablesTab : Control
     {
         ArgumentNullException.ThrowIfNull(model);
         _model = model;
+        _model.BiomeRegistryChanged += OnRegistryChanged;
+        _model.SubtypeRegistryChanged += OnRegistryChanged;
         Refresh();
     }
+
+    public override void _ExitTree()
+    {
+        base._ExitTree();
+        if (_model != null)
+        {
+            _model.BiomeRegistryChanged -= OnRegistryChanged;
+            _model.SubtypeRegistryChanged -= OnRegistryChanged;
+        }
+    }
+
+    private void OnRegistryChanged() => CallDeferred(nameof(Refresh));
 
     private void BuildLayout()
     {
@@ -89,6 +107,40 @@ public partial class TablesTab : Control
 
         switch (_selectedSection)
         {
+            case "Biomes":
+                foreach (var id in _model.Biomes.Keys.OrderBy(k => k, StringComparer.Ordinal))
+                {
+                    var card = new BiomeCard();
+                    _cardContainer.AddChild(card);
+                    card.Initialize(_model, id);
+                }
+                var addBiomeBtn = new Button { Text = "+ Add Biome" };
+                addBiomeBtn.Pressed += OnNewBiome;
+                _cardContainer.AddChild(addBiomeBtn);
+                break;
+            case "Subtypes":
+                foreach (var family in Enum.GetValues<BodyFamily>())
+                {
+                    var subs = _model.Subtypes.Values
+                        .Where(s => s.Family == family)
+                        .OrderBy(s => s.Id, StringComparer.Ordinal)
+                        .ToList();
+                    if (subs.Count == 0) continue;
+                    var header = new Label { Text = family.ToString() };
+                    header.AddThemeFontSizeOverride("font_size", 16);
+                    header.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.6f));
+                    _cardContainer.AddChild(header);
+                    foreach (var s in subs)
+                    {
+                        var card = new SubtypeCard();
+                        _cardContainer.AddChild(card);
+                        card.Initialize(_model, s.Id);
+                    }
+                }
+                var addSubBtn = new Button { Text = "+ Add Subtype" };
+                addSubBtn.Pressed += OnNewSubtype;
+                _cardContainer.AddChild(addSubBtn);
+                break;
             case "Assigners":
                 foreach (var subtype in Enum.GetValues<RockyPlanetSubtype>())
                 {
@@ -155,5 +207,61 @@ public partial class TablesTab : Control
         AddChild(dialog);
         dialog.PopupCentered(new Vector2I(400, 150));
     }
+
+    private void OnNewBiome()
+    {
+        if (_model == null) return;
+        var body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var idEdit = new LineEdit { PlaceholderText = "biome_<name>", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var nameEdit = new LineEdit { PlaceholderText = "display name", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        body.AddChild(new Label { Text = "id:" });
+        body.AddChild(idEdit);
+        body.AddChild(new Label { Text = "display_name:" });
+        body.AddChild(nameEdit);
+
+        var dialog = new ConfirmationDialog { Title = "Add Biome", DialogText = "New biome registry entry:" };
+        dialog.AddChild(body);
+        dialog.Confirmed += () =>
+        {
+            string id = idEdit.Text.Trim();
+            if (string.IsNullOrEmpty(id)) return;
+            if (!_model.AddBiome(id, nameEdit.Text.Trim())) return;
+        };
+        AddChild(dialog);
+        dialog.PopupCentered(new Vector2I(420, 220));
+    }
+
+    private void OnNewSubtype()
+    {
+        if (_model == null) return;
+        var body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var idEdit = new LineEdit { PlaceholderText = "subtype_<family>_<name>", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var nameEdit = new LineEdit { PlaceholderText = "display name", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var familyOpt = new OptionButton();
+        var families = Enum.GetValues<BodyFamily>();
+        foreach (var f in families) familyOpt.AddItem(f.ToString());
+        familyOpt.Selected = 0;
+
+        body.AddChild(new Label { Text = "id:" });
+        body.AddChild(idEdit);
+        body.AddChild(new Label { Text = "display_name:" });
+        body.AddChild(nameEdit);
+        body.AddChild(new Label { Text = "family (locked after create):" });
+        body.AddChild(familyOpt);
+
+        var dialog = new ConfirmationDialog { Title = "Add Subtype", DialogText = "New subtype registry entry:" };
+        dialog.AddChild(body);
+        dialog.Confirmed += () =>
+        {
+            string id = idEdit.Text.Trim();
+            if (string.IsNullOrEmpty(id)) return;
+            int idx = familyOpt.Selected;
+            if (idx < 0 || idx >= families.Length) return;
+            if (!_model.AddSubtype(id, nameEdit.Text.Trim(), families[idx])) return;
+        };
+        AddChild(dialog);
+        dialog.PopupCentered(new Vector2I(440, 280));
+    }
+
 }
 #endif

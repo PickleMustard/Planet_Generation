@@ -22,8 +22,8 @@ buildings:
         grid_radius: 4
         is_renewable: true
         default_recipe: "wind_harvesting"
-        production_speed: 1.0
-        environmental_modifier:
+        production_speed: 1
+        environmental_modifier: 
           type: ATMOSPHERE_LINEAR
-          reference_atmosphere: 1.0
-          max_scale: 4.0
+          reference_atmosphere: "1.0"
+          max_scale: "4.0"

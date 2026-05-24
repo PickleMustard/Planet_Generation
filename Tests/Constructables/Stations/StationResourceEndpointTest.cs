@@ -33,48 +33,48 @@ public class StationResourceEndpointTest
 
         float deposited = endpoint.DepositResource("iron", 50f);
 
-        AssertThat(deposited).IsEqual(50f);
-        AssertThat(station.BulkStorage.GetQuantity("iron")).IsEqual(50f);
+        AssertThat(deposited).IsEqual(50);
+        AssertThat(station.BulkStorage.GetQuantity("iron")).IsEqual(50);
     }
 
     [TestCase]
     public void WithdrawResource_WithdrawsFromBulkStorage()
     {
         var station = MakeStation();
-        station.BulkStorage.Deposit("iron", 100f);
+        station.BulkStorage.Deposit("iron", 100);
         var endpoint = new StationResourceEndpoint(station);
 
-        float withdrawn = endpoint.WithdrawResource("iron", 30f);
+        int withdrawn = endpoint.WithdrawResource("iron", 30);
 
-        AssertThat(withdrawn).IsEqual(30f);
-        AssertThat(station.BulkStorage.GetQuantity("iron")).IsEqual(70f);
+        AssertThat(withdrawn).IsEqual(30);
+        AssertThat(station.BulkStorage.GetQuantity("iron")).IsEqual(70);
     }
 
     [TestCase]
     public void GetStockpile_ReturnsCorrectQuantity()
     {
         var station = MakeStation();
-        station.BulkStorage.Deposit("iron", 75f);
+        station.BulkStorage.Deposit("iron", 75);
         var endpoint = new StationResourceEndpoint(station);
 
-        AssertThat(endpoint.GetStockpile("iron")).IsEqual(75f);
-        AssertThat(endpoint.GetStockpile("copper")).IsEqual(0f);
+        AssertThat(endpoint.GetStockpile("iron")).IsEqual(75);
+        AssertThat(endpoint.GetStockpile("copper")).IsEqual(0);
     }
 
     [TestCase]
     public void GetAllStockpiles_ReturnsAllQuantities()
     {
         var station = MakeStation();
-        station.BulkStorage.Deposit("iron", 10f);
-        station.BulkStorage.Deposit("copper", 20f);
+        station.BulkStorage.Deposit("iron", 10);
+        station.BulkStorage.Deposit("copper", 20);
         var endpoint = new StationResourceEndpoint(station);
 
         var stockpiles = endpoint.GetAllStockpiles();
 
         AssertThat(stockpiles.ContainsKey("iron")).IsTrue();
         AssertThat(stockpiles.ContainsKey("copper")).IsTrue();
-        AssertThat(stockpiles["iron"]).IsEqual(10f);
-        AssertThat(stockpiles["copper"]).IsEqual(20f);
+        AssertThat(stockpiles["iron"]).IsEqual(10);
+        AssertThat(stockpiles["copper"]).IsEqual(20);
     }
 
     [TestCase]
@@ -94,24 +94,24 @@ public class StationResourceEndpointTest
     public void GetStorageFillPercentage_WithMatchingOwner_ReturnsFillPercentage()
     {
         var station = MakeStation();
-        station.BulkStorage.Deposit("iron", 50f);
+        station.BulkStorage.Deposit("iron", 50);
         var endpoint = new StationResourceEndpoint(station);
 
         float pct = endpoint.GetStorageFillPercentage(station, "any");
 
-        AssertThat(pct).IsGreater(0f);
+        AssertThat(pct).IsGreater(0);
     }
 
     [TestCase]
     public void GetStorageFillPercentage_WithNonMatchingOwner_ReturnsZero()
     {
         var station = MakeStation();
-        station.BulkStorage.Deposit("iron", 50f);
+        station.BulkStorage.Deposit("iron", 50);
         var endpoint = new StationResourceEndpoint(station);
 
         float pct = endpoint.GetStorageFillPercentage(null, "any");
 
-        AssertThat(pct).IsEqual(0f);
+        AssertThat(pct).IsEqual(0);
     }
 
     [TestCase]
@@ -123,7 +123,7 @@ public class StationResourceEndpointTest
 
         float pct = endpoint.GetStorageFillPercentage(station, "any");
 
-        AssertThat(pct).IsEqual(0f);
+        AssertThat(pct).IsEqual(0);
     }
 
     [TestCase]

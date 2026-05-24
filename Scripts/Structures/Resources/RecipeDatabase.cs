@@ -261,20 +261,20 @@ namespace Structures.Resources
         }
 
         /// <summary>
-        /// Gets the icon for a recipe at a specific size.
+        /// Gets the icon for a recipe. Godot mipmaps handle runtime scaling.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetRecipeIcon(string recipeId, IconSize size = IconSize.Large)
+        public Texture2D GetRecipeIcon(string recipeId)
         {
             EnsureLoaded();
             if (TryGetRecipe(recipeId, out var recipe) && recipe != null)
             {
-                var texture = recipe.Icon?.GetTexture(size);
+                var texture = recipe.Icon?.Texture;
                 if (texture != null)
                     return texture;
             }
 
-            return IconDataLoader.GetFallbackIcon(size);
+            return IconDataLoader.GetFallbackIcon();
         }
 
         /// <summary>

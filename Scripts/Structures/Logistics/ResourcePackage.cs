@@ -15,9 +15,9 @@ public partial class ResourcePackage : Resource
     public string ResourceId { get; set; } = string.Empty;
 
     /// <summary>
-    /// The amount of resource in this package.
+    /// The amount of resource in this package. Whole units only.
     /// </summary>
-    public float Quantity { get; set; }
+    public int Quantity { get; set; }
 
     private float _progress;
 

@@ -224,6 +224,10 @@ public partial class StructureDatabase
         {
             if (BaseVertices.TryGetValue(index, out var existing))
             {
+#if DEBUG
+                if (!existing.Position.IsEqualApprox(pos))
+                    GameLogger.Critical($"Point index collision: idx={index} stored={existing.Position} requested={pos}");
+#endif
                 return existing;
             }
             else

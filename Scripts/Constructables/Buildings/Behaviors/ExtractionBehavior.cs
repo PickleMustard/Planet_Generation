@@ -87,7 +87,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
 
     // ── Pending inputs (for WaitingForInputs → Manufacturing transition) ─────
 
-    private Dictionary<string, float> _pendingInputs = new();
+    private Dictionary<string, int> _pendingInputs = new();
 
     // ── IBuildingBehavior lifecycle ─────────────────────────────────────────
 
@@ -277,11 +277,31 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
             }
         }
 
+        // Conditional outputs: evaluate against the building's recipe context
+        // (temperature/moisture/elevation/atmosphere/specifier) and add any that
+        // fire additively. Tag-prefixed conditional outputs use the cycle's
+        // pre-resolved tag mappings, matching the base-output logic above.
+        if (recipe.ConditionalOutputs.Count > 0)
+        {
+            var ctx = _owner.BuildRecipeContext();
+            foreach (var co in recipe.ConditionalOutputs)
+            {
+                if (!co.EvaluateBool(ctx))
+                    continue;
+                AddConditionalExtractionOutput(co.Resource, co.Amount, db);
+            }
+        }
+
         // Withdraw inputs from InputStorage, tracking pending for shortages.
-        var missingInputs = new Dictionary<string, float>();
+        // Recipe input amounts are floored to whole units — resources consume as integers.
+        var missingInputs = new Dictionary<string, int>();
         foreach (var input in recipe.InputResources)
         {
             if (input.Key == "power")
+                continue;
+
+            int amountNeeded = Mathf.FloorToInt(input.Value);
+            if (amountNeeded <= 0)
                 continue;
 
             string? concreteId;
@@ -290,7 +310,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                 concreteId = PickTaggedResourceFromStorage(_owner, RecipeDefinition.GetTagName(input.Key), _maxResourceTier);
                 if (concreteId == null)
                 {
-                    missingInputs[input.Key] = input.Value;
+                    missingInputs[input.Key] = amountNeeded;
                     continue;
                 }
             }
@@ -304,18 +324,14 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                     {
                         GameLogger.Warning(
                             $"ExtractionBehavior: blocking literal input '{concreteId}' (tier {inDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
-                        missingInputs[input.Key] = input.Value;
+                        missingInputs[input.Key] = amountNeeded;
                         continue;
                     }
                 }
             }
 
-            float amountNeeded = input.Value;
-            if (amountNeeded <= 0)
-                continue;
-
-            float available = _owner.InputStorage.GetQuantity(concreteId);
-            float toWithdraw = Mathf.Min(available, amountNeeded);
+            int available = _owner.InputStorage.GetQuantity(concreteId);
+            int toWithdraw = System.Math.Min(available, amountNeeded);
             if (toWithdraw > 0)
                 _owner.InputStorage.Withdraw(concreteId, toWithdraw);
 
@@ -327,7 +343,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
         if (missingInputs.Count > 0)
         {
             State = ManufacturingState.WaitingForInputs;
-            _pendingInputs = new Dictionary<string, float>(missingInputs);
+            _pendingInputs = new Dictionary<string, int>(missingInputs);
         }
         else
         {
@@ -420,7 +436,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
         foreach (var kvp in quantities)
         {
             string resourceId = kvp.Key;
-            float amountAvailable = kvp.Value;
+            int amountAvailable = kvp.Value;
             if (amountAvailable <= 0)
                 continue;
 
@@ -431,7 +447,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                 if (node.Link == null)
                     continue;
 
-                float enqueued = node.Link.TryEnqueueAmount(resourceId, amountAvailable);
+                int enqueued = node.Link.TryEnqueueAmount(resourceId, amountAvailable);
                 if (enqueued > 0)
                 {
                     owner.OutputStorage.Withdraw(resourceId, enqueued);
@@ -471,11 +487,11 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
         if (_pendingInputs.Count == 0)
             return;
 
-        var stillMissing = new Dictionary<string, float>();
+        var stillMissing = new Dictionary<string, int>();
         foreach (var kvp in _pendingInputs)
         {
             string key = kvp.Key;
-            float needed = kvp.Value;
+            int needed = kvp.Value;
 
             string? concreteId;
             if (RecipeDefinition.IsTagInput(key))
@@ -492,8 +508,8 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                 concreteId = key;
             }
 
-            float inStorage = owner.InputStorage.GetQuantity(concreteId);
-            float toWithdraw = Mathf.Min(inStorage, needed);
+            int inStorage = owner.InputStorage.GetQuantity(concreteId);
+            int toWithdraw = System.Math.Min(inStorage, needed);
             if (toWithdraw > 0)
             {
                 owner.InputStorage.Withdraw(concreteId, toWithdraw);
@@ -531,7 +547,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
             return null;
 
         string? best = null;
-        float bestQty = 0f;
+        int bestQty = 0;
         foreach (var kvp in quantities)
         {
             if (!db.TryGetResource(kvp.Key, out var def) || def?.Tags == null)
@@ -540,7 +556,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                 continue;
             if (def.ResourceTier > maxTier)
                 continue;
-            float qty = kvp.Value;
+            int qty = kvp.Value;
             if (qty > bestQty
                 || (qty == bestQty && best != null && string.CompareOrdinal(kvp.Key, best) < 0))
             {
@@ -654,5 +670,41 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
         _currentRecipe = null;
         WorkProgress = 0f;
         WorkRequired = 0f;
+    }
+
+    /// <summary>
+    /// Mirrors the base-output add-with-tier-guard for conditional outputs.
+    /// Tag-prefixed keys reuse the cycle's pre-resolved tag map; literal keys
+    /// stack additively on whatever the base recipe already enqueued.
+    /// </summary>
+    private void AddConditionalExtractionOutput(string key, float amount, ResourceDatabase? db)
+    {
+        if (string.IsNullOrEmpty(key) || key == "power")
+            return;
+
+        if (RecipeDefinition.IsTagInput(key))
+        {
+            if (!ResolvedTagOutputs.TryGetValue(key, out var resourceId) || resourceId == null)
+            {
+                GameLogger.Warning(
+                    $"ExtractionBehavior: conditional tag output '{key}' not pre-resolved on recipe '{_currentRecipe?.RecipeId}'");
+                return;
+            }
+            float weight = AvailableDeposits.GetValueOrDefault(resourceId);
+            float scaled = amount * weight * EnvScaleFactor;
+            ExpectedOutputs[resourceId] = ExpectedOutputs.GetValueOrDefault(resourceId) + scaled;
+            return;
+        }
+
+        if (db != null && db.IsLoaded && db.TryGetResource(key, out var def) && def != null
+            && def.ResourceTier > _maxResourceTier)
+        {
+            GameLogger.Warning(
+                $"ExtractionBehavior: skipping conditional output '{key}' (tier {def.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
+            return;
+        }
+
+        float scaledLit = amount * EnvScaleFactor;
+        ExpectedOutputs[key] = ExpectedOutputs.GetValueOrDefault(key) + scaledLit;
     }
 }

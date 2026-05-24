@@ -91,11 +91,7 @@ public partial class ResourceListItem : HBoxContainer
     /// </summary>
     private Texture2D? LoadResourceIcon(ResourceDefinition? definition)
     {
-        if (definition?.Icon?.IsValid == true)
-        {
-            return definition.Icon.SmallTexture ?? definition.Icon.MediumTexture;
-        }
-        return null;
+        return definition?.Icon?.Texture;
     }
 
     /// <summary>

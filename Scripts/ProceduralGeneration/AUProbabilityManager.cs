@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Godot.Collections;
@@ -15,6 +16,35 @@ public class AUProbabilityManager
     public AUProbabilityManager(RandomNumberGenerator rng)
     {
         _rng = rng;
+    }
+
+    /// <summary>
+    /// Phase 7: roll a subtype id from a SystemTemplate <c>subtype_weights</c> map.
+    /// Caller already has the family-typed weights; returns the chosen id, or
+    /// <paramref name="fallback"/> when the map is empty / all-zero.
+    /// </summary>
+    public string SelectFromWeights(IReadOnlyDictionary<string, float> weights, string fallback = "")
+    {
+        if (weights == null || weights.Count == 0) return fallback;
+
+        float total = 0f;
+        foreach (var kvp in weights)
+        {
+            if (kvp.Value > 0) total += kvp.Value;
+        }
+        if (total <= 0f) return fallback;
+
+        float roll = _rng.Randf() * total;
+        float cumulative = 0f;
+        string? last = null;
+        foreach (var kvp in weights)
+        {
+            if (kvp.Value <= 0) continue;
+            cumulative += kvp.Value;
+            last = kvp.Key;
+            if (roll <= cumulative) return kvp.Key;
+        }
+        return last ?? fallback;
     }
 
     /// <summary>

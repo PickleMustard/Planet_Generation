@@ -26,9 +26,14 @@ public partial class SlipsListView : Control
     private TransferStationBehavior? _behavior;
     private string _originBuildingId = "";
     private const float RuntimeTickSeconds = 0.25f;
+    private const int CompletedOneTimeCap = 6;
     private Timer? _runtimeTimer;
     private readonly Dictionary<string, SlipCard> _cardsByScheduleId = new();
     private readonly Dictionary<string, SlipCardData> _dataByScheduleId = new();
+    private readonly Dictionary<string, SlipCard> _cardsByOrderId = new();
+    private readonly Dictionary<string, TransferOrder> _activeOneTimeOrders = new();
+    private readonly Dictionary<string, SlipCardData> _activeOneTimeData = new();
+    private readonly List<SlipCardData> _completedOneTimeHistory = new();
 
     public override void _Ready()
     {
@@ -56,14 +61,41 @@ public partial class SlipsListView : Control
 
     private void OnRuntimeTick()
     {
-        if (_behavior == null || _cardsByScheduleId.Count == 0) return;
-        var schedules = _behavior.GetSchedulesForOrigin(_originBuildingId);
-        foreach (var schedule in schedules)
+        if (_behavior == null) return;
+
+        if (_cardsByScheduleId.Count > 0)
         {
-            if (!_cardsByScheduleId.TryGetValue(schedule.ScheduleId, out var card)) continue;
-            if (!_dataByScheduleId.TryGetValue(schedule.ScheduleId, out var data)) continue;
-            SlipDataBuilder.ApplyRuntime(data, schedule, _behavior);
-            card.UpdateRuntime(data.Status, data.ProgressFraction, data.ProgressLabel, data.StatusLabel);
+            var schedules = _behavior.GetSchedulesForOrigin(_originBuildingId);
+            foreach (var schedule in schedules)
+            {
+                if (!_cardsByScheduleId.TryGetValue(schedule.ScheduleId, out var card)) continue;
+                if (!_dataByScheduleId.TryGetValue(schedule.ScheduleId, out var data)) continue;
+                SlipDataBuilder.ApplyRuntime(data, schedule, _behavior);
+                card.UpdateRuntime(data.Status, data.ProgressFraction, data.ProgressLabel, data.StatusLabel);
+            }
+        }
+
+        if (_cardsByOrderId.Count > 0)
+        {
+            var stillActive = new HashSet<string>();
+            foreach (var active in _behavior.GetActiveTransfers())
+            {
+                var order = active.Order;
+                if (order.SourceScheduleId != null) continue;
+                stillActive.Add(order.OrderId);
+                if (!_cardsByOrderId.TryGetValue(order.OrderId, out var card)) continue;
+                if (!_activeOneTimeData.TryGetValue(order.OrderId, out var data)) continue;
+                _activeOneTimeOrders[order.OrderId] = order;
+                SlipDataBuilder.ApplyOrderRuntime(data, order, completed: false);
+                card.UpdateRuntime(data.Status, data.ProgressFraction, data.ProgressLabel, data.StatusLabel);
+            }
+
+            bool sawDisappearance = false;
+            foreach (var prevId in _activeOneTimeOrders.Keys)
+            {
+                if (!stillActive.Contains(prevId)) { sawDisappearance = true; break; }
+            }
+            if (sawDisappearance) Refresh();
         }
     }
 
@@ -200,6 +232,7 @@ public partial class SlipsListView : Control
         foreach (var c in _cardGrid.GetChildren()) c.QueueFree();
         _cardsByScheduleId.Clear();
         _dataByScheduleId.Clear();
+        _cardsByOrderId.Clear();
 
         if (_behavior == null)
         {
@@ -207,26 +240,23 @@ public partial class SlipsListView : Control
             return;
         }
 
-        var schedules = _behavior.GetSchedulesForOrigin(_originBuildingId);
-        if (schedules.Count == 0)
-        {
-            ShowEmpty("No slips on file. Tap ＋ Add Route to begin a manifest.");
-            UpdateSummary(0);
-            return;
-        }
-
         var resourceDb = ResourceDatabase.Instance;
+        var schedules = _behavior.GetSchedulesForOrigin(_originBuildingId);
+
+        // Promote any one-time orders that disappeared since last refresh into history.
+        SyncOneTimeOrders();
+
+        int totalCards = 0;
+
         var ordered = new List<TransferSchedule>(schedules);
         ordered.Sort((a, b) => a.Priority.CompareTo(b.Priority));
-
         for (int i = 0; i < ordered.Count; i++)
         {
             var schedule = ordered[i];
             schedule.Priority = i + 1;
             var data = SlipDataBuilder.BuildFromSchedule(schedule, _behavior, resourceDb);
 
-            var card = new SlipCard();
-            card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            var card = new SlipCard { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             card.EditRequested += id => EmitSignal(SignalName.EditSlipRequested, id);
             card.DeleteRequested += id => EmitSignal(SignalName.DeleteSlipRequested, id);
             _cardGrid!.AddChild(card);
@@ -234,13 +264,86 @@ public partial class SlipsListView : Control
 
             _cardsByScheduleId[schedule.ScheduleId] = card;
             _dataByScheduleId[schedule.ScheduleId] = data;
-
-            var indexRow = BuildIndexRow(data);
-            _sidebarList!.AddChild(indexRow);
+            _sidebarList!.AddChild(BuildIndexRow(data));
+            totalCards++;
         }
 
-        UpdateSummary(ordered.Count);
+        int oneTimeIndex = 1;
+        foreach (var kvp in _activeOneTimeOrders)
+        {
+            var order = kvp.Value;
+            var data = SlipDataBuilder.BuildFromOrder(order, _behavior, resourceDb, completed: false, displayPriority: oneTimeIndex);
+            _activeOneTimeData[order.OrderId] = data;
+
+            var card = new SlipCard { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            _cardGrid!.AddChild(card);
+            card.Bind(data);
+
+            _cardsByOrderId[order.OrderId] = card;
+            _sidebarList!.AddChild(BuildIndexRow(data));
+            oneTimeIndex++;
+            totalCards++;
+        }
+
+        foreach (var data in _completedOneTimeHistory)
+        {
+            data.Priority = oneTimeIndex;
+            var card = new SlipCard { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            _cardGrid!.AddChild(card);
+            card.Bind(data);
+            _sidebarList!.AddChild(BuildIndexRow(data));
+            oneTimeIndex++;
+            totalCards++;
+        }
+
+        if (totalCards == 0)
+        {
+            ShowEmpty("No slips on file. Tap ＋ Add Route to begin a manifest.");
+            UpdateSummary(0);
+            return;
+        }
+
+        UpdateSummary(totalCards);
         OnVisibilityChanged();
+    }
+
+    private void SyncOneTimeOrders()
+    {
+        if (_behavior == null) return;
+
+        var currentActive = new Dictionary<string, TransferOrder>();
+        foreach (var active in _behavior.GetActiveTransfers())
+        {
+            var order = active.Order;
+            if (order.SourceScheduleId != null) continue;
+            if (order.OriginBuildingId != _originBuildingId) continue;
+            currentActive[order.OrderId] = order;
+        }
+
+        var disappeared = new List<string>();
+        foreach (var prevId in _activeOneTimeOrders.Keys)
+            if (!currentActive.ContainsKey(prevId)) disappeared.Add(prevId);
+
+        foreach (var orderId in disappeared)
+        {
+            if (_activeOneTimeData.TryGetValue(orderId, out var data))
+            {
+                data.IsCompleted = true;
+                data.Status = SlipStatus.Waiting;
+                data.ProgressFraction = 1f;
+                data.ProgressLabel = "delivered";
+                data.StatusLabel = "delivered";
+                data.State = StateDot.DotState.Idle;
+                _completedOneTimeHistory.Add(data);
+                while (_completedOneTimeHistory.Count > CompletedOneTimeCap)
+                    _completedOneTimeHistory.RemoveAt(0);
+            }
+            _activeOneTimeOrders.Remove(orderId);
+            _activeOneTimeData.Remove(orderId);
+        }
+
+        foreach (var kvp in currentActive)
+            _activeOneTimeOrders[kvp.Key] = kvp.Value;
     }
 
     private Control BuildIndexRow(SlipCardData data)
@@ -274,9 +377,10 @@ public partial class SlipsListView : Control
         rowBox.AddThemeConstantOverride("separation", 8);
         row.AddChild(rowBox);
 
+        string prefix = data.IsOneTime ? "OT" : "RT";
         var num = new Label
         {
-            Text = $"RT-{data.Priority:D3}",
+            Text = $"{prefix}-{data.Priority:D3}",
             ThemeTypeVariation = "LabelMono",
         };
         num.AddThemeFontSizeOverride("font_size", 10);

@@ -15,13 +15,13 @@ public class ResourcePackageTest
         var package = new ResourcePackage
         {
             ResourceId = "iron_ore",
-            Quantity = 42f,
+            Quantity = 42,
             Progress = 0.5f,
             Stuck = true
         };
 
         AssertThat(package.ResourceId).IsEqual("iron_ore");
-        AssertThat(package.Quantity).IsEqual(42f);
+        AssertThat(package.Quantity).IsEqual(42);
         AssertThat(package.Progress).IsEqual(0.5f);
         AssertThat(package.Stuck).IsTrue();
         AssertThat(package.Link).IsNull();
@@ -33,7 +33,7 @@ public class ResourcePackageTest
         var package = new ResourcePackage();
 
         AssertThat(package.ResourceId).IsEqual(string.Empty);
-        AssertThat(package.Quantity).IsEqual(0f);
+        AssertThat(package.Quantity).IsEqual(0);
         AssertThat(package.Progress).IsEqual(0f);
         AssertThat(package.Stuck).IsFalse();
         AssertThat(package.IsComplete).IsFalse();
@@ -101,7 +101,7 @@ public class ResourcePackageTest
     [TestCase]
     public void TryDeposit_NullLink_ReturnsFalse()
     {
-        var package = new ResourcePackage { ResourceId = "iron_ore", Quantity = 10f };
+        var package = new ResourcePackage { ResourceId = "iron_ore", Quantity = 10 };
 
         bool result = package.TryDeposit();
 
@@ -115,7 +115,7 @@ public class ResourcePackageTest
         var package = new ResourcePackage
         {
             ResourceId = "iron_ore",
-            Quantity = 10f,
+            Quantity = 10,
             Link = link
         };
 
@@ -132,7 +132,7 @@ public class ResourcePackageTest
         var package = new ResourcePackage
         {
             ResourceId = "iron_ore",
-            Quantity = 10f,
+            Quantity = 10,
             Link = link
         };
 
@@ -151,7 +151,7 @@ public class ResourcePackageTest
         var package = new ResourcePackage
         {
             ResourceId = "iron_ore",
-            Quantity = 25f,
+            Quantity = 25,
             Link = link
         };
 
@@ -159,7 +159,7 @@ public class ResourcePackageTest
 
         AssertThat(result).IsTrue();
         AssertThat(building.InputStorage.GetQuantity("iron_ore") > 0).IsTrue();
-        AssertThat(building.InputStorage.GetQuantity("iron_ore")).IsEqual(25f);
+        AssertThat(building.InputStorage.GetQuantity("iron_ore")).IsEqual(25);
     }
 
     [TestCase]
@@ -173,13 +173,13 @@ public class ResourcePackageTest
         var package1 = new ResourcePackage
         {
             ResourceId = "copper_ore",
-            Quantity = 10f,
+            Quantity = 10,
             Link = link
         };
         var package2 = new ResourcePackage
         {
             ResourceId = "copper_ore",
-            Quantity = 15f,
+            Quantity = 15,
             Link = link
         };
 
@@ -188,6 +188,6 @@ public class ResourcePackageTest
 
         AssertThat(result1).IsTrue();
         AssertThat(result2).IsTrue();
-        AssertThat(building.InputStorage.GetQuantity("copper_ore")).IsEqual(25f);
+        AssertThat(building.InputStorage.GetQuantity("copper_ore")).IsEqual(25);
     }
 }

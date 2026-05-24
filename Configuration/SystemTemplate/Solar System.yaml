@@ -1,130 +1,159 @@
 dominant:
-  - type: Star
-    name: sol
-    template:
-      mass: 500000
-      size: 500
-      position: [0, 0, 0]
-      velocity: [0, 0, 0]
-    central_parameters:
-      inclination: 0
-      starting_angle: 0
-    base_mesh:
-      subdivisions: 1
-      vertices_per_edge: [[12, 17]]
-      num_abberations: 0
-      num_deformation_cycles: 0
-
+- type: Star
+  name: sol
+  template:
+    mass: 500000
+    size: 500
+    position:
+    - 0
+    - 0
+    - 0
+    velocity:
+    - 0
+    - 0
+    - 0
+  central_parameters:
+    inclination: 0
+    starting_angle: 0
+  subtype_weights:
+    subtype_star_binary_primary: 0.125
+    subtype_star_blue_supergiant: 0.125
+    subtype_star_main_sequence: 0.125
+    subtype_star_red_dwarf: 0.125
+    subtype_star_red_giant: 0.125
+    subtype_star_variable_star: 0.125
+    subtype_star_white_dwarf: 0.125
+    subtype_star_yellow_dwarf: 0.125
 belts:
-  - type: AsteroidBelt
-    ring_apogee: 8000
-    ring_perigee: 250
-    ring_velocity: [0, 1, 0]
-    size_min: 5
-    size_max: 20
-    mass_min: 10
-    mass_max: 30
-    lower_range: 10
-    upper_range: 15
-    grouping: Balanced
-    orbital_center_index: 0
-
+- type: AsteroidBelt
+  ring_apogee: 8000
+  ring_perigee: 250
+  ring_velocity:
+  - 0
+  - 1
+  - 0
+  size_min: 5
+  size_max: 20
+  mass_min: 10
+  mass_max: 30
+  lower_range: 10
+  upper_range: 15
+  grouping: Balanced
+  orbital_center_index: 0
+  subtype_weights:
+    subtype_belt_asteroid_belt: 0.1667
+    subtype_belt_debris_disk: 0.1667
+    subtype_belt_dust_ring: 0.1667
+    subtype_belt_ice_belt: 0.1667
+    subtype_belt_resonant_belt: 0.1667
+    subtype_belt_shepherd_belt: 0.1667
 planetary:
-  - type: RockyPlanet
-    name: terra
+- type: RockyPlanet
+  name: terra
+  template:
+    mass: 1000
+    size: 150
+  orbital_parameters:
+    apogee: 800
+    perigee: 400
+    starting_angle: 0
+    vertical_offset: 0
+    orbital_center_index: 0
+    parent_body: sol
+  subtype_weights:
+    subtype_rocky_cool: 0.1111
+    subtype_rocky_desert: 0.1111
+    subtype_rocky_ice: 0.1111
+    subtype_rocky_ocean: 0.1111
+    subtype_rocky_rusted: 0.1111
+    subtype_rocky_scoured: 0.1111
+    subtype_rocky_temperate: 0.1111
+    subtype_rocky_tropical: 0.1111
+    subtype_rocky_volcanic: 0.1111
+  satellites:
+  - type: Moon
+    name: luna
     template:
-      mass: 1000
-      size: 150
-    orbital_parameters:
-      apogee: 800
-      perigee: 400
+      apogee: 200
+      perigee: 100
       starting_angle: 0
       vertical_offset: 0
-      orbital_center_index: 0
-      parent_body: sol
-    base_mesh:
-      subdivisions: 2
-      vertices_per_edge: [[5, 7], [3, 5]]
-      num_abberations: 6
-      num_deformation_cycles: 6
-    tectonics:
-      num_continents: [25, 47]
-      stress_scale: [3.0, 8.0]
-      shear_scale: [0.2, 1.7]
-      max_propagation_distance: [0.01, 0.1]
-      propagation_falloff: [0.8, 1.5]
-      inactive_stress_threshold: [0.01, 0.5]
-      general_height_scale: [0.8, 1.2]
-      general_shear_scale: [0.8, 1.2]
-      general_compression_scale: [20.0, 40.0]
-      general_transform_scale: [1.1, 1.4]
-    satellites:
-      - type: Moon
-        name: luna
-        template:
-          apogee: 200
-          perigee: 100
-          starting_angle: 0
-          vertical_offset: 0
-          mass: 80
-          size: 40
-        base_mesh:
-          subdivisions: 1
-          vertices_per_edge: [[3, 5]]
-          num_abberations: 0
-          num_deformation_cycles: 0
-        spherical_harmonics_settings:
-          amplitude_range: [0.3, 0.7]
-        noise_settings:
-          amplitude_range: [0.5, 1.2]
-          scaling_range: [0.2, 1.7]
-          octave_range: [2, 4]
-      - type: Moon
-        name: selene
-        template:
-          apogee: 200
-          perigee: 100
-          starting_angle: 180
-          vertical_offset: 0
-          mass: 80
-          size: 40
-        base_mesh:
-          subdivisions: 1
-          vertices_per_edge: [[3, 5]]
-          num_abberations: 0
-          num_deformation_cycles: 0
-        spherical_harmonics_settings:
-          amplitude_range: [0.3, 0.7]
-        noise_settings:
-          amplitude_range: [0.5, 1.2]
-          scaling_range: [0.2, 1.7]
-          octave_range: [2, 4]
-
-  - type: GasGiant
-    name: jupiter
+      mass: 80
+      size: 40
+    subtype_weights:
+      subtype_satellite_captured_asteroid: 0.0769
+      subtype_satellite_carbonaceous: 0.0769
+      subtype_satellite_encke_type: 0.0769
+      subtype_satellite_halley_type: 0.0769
+      subtype_satellite_ice_asteroid: 0.0769
+      subtype_satellite_icy_moon: 0.0769
+      subtype_satellite_long_period: 0.0769
+      subtype_satellite_metallic: 0.0769
+      subtype_satellite_rocky_moon: 0.0769
+      subtype_satellite_short_period: 0.0769
+      subtype_satellite_silicate: 0.0769
+      subtype_satellite_tidally_locked: 0.0769
+      subtype_satellite_volcanic_moon: 0.0769
+    noise_settings:
+      amplitude_range:
+      - 0.5
+      - 1.2
+      scaling_range:
+      - 0.2
+      - 1.7
+      octave_range:
+      - 2
+      - 4
+  - type: Moon
+    name: selene
     template:
-      mass: 17000
-      size: 350
-    orbital_parameters:
-      apogee: 1400
-      perigee: 700
-      starting_angle: 90
+      apogee: 200
+      perigee: 100
+      starting_angle: 180
       vertical_offset: 0
-      orbital_center_index: 0
-      parent_body: sol
-    base_mesh:
-      subdivisions: 1
-      vertices_per_edge: [[8, 12]]
-      num_abberations: 2
-      num_deformation_cycles: 2
-    tectonics:
-      num_continents: [3, 8]
-      stress_scale: [1.0, 2.0]
-      shear_scale: [0.5, 1.5]
-      max_propagation_distance: [0.02, 0.08]
-      propagation_falloff: [1.0, 2.0]
-      inactive_stress_threshold: [0.02, 0.08]
-      general_height_scale: [0.9, 1.1]
-      general_shear_scale: [0.9, 1.1]
-      general_compression_scale: [1.2, 1.8]
-      general_transform_scale: [1.0, 1.3]
+      mass: 80
+      size: 40
+    subtype_weights:
+      subtype_satellite_captured_asteroid: 0.0769
+      subtype_satellite_carbonaceous: 0.0769
+      subtype_satellite_encke_type: 0.0769
+      subtype_satellite_halley_type: 0.0769
+      subtype_satellite_ice_asteroid: 0.0769
+      subtype_satellite_icy_moon: 0.0769
+      subtype_satellite_long_period: 0.0769
+      subtype_satellite_metallic: 0.0769
+      subtype_satellite_rocky_moon: 0.0769
+      subtype_satellite_short_period: 0.0769
+      subtype_satellite_silicate: 0.0769
+      subtype_satellite_tidally_locked: 0.0769
+      subtype_satellite_volcanic_moon: 0.0769
+    noise_settings:
+      amplitude_range:
+      - 0.5
+      - 1.2
+      scaling_range:
+      - 0.2
+      - 1.7
+      octave_range:
+      - 2
+      - 4
+- type: GasGiant
+  name: jupiter
+  template:
+    mass: 17000
+    size: 350
+  orbital_parameters:
+    apogee: 1400
+    perigee: 700
+    starting_angle: 90
+    vertical_offset: 0
+    orbital_center_index: 0
+    parent_body: sol
+  subtype_weights:
+    subtype_gas_giant_cold_jupiter: 0.1429
+    subtype_gas_giant_failed_star: 0.1429
+    subtype_gas_giant_hot_jupiter: 0.1429
+    subtype_gas_giant_puffy_giant: 0.1429
+    subtype_gas_giant_ringed_giant: 0.1429
+    subtype_gas_giant_standard_jupiter: 0.1429
+    subtype_gas_giant_stormy_giant: 0.1429

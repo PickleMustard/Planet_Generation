@@ -10,6 +10,19 @@ namespace Tests.ResourceGeneration;
 [TestSuite]
 public class ResourceDatabaseTest
 {
+    [BeforeTest]
+    public void Setup()
+    {
+        var db = ResourceDatabase.Instance;
+        if (db.IsLoaded) db.Unload();
+    }
+
+    private static System.Type? ThrowsType(System.Action action)
+    {
+        try { action(); return null; }
+        catch (System.Exception ex) { return ex.GetType(); }
+    }
+
     [TestCase]
     [RequireGodotRuntime]
     public void DatabaseLoading()
@@ -51,7 +64,7 @@ public class ResourceDatabaseTest
         AssertThat(ironOre.ResourceType).IsEqual("ore");
 
         AssertThat(db.TryGetResource("water", out var water)).IsTrue();
-        AssertThat(water!.ResourceType).IsEqual("fuel");
+        AssertThat(water!.ResourceType).IsEqual("fluid");
     }
 
     [TestCase]
@@ -98,14 +111,9 @@ public class ResourceDatabaseTest
         AssertThat(db.IsLoaded).IsFalse();
 
         // Attempting to access data should throw DatabaseNotLoadedException
-        AssertThat(() => db.GetAllResources())
-            .Throws<DatabaseNotLoadedException>();
-
-        AssertThat(() => db.TryGetResource("iron_ore", out _))
-            .Throws<DatabaseNotLoadedException>();
-
-        AssertThat(() => db.ValidateResourceExists("iron_ore"))
-            .Throws<DatabaseNotLoadedException>();
+        AssertThat(ThrowsType(() => db.GetAllResources())).IsEqual(typeof(DatabaseNotLoadedException));
+        AssertThat(ThrowsType(() => db.TryGetResource("iron_ore", out _))).IsEqual(typeof(DatabaseNotLoadedException));
+        AssertThat(ThrowsType(() => db.ValidateResourceExists("iron_ore"))).IsEqual(typeof(DatabaseNotLoadedException));
     }
 
     [TestCase]
@@ -154,6 +162,6 @@ public class ResourceDatabaseTest
         var workPackage = db.CreateLoadPackage();
         AssertThat(workPackage).IsNotNull();
         AssertThat(workPackage.Name).Contains("Load_ResourceDatabase");
-        AssertThat(workPackage.Steps).Count().IsEqual(1);
+        AssertThat(workPackage.Steps).HasSize(1);
     }
 }

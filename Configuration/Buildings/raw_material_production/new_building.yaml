@@ -20,3 +20,5 @@ buildings:
         production_speed: 1
       - behavior_id: PowerConsumerBehavior
         base_draw: 3
+    visual:
+      shape_id: small_manufacturing

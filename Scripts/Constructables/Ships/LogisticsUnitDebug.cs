@@ -49,15 +49,15 @@ public partial class LogisticsUnit
         }
 
         string resourceId = args[0];
-        if (!float.TryParse(args[1], out float quantity))
+        if (!int.TryParse(args[1], out int quantity))
         {
-            ctx.WriteError($"Invalid quantity: '{args[1]}'. Must be a number.");
+            ctx.WriteError($"Invalid quantity: '{args[1]}'. Must be a whole number.");
             return 1;
         }
 
         if (LoadCargo(resourceId, quantity))
         {
-            float currentQty = _cargo?.GetResourceQuantity(resourceId) ?? 0;
+            int currentQty = _cargo?.GetResourceQuantity(resourceId) ?? 0;
             ctx.WriteLine(
                 $"[color=green]Added {quantity} {resourceId}. Current: {currentQty}[/color]"
             );
@@ -86,19 +86,19 @@ public partial class LogisticsUnit
         }
 
         string resourceId = args[0];
-        float quantity = float.MaxValue; // Remove all by default
+        int quantity = int.MaxValue; // Remove all by default
 
         if (args.Length > 1)
         {
-            if (!float.TryParse(args[1], out quantity))
+            if (!int.TryParse(args[1], out quantity))
             {
-                ctx.WriteError($"Invalid quantity: '{args[1]}'. Must be a number.");
+                ctx.WriteError($"Invalid quantity: '{args[1]}'. Must be a whole number.");
                 return 1;
             }
         }
 
         // Get current quantity first
-        float currentQty = _cargo?.GetResourceQuantity(resourceId) ?? 0;
+        int currentQty = _cargo?.GetResourceQuantity(resourceId) ?? 0;
         if (currentQty <= 0)
         {
             ctx.WriteError($"Resource '{resourceId}' not found in cargo.");
@@ -106,11 +106,11 @@ public partial class LogisticsUnit
         }
 
         // If quantity is MaxValue, remove all
-        float removeQty = quantity == float.MaxValue ? currentQty : Math.Min(quantity, currentQty);
+        int removeQty = quantity == int.MaxValue ? currentQty : System.Math.Min(quantity, currentQty);
 
         if (UnloadCargo(resourceId, removeQty))
         {
-            float remaining = _cargo?.GetResourceQuantity(resourceId) ?? 0;
+            int remaining = _cargo?.GetResourceQuantity(resourceId) ?? 0;
             ctx.WriteLine(
                 $"[color=green]Removed {removeQty} {resourceId}. Remaining: {remaining}[/color]"
             );
@@ -937,7 +937,7 @@ public partial class LogisticsUnit
             {
                 case "--pickup" when i + 1 < args.Length:
                     pickup ??= new CargoManifest();
-                    if (TryParseResourceArg(args[++i], out string pRes, out float pQty))
+                    if (TryParseResourceArg(args[++i], out string pRes, out int pQty))
                         pickup.LoadResource(pRes, pQty);
                     else
                         ctx.WriteWarning($"Invalid pickup format: {args[i]} (expected res:qty)");
@@ -945,7 +945,7 @@ public partial class LogisticsUnit
 
                 case "--dropoff" when i + 1 < args.Length:
                     dropoff ??= new CargoManifest();
-                    if (TryParseResourceArg(args[++i], out string dRes, out float dQty))
+                    if (TryParseResourceArg(args[++i], out string dRes, out int dQty))
                         dropoff.LoadResource(dRes, dQty);
                     else
                         ctx.WriteWarning($"Invalid dropoff format: {args[i]} (expected res:qty)");
@@ -1120,17 +1120,17 @@ public partial class LogisticsUnit
         return 0;
     }
 
-    private static bool TryParseResourceArg(string arg, out string resourceId, out float quantity)
+    private static bool TryParseResourceArg(string arg, out string resourceId, out int quantity)
     {
         resourceId = string.Empty;
-        quantity = 0f;
+        quantity = 0;
 
         int colonIndex = arg.LastIndexOf(':');
         if (colonIndex <= 0 || colonIndex >= arg.Length - 1)
             return false;
 
         resourceId = arg[..colonIndex];
-        return float.TryParse(arg[(colonIndex + 1)..], out quantity) && quantity > 0f;
+        return int.TryParse(arg[(colonIndex + 1)..], out quantity) && quantity > 0;
     }
 }
 #endif

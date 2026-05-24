@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Godot;
 using Debug;
 using UtilityLibrary;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.LinkProfileEditor;
 
@@ -134,8 +135,9 @@ public partial class LinkProfileEditorModule : BaseDebugModule
         {
             LinkProfileEditorYamlIO.WriteAll(ConfigPath, _model.Entries);
             _model.LoadFromDisk();
+            int reloaded = EditorDatabaseReloader.ReloadAll("LinkProfileDatabase");
             RefreshCards();
-            ShowFeedback("Saved successfully!");
+            ShowFeedback($"Saved + reloaded {reloaded} DBs.");
         }
         catch (Exception ex)
         {

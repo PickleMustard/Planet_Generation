@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Constructables;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.SubtypeSystem;
 using ProceduralGeneration.TextureGeneration;
 using Structures;
 using Structures.Enums;
@@ -100,6 +101,14 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     private Vector3 _savedForce;
 
     public BodyClassification Classification { get; set; } = null!;
+
+    /// <summary>
+    /// Deterministic seed used by <see cref="ProceduralGeneration.SubtypeSystem.SubtypeGenParamResolver"/>
+    /// to roll mesh / tectonic / spherical-harmonic values inside the subtype's declared ranges.
+    /// Zero means "fall back to the global Randomizer" (non-deterministic). Set explicitly to make
+    /// repeated regenerations reproduce identical bodies (e.g. live preview reroll).
+    /// </summary>
+    public ulong BodySeed { get; set; } = 0UL;
 
     /// <summary>
     /// Atmospheric pressure in atmospheres (1.0 = Earth standard). Sampled at
@@ -604,6 +613,10 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         Action<CelestialBody, string>? onFailed = null
     )
     {
+        // Set classification before building meshParams so SubtypeGenParamResolver and
+        // ConfigureFrom both see the final value.
+        Mesh!.Classification = Classification;
+
         Godot.Collections.Dictionary meshParams = new Godot.Collections.Dictionary();
         // Check if custom mesh data is available in the body dictionary
         if (bodyDict != null)
@@ -641,7 +654,24 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             }
             // Resource generation is now handled via ResourceGenerationConfigDatabase in the mesh pipeline
         }
-        Mesh!.Classification = Classification;
+
+        // Fill in any remaining mesh / tectonic / spherical-harmonic knobs from the body's
+        // subtype ranges. Explicit overrides above take precedence (resolver skips keys that
+        // are already present). Knobs with no range declared fall through to the mesh's
+        // [Export] defaults.
+        if (Classification != null)
+        {
+            var rng = ResolveBodyRng();
+            // The Planet Generator preview scene sets _use_midpoint to render the centre of
+            // each range instead of rolling — gives a stable preview after every YAML edit.
+            bool useMidpoint = bodyDict != null
+                && bodyDict.ContainsKey("_use_midpoint")
+                && bodyDict["_use_midpoint"].AsBool();
+            SubtypeGenParamResolver.ApplyMeshParams(meshParams, Classification, rng, useMidpoint);
+            SubtypeGenParamResolver.ApplyTectonicParams(meshParams, Classification, rng, useMidpoint);
+            SubtypeGenParamResolver.ApplySphericalHarmonicsParams(meshParams, Classification, rng, useMidpoint);
+        }
+
         Mesh!.ConfigureFrom(StrDb, meshParams);
 
         Mesh.StartMeshGeneration(
@@ -962,6 +992,21 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         meshInstance.MaterialOverride = material;
 
         return meshInstance;
+    }
+
+    /// <summary>
+    /// Returns the per-body RNG used by <see cref="SubtypeGenParamResolver"/> to roll subtype
+    /// ranges. If <see cref="BodySeed"/> is non-zero the RNG is seeded from it (deterministic,
+    /// so editor re-rolls reproduce identical bodies); otherwise the global <see cref="Randomizer"/>
+    /// instance is returned (non-deterministic, system-level).
+    /// </summary>
+    private RandomNumberGenerator ResolveBodyRng()
+    {
+        if (BodySeed != 0UL)
+        {
+            return new RandomNumberGenerator { Seed = BodySeed };
+        }
+        return Randomizer.GetRandomNumberGenerator();
     }
 
     private void CalculateTectonicMeshFromParams(

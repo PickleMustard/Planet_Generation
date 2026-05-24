@@ -91,9 +91,9 @@ public partial class RecipeDisplay : HBoxContainer
 
     private Texture2D? LoadRecipeIcon(RecipeDefinition recipe)
     {
-        if (recipe.Icon?.IsValid == true)
+        if (recipe.Icon?.Texture != null)
         {
-            return recipe.Icon.LargeTexture ?? recipe.Icon.MediumTexture;
+            return recipe.Icon.Texture;
         }
 
         // Fallback: try to load from base path if defined

@@ -119,9 +119,9 @@ public partial class IconSection : VBoxContainer
         if (!string.IsNullOrEmpty(_entry.Icon.BasePath))
         {
             texture = IconDataLoader.LoadIconTexture(
-                _entry.Icon.BasePath, IconSize.Medium, _entry.IdName);
+                _entry.Icon.BasePath, _entry.IdName);
         }
-        _iconRect.Texture = texture ?? IconDataLoader.GetFallbackIcon(IconSize.Medium);
+        _iconRect.Texture = texture ?? IconDataLoader.GetFallbackIcon();
     }
 
     private void OnIconInput(InputEvent @event)

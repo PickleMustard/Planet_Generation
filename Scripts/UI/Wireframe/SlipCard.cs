@@ -19,6 +19,7 @@ public partial class SlipCard : PanelContainer
     private PaperBackground? _bg;
     private PerforatedEdge? _perf;
     private Label? _slipNumberLabel;
+    private Label? _badgeLabel;
     private Label? _destLabel;
     private Label? _destSubLabel;
     private VBoxContainer? _manifestList;
@@ -82,9 +83,23 @@ public partial class SlipCard : PanelContainer
         dispatchKicker.AddThemeColorOverride("font_color", WireColors.InkFaint);
         headerCol.AddChild(dispatchKicker);
 
+        var numberRow = new HBoxContainer();
+        numberRow.AddThemeConstantOverride("separation", 8);
+        headerCol.AddChild(numberRow);
+
         _slipNumberLabel = new Label { Text = "RT-001", ThemeTypeVariation = "LabelHand" };
         _slipNumberLabel.AddThemeFontSizeOverride("font_size", 22);
-        headerCol.AddChild(_slipNumberLabel);
+        numberRow.AddChild(_slipNumberLabel);
+
+        _badgeLabel = new Label
+        {
+            Text = "ONE-TIME",
+            ThemeTypeVariation = "LabelMono",
+            Visible = false,
+        };
+        _badgeLabel.AddThemeFontSizeOverride("font_size", 9);
+        _badgeLabel.AddThemeColorOverride("font_color", WireColors.Orange);
+        numberRow.AddChild(_badgeLabel);
 
         _slotLabel = new Label
         {
@@ -283,7 +298,12 @@ public partial class SlipCard : PanelContainer
     public void Bind(SlipCardData data)
     {
         _data = data;
-        if (_slipNumberLabel != null) _slipNumberLabel.Text = $"RT-{data.Priority:D3}";
+        string prefix = data.IsOneTime ? "OT" : "RT";
+        if (_slipNumberLabel != null) _slipNumberLabel.Text = $"{prefix}-{data.Priority:D3}";
+        if (_badgeLabel != null) _badgeLabel.Visible = data.IsOneTime;
+        if (_editButton != null) _editButton.Visible = !data.IsOneTime;
+        if (_deleteButton != null) _deleteButton.Visible = !data.IsOneTime;
+        Modulate = new Color(1f, 1f, 1f, data.IsCompleted ? 0.45f : 1f);
         if (_destLabel != null) _destLabel.Text = data.DestinationName;
         if (_destSubLabel != null)
         {

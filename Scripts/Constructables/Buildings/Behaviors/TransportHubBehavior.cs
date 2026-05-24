@@ -17,7 +17,7 @@ public partial class TransportHubBehavior : RefCounted, IBuildingBehavior
     public Building? Owner => _owner;
 
     public List<Building> Destinations { get; set; } = new();
-    public Dictionary<string, float> BulkBuffer { get; set; } = new();
+    public Dictionary<string, int> BulkBuffer { get; set; } = new();
 
     public void OnAttach(Building owner) => _owner = owner;
     public void OnRegister() { }
@@ -44,11 +44,11 @@ public partial class TransportHubBehavior : RefCounted, IBuildingBehavior
         if (exportNodes.Count == 0)
             return;
 
-        var resourcesToDrain = new Dictionary<string, float>(BulkBuffer);
+        var resourcesToDrain = new Dictionary<string, int>(BulkBuffer);
         foreach (var kvp in resourcesToDrain)
         {
             string resourceId = kvp.Key;
-            float amountRemaining = kvp.Value;
+            int amountRemaining = kvp.Value;
             if (amountRemaining <= 0)
                 continue;
 
@@ -59,7 +59,7 @@ public partial class TransportHubBehavior : RefCounted, IBuildingBehavior
                 if (node.Link == null)
                     continue;
 
-                float enqueued = node.Link.TryEnqueueAmount(resourceId, amountRemaining);
+                int enqueued = node.Link.TryEnqueueAmount(resourceId, amountRemaining);
                 if (enqueued > 0)
                 {
                     BulkBuffer[resourceId] -= enqueued;

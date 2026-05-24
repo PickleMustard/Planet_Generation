@@ -1,0 +1,55 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UI/SubtypeEditor/ResourcesTab.cs" id="1"]
+
+[node name="ResourcesTab" type="ScrollContainer" node_paths=PackedStringArray("_groupsEdit", "_addEdit", "_removeEdit")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1")
+_groupsEdit = NodePath("Root/GroupsRow/GroupsEdit")
+_addEdit = NodePath("Root/AddRow/AddEdit")
+_removeEdit = NodePath("Root/RemoveRow/RemoveEdit")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="GroupsRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GroupsLabel" type="Label" parent="Root/GroupsRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "resource_groups:"
+
+[node name="GroupsEdit" type="LineEdit" parent="Root/GroupsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AddRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AddLabel" type="Label" parent="Root/AddRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "add_resources:"
+
+[node name="AddEdit" type="LineEdit" parent="Root/AddRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RemoveRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RemoveLabel" type="Label" parent="Root/RemoveRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "remove_resources:"
+
+[node name="RemoveEdit" type="LineEdit" parent="Root/RemoveRow"]
+layout_mode = 2
+size_flags_horizontal = 3

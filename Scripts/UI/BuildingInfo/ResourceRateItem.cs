@@ -130,11 +130,7 @@ public partial class ResourceRateItem : HBoxContainer
 
     private Texture2D? LoadResourceIcon(ResourceDefinition? definition)
     {
-        if (definition?.Icon?.IsValid == true)
-        {
-            return definition.Icon.SmallTexture ?? definition.Icon.MediumTexture;
-        }
-        return null;
+        return definition?.Icon?.Texture;
     }
 
     private string FormatResourceName(string resourceId)

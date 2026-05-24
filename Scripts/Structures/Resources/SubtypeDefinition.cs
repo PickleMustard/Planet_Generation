@@ -53,6 +53,36 @@ public sealed class SubtypeDefinition
     public List<string> AddResources { get; set; } = new();
     public List<string> RemoveResources { get; set; } = new();
     public float BaseResourceWeight { get; set; } = 1.0f;
+
+    /// <summary>
+    /// Per-knob ranges for the base mesh stage (e.g. <c>subdivisions</c>,
+    /// <c>num_abberations</c>, <c>num_deformation_cycles</c>). At body generation time
+    /// the SubtypeGenParamResolver rolls a value inside each range. A missing key
+    /// means "fall through to the SystemGen type-level default."
+    /// </summary>
+    public Dictionary<string, FloatRange> MeshRanges { get; set; } = new();
+
+    /// <summary>
+    /// Per-subdivision-level vertex-count ranges. Each entry's Min/Max are integer counts
+    /// (rolled to int by the resolver). Index 0 is the first subdivision pass, index 1 the
+    /// second, etc. If the rolled <c>subdivisions</c> count exceeds the list length, extra
+    /// levels reuse the last entry — matches the legacy
+    /// <c>CalculateBaseMeshFromParams</c> clamp behavior.
+    /// </summary>
+    public List<FloatRange> VerticesPerEdgeRanges { get; set; } = new();
+
+    /// <summary>
+    /// Per-knob ranges for the tectonic stage (stress_scale, shear_scale, num_continents,
+    /// propagation params, general scales). Empty for non-tectonic families (gas/ice giants,
+    /// stars, belts).
+    /// </summary>
+    public Dictionary<string, FloatRange> TectonicRanges { get; set; } = new();
+
+    /// <summary>
+    /// Per-knob ranges for the spherical-harmonics deformer: <c>amplitude</c> plus the four
+    /// per-band scales <c>band_scale_l0</c>..<c>band_scale_l3</c>.
+    /// </summary>
+    public Dictionary<string, FloatRange> SphericalHarmonicsRanges { get; set; } = new();
 }
 
 /// <summary>

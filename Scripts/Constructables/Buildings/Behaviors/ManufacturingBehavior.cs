@@ -32,10 +32,10 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
     /// </summary>
     public bool WantsTick => State != ManufacturingState.WaitingForInputs;
 
-    public Dictionary<string, float> InputsHeld { get; private set; } = new();
+    public Dictionary<string, int> InputsHeld { get; private set; } = new();
     public Dictionary<string, float> ExpectedOutputs { get; private set; } = new();
 
-    private Dictionary<string, float> _pendingInputs = new();
+    private Dictionary<string, int> _pendingInputs = new();
 
     /// <summary>Tag input key (e.g., "tag:ore") -> concrete resource id resolved at cycle start.</summary>
     public Dictionary<string, string> ResolvedTagInputs { get; private set; } = new();
@@ -150,32 +150,32 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
 
         // Pass 2: populate ExpectedOutputs for both literal and resolvable tag outputs.
         foreach (var output in recipe.OutputResources)
+            QueueRecipeOutput(output.Key, output.Value, db);
+
+        // Pass 2b: evaluate conditional outputs against the building's recipe
+        // context and add any that fire, additively, to ExpectedOutputs.
+        if (recipe.ConditionalOutputs.Count > 0)
         {
-            if (output.Key == "power")
-                continue;
-            if (RecipeDefinition.IsTagInput(output.Key))
+            var ctx = _owner.BuildRecipeContext();
+            foreach (var co in recipe.ConditionalOutputs)
             {
-                TryResolveAndQueueTagOutput(output.Key, output.Value);
-                continue;
-            }
-            // Block literal outputs exceeding the building's max resource tier
-            if (db != null && db.IsLoaded && db.TryGetResource(output.Key, out var outDef) && outDef != null)
-            {
-                if (outDef.ResourceTier > _maxResourceTier)
-                {
-                    GameLogger.Warning(
-                        $"ManufacturingBehavior: skipping literal output '{output.Key}' (tier {outDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
+                if (!co.EvaluateBool(ctx))
                     continue;
-                }
+                QueueRecipeOutput(co.Resource, co.Amount, db);
             }
-            ExpectedOutputs[output.Key] = output.Value * EnvScaleFactor;
         }
 
         // Pass 3: withdraw inputs, recording pending (under original key) for anything short.
-        var missingInputs = new Dictionary<string, float>();
+        // Recipe input amounts are floored to whole units — resources can only be consumed
+        // as integers.
+        var missingInputs = new Dictionary<string, int>();
         foreach (var input in recipe.InputResources)
         {
             if (input.Key == "power")
+                continue;
+
+            int amountNeeded = Mathf.FloorToInt(input.Value);
+            if (amountNeeded <= 0)
                 continue;
 
             string? concreteId;
@@ -183,7 +183,7 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
             {
                 if (!ResolvedTagInputs.TryGetValue(input.Key, out concreteId))
                 {
-                    missingInputs[input.Key] = input.Value;
+                    missingInputs[input.Key] = amountNeeded;
                     continue;
                 }
             }
@@ -197,18 +197,14 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
                     {
                         GameLogger.Warning(
                             $"ManufacturingBehavior: blocking literal input '{concreteId}' (tier {inDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
-                        missingInputs[input.Key] = input.Value;
+                        missingInputs[input.Key] = amountNeeded;
                         continue;
                     }
                 }
             }
 
-            float amountNeeded = input.Value;
-            if (amountNeeded <= 0)
-                continue;
-
-            float available = _owner.InputStorage.GetQuantity(concreteId);
-            float toWithdraw = Mathf.Min(available, amountNeeded);
+            int available = _owner.InputStorage.GetQuantity(concreteId);
+            int toWithdraw = System.Math.Min(available, amountNeeded);
             if (toWithdraw > 0)
             {
                 _owner.InputStorage.Withdraw(concreteId, toWithdraw);
@@ -223,7 +219,7 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
         if (missingInputs.Count > 0)
         {
             State = ManufacturingState.WaitingForInputs;
-            _pendingInputs = new Dictionary<string, float>(missingInputs);
+            _pendingInputs = new Dictionary<string, int>(missingInputs);
         }
         else
         {
@@ -294,6 +290,36 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
     /// No-op when the discriminator is not yet available — the caller can retry once a
     /// tag input arrives.
     /// </summary>
+    /// <summary>
+    /// Routes a single recipe output (literal or tag-prefixed) through the same
+    /// tag-resolution + tier-guard logic that Pass 2 applies. Conditional outputs
+    /// add additively when the key is already present in ExpectedOutputs.
+    /// </summary>
+    private void QueueRecipeOutput(string key, float amount, ResourceDatabase? db)
+    {
+        if (key == "power")
+            return;
+        if (RecipeDefinition.IsTagInput(key))
+        {
+            TryResolveAndQueueTagOutput(key, amount);
+            return;
+        }
+        if (db != null && db.IsLoaded && db.TryGetResource(key, out var outDef) && outDef != null)
+        {
+            if (outDef.ResourceTier > _maxResourceTier)
+            {
+                GameLogger.Warning(
+                    $"ManufacturingBehavior: skipping output '{key}' (tier {outDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
+                return;
+            }
+        }
+        float scaled = amount * EnvScaleFactor;
+        if (ExpectedOutputs.TryGetValue(key, out var existing))
+            ExpectedOutputs[key] = existing + scaled;
+        else
+            ExpectedOutputs[key] = scaled;
+    }
+
     private void TryResolveAndQueueTagOutput(string tagOutputKey, float amount)
     {
         if (_owner == null)
@@ -351,10 +377,10 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
         {
             foreach (var kvp in InputsHeld)
             {
-                float held = kvp.Value;
+                int held = kvp.Value;
                 if (held <= 0)
                     continue;
-                float deposited = _owner.InputStorage.Deposit(kvp.Key, held);
+                int deposited = _owner.InputStorage.Deposit(kvp.Key, held);
                 if (deposited < held)
                 {
                     GameLogger.Warning(
@@ -462,12 +488,12 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
         if (_pendingInputs.Count == 0)
             return;
 
-        var stillMissing = new Dictionary<string, float>();
+        var stillMissing = new Dictionary<string, int>();
         bool discriminatorChanged = false;
         foreach (var kvp in _pendingInputs)
         {
             string key = kvp.Key;
-            float needed = kvp.Value;
+            int needed = kvp.Value;
 
             string? concreteId;
             if (RecipeDefinition.IsTagInput(key))
@@ -494,8 +520,8 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
                 concreteId = key;
             }
 
-            float inStorage = owner.InputStorage.GetQuantity(concreteId);
-            float toWithdraw = Mathf.Min(inStorage, needed);
+            int inStorage = owner.InputStorage.GetQuantity(concreteId);
+            int toWithdraw = System.Math.Min(inStorage, needed);
             if (toWithdraw > 0)
             {
                 owner.InputStorage.Withdraw(concreteId, toWithdraw);
@@ -567,7 +593,7 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
         foreach (var kvp in quantities)
         {
             string resourceId = kvp.Key;
-            float amountAvailable = kvp.Value;
+            int amountAvailable = kvp.Value;
             if (amountAvailable <= 0)
                 continue;
 
@@ -578,7 +604,7 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
                 if (node.Link == null)
                     continue;
 
-                float enqueued = node.Link.TryEnqueueAmount(resourceId, amountAvailable);
+                int enqueued = node.Link.TryEnqueueAmount(resourceId, amountAvailable);
                 if (enqueued > 0)
                 {
                     owner.OutputStorage.Withdraw(resourceId, enqueued);

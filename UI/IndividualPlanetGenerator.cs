@@ -2,14 +2,18 @@ using System;
 using Godot;
 using Godot.Collections;
 using ProceduralGeneration;
+using ProceduralGeneration.ColorSystem;
 using ProceduralGeneration.MeshGeneration;
 using ProceduralGeneration.PlanetGeneration;
+using ProceduralGeneration.SubtypeSystem;
 using Structures;
 using Structures.Enums;
 using UI.Generation;
+using UI.SubtypeEditor;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
 using UtilityLibrary.NameGeneration;
+using UtilityLibrary.UI;
 
 namespace UI;
 
@@ -27,6 +31,9 @@ public partial class IndividualPlanetGenerator : Control
 
     [Export]
     public Camera3D? PreviewCamera;
+
+    [Export]
+    public TabContainer? templateTabs;
 
     // UI references
     [Export]
@@ -95,10 +102,15 @@ public partial class IndividualPlanetGenerator : Control
     [Export]
     public TextureViewerPanel? _textureViewer;
 
+    [Export]
+    public SubtypeEditorTab? _subtypeEditorTab;
+
     // Generation state
     private CelestialBody? _currentPlanet;
     private string? _currentBodyName;
     private bool _isGenerating;
+
+    // Subtype editor state — the tab is instanced from SubtypeEditorTab.tscn
 
     // Camera orbit state
     private bool _isAutoOrbiting = true;
@@ -159,6 +171,8 @@ public partial class IndividualPlanetGenerator : Control
         if (_resetBtn != null)
             _resetBtn.Pressed += OnResetPressed;
 
+        WireSpinBoxTooltips();
+
         // Load body type templates tab
         LoadBodyTypeTemplates();
 
@@ -170,10 +184,14 @@ public partial class IndividualPlanetGenerator : Control
 
         _subdivisions.GetLineEdit().TextSubmitted += UpdateSubdivisions;
         UpdateSubdivisions("");
+
+        InitializeSubtypeEditorTab();
     }
 
     public override void _Process(double delta)
     {
+        _subtypeEditorTab?.UpdateFeedback(delta);
+
         if (PreviewCamera == null)
             return;
 
@@ -227,6 +245,35 @@ public partial class IndividualPlanetGenerator : Control
                 -Mathf.Pi / 2f + 0.1f,
                 Mathf.Pi / 2f - 0.1f
             );
+        }
+    }
+
+    private void WireSpinBoxTooltips()
+    {
+        SetTip(_mass, "body.mass");
+        SetTip(_size, "body.size");
+        SetTip(_subdivisions, "mesh.subdivisions");
+        SetTip(_num_abberation, "mesh.num_abberations");
+        SetTip(_num_deformation, "mesh.num_deformation_cycles");
+        SetTip(_num_continents, "tectonics.num_continents");
+        SetTip(_stress_scale, "tectonics.stress_scale");
+        SetTip(_shear_scale, "tectonics.shear_scale");
+        SetTip(_max_propagation_distance, "tectonics.max_propagation_distance");
+        SetTip(_propagation_falloff, "tectonics.propagation_falloff");
+        SetTip(_inactive_stress_threshold, "tectonics.inactive_stress_threshold");
+        SetTip(_height_factor, "tectonics.general_height_scale");
+        SetTip(_shear_factor, "tectonics.general_shear_scale");
+        SetTip(_compression_factor, "tectonics.general_compression_scale");
+        SetTip(_transform_factor, "tectonics.general_transform_scale");
+
+        static void SetTip(SpinBox? sb, string key)
+        {
+            if (sb == null)
+                return;
+            string tip = GenSettingTooltips.Get(key);
+            if (string.IsNullOrEmpty(tip))
+                return;
+            sb.TooltipText = tip;
         }
     }
 
@@ -549,6 +596,145 @@ public partial class IndividualPlanetGenerator : Control
 
         var type = PlanetaryTypeLoader.ToCelestialBodyType(internalName);
         ApplyDefaults(type);
+    }
+
+    private void InitializeSubtypeEditorTab()
+    {
+        try
+        {
+            EnsureSubtypeDatabaseLoaded();
+
+            var model = new SubtypeEditorModel();
+            _subtypeEditorTab.Initialize(model);
+            _subtypeEditorTab.SaveRequested += OnSubtypeSave;
+            _subtypeEditorTab.ReloadRequested += OnSubtypeReload;
+            _subtypeEditorTab.GenerateRequested += OnGenerateFromSubtype;
+            _subtypeEditorTab.ResetRequested += OnSubtypeReload;
+        }
+        catch (Exception ex)
+        {
+            GameLogger.Error(
+                $"IndividualPlanetGenerator: subtype editor init failed: {ex.Message}"
+            );
+        }
+    }
+
+    private static void EnsureSubtypeDatabaseLoaded()
+    {
+        var db = SubtypeDatabase.Instance;
+        if (db.IsLoaded)
+            return;
+        try
+        {
+            db.LoadData();
+        }
+        catch (Exception ex)
+        {
+            GameLogger.Warning(
+                $"IndividualPlanetGenerator: SubtypeDatabase load failed: {ex.Message}"
+            );
+        }
+    }
+
+    private void OnSubtypeSave()
+    {
+        var model = _subtypeEditorTab?.Model;
+        if (model == null)
+            return;
+        try
+        {
+            model.Save();
+            _subtypeEditorTab?.ShowFeedback("Saved.");
+        }
+        catch (Exception ex)
+        {
+            GameLogger.Error($"IndividualPlanetGenerator: subtype save failed: {ex.Message}");
+            _subtypeEditorTab?.ShowFeedback($"Save failed: {ex.Message}");
+        }
+    }
+
+    private void OnSubtypeReload()
+    {
+        var model = _subtypeEditorTab?.Model;
+        if (model == null)
+            return;
+        try
+        {
+            model.LoadFromDisk();
+            _subtypeEditorTab?.Detail?.SetSubtype(_subtypeEditorTab?.Browser?.SelectedSubtypeId);
+            _subtypeEditorTab?.ShowFeedback("Reloaded.");
+        }
+        catch (Exception ex)
+        {
+            GameLogger.Error($"IndividualPlanetGenerator: subtype reload failed: {ex.Message}");
+        }
+    }
+
+    private void OnGenerateFromSubtype(bool useMidpoint)
+    {
+        if (_isGenerating)
+            return;
+        var model = _subtypeEditorTab?.Model;
+        if (model == null)
+            return;
+        string? id = _subtypeEditorTab?.Browser?.SelectedSubtypeId;
+        if (string.IsNullOrEmpty(id))
+        {
+            _subtypeEditorTab?.ShowFeedback("Select a subtype first.");
+            return;
+        }
+        var def = model.GetById(id);
+        if (def == null)
+            return;
+
+        var classification = BiomeIdMapper.IdToBodyClassification(id, def.Family);
+        if (classification == null)
+        {
+            _subtypeEditorTab?.ShowFeedback($"No live classification for family {def.Family}.");
+            return;
+        }
+
+        _isGenerating = true;
+
+        if (_currentPlanet != null && IsInstanceValid(_currentPlanet))
+        {
+            _currentPlanet.QueueFree();
+            _currentPlanet = null;
+        }
+        _textureViewer?.Clear();
+
+        // Mass/size: prefer current SpinBox values; fall back to type defaults.
+        float mass = _mass != null ? Mathf.Clamp((float)_mass.Value, 0f, MASS_LIMIT) : 1000f;
+        float size = _size != null ? Mathf.Clamp((float)_size.Value, 0f, SIZE_LIMIT) : 150f;
+        var bodyDict = new Dictionary();
+        bodyDict["type"] = def.Family.ToString();
+        bodyDict["name"] = def.DisplayName.Length > 0 ? def.DisplayName : def.Id;
+        var template = new Dictionary { ["mass"] = mass, ["size"] = size };
+        bodyDict["template"] = template;
+        if (useMidpoint)
+            bodyDict["_use_midpoint"] = true;
+
+        var mesh = new UnifiedCelestialMesh();
+        var builder = new CelestialBody.Builder();
+        builder
+            .WithVelocity(Vector3.Zero)
+            .WithMass(mass)
+            .WithBodyDict(bodyDict)
+            .WithMesh(mesh)
+            .WithClassification(classification)
+            .WithName((string)bodyDict["name"]);
+
+        _currentPlanet = builder.Build();
+        if (PlanetContainer != null)
+        {
+            PlanetContainer.AddChild(_currentPlanet);
+            _currentPlanet.Position = Vector3.Zero;
+        }
+        _orbitRadius = size * ORBIT_DISTANCE;
+        _currentPlanet.StartMeshGeneration(
+            onCompleted: OnPlanetGenerationComplete,
+            onFailed: OnPlanetGenerationFailed
+        );
     }
 
     private void LoadBodyTypeTemplates()
