@@ -55,7 +55,7 @@ public partial class StationStorageSection : PanelContainer
             _station.BulkStorage.StorageUpdated -= OnStorageUpdated;
     }
 
-    private void OnStorageUpdated(string resourceId, float delta)
+    private void OnStorageUpdated(string resourceId, int delta)
     {
         if (Engine.IsEditorHint())
             return;

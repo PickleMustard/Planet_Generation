@@ -11,13 +11,15 @@ public partial class Point : Resource, IEquatable<Point>
     private float[] _position = new float[3];
     private float _stress;
 
-    // Deterministic, collision-free mapping from quantized coordinates -> unique index
+    // Deterministic, collision-free mapping from quantized coordinates -> unique index.
+    // QUANT_SCALE = 1e6 preserves the prior 6-decimal quantization without relying on a
+    // 32-bit hash (which had ~birthday-paradox collision risk and was per-process randomized,
+    // producing intermittent antipodal-vertex mixups in the mesh pipeline).
+    private const float QUANT_SCALE = 1e6f;
     private static readonly object IndexLock = new object();
     private static readonly Dictionary<(int ix, int iy, int iz), int> KeyToIndex =
         new Dictionary<(int, int, int), int>();
-#pragma warning disable CS0414
     private static int NextIndex = 0;
-#pragma warning restore CS0414
 
     public float[] Components
     {
@@ -55,21 +57,26 @@ public partial class Point : Resource, IEquatable<Point>
     public float Radius { get; set; }
     public string Biome { get; set; } = "biome_grassland";
 
-    private static int QuantizeKey(float x, float y, float z)
+    private static (int, int, int) QuantizeKey(float x, float y, float z)
     {
-        // Normalize tiny values to 0 to avoid -0 vs +0 differences, then round
-        float qx = MathF.Round(x, 6);
-        float qy = MathF.Round(y, 6);
-        float qz = MathF.Round(z, 6);
-
-        String key = $"{qx},{qy},{qz}";
-        return HashCode.Combine(qx, qy, qz);
+        // Normalize -0 to +0 so signed-zero pairs collapse.
+        int ix = (int)MathF.Round((x == 0f ? 0f : x) * QUANT_SCALE);
+        int iy = (int)MathF.Round((y == 0f ? 0f : y) * QUANT_SCALE);
+        int iz = (int)MathF.Round((z == 0f ? 0f : z) * QUANT_SCALE);
+        return (ix, iy, iz);
     }
 
     public static int DetermineIndex(float x, float y, float z)
     {
         var key = QuantizeKey(x, y, z);
-        return key;
+        lock (IndexLock)
+        {
+            if (KeyToIndex.TryGetValue(key, out int existing))
+                return existing;
+            int assigned = NextIndex++;
+            KeyToIndex[key] = assigned;
+            return assigned;
+        }
     }
 
     public bool Equals(Point? other)

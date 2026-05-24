@@ -18,12 +18,18 @@ resources:
     state_of_matter: solid
     max_stack_size: 150
     transport_weight: 1.2
+    icon:
+      base_path: "res://Materials/Icons/water"
   - id_name: high_tensile_wire
     resource_tier: 3
     state_of_matter: solid
     max_stack_size: 150
+    icon:
+      base_path: "res://Materials/Icons/wire"
   - id_name: bricks
     resource_tier: 1
     state_of_matter: solid
     max_stack_size: 300
     transport_weight: 3
+    icon:
+      base_path: "res://Materials/Icons/clay"

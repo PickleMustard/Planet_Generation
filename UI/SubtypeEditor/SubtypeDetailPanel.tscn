@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UI/SubtypeEditor/SubtypeDetailPanel.cs" id="1"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/IdentityTab.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/MeshTectonicRangesTab.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/SphericalHarmonicsTab.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/BiomeAssignmentTab.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/ResourcesTab.tscn" id="6"]
+
+[node name="SubtypeDetailPanel" type="VBoxContainer" node_paths=PackedStringArray("_emptyHint", "_tabs")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+script = ExtResource("1")
+_emptyHint = NodePath("EmptyHint")
+_tabs = NodePath("Tabs")
+
+[node name="EmptyHint" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Select a subtype on the left to edit."
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="Tabs" type="TabContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Identity" parent="Tabs" instance=ExtResource("2")]
+layout_mode = 2
+
+[node name="Mesh/Tectonics" parent="Tabs" instance=ExtResource("3")]
+layout_mode = 2
+
+[node name="Spherical Harmonics" parent="Tabs" instance=ExtResource("4")]
+layout_mode = 2
+
+[node name="Biome Assignment" parent="Tabs" instance=ExtResource("5")]
+layout_mode = 2
+
+[node name="Resources" parent="Tabs" instance=ExtResource("6")]
+layout_mode = 2

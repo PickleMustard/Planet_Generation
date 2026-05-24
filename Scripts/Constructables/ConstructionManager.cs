@@ -574,7 +574,8 @@ public partial class ConstructionManager : Node
         Node3D parentBody,
         BuildingDefinition definition,
         List<VoronoiCell>? additionalCells = null,
-        StationSatellite? architectStation = null
+        StationSatellite? architectStation = null,
+        int? specifier = null
     )
     {
         if (primaryCell == null)
@@ -596,6 +597,18 @@ public partial class ConstructionManager : Node
         }
 
         var building = definition.Instantiate();
+        if (specifier.HasValue)
+        {
+            // Reject specifiers that aren't in the definition's allowed set so a
+            // stale UI value can't smuggle in a meaningless number; fall through
+            // to the YAML default that Instantiate already applied.
+            var cfg = definition.Specifier;
+            if (cfg == null || cfg.Values.Count == 0 || cfg.Values.Contains(specifier.Value))
+                building.Specifier = specifier.Value;
+            else
+                GameLogger.Warning(
+                    $"ConstructionManager: specifier {specifier.Value} not allowed for '{definition.IdName}'; using default {building.Specifier}.");
+        }
         building.SetPlacement(primaryCell, additionalCells);
 
         var visual = new BuildingNode { Name = definition.DisplayName ?? definition.IdName ?? "Building" };

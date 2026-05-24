@@ -139,7 +139,7 @@ public partial class BuildingNode2D : Node2D
         }
         Radius = visual?.ShapeSize > 0 ? visual.ShapeSize : 64f;
         FillColor = visual?.ShapeColor ?? new Color(0.30f, 0.45f, 0.60f);
-        Icon = def?.Icon?.GetTexture(IconSize.Medium);
+        Icon = def?.Icon?.Texture;
         DisplayName = building.Name;
 
         // Build port data from building nodes

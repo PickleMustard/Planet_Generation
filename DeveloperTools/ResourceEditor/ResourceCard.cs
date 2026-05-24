@@ -212,14 +212,13 @@ public partial class ResourceCard : PanelContainer
         {
             texture = IconDataLoader.LoadIconTexture(
                 _entry.IconBasePath,
-                IconSize.Large,
                 _entry.IdName
             );
         }
 
         if (texture == null)
         {
-            texture = IconDataLoader.GetFallbackIcon(IconSize.Large);
+            texture = IconDataLoader.GetFallbackIcon();
         }
 
         _iconRect.Texture = texture;

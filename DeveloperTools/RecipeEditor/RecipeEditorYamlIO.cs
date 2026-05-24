@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Godot;
+using Structures.Resources;
 using UtilityLibrary;
 
 namespace DeveloperTools.RecipeEditor;
@@ -270,6 +271,46 @@ public static class RecipeEditorYamlIO
                     ? $"tag:{slot.Key}"
                     : slot.Key;
                 YamlIndent.AppendLine(sb, 3, $"- {key}: {FormatFloat(slot.Amount)}");
+            }
+
+            if (entry.ConditionalOutputs.Count > 0)
+            {
+                YamlIndent.AppendLine(sb, 2, "conditional_outputs:");
+                foreach (var co in entry.ConditionalOutputs)
+                {
+                    bool hasRules = co.Rules.Count > 0;
+                    bool hasLegacy = !string.IsNullOrWhiteSpace(co.LegacyCondition);
+
+                    if (hasRules)
+                    {
+                        YamlIndent.AppendLine(sb, 3, "- condition:");
+                        for (int r = 0; r < co.Rules.Count; r++)
+                        {
+                            var rule = co.Rules[r];
+                            // First rule omits 'join'; subsequent rules write AND or OR.
+                            if (r == 0)
+                            {
+                                YamlIndent.AppendLine(sb, 4, $"- var: {rule.Variable}");
+                            }
+                            else
+                            {
+                                YamlIndent.AppendLine(sb, 4, $"- join: {rule.Join.ToYamlString()}");
+                                YamlIndent.AppendLine(sb, 5, $"var: {rule.Variable}");
+                            }
+                            YamlIndent.AppendLine(sb, 5, $"op: \"{rule.Operator.ToSymbol()}\"");
+                            YamlIndent.AppendLine(sb, 5, $"value: {FormatFloat(rule.Value)}");
+                        }
+                        YamlIndent.AppendLine(sb, 4, $"resource: {co.Resource}");
+                        YamlIndent.AppendLine(sb, 4, $"amount: {FormatFloat(co.Amount)}");
+                    }
+                    else if (hasLegacy)
+                    {
+                        // Preserve unconvertible legacy expressions verbatim.
+                        YamlIndent.AppendLine(sb, 3, $"- condition: \"{Escape(co.LegacyCondition!)}\"");
+                        YamlIndent.AppendLine(sb, 4, $"resource: {co.Resource}");
+                        YamlIndent.AppendLine(sb, 4, $"amount: {FormatFloat(co.Amount)}");
+                    }
+                }
             }
         }
 

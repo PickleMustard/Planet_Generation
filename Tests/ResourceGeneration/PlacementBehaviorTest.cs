@@ -125,7 +125,7 @@ public class PlacementBehaviorTest
             "res://Configuration/Buildings/example_building.yaml"
         );
 
-        var geothermalBuilding = definitions.Find(b => b.IdName == "geothermal_plant_example");
+        var geothermalBuilding = definitions.Find(b => b.IdName == "geothermal_plant");
         AssertThat(geothermalBuilding).IsNotNull();
         AssertThat(geothermalBuilding!.Placement.ConfigurableBehavior).IsNotNull();
         AssertThat(geothermalBuilding.Placement.ConfigurableBehavior)
@@ -140,7 +140,7 @@ public class PlacementBehaviorTest
             "res://Configuration/Buildings/example_building.yaml"
         );
 
-        var classNameBuilding = definitions.Find(b => b.IdName == "behavior_by_class_name_example");
+        var classNameBuilding = definitions.Find(b => b.IdName == "geothermal_plant");
         AssertThat(classNameBuilding).IsNotNull();
         AssertThat(classNameBuilding!.Placement.ConfigurableBehavior).IsNotNull();
         AssertThat(classNameBuilding.Placement.ConfigurableBehavior)
@@ -167,6 +167,7 @@ public class PlacementBehaviorTest
         )
         {
             Height = height,
+            NormalizedHeight = height,
             Biome = biome,
             Stress = stress
         };

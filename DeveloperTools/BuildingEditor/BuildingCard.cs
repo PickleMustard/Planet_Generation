@@ -41,6 +41,11 @@ public partial class BuildingCard : PanelContainer
     private VBoxContainer _visualContainer = null!;
     private VBoxContainer _iconContainer = null!;
 
+    private CheckBox _specifierEnabledCheck = null!;
+    private Button _addSpecifierButton = null!;
+    private VBoxContainer _specifierRowsContainer = null!;
+    private ButtonGroup? _specifierDefaultGroup;
+
     private Button _moveUpButton = null!;
     private Button _moveDownButton = null!;
     private Button _deleteButton = null!;
@@ -248,6 +253,29 @@ public partial class BuildingCard : PanelContainer
         _behaviorsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_behaviorsContainer);
 
+        // ── Specifier subsection ────────────────────────────────────────
+        var specHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var specLabel = new Label
+        {
+            Text = "Specifier",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            TooltipText = "Per-instance integer exposed to recipe conditional outputs as 'specifier'. Player picks one at construction."
+        };
+        specLabel.AddThemeColorOverride("font_color", new Color(1.0f, 0.9f, 0.6f));
+        specHeader.AddChild(specLabel);
+
+        _specifierEnabledCheck = new CheckBox { Text = "Enabled" };
+        _specifierEnabledCheck.Toggled += OnSpecifierEnabledToggled;
+        specHeader.AddChild(_specifierEnabledCheck);
+
+        _addSpecifierButton = new Button { Text = "+ Choice" };
+        _addSpecifierButton.Pressed += OnAddSpecifierPressed;
+        specHeader.AddChild(_addSpecifierButton);
+        root.AddChild(specHeader);
+
+        _specifierRowsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        root.AddChild(_specifierRowsContainer);
+
         // ── Visual subsection ───────────────────────────────────────────
         var visualLabel = new Label { Text = "Visual" };
         visualLabel.AddThemeColorOverride("font_color", new Color(0.7f, 1.0f, 0.7f));
@@ -283,6 +311,7 @@ public partial class BuildingCard : PanelContainer
         RebuildRequiredResourceRows();
         RebuildPlacementSection();
         RebuildBehaviorRows();
+        RebuildSpecifierRows();
         RebuildVisualSection();
         RebuildIconSection();
 
@@ -350,6 +379,77 @@ public partial class BuildingCard : PanelContainer
         _iconSection = new IconSection();
         _iconSection.Initialize(_model, _categoryName, _buildingIndex, _entry);
         _iconContainer.AddChild(_iconSection);
+    }
+
+    private void RebuildSpecifierRows()
+    {
+        foreach (var c in _specifierRowsContainer.GetChildren()) c.QueueFree();
+        if (_entry == null || _model == null) return;
+
+        _specifierEnabledCheck.SetPressedNoSignal(_entry.SpecifierEnabled);
+        _specifierRowsContainer.Visible = _entry.SpecifierEnabled;
+        _addSpecifierButton.Disabled = !_entry.SpecifierEnabled;
+
+        if (!_entry.SpecifierEnabled) return;
+
+        _specifierDefaultGroup = new ButtonGroup();
+        for (int i = 0; i < _entry.SpecifierEntries.Count; i++)
+        {
+            var slot = _entry.SpecifierEntries[i];
+            var row = new SpecifierRow();
+            row.Configure(i, slot, slot.Value == _entry.SpecifierDefault, _specifierDefaultGroup);
+            row.RowChanged += OnSpecifierRowChanged;
+            row.DefaultSelected += OnSpecifierDefaultSelected;
+            row.RowDeleted += OnSpecifierRowDeleted;
+            _specifierRowsContainer.AddChild(row);
+        }
+    }
+
+    private void OnSpecifierEnabledToggled(bool enabled)
+    {
+        if (_model == null) return;
+        _model.SetSpecifierEnabled(_categoryName, _buildingIndex, enabled);
+        _entry = _model.Categories[_categoryName].Buildings[_buildingIndex];
+        RebuildSpecifierRows();
+    }
+
+    private void OnAddSpecifierPressed()
+    {
+        if (_model == null || _entry == null) return;
+        int nextValue = 1;
+        if (_entry.SpecifierEntries.Count > 0)
+        {
+            int max = 0;
+            foreach (var s in _entry.SpecifierEntries)
+                if (s.Value > max) max = s.Value;
+            nextValue = max + 1;
+        }
+        _model.AddSpecifierEntry(_categoryName, _buildingIndex,
+            new BuildingEditorModel.SpecifierEntryEdit { Value = nextValue, Label = "" });
+        _entry = _model.Categories[_categoryName].Buildings[_buildingIndex];
+        RebuildSpecifierRows();
+    }
+
+    private void OnSpecifierRowChanged(int rowIndex, int value, string label)
+    {
+        if (_model == null) return;
+        _model.UpdateSpecifierEntry(_categoryName, _buildingIndex, rowIndex, value, label);
+    }
+
+    private void OnSpecifierDefaultSelected(int rowIndex)
+    {
+        if (_model == null || _entry == null) return;
+        if (rowIndex < 0 || rowIndex >= _entry.SpecifierEntries.Count) return;
+        int value = _entry.SpecifierEntries[rowIndex].Value;
+        _model.SetSpecifierDefault(_categoryName, _buildingIndex, value);
+    }
+
+    private void OnSpecifierRowDeleted(int rowIndex)
+    {
+        if (_model == null) return;
+        _model.DeleteSpecifierEntry(_categoryName, _buildingIndex, rowIndex);
+        _entry = _model.Categories[_categoryName].Buildings[_buildingIndex];
+        RebuildSpecifierRows();
     }
 
     // ─── Field edits ─────────────────────────────────────────────────────

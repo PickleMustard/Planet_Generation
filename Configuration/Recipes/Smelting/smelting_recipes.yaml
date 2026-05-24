@@ -18,3 +18,11 @@ recipes:
       - tag:ore: 1
     output_resources:
       - tag:metal: 2
+  - recipe_id: "glass_smelting"
+    display_name: "Glass Smelting"
+    category: smelting
+    work_required: 4
+    input_resources:
+      - silicon: 5
+    output_resources:
+      - glass: 1

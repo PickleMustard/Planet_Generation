@@ -39,10 +39,10 @@ public partial class ResourceLink : Resource, IManufactureTickable
     public List<ResourcePackage> InFlight { get; } = new();
 
     /// <summary>
-    /// Ticks remaining until the next dispatch/retry cycle.
-    /// Decremented each <see cref="OnManufactureTick"/>; when zero (or below) the
-    /// <see cref="ArrivalBuffer"/> is retried and the timer is reset to
-    /// <see cref="LinkProfile.BundleTime"/>.
+    /// Ticks remaining until the next bundle dispatch is allowed.
+    /// Set to <see cref="LinkProfile.BundleTime"/> whenever a package is enqueued via
+    /// <see cref="TryEnqueueAmount"/>; counts down once per <see cref="OnManufactureTick"/>.
+    /// Does not auto-reset on hitting zero — the link sits ready until the next enqueue.
     /// </summary>
     public int BundleTimer { get; set; }
 
@@ -166,36 +166,42 @@ public partial class ResourceLink : Resource, IManufactureTickable
     /// Amounts larger than <see cref="LinkProfile.PackageSize"/> are split across multiple
     /// packages up to the remaining slot capacity.
     /// </summary>
-    public bool TryEnqueue(string resourceId, float amount)
+    public bool TryEnqueue(string resourceId, int amount)
     {
-        return TryEnqueueAmount(resourceId, amount) > 0f;
+        return TryEnqueueAmount(resourceId, amount) > 0;
     }
 
     /// <summary>
-    /// Attempts to enqueue resources and returns the amount actually added to <see cref="InFlight"/>.
+    /// Attempts to enqueue resources and returns the whole units actually added to <see cref="InFlight"/>.
     /// Returns 0 if the link has no profile, the input is invalid, or in-flight capacity is reached.
     /// Amounts larger than <see cref="LinkProfile.PackageSize"/> are split across multiple
     /// packages up to the remaining slot capacity.
     /// </summary>
-    public float TryEnqueueAmount(string resourceId, float amount)
+    public int TryEnqueueAmount(string resourceId, int amount)
     {
         if (Profile == null)
         {
-            return 0f;
+            return 0;
         }
 
-        if (amount <= 0f || string.IsNullOrEmpty(resourceId))
+        if (amount <= 0 || string.IsNullOrEmpty(resourceId))
         {
-            return 0f;
+            return 0;
         }
 
-        float packageSize = Profile.PackageSize > 0 ? Profile.PackageSize : int.MaxValue;
-        float remaining = amount;
-        float enqueued = 0f;
-
-        while (remaining > 0f && InFlight.Count < Profile.SlotCapacity)
+        // Dispatch cooldown: refuse new bundles until the timer expires.
+        if (Profile.BundleTime > 0 && BundleTimer > 0)
         {
-            float pkgAmount = Mathf.Min(remaining, packageSize);
+            return 0;
+        }
+
+        int packageSize = Profile.PackageSize > 0 ? Profile.PackageSize : int.MaxValue;
+        int remaining = amount;
+        int enqueued = 0;
+
+        while (remaining > 0 && InFlight.Count < Profile.SlotCapacity)
+        {
+            int pkgAmount = System.Math.Min(remaining, packageSize);
 
             var package = new ResourcePackage
             {
@@ -208,6 +214,17 @@ public partial class ResourceLink : Resource, IManufactureTickable
             InFlight.Add(package);
             remaining -= pkgAmount;
             enqueued += pkgAmount;
+
+            // With a cooldown configured, dispatch one bundle per cycle.
+            if (Profile.BundleTime > 0)
+            {
+                break;
+            }
+        }
+
+        if (enqueued > 0 && Profile.BundleTime > 0)
+        {
+            BundleTimer = Profile.BundleTime;
         }
 
         return enqueued;
@@ -215,7 +232,7 @@ public partial class ResourceLink : Resource, IManufactureTickable
 
     /// <summary>
     /// Advances in-flight packages, handles arrivals and deposit attempts,
-    /// decrements the bundle timer, and retries any buffered packages when the timer fires.
+    /// decrements the bundle dispatch cooldown, and retries any buffered packages.
     /// </summary>
     public void OnManufactureTick(float delta)
     {
@@ -260,18 +277,13 @@ public partial class ResourceLink : Resource, IManufactureTickable
             }
         }
 
-        // Retry buffered packages when the bundle timer fires
-        if (BundleTimer <= 0)
+        // Retry buffered packages every tick — deposit retries are independent of dispatch cooldown.
+        for (int i = ArrivalBuffer.Count - 1; i >= 0; i--)
         {
-            for (int i = ArrivalBuffer.Count - 1; i >= 0; i--)
+            if (ArrivalBuffer[i].TryDeposit())
             {
-                if (ArrivalBuffer[i].TryDeposit())
-                {
-                    ArrivalBuffer.RemoveAt(i);
-                }
+                ArrivalBuffer.RemoveAt(i);
             }
-
-            BundleTimer = Profile.BundleTime;
         }
     }
 

@@ -47,7 +47,7 @@ public static class BuildingEditorYamlIO
 
             foreach (var entry in kvp.Value.Buildings)
             {
-                string sourcePath = string.IsNullOrEmpty(entry.SourceFilePath)
+                string sourcePath = (entry.IsNew || string.IsNullOrEmpty(entry.SourceFilePath))
                     ? DefaultSourcePath(root, category, entry.IdName)
                     : entry.SourceFilePath;
                 entry.SourceFilePath = sourcePath;
@@ -183,8 +183,29 @@ public static class BuildingEditorYamlIO
                 WriteBehavior(sb, beh);
         }
 
+        WriteSpecifier(sb, entry);
         WriteVisual(sb, entry.Visual);
         WriteIcon(sb, entry.Icon);
+    }
+
+    private static void WriteSpecifier(StringBuilder sb, BuildingEditorModel.BuildingEditEntry entry)
+    {
+        if (!entry.SpecifierEnabled || entry.SpecifierEntries.Count == 0)
+            return;
+
+        YamlIndent.AppendLine(sb, 2, "specifier:");
+        YamlIndent.AppendLine(sb, 3,
+            $"values: [{string.Join(", ", entry.SpecifierEntries.Select(s => s.Value))}]");
+
+        bool anyLabel = entry.SpecifierEntries.Any(s => !string.IsNullOrEmpty(s.Label));
+        if (anyLabel)
+        {
+            string labels = string.Join(", ",
+                entry.SpecifierEntries.Select(s => $"\"{Escape(s.Label)}\""));
+            YamlIndent.AppendLine(sb, 3, $"labels: [{labels}]");
+        }
+
+        YamlIndent.AppendLine(sb, 3, $"default: {entry.SpecifierDefault}");
     }
 
     private static void WritePlacement(StringBuilder sb, BuildingEditorModel.PlacementReqEdit p)

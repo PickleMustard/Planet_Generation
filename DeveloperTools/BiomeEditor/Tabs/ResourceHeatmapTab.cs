@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ProceduralGeneration.ColorSystem;
 using Structures.Enums;
 using Structures.Resources;
 
@@ -48,13 +49,13 @@ public partial class ResourceHeatmapTab : Control
         var ctrlRow = new HBoxContainer();
         ctrlRow.AddChild(new Label { Text = "Subtype:" });
         _subtypeOpt = new OptionButton();
-        foreach (var s in Enum.GetNames<RockyPlanetSubtype>()) _subtypeOpt.AddItem(s);
+        foreach (var id in GetRockySubtypeIds()) _subtypeOpt.AddItem(id);
         _subtypeOpt.ItemSelected += _ => Refresh();
         ctrlRow.AddChild(_subtypeOpt);
 
         ctrlRow.AddChild(new Label { Text = "Biome:" });
         _biomeOpt = new OptionButton();
-        foreach (var b in Enum.GetNames<Biome.BiomeType>()) _biomeOpt.AddItem(b);
+        foreach (var id in GetBiomeIds()) _biomeOpt.AddItem(id);
         _biomeOpt.ItemSelected += _ => Refresh();
         ctrlRow.AddChild(_biomeOpt);
         root.AddChild(ctrlRow);
@@ -70,15 +71,46 @@ public partial class ResourceHeatmapTab : Control
         scroll.AddChild(_chart);
     }
 
+    private List<string> GetRockySubtypeIds()
+    {
+        if (_model != null)
+            return _model.Subtypes.Values
+                .Where(s => s.Family == BodyFamily.RockyPlanet)
+                .Select(s => s.Id)
+                .OrderBy(s => s, StringComparer.Ordinal)
+                .ToList();
+        return Enum.GetValues<RockyPlanetSubtype>()
+            .Select(BiomeIdMapper.RockyPlanetSubtypeToId)
+            .ToList();
+    }
+
+    private List<string> GetBiomeIds()
+    {
+        if (_model != null && _model.Biomes.Count > 0)
+            return _model.Biomes.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+        return Enum.GetValues<Biome.BiomeType>()
+            .Select(BiomeIdMapper.BiomeTypeToId)
+            .ToList();
+    }
+
     public void Refresh()
     {
         if (_model == null) return;
 
-        var subtype = (RockyPlanetSubtype)_subtypeOpt.Selected;
-        var biome = (Biome.BiomeType)_biomeOpt.Selected;
+        string subId = _subtypeOpt.Selected >= 0 && _subtypeOpt.Selected < _subtypeOpt.ItemCount
+            ? _subtypeOpt.GetItemText(_subtypeOpt.Selected) : "";
+        string biomeId = _biomeOpt.Selected >= 0 && _biomeOpt.Selected < _biomeOpt.ItemCount
+            ? _biomeOpt.GetItemText(_biomeOpt.Selected) : "";
+        var subtypeEnum = BiomeIdMapper.IdToRockyPlanetSubtype(subId);
+        var biomeEnum = BiomeIdMapper.IdToBiomeType(biomeId);
+        if (subtypeEnum == null || biomeEnum == null)
+        {
+            _chart.SetData(new Dictionary<string, float>());
+            return;
+        }
 
-        var subtypeCfg = BuildSubtypeConfig(_model, subtype);
-        var biomeEntry = BuildBiomeEntry(_model, biome);
+        var subtypeCfg = BuildSubtypeConfig(_model, subtypeEnum.Value);
+        var biomeEntry = BuildBiomeEntry(_model, biomeEnum.Value);
 
         var weights = ResourceWeightSampler.ForBiome(subtypeCfg, biomeEntry);
         _chart.SetData(weights);

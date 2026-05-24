@@ -52,9 +52,9 @@ public partial class InitialStockpileBehavior : IBuildingBehavior, IBehaviorConf
                 continue;
             }
 
-            float deposited = _owner.BulkStorage.Deposit(resourceId, requested);
+            int deposited = _owner.BulkStorage.Deposit(resourceId, requested);
 
-            if (Mathf.Abs(deposited - requested) > 0.001f)
+            if (deposited != requested)
             {
                 GameLogger.Warning(
                     $"InitialStockpileBehavior: Insufficient capacity for '{resourceId}' — added {deposited}/{requested} for building '{_owner.Name}'"

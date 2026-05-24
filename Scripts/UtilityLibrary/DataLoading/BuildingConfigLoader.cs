@@ -104,6 +104,7 @@ public static class BuildingConfigLoader
             Sound = ParseSoundDefinition(dict),
             Demolishable = ReadBool(dict, "demolishable", true),
             DefaultLinkProfile = ReadString(dict, "link_profile", ""),
+            Specifier = ParseSpecifierConfig(dict, idName),
         };
 
         ParseBehaviorEntries(dict, definition);
@@ -147,6 +148,52 @@ public static class BuildingConfigLoader
         icon.Tint = ReadColor(iconDict, "tint", Colors.White);
 
         return icon;
+    }
+
+    private static BuildingDefinition.SpecifierConfig? ParseSpecifierConfig(
+        Dictionary<object, object> dict,
+        string buildingId)
+    {
+        if (!dict.ContainsKey("specifier") || dict["specifier"] is null)
+            return null;
+
+        if (dict["specifier"] is not Dictionary<object, object> specDict)
+        {
+            GD.PrintErr($"BuildingConfigLoader: building '{buildingId}' 'specifier' must be a mapping");
+            return null;
+        }
+
+        var cfg = new BuildingDefinition.SpecifierConfig();
+
+        if (specDict.TryGetValue("values", out var valuesObj) && valuesObj is List<object> valuesList)
+        {
+            foreach (var v in valuesList)
+                cfg.Values.Add((int)NodeToFloat(v, 0f));
+        }
+        if (specDict.TryGetValue("labels", out var labelsObj) && labelsObj is List<object> labelsList)
+        {
+            foreach (var l in labelsList)
+                cfg.Labels.Add(l?.ToString() ?? string.Empty);
+        }
+        cfg.Default = ReadInt(specDict, "default", cfg.Values.Count > 0 ? cfg.Values[0] : 0);
+
+        if (cfg.Labels.Count > 0 && cfg.Labels.Count != cfg.Values.Count)
+        {
+            GD.PrintErr(
+                $"BuildingConfigLoader: building '{buildingId}' specifier labels ({cfg.Labels.Count}) " +
+                $"do not match values ({cfg.Values.Count}); labels ignored.");
+            cfg.Labels.Clear();
+        }
+
+        if (cfg.Values.Count > 0 && !cfg.Values.Contains(cfg.Default))
+        {
+            GD.PushWarning(
+                $"BuildingConfigLoader: building '{buildingId}' specifier default {cfg.Default} " +
+                $"not in values; using first value {cfg.Values[0]}.");
+            cfg.Default = cfg.Values[0];
+        }
+
+        return cfg;
     }
 
     private static void PopulateNodeLayoutFromShape(BuildingDefinition definition)

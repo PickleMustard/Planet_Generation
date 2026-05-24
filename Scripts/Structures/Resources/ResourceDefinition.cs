@@ -40,8 +40,9 @@ public class ResourceDefinition
 
     /// <summary>
     /// Maximum amount of this resource that can occupy a single storage slot.
+    /// Resources are stored as whole units only.
     /// </summary>
-    public float MaxStackSize { get; set; } = 100f;
+    public int MaxStackSize { get; set; } = 100;
 
     /// <summary>
     /// Physical state. Storage slots enforce matter compatibility — fluids cannot

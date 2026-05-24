@@ -4,6 +4,7 @@ using Godot;
 using UtilityLibrary;
 using Debug;
 using DeveloperTools.BiomeEditor.Tabs;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.BiomeEditor;
 
@@ -54,6 +55,17 @@ public partial class BiomeEditorModule : BaseDebugModule
         rootVBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         rootVBox.SizeFlagsVertical = SizeFlags.ExpandFill;
         AddChild(rootVBox);
+
+        // Banner: subtype editing moved (Phase 4 redesign)
+        var banner = new PanelContainer();
+        banner.AddThemeStyleboxOverride("panel", MakeStyleBox(new Color(0.10f, 0.13f, 0.18f)));
+        var bannerLabel = new Label
+        {
+            Text = "Subtype editing has moved to the Planet Generator scene (UI/IndividualPlanetGenerator.tscn → Subtype Editor tab).",
+        };
+        bannerLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.9f, 1f));
+        banner.AddChild(bannerLabel);
+        rootVBox.AddChild(banner);
 
         _tabContainer = new TabContainer
         {
@@ -124,8 +136,13 @@ public partial class BiomeEditorModule : BaseDebugModule
         {
             BiomeEditorYamlIO.WriteAll(_model);
             _model.LoadFromDisk();
+            int reloaded = EditorDatabaseReloader.ReloadAll(
+                "BiomeDatabase",
+                "SubtypeDatabase",
+                "BiomeAssignerConfigDatabase",
+                "ResourceGenerationConfigDatabase");
             _tablesTab.Refresh();
-            ShowFeedback("Saved successfully!");
+            ShowFeedback($"Saved + reloaded {reloaded} DBs.");
         }
         catch (Exception ex)
         {

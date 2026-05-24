@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UI/SubtypeEditor/FloatRangeRow.cs" id="1"]
+
+[node name="FloatRangeRow" type="HBoxContainer" node_paths=PackedStringArray("_label", "_minSpinBox", "_maxSpinBox")]
+size_flags_horizontal = 3
+script = ExtResource("1")
+_label = NodePath("RangeLabel")
+_minSpinBox = NodePath("MinSpinBox")
+_maxSpinBox = NodePath("MaxSpinBox")
+
+[node name="RangeLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = ""
+
+[node name="MinSpinBox" type="SpinBox" parent="."]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+allow_greater = false
+allow_lesser = false
+
+[node name="Arrow" type="Label" parent="."]
+layout_mode = 2
+text = "->"
+
+[node name="MaxSpinBox" type="SpinBox" parent="."]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+allow_greater = false
+allow_lesser = false

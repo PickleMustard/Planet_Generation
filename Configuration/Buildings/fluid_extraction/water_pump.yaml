@@ -1,0 +1,21 @@
+buildings:
+  - id_name: water_pump
+    display_name: Water Pump
+    category: fluid_extraction
+    max_resource_tier: 0
+    work_required: 100
+    placement_requirements:
+      biomes: [biome_coastal, biome_deep_ocean, biome_ocean, biome_shallow_ocean]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    behaviors:
+      - behavior_id: ExtractionBehavior
+        default_recipe: "archimedes_screw"
+        alternative_recipes: []
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 1
+    visual:
+      shape_id: small_manufacturing

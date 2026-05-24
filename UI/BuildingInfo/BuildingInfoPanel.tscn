@@ -11,7 +11,7 @@
 
 [node name="BuildingInfoPanel" type="PanelContainer" unique_id=822308389 node_paths=PackedStringArray("Header", "DetailsContainer")]
 custom_minimum_size = Vector2(350, 400)
-anchors_preset = -1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme = ExtResource("1_4vtni")

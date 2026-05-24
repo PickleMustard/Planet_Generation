@@ -5,14 +5,20 @@ resources:
     max_stack_size: 500
     transport_weight: 2.5
     tags: [aquatic, water_world, marine, water_needed]
+    icon:
+      base_path: "res://Materials/Icons/water"
   - id_name: sulfuric_acid
     resource_tier: 1
     state_of_matter: fluid
     max_stack_size: 250
     transport_weight: 1.8
     tags: [water, mineral, toxic]
+    icon:
+      base_path: "res://Materials/Icons/water"
   - id_name: ammonia
     resource_tier: 1
     state_of_matter: fluid
     max_stack_size: 250
     transport_weight: 1.8
+    icon:
+      base_path: "res://Materials/Icons/water"

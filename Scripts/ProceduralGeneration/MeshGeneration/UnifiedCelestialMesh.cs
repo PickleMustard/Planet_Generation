@@ -1383,6 +1383,19 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// - If "noise_settings" key exists without tectonic or scaling: NoiseOnly
     /// - Default: TectonicsOnly
     /// </remarks>
+    /// <summary>
+    /// Reads a single SH band-scale knob from the config dict. Returns the parsed float when
+    /// the key is present and parseable, otherwise <c>-1f</c> — the sentinel that tells
+    /// <see cref="SphericalHarmonicsDeformer.GenerateCoefficients"/> to keep that band on its
+    /// built-in <c>DegreeScaling</c> default.
+    /// </summary>
+    private static float ReadBandScale(Godot.Collections.Dictionary shConfig, string key)
+    {
+        if (!shConfig.ContainsKey(key)) return -1f;
+        try { return (float)shConfig[key]; }
+        catch { return -1f; }
+    }
+
     private BodyGenerationType DetectGenerationType(Godot.Collections.Dictionary meshParams)
     {
         if (meshParams == null)
@@ -1695,23 +1708,37 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             try
             {
                 var shConfig = meshParams["spherical_harmonics"].As<Godot.Collections.Dictionary>();
-                if (shConfig != null && shConfig.ContainsKey("amplitude"))
+                float[]? bandScales = null;
+                if (shConfig != null)
                 {
-                    _shAmplitude = (float)shConfig["amplitude"];
-
-                    // Warn if amplitude is outside expected range
-                    if (_shAmplitude < 0.1f || _shAmplitude > 2.0f)
+                    if (shConfig.ContainsKey("amplitude"))
                     {
-                        GameLogger.Warning(
-                            $"SH amplitude {_shAmplitude:F3} is outside expected range [0.1, 2.0]"
-                        );
+                        _shAmplitude = (float)shConfig["amplitude"];
+
+                        // Warn if amplitude is outside expected range
+                        if (_shAmplitude < 0.1f || _shAmplitude > 2.0f)
+                        {
+                            GameLogger.Warning(
+                                $"SH amplitude {_shAmplitude:F3} is outside expected range [0.1, 2.0]"
+                            );
+                        }
                     }
+
+                    // Optional per-band scale overrides (band_scale_l0..l3). A negative entry
+                    // leaves that band on the deformer's built-in DegreeScaling default.
+                    bandScales = new float[]
+                    {
+                        ReadBandScale(shConfig, "band_scale_l0"),
+                        ReadBandScale(shConfig, "band_scale_l1"),
+                        ReadBandScale(shConfig, "band_scale_l2"),
+                        ReadBandScale(shConfig, "band_scale_l3"),
+                    };
                 }
                 // Default amplitude is already set to 0.3f in field declaration
 
                 // Initialize SH deformer with random coefficients scaled by amplitude
                 _shDeformer = new SphericalHarmonicsDeformer();
-                _shDeformer.GenerateCoefficients(rand, _shAmplitude);
+                _shDeformer.GenerateCoefficients(rand, _shAmplitude, bandScales);
 
                 GameLogger.Info(
                     $"SH configured: amplitude={_shAmplitude:F3}, coefficients generated"

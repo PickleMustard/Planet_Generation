@@ -189,9 +189,7 @@ public partial class PowerPanelDetails : BaseBuildingDetails
     {
         if (_renderIcon == null || _building?.Definition == null) return;
         var iconDef = _building.Definition.Icon;
-        Texture2D? tex = iconDef?.IsValid == true
-            ? (iconDef.LargeTexture ?? iconDef.MediumTexture ?? iconDef.SmallTexture)
-            : null;
+        Texture2D? tex = iconDef?.Texture;
         if (tex == null && !string.IsNullOrEmpty(iconDef?.BasePath))
         {
             try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + ".png"); }

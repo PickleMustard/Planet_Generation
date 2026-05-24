@@ -213,20 +213,20 @@ namespace Logistics.Resources
         }
 
         /// <summary>
-        /// Gets the icon for a ship at a specific size.
+        /// Gets the icon for a ship. Godot mipmaps handle runtime scaling.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetShipIcon(string name, IconSize size = IconSize.Large)
+        public Texture2D GetShipIcon(string name)
         {
             EnsureLoaded();
             if (TryGetShip(name, out var ship) && ship != null)
             {
-                var texture = ship.Icon?.GetTexture(size);
+                var texture = ship.Icon?.Texture;
                 if (texture != null)
                     return texture;
             }
 
-            return IconDataLoader.GetFallbackIcon(size);
+            return IconDataLoader.GetFallbackIcon();
         }
 
         /// <summary>

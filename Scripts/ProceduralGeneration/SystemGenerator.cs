@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using ProceduralGeneration.ColorSystem;
 using ProceduralGeneration.MeshGeneration;
 using Structures;
 using Structures.Enums;
+using Structures.Resources;
 using UtilityLibrary;
 using UtilityLibrary.GameMath.Orbital;
 
@@ -231,16 +233,11 @@ public partial class SystemGenerator : Node
         var bodyType = (CelestialBodyType)
             Enum.Parse(typeof(CelestialBodyType), (String)body["type"]);
 
-        BodyClassification? manualClassification = null;
-        if (body.ContainsKey("subtype"))
-        {
-            manualClassification = SubtypeParser.ParseClassification(bodyType, (String)body["subtype"]);
-        }
-
         String name = (String)body["name"];
 
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var auManager = new AUProbabilityManager(rng);
+        BodyClassification? manualClassification = ResolveSubtypeOverride(body, bodyType, auManager);
         BodyClassification classification = auManager.SelectClassification(bodyType, distanceAU, manualClassification);
 
         var mesh = new UnifiedCelestialMesh();
@@ -346,14 +343,9 @@ public partial class SystemGenerator : Node
         String name = (String)body["name"];
 
         // Select subtype for dominant body (stars, black holes, neutron stars)
-        BodyClassification? manualClassification = null;
-        if (body.ContainsKey("subtype"))
-        {
-            manualClassification = SubtypeParser.ParseClassification(bodyType, (String)body["subtype"]);
-        }
-
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var auManager = new AUProbabilityManager(rng);
+        BodyClassification? manualClassification = ResolveSubtypeOverride(body, bodyType, auManager);
         BodyClassification classification = auManager.SelectClassification(bodyType, 0f, manualClassification);
 
         var mesh = new UnifiedCelestialMesh();
@@ -380,6 +372,68 @@ public partial class SystemGenerator : Node
             onFailed: (failedBody, error) => OnBodyGenerationFailed(failedBody, error, celBody)
         );
     }
+
+    /// <summary>
+    /// Phase 7: resolves an explicit subtype override from SystemTemplate yaml. Priority:
+    /// (1) inline <c>subtype: subtype_xxx</c> string → typed BodyClassification;
+    /// (2) inline <c>subtype_weights</c> map → roll a subtype id, then map to classification.
+    /// Returns null when neither slot is present (AU-band selection runs instead).
+    /// </summary>
+    private static BodyClassification? ResolveSubtypeOverride(
+        Godot.Collections.Dictionary body,
+        CelestialBodyType bodyType,
+        AUProbabilityManager auManager)
+    {
+        if (body.ContainsKey("subtype"))
+        {
+            string id = (String)body["subtype"];
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                var family = FamilyFor(bodyType);
+                var cls = BiomeIdMapper.IdToBodyClassification(id, family);
+                if (cls != null) return cls;
+
+                // Back-compat: yaml may still carry the legacy enum-name form ("Temperate").
+                return SubtypeParser.ParseClassification(bodyType, id);
+            }
+        }
+
+        if (body.ContainsKey("subtype_weights"))
+        {
+            var raw = (Godot.Collections.Dictionary)body["subtype_weights"];
+            var weights = new Dictionary<string, float>(StringComparer.Ordinal);
+            foreach (var key in raw.Keys)
+            {
+                string id = key.AsString();
+                if (string.IsNullOrEmpty(id)) continue;
+                weights[id] = (float)raw[key];
+            }
+            string chosen = auManager.SelectFromWeights(weights, fallback: "");
+            if (!string.IsNullOrEmpty(chosen))
+            {
+                var family = FamilyFor(bodyType);
+                var cls = BiomeIdMapper.IdToBodyClassification(chosen, family);
+                if (cls != null) return cls;
+                GameLogger.Warning(
+                    $"SystemGenerator: subtype id '{chosen}' did not map to a {family} classification — falling back to AU-band selection"
+                );
+            }
+        }
+
+        return null;
+    }
+
+    private static BodyFamily FamilyFor(CelestialBodyType bodyType) => bodyType switch
+    {
+        CelestialBodyType.RockyPlanet => BodyFamily.RockyPlanet,
+        CelestialBodyType.GasGiant => BodyFamily.GasGiant,
+        CelestialBodyType.IceGiant => BodyFamily.IceGiant,
+        CelestialBodyType.DwarfPlanet => BodyFamily.DwarfPlanet,
+        CelestialBodyType.Star => BodyFamily.Star,
+        CelestialBodyType.NeutronStar => BodyFamily.NeutronStar,
+        CelestialBodyType.BlackHole => BodyFamily.BlackHole,
+        _ => BodyFamily.RockyPlanet,
+    };
 
     private void OnBodyGenerationComplete(
         CelestialBody completedBody,

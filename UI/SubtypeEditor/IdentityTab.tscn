@@ -1,0 +1,136 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UI/SubtypeEditor/IdentityTab.cs" id="1"]
+
+[node name="IdentityTab" type="ScrollContainer" node_paths=PackedStringArray("_idLabel", "_displayEdit", "_familyLabel", "_atmMin", "_atmMax", "_baseHazard", "_baseWeight", "_moistureMode")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1")
+_idLabel = NodePath("Root/IdRow/IdValue")
+_displayEdit = NodePath("Root/DisplayNameRow/DisplayEdit")
+_familyLabel = NodePath("Root/FamilyRow/FamilyValue")
+_atmMin = NodePath("Root/AtmosphereRow/AtmMin")
+_atmMax = NodePath("Root/AtmosphereRow/AtmMax")
+_baseHazard = NodePath("Root/HazardRow/BaseHazard")
+_baseWeight = NodePath("Root/WeightRow/BaseWeight")
+_moistureMode = NodePath("Root/MoistureRow/MoistureMode")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="IdRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IdLabel" type="Label" parent="Root/IdRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "id:"
+
+[node name="IdValue" type="Label" parent="Root/IdRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="DisplayNameRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Root/DisplayNameRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "display_name:"
+
+[node name="DisplayEdit" type="LineEdit" parent="Root/DisplayNameRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FamilyRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Root/FamilyRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "family:"
+
+[node name="FamilyValue" type="Label" parent="Root/FamilyRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="AtmosphereRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Root/AtmosphereRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "atmosphere [min,max]:"
+
+[node name="AtmMin" type="SpinBox" parent="Root/AtmosphereRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+step = 0.05
+allow_greater = false
+allow_lesser = false
+
+[node name="AtmMax" type="SpinBox" parent="Root/AtmosphereRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 100.0
+step = 0.05
+allow_greater = false
+allow_lesser = false
+
+[node name="HazardRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Root/HazardRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "base_hazard:"
+
+[node name="BaseHazard" type="SpinBox" parent="Root/HazardRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 10.0
+step = 0.1
+allow_greater = false
+allow_lesser = false
+
+[node name="WeightRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Root/WeightRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "base_resource_weight:"
+
+[node name="BaseWeight" type="SpinBox" parent="Root/WeightRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+min_value = 0.0
+max_value = 10.0
+step = 0.05
+allow_greater = false
+allow_lesser = false
+
+[node name="MoistureRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Root/MoistureRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+text = "moisture_mode:"
+
+[node name="MoistureMode" type="OptionButton" parent="Root/MoistureRow"]
+layout_mode = 2

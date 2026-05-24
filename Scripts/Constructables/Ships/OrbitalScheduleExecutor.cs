@@ -449,12 +449,12 @@ public partial class OrbitalScheduleExecutor : Node
         foreach (var kvp in leg.DropoffOrder.Resources)
         {
             string resourceId = kvp.Key;
-            float requested = kvp.Value;
+            int requested = kvp.Value;
 
-            float available = _unit!.Cargo.GetResourceQuantity(resourceId);
-            float toUnload = Mathf.Min(requested, available);
+            int available = _unit!.Cargo.GetResourceQuantity(resourceId);
+            int toUnload = System.Math.Min(requested, available);
 
-            if (toUnload > 0f)
+            if (toUnload > 0)
             {
                 _unit.UnloadCargo(resourceId, toUnload);
             }

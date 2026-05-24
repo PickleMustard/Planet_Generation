@@ -5,6 +5,7 @@ using System.Linq;
 using Godot;
 using UtilityLibrary;
 using Debug;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.BuildingEditor;
 
@@ -401,9 +402,10 @@ public partial class BuildingEditorModule : BaseDebugModule
                 _model.LoadedSourceFiles
             );
             _model.LoadFromDisk();
+            int reloaded = EditorDatabaseReloader.ReloadAll("BuildingDatabase");
             PopulateCategoryList();
             RefreshBuildingList();
-            ShowFeedback("Saved successfully!");
+            ShowFeedback($"Saved + reloaded {reloaded} DBs.");
         }
         catch (Exception ex)
         {

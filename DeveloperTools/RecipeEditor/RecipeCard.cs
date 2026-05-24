@@ -34,8 +34,10 @@ public partial class RecipeCard : PanelContainer
     private Button _tagsButton = null!;
     private VBoxContainer _inputsContainer = null!;
     private VBoxContainer _outputsContainer = null!;
+    private VBoxContainer _conditionalsContainer = null!;
     private Button _addInputButton = null!;
     private Button _addOutputButton = null!;
+    private Button _addConditionalButton = null!;
     private Button _moveUpButton = null!;
     private Button _moveDownButton = null!;
     private Button _deleteButton = null!;
@@ -200,6 +202,25 @@ public partial class RecipeCard : PanelContainer
 
         _outputsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_outputsContainer);
+
+        // ── Conditional Outputs ────────────────────────────────────────────
+        var conditionalsHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var conditionalsLabel = new Label
+        {
+            Text = "Conditional Outputs",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            TooltipText = "Additional outputs gated by a boolean expression. Stack on top of regular outputs."
+        };
+        conditionalsLabel.AddThemeColorOverride("font_color", new Color(1.0f, 0.9f, 0.6f));
+        conditionalsHeader.AddChild(conditionalsLabel);
+
+        _addConditionalButton = new Button { Text = "+ Conditional" };
+        _addConditionalButton.Pressed += OnAddConditionalPressed;
+        conditionalsHeader.AddChild(_addConditionalButton);
+        root.AddChild(conditionalsHeader);
+
+        _conditionalsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        root.AddChild(_conditionalsContainer);
     }
 
     public void Refresh(RecipeEditorModel.RecipeEditEntry entry, int newIndex)
@@ -230,6 +251,7 @@ public partial class RecipeCard : PanelContainer
 
         RebuildInputRows();
         RebuildOutputRows();
+        RebuildConditionalOutputRows();
 
         if (_model.Categories.ContainsKey(_categoryName))
         {
@@ -271,6 +293,22 @@ public partial class RecipeCard : PanelContainer
         }
     }
 
+    private void RebuildConditionalOutputRows()
+    {
+        foreach (var child in _conditionalsContainer.GetChildren())
+            child.QueueFree();
+        if (_entry == null) return;
+
+        for (int i = 0; i < _entry.ConditionalOutputs.Count; i++)
+        {
+            var row = new ConditionalOutputRow();
+            row.Configure(i, _entry.ConditionalOutputs[i]);
+            row.SlotChanged += OnConditionalSlotChanged;
+            row.SlotDeleted += OnConditionalSlotDeleted;
+            _conditionalsContainer.AddChild(row);
+        }
+    }
+
     private void LoadIcon()
     {
         if (_entry == null) return;
@@ -278,9 +316,9 @@ public partial class RecipeCard : PanelContainer
         if (!string.IsNullOrEmpty(_entry.IconBasePath))
         {
             texture = IconDataLoader.LoadIconTexture(
-                _entry.IconBasePath, IconSize.Medium, _entry.RecipeId);
+                _entry.IconBasePath, _entry.RecipeId);
         }
-        _iconRect.Texture = texture ?? IconDataLoader.GetFallbackIcon(IconSize.Medium);
+        _iconRect.Texture = texture ?? IconDataLoader.GetFallbackIcon();
     }
 
     private void OnFieldEdited(string fieldName, object value)
@@ -396,6 +434,51 @@ public partial class RecipeCard : PanelContainer
         _model.AddOutputSlot(_categoryName, _recipeIndex, slot);
         _entry = _model.Categories[_categoryName].Recipes[_recipeIndex];
         RebuildOutputRows();
+    }
+
+    private void OnConditionalSlotChanged(int slotIndex)
+    {
+        if (_model == null) return;
+        // Read mutated state directly from the row — Godot signals can't carry List<T>.
+        var rows = _conditionalsContainer.GetChildren();
+        if (slotIndex < 0 || slotIndex >= rows.Count) return;
+        if (rows[slotIndex] is not ConditionalOutputRow row) return;
+
+        // Defensive copy so the editor model never aliases the row's mutable list.
+        var rules = new System.Collections.Generic.List<Structures.Resources.ConditionRule>();
+        foreach (var rule in row.Rules)
+        {
+            rules.Add(new Structures.Resources.ConditionRule
+            {
+                Join = rule.Join,
+                Variable = rule.Variable,
+                Operator = rule.Operator,
+                Value = rule.Value,
+            });
+        }
+        _model.UpdateConditionalOutputSlot(_categoryName, _recipeIndex, slotIndex,
+            rules, row.Resource, row.Amount);
+    }
+
+    private void OnConditionalSlotDeleted(int slotIndex)
+    {
+        if (_model == null) return;
+        _model.DeleteConditionalOutputSlot(_categoryName, _recipeIndex, slotIndex);
+        _entry = _model.Categories[_categoryName].Recipes[_recipeIndex];
+        RebuildConditionalOutputRows();
+    }
+
+    private void OnAddConditionalPressed()
+    {
+        if (_model == null) return;
+        var slot = new RecipeEditorModel.ConditionalOutputSlot
+        {
+            Resource = "",
+            Amount = 1f,
+        };
+        _model.AddConditionalOutputSlot(_categoryName, _recipeIndex, slot);
+        _entry = _model.Categories[_categoryName].Recipes[_recipeIndex];
+        RebuildConditionalOutputRows();
     }
 
     private void OnMoveUpPressed()

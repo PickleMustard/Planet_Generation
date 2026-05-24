@@ -139,6 +139,17 @@ namespace UtilityLibrary
             EmitSignal(SignalName.ExportRaycastResult, results);
 
         /// <summary>
+        /// Fired after a developer editor's Save reloads a runtime database in memory.
+        /// UI panels showing config-derived lists should subscribe and refresh.
+        /// Parameter: databaseName (matches <c>ILoadableDatabase.DatabaseName</c>).
+        /// </summary>
+        [Signal]
+        public delegate void DatabaseReloadedEventHandler(string databaseName);
+
+        public void EmitDatabaseReloaded(string databaseName) =>
+            EmitSignal(SignalName.DatabaseReloaded, databaseName);
+
+        /// <summary>
         /// Fired when a continent's power state changes (deficit or recovery).
         /// Parameters: continentIndex, isDeficit
         /// </summary>

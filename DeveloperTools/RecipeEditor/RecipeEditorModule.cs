@@ -5,6 +5,7 @@ using System.Linq;
 using Godot;
 using UtilityLibrary;
 using Debug;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.RecipeEditor;
 
@@ -430,9 +431,10 @@ public partial class RecipeEditorModule : BaseDebugModule
                 new Dictionary<string, RecipeEditorModel.RecipeCategoryData>(_model.Categories)
             );
             _model.LoadFromDisk();
+            int reloaded = EditorDatabaseReloader.ReloadAll("RecipeDatabase");
             PopulateCategoryList();
             RefreshRecipeList();
-            ShowFeedback("Saved successfully!");
+            ShowFeedback($"Saved + reloaded {reloaded} DBs.");
         }
         catch (Exception ex)
         {

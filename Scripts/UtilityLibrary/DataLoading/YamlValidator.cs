@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Godot;
-using Structures.Enums;
+using Structures.Resources;
 using YamlDotNet.RepresentationModel;
 
 namespace UtilityLibrary.DataLoading;
@@ -394,9 +394,12 @@ public static class YamlValidator
                     {
                         result.AddError($"Dominant body at index {idx} must be a mapping");
                     }
-                    else if (!body.Children.ContainsKey("type"))
+                    else
                     {
-                        result.AddWarning($"Dominant body at index {idx} missing 'type' field");
+                        if (!body.Children.ContainsKey("type"))
+                            result.AddWarning($"Dominant body at index {idx} missing 'type' field");
+                        RejectLegacyGenRangeKeys(body, $"dominant[{idx}]", result);
+                        ValidateSubtypeSlot(body, $"dominant[{idx}]", result);
                     }
                     idx++;
                 }
@@ -421,9 +424,12 @@ public static class YamlValidator
                     {
                         result.AddError($"Belt at index {idx} must be a mapping");
                     }
-                    else if (!belt.Children.ContainsKey("type"))
+                    else
                     {
-                        result.AddWarning($"Belt at index {idx} missing 'type' field");
+                        if (!belt.Children.ContainsKey("type"))
+                            result.AddWarning($"Belt at index {idx} missing 'type' field");
+                        RejectLegacyGenRangeKeys(belt, $"belts[{idx}]", result);
+                        ValidateSubtypeSlot(belt, $"belts[{idx}]", result);
                     }
                     idx++;
                 }
@@ -458,9 +464,121 @@ public static class YamlValidator
                             result.AddWarning(
                                 $"Planetary body at index {idx} missing 'orbital_parameters'"
                             );
+                        RejectLegacyGenRangeKeys(body, $"planetary[{idx}]", result);
+                        ValidateSubtypeSlot(body, $"planetary[{idx}]", result);
+
+                        // Satellites embedded in planetary bodies share the same legacy keys.
+                        if (body.Children.TryGetValue("satellites", out var satsNode)
+                            && satsNode is YamlSequenceNode satsSeq)
+                        {
+                            int satIdx = 0;
+                            foreach (var satNode in satsSeq.Children)
+                            {
+                                if (satNode is YamlMappingNode satMap)
+                                {
+                                    RejectLegacyGenRangeKeys(
+                                        satMap,
+                                        $"planetary[{idx}].satellites[{satIdx}]",
+                                        result
+                                    );
+                                }
+                                satIdx++;
+                            }
+                        }
                     }
                     idx++;
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Phase 6: per-body gen-range blocks (<c>base_mesh</c>, <c>tectonics</c>,
+    /// <c>spherical_harmonics_settings</c>) have moved into <c>Configuration/Subtypes/*.yaml</c>.
+    /// A SystemTemplate file containing them is from before the migration and must be
+    /// rewritten by <c>SystemTemplateMigrator</c>.
+    /// </summary>
+    private static readonly string[] LegacyBodyGenRangeKeys =
+    {
+        "base_mesh",
+        "tectonics",
+        "spherical_harmonics_settings",
+    };
+
+    private static void RejectLegacyGenRangeKeys(
+        YamlMappingNode body,
+        string context,
+        ValidationResult result
+    )
+    {
+        foreach (var key in LegacyBodyGenRangeKeys)
+        {
+            if (body.Children.ContainsKey(key))
+            {
+                result.AddError(
+                    $"{context}: legacy key '{key}' is no longer accepted. "
+                    + "Per-body gen ranges have moved to `Configuration/Subtypes/*.yaml`. "
+                    + "Run `SystemTemplateMigrator`."
+                );
+            }
+        }
+    }
+
+    private static void ValidateSubtypeSlot(
+        YamlMappingNode body,
+        string context,
+        ValidationResult result
+    )
+    {
+        bool hasExplicit = body.Children.ContainsKey("subtype");
+        bool hasWeights = body.Children.ContainsKey("subtype_weights");
+
+        if (hasExplicit && hasWeights)
+        {
+            result.AddWarning(
+                $"{context}: both 'subtype' and 'subtype_weights' provided — 'subtype' wins, weights ignored."
+            );
+        }
+
+        if (hasWeights)
+        {
+            if (body.Children["subtype_weights"] is not YamlMappingNode weightsMap)
+            {
+                result.AddError($"{context}: 'subtype_weights' must be a mapping of subtype_id → weight.");
+                return;
+            }
+
+            float total = 0f;
+            foreach (var kvp in weightsMap.Children)
+            {
+                if (!IsNumericNode(kvp.Value))
+                {
+                    result.AddError(
+                        $"{context}: 'subtype_weights[{kvp.Key}]' must be numeric"
+                    );
+                    continue;
+                }
+
+                if (kvp.Value is YamlScalarNode wScalar
+                    && float.TryParse(
+                        wScalar.Value,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var w))
+                {
+                    if (w < 0)
+                        result.AddError(
+                            $"{context}: 'subtype_weights[{kvp.Key}]' must be non-negative (got {w})"
+                        );
+                    total += w;
+                }
+            }
+
+            if (Math.Abs(total - 1.0f) > 0.01f && total > 0f)
+            {
+                result.AddWarning(
+                    $"{context}: subtype_weights sum to {total:0.###}, expected ~1.0"
+                );
             }
         }
     }
@@ -1053,23 +1171,7 @@ public static class YamlValidator
     }
 
     private static bool IsValidBiomeName(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return false;
-
-        string normalized = name.Replace("_", "").Replace(" ", "").Trim();
-
-        foreach (Structures.Enums.Biome.BiomeType type in System.Enum.GetValues(typeof(Structures.Enums.Biome.BiomeType)))
-        {
-            string enumName = type.ToString().Replace("_", "");
-            if (string.Equals(normalized, enumName, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+        => BiomeCategoryConfig.TryNormalizeBiomeId(name, out _);
 
     // Valid biome category IDs from biome_categories.yaml
     private static readonly HashSet<string> ValidBiomeCategories = new HashSet<string>(
@@ -1774,7 +1876,204 @@ public static class YamlValidator
             ValidateRecipeSlotKeys(recipe, "input_resources", recipeIndex, allowTagPrefix: true, result);
             ValidateRecipeSlotKeys(recipe, "output_resources", recipeIndex, allowTagPrefix: true, result);
 
+            // Validate conditional_outputs: list of { condition, resource, amount }.
+            ValidateConditionalOutputs(recipe, recipeIndex, result);
+
             recipeIndex++;
+        }
+    }
+
+    private static void ValidateConditionalOutputs(
+        YamlMappingNode recipe,
+        int recipeIndex,
+        ValidationResult result)
+    {
+        if (!recipe.Children.ContainsKey("conditional_outputs")) return;
+        var node = recipe.Children["conditional_outputs"];
+
+        if (node is YamlScalarNode s && (s.Value == null || s.Value == "" || s.Value == "~"))
+            return;
+
+        if (node is not YamlSequenceNode list)
+        {
+            result.AddError(
+                $"Recipe at index {recipeIndex}: 'conditional_outputs' must be a sequence"
+            );
+            return;
+        }
+
+        int idx = 0;
+        foreach (var entry in list.Children)
+        {
+            if (entry is not YamlMappingNode m)
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{idx}]' must be a mapping"
+                );
+                idx++;
+                continue;
+            }
+
+            foreach (var key in new[] { "condition", "resource", "amount" })
+            {
+                if (!m.Children.ContainsKey(key))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: 'conditional_outputs[{idx}]' missing required key '{key}'"
+                    );
+                }
+            }
+
+            if (m.Children.TryGetValue("condition", out var condNode))
+            {
+                if (condNode is YamlScalarNode condScalar)
+                {
+                    string? conditionText = condScalar.Value;
+                    if (string.IsNullOrWhiteSpace(conditionText))
+                    {
+                        result.AddError(
+                            $"Recipe at index {recipeIndex}: 'conditional_outputs[{idx}].condition' must be non-empty"
+                        );
+                    }
+                    else
+                    {
+                        try
+                        {
+                            Structures.Resources.RecipeExpressionEvaluator.Compile(conditionText);
+                        }
+                        catch (Structures.Resources.RecipeExpressionException ex)
+                        {
+                            result.AddError(
+                                $"Recipe at index {recipeIndex}: 'conditional_outputs[{idx}].condition' parse error: {ex.Message}"
+                            );
+                        }
+                    }
+                }
+                else if (condNode is YamlSequenceNode ruleList)
+                {
+                    ValidateConditionRuleList(ruleList, recipeIndex, idx, result);
+                }
+                else
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: 'conditional_outputs[{idx}].condition' must be a string or a sequence of rule mappings"
+                    );
+                }
+            }
+
+            if (m.Children.TryGetValue("resource", out var resNode))
+            {
+                if (resNode is not YamlScalarNode resScalar || string.IsNullOrWhiteSpace(resScalar.Value))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: 'conditional_outputs[{idx}].resource' must be a non-empty string"
+                    );
+                }
+            }
+
+            if (m.Children.TryGetValue("amount", out var amtNode) && !IsNumericNode(amtNode))
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{idx}].amount' must be numeric"
+                );
+            }
+
+            idx++;
+        }
+    }
+
+    private static void ValidateConditionRuleList(
+        YamlSequenceNode ruleList,
+        int recipeIndex,
+        int outputIndex,
+        ValidationResult result)
+    {
+        if (ruleList.Children.Count == 0)
+        {
+            result.AddError(
+                $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition' must contain at least one rule"
+            );
+            return;
+        }
+
+        int j = 0;
+        foreach (var ruleNode in ruleList.Children)
+        {
+            if (ruleNode is not YamlMappingNode ruleMap)
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}]' must be a mapping"
+                );
+                j++;
+                continue;
+            }
+
+            // var: required, must be one of AllowedVariables
+            if (!ruleMap.Children.TryGetValue("var", out var varNode) || varNode is not YamlScalarNode varScalar
+                || string.IsNullOrWhiteSpace(varScalar.Value))
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}].var' missing or empty"
+                );
+            }
+            else
+            {
+                bool known = false;
+                foreach (var v in Structures.Resources.RecipeExpressionEvaluator.AllowedVariables)
+                {
+                    if (v == varScalar.Value) { known = true; break; }
+                }
+                if (!known)
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}].var' unknown variable '{varScalar.Value}'. " +
+                        $"Allowed: {string.Join(", ", Structures.Resources.RecipeExpressionEvaluator.AllowedVariables)}."
+                    );
+                }
+            }
+
+            // op: required, must be one of ==,!=,<,<=,>,>=
+            if (!ruleMap.Children.TryGetValue("op", out var opNode) || opNode is not YamlScalarNode opScalar
+                || string.IsNullOrWhiteSpace(opScalar.Value))
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}].op' missing or empty"
+                );
+            }
+            else if (!Structures.Resources.ConditionOperatorExtensions.TryParseSymbol(opScalar.Value, out _))
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}].op' invalid '{opScalar.Value}'. Allowed: ==, !=, <, <=, >, >="
+                );
+            }
+
+            // value: required, numeric
+            if (!ruleMap.Children.TryGetValue("value", out var valueNode))
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}].value' missing"
+                );
+            }
+            else if (!IsNumericNode(valueNode))
+            {
+                result.AddError(
+                    $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}].value' must be numeric"
+                );
+            }
+
+            // join: optional on first rule, AND/OR thereafter
+            if (ruleMap.Children.TryGetValue("join", out var joinNode))
+            {
+                if (joinNode is not YamlScalarNode joinScalar
+                    || !Structures.Resources.ConditionJoinExtensions.TryParseYaml(joinScalar.Value ?? "", out _))
+                {
+                    result.AddError(
+                        $"Recipe at index {recipeIndex}: 'conditional_outputs[{outputIndex}].condition[{j}].join' must be AND or OR"
+                    );
+                }
+            }
+
+            j++;
         }
     }
 
@@ -1875,18 +2174,12 @@ public static class YamlValidator
 
         string basePath = basePathScalar.Value;
 
-        // Validate all three icon sizes exist (skip Off)
-        foreach (IconSize size in System.Enum.GetValues<IconSize>())
+        // Single texture per icon — Godot mipmaps handle runtime scaling.
+        string svgPath = $"{basePath}.svg";
+        string pngPath = $"{basePath}.png";
+        if (!Godot.FileAccess.FileExists(svgPath) && !Godot.FileAccess.FileExists(pngPath))
         {
-            string suffix = size.GetSuffix();
-            int pixels = size.GetPixels();
-            string svgPath = $"{basePath}{suffix}.svg";
-            string pngPath = $"{basePath}{suffix}.png";
-
-            if (!Godot.FileAccess.FileExists(svgPath) && !Godot.FileAccess.FileExists(pngPath))
-            {
-                result.AddWarning($"{context}: Icon {size} ({pixels}px) not found: {svgPath} (or .png)");
-            }
+            result.AddWarning($"{context}: Icon not found: {svgPath} (or .png)");
         }
 
         // Validate optional scale field
@@ -1921,16 +2214,6 @@ public static class YamlValidator
         }
     }
 
-    private static int GetIconSizePixels(IconSize size)
-    {
-        return size switch
-        {
-            IconSize.Small => 64,
-            IconSize.Medium => 128,
-            IconSize.Large => 512,
-            _ => 512
-        };
-    }
 }
 
 public class ValidationResult

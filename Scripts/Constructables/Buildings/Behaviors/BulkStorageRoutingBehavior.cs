@@ -53,7 +53,7 @@ public partial class BulkStorageRoutingBehavior : RefCounted, IBuildingBehavior
             return false;
 
         string resourceId = package.ResourceId;
-        float amount = package.Quantity;
+        int amount = package.Quantity;
 
         if (bulk.HasSpace(resourceId, amount))
         {
@@ -112,20 +112,20 @@ public partial class BulkStorageRoutingBehavior : RefCounted, IBuildingBehavior
             if (string.IsNullOrEmpty(resourceId))
                 continue;
 
-            float room = owner.InputStorage.GetFreeSpace(resourceId);
-            if (room <= 0f)
+            int room = owner.InputStorage.GetFreeSpace(resourceId);
+            if (room <= 0)
                 continue;
 
-            float available = bulk.GetQuantity(resourceId);
-            float toMove = Mathf.Min(available, room);
-            if (toMove <= 0f)
+            int available = bulk.GetQuantity(resourceId);
+            int toMove = System.Math.Min(available, room);
+            if (toMove <= 0)
                 continue;
 
-            float withdrawn = bulk.Withdraw(resourceId, toMove);
-            if (withdrawn <= 0f)
+            int withdrawn = bulk.Withdraw(resourceId, toMove);
+            if (withdrawn <= 0)
                 continue;
 
-            float deposited = owner.InputStorage.Deposit(resourceId, withdrawn);
+            int deposited = owner.InputStorage.Deposit(resourceId, withdrawn);
             if (deposited < withdrawn)
                 bulk.Deposit(resourceId, withdrawn - deposited);
         }
@@ -144,20 +144,20 @@ public partial class BulkStorageRoutingBehavior : RefCounted, IBuildingBehavior
         foreach (var kvp in snapshot)
         {
             string resourceId = kvp.Key;
-            float available = kvp.Value;
-            if (available <= 0f)
+            int available = kvp.Value;
+            if (available <= 0)
                 continue;
 
-            float room = owner.BulkStorage.GetFreeSpace(resourceId);
-            if (room <= 0f)
+            int room = owner.BulkStorage.GetFreeSpace(resourceId);
+            if (room <= 0)
                 continue;
 
-            float toMove = Mathf.Min(available, room);
-            float withdrawn = owner.OutputStorage.Withdraw(resourceId, toMove);
-            if (withdrawn <= 0f)
+            int toMove = System.Math.Min(available, room);
+            int withdrawn = owner.OutputStorage.Withdraw(resourceId, toMove);
+            if (withdrawn <= 0)
                 continue;
 
-            float deposited = owner.BulkStorage.Deposit(resourceId, withdrawn);
+            int deposited = owner.BulkStorage.Deposit(resourceId, withdrawn);
             if (deposited < withdrawn)
                 owner.OutputStorage.Deposit(resourceId, withdrawn - deposited);
         }
@@ -190,19 +190,19 @@ public partial class BulkStorageRoutingBehavior : RefCounted, IBuildingBehavior
         foreach (var kvp in quantities)
         {
             string resourceId = kvp.Key;
-            float available = kvp.Value;
-            if (available <= 0f)
+            int available = kvp.Value;
+            if (available <= 0)
                 continue;
 
             foreach (var node in exportNodes)
             {
-                if (available <= 0f)
+                if (available <= 0)
                     break;
                 if (node.Link == null)
                     continue;
 
-                float enqueued = node.Link.TryEnqueueAmount(resourceId, available);
-                if (enqueued > 0f)
+                int enqueued = node.Link.TryEnqueueAmount(resourceId, available);
+                if (enqueued > 0)
                 {
                     bulk.Withdraw(resourceId, enqueued);
                     available -= enqueued;

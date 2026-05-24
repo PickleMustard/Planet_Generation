@@ -144,8 +144,10 @@ public class SphericalHarmonicsDeformer
     /// Generate random coefficients with amplitude scaling by degree.
     /// <para>
     /// Each coefficient is drawn uniformly from [−amplitude × scale, +amplitude × scale]
-    /// where <c>scale</c> decreases with degree:
-    /// l=0 → ×1.0, l=1 → ×0.8, l=2 → ×0.5, l=3 → ×0.3.
+    /// where <c>scale</c> defaults to a per-degree tuple that biases toward low-frequency
+    /// detail: l=0 → ×1.0, l=1 → ×0.8, l=2 → ×0.5, l=3 → ×0.3. Callers can override the
+    /// per-band scales via <paramref name="bandScales"/> — useful for subtype-specific
+    /// shape character (e.g. stormy gas giants amplifying l≥2 to add asymmetric blobs).
     /// </para>
     /// <para>
     /// Deterministic: calling with the same <paramref name="rng"/> seed state produces
@@ -154,12 +156,20 @@ public class SphericalHarmonicsDeformer
     /// </summary>
     /// <param name="rng">Godot <see cref="RandomNumberGenerator"/> (caller controls seed).</param>
     /// <param name="amplitude">Base amplitude — the maximum absolute value at degree 0.</param>
-    public void GenerateCoefficients(RandomNumberGenerator rng, float amplitude)
+    /// <param name="bandScales">
+    /// Optional per-degree scale overrides (index = degree l). Missing or negative entries fall
+    /// back to the built-in <see cref="DegreeScaling"/> tuple, so a short or partial array is
+    /// safe. Pass <c>null</c> to use the built-in scaling unchanged.
+    /// </param>
+    public void GenerateCoefficients(RandomNumberGenerator rng, float amplitude, float[]? bandScales = null)
     {
         int index = 0;
         for (int l = 0; l <= 3; l++)
         {
-            float scaledAmplitude = amplitude * DegreeScaling[l];
+            float scale = (bandScales != null && l < bandScales.Length && bandScales[l] >= 0f)
+                ? bandScales[l]
+                : DegreeScaling[l];
+            float scaledAmplitude = amplitude * scale;
             for (int m = -l; m <= l; m++)
             {
                 _coefficients[index] = rng.RandfRange(-scaledAmplitude, scaledAmplitude);

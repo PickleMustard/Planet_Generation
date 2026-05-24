@@ -99,7 +99,7 @@ public partial class IconPickerPopup : PopupPanel
 		else
 		{
 			GameLogger.Warning($"Failed to load icon for preview: {path}");
-			_previewRect.Texture = IconDataLoader.GetFallbackIcon(IconSize.Medium);
+			_previewRect.Texture = IconDataLoader.GetFallbackIcon();
 		}
 
 		// Extract base path

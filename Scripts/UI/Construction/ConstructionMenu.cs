@@ -68,6 +68,7 @@ public partial class ConstructionMenu : PanelContainer
         {
             SignalBus.Instance.BuildingConstructed += OnPlacementCountChanged;
             SignalBus.Instance.BuildingRemoved += OnPlacementCountChanged;
+            SignalBus.Instance.DatabaseReloaded += OnDatabaseReloaded;
         }
 
         // Populate the lists
@@ -82,11 +83,22 @@ public partial class ConstructionMenu : PanelContainer
         {
             SignalBus.Instance.BuildingConstructed -= OnPlacementCountChanged;
             SignalBus.Instance.BuildingRemoved -= OnPlacementCountChanged;
+            SignalBus.Instance.DatabaseReloaded -= OnDatabaseReloaded;
         }
         base._ExitTree();
     }
 
     private void OnPlacementCountChanged(int _) => RefreshBuildingsListEnabledState();
+
+    private void OnDatabaseReloaded(string databaseName)
+    {
+        switch (databaseName)
+        {
+            case "BuildingDatabase": PopulateBuildings(); break;
+            case "StationDatabase":  PopulateStations(); break;
+            case "ShipDatabase":     PopulateShips(); break;
+        }
+    }
 
     private void PopulateStations()
     {

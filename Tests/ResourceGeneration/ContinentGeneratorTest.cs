@@ -7,12 +7,20 @@ using static GdUnit4.Assertions;
 using ProceduralGeneration.MeshGeneration.ResourceGeneration;
 using Structures.GameState;
 using Structures.MeshGeneration;
+using Structures.Resources;
 
 namespace Tests.ResourceGeneration;
 
 [TestSuite]
 public class ContinentGeneratorTest
 {
+    [BeforeTest]
+    public void Setup()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+    }
+
     private Godot.Collections.Dictionary CreateMockContinentConfig()
     {
         return new Godot.Collections.Dictionary

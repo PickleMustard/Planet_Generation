@@ -412,8 +412,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior
             int have = available.TryGetValue(kvp.Key, out var a) ? a : 0;
             int shortfall = kvp.Value - have;
             if (shortfall <= 0) continue;
-            float withdrawn = _owner.BulkStorage.Withdraw(kvp.Key, shortfall);
-            int delivered = Mathf.FloorToInt(withdrawn);
+            int delivered = _owner.BulkStorage.Withdraw(kvp.Key, shortfall);
             if (delivered > 0)
                 building.DeliverResources(kvp.Key, delivered);
         }

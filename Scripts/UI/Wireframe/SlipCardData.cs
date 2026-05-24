@@ -37,6 +37,10 @@ public sealed class SlipCardData
     public string ProgressLabel = "—";
     public string StatusLabel = "idle";
 
+    public bool IsOneTime;
+    public bool IsCompleted;
+    public string OrderId = string.Empty;
+
     public sealed class ManifestEntry
     {
         public string Icon = string.Empty;

@@ -45,13 +45,13 @@ public class BulkStorageManufacturingFlowTest
         mfg.StartCycle(recipe, productionSpeed: 10f);
         mfg.OnManufactureTick(1f, building);
 
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1f);
-        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(0f);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1);
+        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(0);
 
         routing.OnManufactureTick(1f, building);
 
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(0f);
-        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(1f);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(0);
+        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(1);
     }
 
     [TestCase]
@@ -68,7 +68,7 @@ public class BulkStorageManufacturingFlowTest
             mfg.OnManufactureTick(1f, building);
             routing.OnManufactureTick(1f, building);
 
-            AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual((float)cycle);
+            AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(cycle);
             AssertThat(mfg.State).IsEqual(ManufacturingState.Idle);
         }
     }
@@ -86,7 +86,7 @@ public class BulkStorageManufacturingFlowTest
         mfg.StartCycle(NoInputIronRecipe(), productionSpeed: 10f);
         mfg.OnManufactureTick(1f, building);
 
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1f);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1);
     }
 
     private static Building BuildHybrid()

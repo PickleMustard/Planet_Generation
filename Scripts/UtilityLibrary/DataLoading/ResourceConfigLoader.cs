@@ -245,7 +245,7 @@ public static class ResourceConfigLoader
             ResourceType = resourceType, // May be overridden later
             Tags = ReadTags(dict, "tags"),
             TransportWeight = ReadFloat(dict, "transport_weight", 1.0f),
-            MaxStackSize = ReadFloat(dict, "max_stack_size", 100f),
+            MaxStackSize = ReadInt(dict, "max_stack_size", 100),
             StateOfMatter = StateOfMatterExtensions.Parse(ReadString(dict, "state_of_matter", "")),
             Icon = ParseIconDefinition(dict, $"resource:{idName}"),
         };

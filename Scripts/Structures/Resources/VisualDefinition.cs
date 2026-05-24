@@ -1,5 +1,4 @@
 using Godot;
-using Structures.Enums;
 using UtilityLibrary;
 
 namespace Structures.Resources;
@@ -46,9 +45,6 @@ public class VisualDefinition
 
     /// <summary>Tint color for the icon. White = no tint.</summary>
     public Color IconTint { get; set; } = Colors.White;
-
-    /// <summary>Target display size category for this icon.</summary>
-    public IconSize IconSize { get; set; } = IconSize.Large;
 
     // ========== 2D Board Shape Properties ==========
 
@@ -126,12 +122,16 @@ public class VisualDefinition
 
     /// <summary>
     /// Gets the effective icon size in pixels, accounting for scale.
+    /// Uses the source texture's pixel size when available; otherwise falls back
+    /// to a default base size since Godot mipmaps handle runtime resizing.
     /// </summary>
     /// <returns>A Vector2 containing the scaled width and height.</returns>
     public Vector2 GetIconDimensions()
     {
-        int baseSize = IconSize.GetPixels();
-        float scaled = baseSize * IconScale;
-        return new Vector2(scaled, scaled);
+        const float defaultBaseSize = 128f;
+        Vector2 baseSize = IconTexture != null
+            ? IconTexture.GetSize()
+            : new Vector2(defaultBaseSize, defaultBaseSize);
+        return baseSize * IconScale;
     }
 }

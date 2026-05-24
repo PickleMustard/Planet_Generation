@@ -84,6 +84,7 @@ public static class RecipeConfigLoader
             WorkRequired = ReadFloat(dict, "work_required", 10.0f),
             InputResources = ParseResourceList(dict, "input_resources"),
             OutputResources = ParseResourceList(dict, "output_resources"),
+            ConditionalOutputs = ParseConditionalOutputs(dict, recipeId),
             Tags = ReadTags(dict, "tags"),
             Icon = ParseIconDefinition(dict, $"recipe:{recipeId}"),
         };
@@ -147,6 +148,157 @@ public static class RecipeConfigLoader
 
         GameLogger.Warning($"Unsupported '{key}' YAML form: {node.GetType().Name}");
         return resources;
+    }
+
+    private static List<ConditionalOutput> ParseConditionalOutputs(
+        Dictionary<object, object> dict,
+        string recipeId)
+    {
+        var results = new List<ConditionalOutput>();
+
+        if (!dict.ContainsKey("conditional_outputs") || dict["conditional_outputs"] is null)
+            return results;
+
+        if (dict["conditional_outputs"] is not List<object> entries)
+        {
+            GameLogger.Warning(
+                $"Recipe '{recipeId}': 'conditional_outputs' must be a list, got {dict["conditional_outputs"].GetType().Name}");
+            return results;
+        }
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            if (entries[i] is not Dictionary<object, object> entry)
+            {
+                GameLogger.Warning($"Recipe '{recipeId}': conditional_outputs[{i}] is not a mapping; skipped.");
+                continue;
+            }
+
+            var co = new ConditionalOutput
+            {
+                Resource = ReadString(entry, "resource", string.Empty),
+                Amount = ReadFloat(entry, "amount", 0f),
+            };
+
+            if (string.IsNullOrWhiteSpace(co.Resource))
+            {
+                GameLogger.Warning(
+                    $"Recipe '{recipeId}': conditional_outputs[{i}] missing 'resource'; skipped.");
+                continue;
+            }
+
+            if (!entry.ContainsKey("condition") || entry["condition"] is null)
+            {
+                GameLogger.Warning(
+                    $"Recipe '{recipeId}': conditional_outputs[{i}] missing 'condition'; skipped.");
+                continue;
+            }
+
+            object conditionNode = entry["condition"];
+
+            // New structured form: condition is a list of rule mappings.
+            if (conditionNode is List<object> ruleList)
+            {
+                var rules = ParseRuleList(ruleList, recipeId, i);
+                if (rules.Count == 0)
+                {
+                    GameLogger.Warning(
+                        $"Recipe '{recipeId}': conditional_outputs[{i}] structured condition has no valid rules; skipped.");
+                    continue;
+                }
+
+                try
+                {
+                    co.CompiledCondition = ConditionRuleCompiler.BuildAst(rules);
+                }
+                catch (RecipeExpressionException ex)
+                {
+                    GD.PrintErr(
+                        $"Recipe '{recipeId}': conditional_outputs[{i}] could not build AST from rules: {ex.Message}");
+                    continue;
+                }
+
+                co.Rules = rules;
+                results.Add(co);
+                continue;
+            }
+
+            // Legacy form: condition is a raw expression string.
+            string conditionStr = conditionNode as string ?? conditionNode.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(conditionStr))
+            {
+                GameLogger.Warning(
+                    $"Recipe '{recipeId}': conditional_outputs[{i}] has empty condition; skipped.");
+                continue;
+            }
+
+            try
+            {
+                co.CompiledCondition = RecipeExpressionEvaluator.Compile(conditionStr);
+            }
+            catch (RecipeExpressionException ex)
+            {
+                GD.PrintErr(
+                    $"Recipe '{recipeId}': conditional_outputs[{i}] condition failed to parse: {ex.Message}");
+                continue;
+            }
+
+            if (ConditionRuleCompiler.TryDecompose(co.CompiledCondition, out var decomposed))
+            {
+                co.Rules = decomposed;
+            }
+            else
+            {
+                co.Condition = conditionStr;
+            }
+            results.Add(co);
+        }
+
+        return results;
+    }
+
+    private static List<ConditionRule> ParseRuleList(List<object> ruleList, string recipeId, int outputIndex)
+    {
+        var rules = new List<ConditionRule>();
+        for (int j = 0; j < ruleList.Count; j++)
+        {
+            if (ruleList[j] is not Dictionary<object, object> ruleDict)
+            {
+                GameLogger.Warning(
+                    $"Recipe '{recipeId}': conditional_outputs[{outputIndex}].condition[{j}] is not a mapping; skipped.");
+                continue;
+            }
+
+            string variable = ReadString(ruleDict, "var", string.Empty);
+            string opSymbol = ReadString(ruleDict, "op", string.Empty);
+            float value = ReadFloat(ruleDict, "value", 0f);
+            string joinStr = ReadString(ruleDict, "join", "AND");
+
+            if (string.IsNullOrWhiteSpace(variable))
+            {
+                GameLogger.Warning(
+                    $"Recipe '{recipeId}': conditional_outputs[{outputIndex}].condition[{j}] missing 'var'; skipped.");
+                continue;
+            }
+
+            if (!ConditionOperatorExtensions.TryParseSymbol(opSymbol, out var op))
+            {
+                GameLogger.Warning(
+                    $"Recipe '{recipeId}': conditional_outputs[{outputIndex}].condition[{j}] has invalid 'op' '{opSymbol}'; skipped.");
+                continue;
+            }
+
+            ConditionJoinExtensions.TryParseYaml(joinStr, out var join);
+
+            rules.Add(new ConditionRule
+            {
+                Join = join,
+                Variable = variable,
+                Operator = op,
+                Value = value,
+            });
+        }
+        return rules;
     }
 
     private static IconDefinition ParseIconDefinition(Dictionary<object, object> dict, string context)

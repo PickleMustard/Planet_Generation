@@ -1,0 +1,11 @@
+recipes:
+  - recipe_id: "canning_tag"
+    display_name: "Canning"
+    description: Drop some raw edibles into some sort of preservative. It doesn't taste great but it's shelf stable.
+    category: grocery
+    work_required: 5
+    input_resources:
+      - can: 1
+      - tag:unprocessed_food: 3
+    output_resources:
+      - canned_good: 1

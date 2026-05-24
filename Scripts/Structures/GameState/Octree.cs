@@ -37,7 +37,7 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
     public bool Insert(T point)
     {
         if (!root.Contains(point)) return false;
-        _points.Add(point);
+        if (!_points.Add(point)) return true;
         try
         {
             return root.Insert(point);
@@ -131,6 +131,7 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
 public class OctreeNode<[MustBeVariant] T> where T : Point
 {
     const int NODE_CAPACITY = 16;
+    const int MAX_DEPTH = 16;
 
     public Aabb boundary { get; private set; }
     public Array<T> points { get; private set; }
@@ -145,9 +146,12 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
 
     public void Grow(float factor)
     {
-        Vector3 start = boundary.Position + boundary.Position * (factor / 2f);
-        Vector3 size = boundary.Size + boundary.Size * (factor);
-        boundary = new Aabb(start, size).Abs();
+        // Expand symmetrically around the current center. Godot's Aabb.Position is the
+        // min-corner, not the center, so naive `position + position * k` shifts the box.
+        Vector3 center = boundary.GetCenter();
+        Vector3 newSize = boundary.Size * (1f + factor);
+        Vector3 newPos = center - newSize / 2f;
+        boundary = new Aabb(newPos, newSize).Abs();
         foreach (var child in children)
         {
             if (child != null)
@@ -201,7 +205,7 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
         return boundary.HasPoint(point.Position);
     }
 
-    public void Subdivide()
+    public void Subdivide(int depth)
     {
         Vector3 childHalfDim = boundary.Size / 4f;
 
@@ -220,23 +224,23 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
         foreach (var point in points)
         {
             int octant = GetOctant(point);
-            children[octant].Insert(point);
+            children[octant].Insert(point, depth + 1);
         }
 
         points.Clear();
     }
 
-    public bool Insert(T point)
+    public bool Insert(T point, int depth = 0)
     {
         if (!boundary.HasPoint(point.Position)) return false;
-        if (IsLeaf() && points.Count < NODE_CAPACITY)
+        if (IsLeaf() && (points.Count < NODE_CAPACITY || depth >= MAX_DEPTH))
         {
             points.Add(point);
             return true;
         }
         if (IsLeaf())
-            Subdivide();
+            Subdivide(depth);
         int octant = GetOctant(point);
-        return children[octant].Insert(point);
+        return children[octant].Insert(point, depth + 1);
     }
 }

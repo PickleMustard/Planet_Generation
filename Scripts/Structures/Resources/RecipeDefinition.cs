@@ -44,6 +44,13 @@ public class RecipeDefinition
     public Dictionary<string, float> OutputResources { get; set; } = new();
 
     /// <summary>
+    /// Additional outputs gated by per-cycle condition expressions. Each entry
+    /// fires independently in addition to <see cref="OutputResources"/> when its
+    /// compiled condition evaluates true against the building's recipe context.
+    /// </summary>
+    public List<ConditionalOutput> ConditionalOutputs { get; set; } = new();
+
+    /// <summary>
     /// Visual representation for UI display.
     /// Recipes must explicitly define an icon_base_path.
     /// </summary>

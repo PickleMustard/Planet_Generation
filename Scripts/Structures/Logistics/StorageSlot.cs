@@ -7,6 +7,7 @@ namespace Structures.Logistics;
 /// resources it can ever accept; once a resource occupies the slot, the slot is
 /// further locked to that resource until it empties. Slot capacity is dynamic and
 /// equals the occupant's <see cref="ResourceDefinition.MaxStackSize"/>.
+/// Quantities are whole units only.
 /// </summary>
 public class StorageSlot
 {
@@ -18,7 +19,7 @@ public class StorageSlot
     /// </summary>
     public string? OccupiedResourceId { get; set; }
 
-    public float Quantity { get; set; }
+    public int Quantity { get; set; }
 
     public StorageSlot()
     {
@@ -35,19 +36,19 @@ public class StorageSlot
     /// (e.g., pure-unit tests that don't bootstrap the runtime). Production code
     /// always resolves through ResourceDatabase.
     /// </summary>
-    public const float FallbackCapacity = 100f;
+    public const int FallbackCapacity = 100;
 
     /// <summary>
     /// Capacity of this slot — equal to the occupant's MaxStackSize, or zero if empty.
     /// Falls back to <see cref="FallbackCapacity"/> when the resource database isn't
     /// available so tests can exercise storage mechanics without a runtime.
     /// </summary>
-    public float Capacity
+    public int Capacity
     {
         get
         {
             if (string.IsNullOrEmpty(OccupiedResourceId))
-                return 0f;
+                return 0;
 
             var db = ResourceDatabase.Instance;
             if (db != null)
@@ -66,7 +67,7 @@ public class StorageSlot
         }
     }
 
-    public float FreeSpace => Capacity - Quantity;
+    public int FreeSpace => Capacity - Quantity;
 
     public bool IsEmpty => string.IsNullOrEmpty(OccupiedResourceId) && Quantity <= 0;
 }

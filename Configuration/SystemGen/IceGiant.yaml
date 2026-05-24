@@ -17,21 +17,23 @@ celestial:
     # extreme than gas giants. Standard wind disabled — adapted variants pending.
     atmosphere: [20.0, 100.0]
 
+  # Phase 8: type-level safe-default midpoints. Per-subtype ranges live in
+  # Configuration/Subtypes/ice_giant_subtypes.yaml.
   mesh:
     base_mesh:
       subdivisions: 1
-      vertices_per_edge: [[10, 13]]
+      vertices_per_edge: [[11, 11]]
       num_abberations: 0
       num_deformation_cycles: 0
 
     tectonic:
-      num_continents: [3, 8]
-      stress_scale: [0.8, 1.0]
-      shear_scale: [0.2, 1.0]
+      num_continents: [5, 5]
+      stress_scale: [0.9, 0.9]
+      shear_scale: [0.6, 0.6]
       max_propagation_distance: [0.01, 0.01]
       propagation_falloff: [0.2, 0.2]
       inactive_stress_threshold: [0.01, 0.01]
-      general_height_scale: [0.8, 1.2]
-      general_shear_scale: [0.8, 1.2]
+      general_height_scale: [1.0, 1.0]
+      general_shear_scale: [1.0, 1.0]
       general_compression_scale: [1.0, 1.0]
       general_transform_scale: [1.0, 1.0]

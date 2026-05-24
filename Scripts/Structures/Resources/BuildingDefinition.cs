@@ -98,6 +98,20 @@ public partial class BuildingDefinition : Resource
     /// </summary>
     public string? DefaultLinkProfile { get; set; }
 
+    /// <summary>
+    /// Optional per-instance integer setting exposed to recipe conditional outputs
+    /// as the <c>specifier</c> variable. Player chooses one of the declared values
+    /// at construction time via UI.
+    /// </summary>
+    public SpecifierConfig? Specifier { get; set; }
+
+    public class SpecifierConfig
+    {
+        public List<int> Values { get; set; } = new();
+        public List<string> Labels { get; set; } = new();
+        public int Default { get; set; }
+    }
+
     public int Footprint => Placement.CellCount;
 
     /// <summary>

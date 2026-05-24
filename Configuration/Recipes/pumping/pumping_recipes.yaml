@@ -1,0 +1,7 @@
+recipes:
+  - recipe_id: "archimedes_screw"
+    display_name: "Archimedes Screw"
+    category: pumping
+    work_required: 2
+    output_resources:
+      - water: 1

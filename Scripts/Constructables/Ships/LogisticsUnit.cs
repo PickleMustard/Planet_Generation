@@ -1020,7 +1020,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
         }
     }
 
-    public bool LoadCargo(string resourceId, float quantity)
+    public bool LoadCargo(string resourceId, int quantity)
     {
         if (string.IsNullOrEmpty(resourceId))
         {
@@ -1058,7 +1058,7 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
         return result;
     }
 
-    public bool UnloadCargo(string resourceId, float quantity)
+    public bool UnloadCargo(string resourceId, int quantity)
     {
         if (string.IsNullOrEmpty(resourceId))
         {

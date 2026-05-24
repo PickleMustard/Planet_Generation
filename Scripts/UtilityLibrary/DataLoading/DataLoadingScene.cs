@@ -265,6 +265,48 @@ namespace UtilityLibrary.DataLoading
                 }
             }
 
+            // BiomeDatabase and SubtypeDatabase must register before BuildingDatabase /
+            // RecipeDatabase: building & recipe YAML validation cross-checks against the
+            // biome registry.
+            var biomeDb = ProceduralGeneration.BiomeSystem.BiomeDatabase.Instance;
+            if (biomeDb != null && !_loadManager.IsDatabaseRegistered(biomeDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(biomeDb))
+                {
+                    GameLogger.Info($"Registered database: {biomeDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {biomeDb.DatabaseName}");
+                }
+            }
+
+            var subtypeDb = ProceduralGeneration.SubtypeSystem.SubtypeDatabase.Instance;
+            if (subtypeDb != null && !_loadManager.IsDatabaseRegistered(subtypeDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(subtypeDb))
+                {
+                    GameLogger.Info($"Registered database: {subtypeDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {subtypeDb.DatabaseName}");
+                }
+            }
+
+            var biomeAssignerDb = ProceduralGeneration.BiomeSystem.BiomeAssignerConfigDatabase.Instance;
+            if (biomeAssignerDb != null && !_loadManager.IsDatabaseRegistered(biomeAssignerDb.DatabaseName))
+            {
+                if (_loadManager.RegisterDatabase(biomeAssignerDb))
+                {
+                    GameLogger.Info($"Registered database: {biomeAssignerDb.DatabaseName}");
+                }
+                else
+                {
+                    GameLogger.Warning($"Failed to register database: {biomeAssignerDb.DatabaseName}");
+                }
+            }
+
             // Register BuildingDatabase
             var buildingDb = BuildingDatabase.Instance;
             if (buildingDb != null && !_loadManager.IsDatabaseRegistered(buildingDb.DatabaseName))
@@ -334,42 +376,16 @@ namespace UtilityLibrary.DataLoading
                 }
             }
 
-            var biomeAssignerDb = ProceduralGeneration.BiomeSystem.BiomeAssignerConfigDatabase.Instance;
-            if (biomeAssignerDb != null && !_loadManager.IsDatabaseRegistered(biomeAssignerDb.DatabaseName))
+            var linkProfileDb = LinkProfileDatabase.Instance;
+            if (linkProfileDb != null && !_loadManager.IsDatabaseRegistered(linkProfileDb.DatabaseName))
             {
-                if (_loadManager.RegisterDatabase(biomeAssignerDb))
+                if (_loadManager.RegisterDatabase(linkProfileDb))
                 {
-                    GameLogger.Info($"Registered database: {biomeAssignerDb.DatabaseName}");
+                    GameLogger.Info($"Registered database: {linkProfileDb.DatabaseName}");
                 }
                 else
                 {
-                    GameLogger.Warning($"Failed to register database: {biomeAssignerDb.DatabaseName}");
-                }
-            }
-
-            var biomeDb = ProceduralGeneration.BiomeSystem.BiomeDatabase.Instance;
-            if (biomeDb != null && !_loadManager.IsDatabaseRegistered(biomeDb.DatabaseName))
-            {
-                if (_loadManager.RegisterDatabase(biomeDb))
-                {
-                    GameLogger.Info($"Registered database: {biomeDb.DatabaseName}");
-                }
-                else
-                {
-                    GameLogger.Warning($"Failed to register database: {biomeDb.DatabaseName}");
-                }
-            }
-
-            var subtypeDb = ProceduralGeneration.SubtypeSystem.SubtypeDatabase.Instance;
-            if (subtypeDb != null && !_loadManager.IsDatabaseRegistered(subtypeDb.DatabaseName))
-            {
-                if (_loadManager.RegisterDatabase(subtypeDb))
-                {
-                    GameLogger.Info($"Registered database: {subtypeDb.DatabaseName}");
-                }
-                else
-                {
-                    GameLogger.Warning($"Failed to register database: {subtypeDb.DatabaseName}");
+                    GameLogger.Warning($"Failed to register database: {linkProfileDb.DatabaseName}");
                 }
             }
 

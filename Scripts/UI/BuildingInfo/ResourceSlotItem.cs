@@ -77,11 +77,7 @@ public partial class ResourceSlotItem : PanelContainer
 
     private static Texture2D? LoadResourceIcon(ResourceDefinition? definition)
     {
-        if (definition?.Icon?.IsValid == true)
-        {
-            return definition.Icon.SmallTexture ?? definition.Icon.MediumTexture;
-        }
-        return null;
+        return definition?.Icon?.Texture;
     }
 
     private static string FormatFilterHint(SlotFilter? filter)

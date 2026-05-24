@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UI/SubtypeEditor/SubtypeBrowserPanel.cs" id="1"]
+
+[node name="SubtypeBrowserPanel" type="VBoxContainer" node_paths=PackedStringArray("_addButton", "_renameButton", "_deleteButton", "_tree")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+script = ExtResource("1")
+_addButton = NodePath("Header/AddButton")
+_renameButton = NodePath("Header/RenameButton")
+_deleteButton = NodePath("Header/DeleteButton")
+_tree = NodePath("Tree")
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Subtypes"
+theme_override_font_sizes/font_size = 14
+
+[node name="AddButton" type="Button" parent="Header"]
+layout_mode = 2
+text = "+ New"
+
+[node name="RenameButton" type="Button" parent="Header"]
+layout_mode = 2
+text = "Rename"
+
+[node name="DeleteButton" type="Button" parent="Header"]
+layout_mode = 2
+text = "Delete"
+
+[node name="Tree" type="Tree" parent="."]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+hide_root = true

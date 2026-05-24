@@ -71,14 +71,14 @@ public partial class BodyEconomyManager : Node
     /// <summary>
     /// Sums a single resource across every building's input + output storage on this body.
     /// </summary>
-    public float GetTotalQuantity(string resourceId)
+    public int GetTotalQuantity(string resourceId)
     {
         var body = GetParentBody();
         var continents = body?.Mesh?.Continents;
         if (continents == null || string.IsNullOrEmpty(resourceId))
-            return 0f;
+            return 0;
 
-        float total = 0f;
+        int total = 0;
         var seen = new HashSet<Building>();
         foreach (var kvp in continents)
         {

@@ -5,6 +5,7 @@ using System.Linq;
 using Godot;
 using UtilityLibrary;
 using Debug;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.ResourceEditor;
 
@@ -373,9 +374,10 @@ public partial class ResourceEditorModule : BaseDebugModule
 				new Dictionary<string, ResourceEditorModel.ResourceCategoryData>(_model.Categories)
 			);
 			_model.LoadFromDisk();
+			int reloaded = EditorDatabaseReloader.ReloadAll("ResourceDatabase");
 			PopulateCategoryList();
 			RefreshResourceList();
-			ShowFeedback("Saved successfully!");
+			ShowFeedback($"Saved + reloaded {reloaded} DBs.");
 		}
 		catch (Exception ex)
 		{

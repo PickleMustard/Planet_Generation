@@ -89,20 +89,20 @@ public class ResourceLinkDistanceTest
         var nearCell = MakeCellAt(new Vector3(1f, 0f, 0f));
         var (nearSrc, nearExport) = MakeExportBuilding(nearCell, "iron");
         var (_, nearImport) = MakeImportBuilding(nearCell, "iron");
-        nearSrc.OutputStorage.Deposit("iron", 10f);
+        nearSrc.OutputStorage.Deposit("iron", 10);
         var nearLink = new ResourceLink { Profile = profile };
         nearLink.ConnectNodes(nearExport, nearImport);
-        nearLink.TryEnqueue("iron", 10f);
+        nearLink.TryEnqueue("iron", 10);
 
         // Far: orthogonal cells → distance ≈ π/2
         var srcCell = MakeCellAt(new Vector3(1f, 0f, 0f));
         var dstCell = MakeCellAt(new Vector3(0f, 0f, 1f));
         var (farSrc, farExport) = MakeExportBuilding(srcCell, "iron");
         var (_, farImport) = MakeImportBuilding(dstCell, "iron");
-        farSrc.OutputStorage.Deposit("iron", 10f);
+        farSrc.OutputStorage.Deposit("iron", 10);
         var farLink = new ResourceLink { Profile = profile };
         farLink.ConnectNodes(farExport, farImport);
-        farLink.TryEnqueue("iron", 10f);
+        farLink.TryEnqueue("iron", 10);
 
         // Tick both with delta=1
         nearLink.OnManufactureTick(1f);

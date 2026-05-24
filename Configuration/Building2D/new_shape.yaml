@@ -1,0 +1,12 @@
+id: small_manufacturing
+display_name: Small Manufacturing Square
+vertices:
+  - [0.866, -0.5]
+  - [0.866, 0.5]
+  - [-0.866, 0.5]
+  - [-0.866, -0.5]
+sides:
+  - { slots: [] }
+  - { slots: [{ kind: import, state: solid }, { kind: import, state: solid }] }
+  - { slots: [] }
+  - { slots: [{ kind: export, state: solid }, { kind: export, state: solid }] }

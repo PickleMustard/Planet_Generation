@@ -67,6 +67,12 @@ public class BuildingEditorModel
         public Color Tint { get; set; } = Colors.White;
     }
 
+    public class SpecifierEntryEdit
+    {
+        public int Value { get; set; }
+        public string Label { get; set; } = "";
+    }
+
     public class BuildingEditEntry
     {
         public string IdName { get; set; } = "";
@@ -84,6 +90,9 @@ public class BuildingEditorModel
         public List<BehaviorEntryEdit> Behaviors { get; set; } = new();
         public VisualEdit Visual { get; set; } = new();
         public IconEdit Icon { get; set; } = new();
+        public bool SpecifierEnabled { get; set; }
+        public List<SpecifierEntryEdit> SpecifierEntries { get; set; } = new();
+        public int SpecifierDefault { get; set; }
         public string SourceFilePath { get; set; } = "";
         public bool IsNew { get; set; }
         public bool IsDirty { get; set; }
@@ -375,6 +384,63 @@ public class BuildingEditorModel
             if (field.Default != null)
                 row.Config[field.Name] = field.Default;
         }
+    }
+
+    // ── Specifier ────────────────────────────────────────────────────────
+
+    public void SetSpecifierEnabled(string categoryName, int index, bool enabled)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        entry.SpecifierEnabled = enabled;
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
+    }
+
+    public void AddSpecifierEntry(string categoryName, int index, SpecifierEntryEdit slot)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        entry.SpecifierEntries.Add(slot);
+        if (entry.SpecifierEntries.Count == 1)
+            entry.SpecifierDefault = slot.Value;
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
+    }
+
+    public void UpdateSpecifierEntry(string categoryName, int index, int slotIndex,
+        int value, string label)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        if (slotIndex < 0 || slotIndex >= entry.SpecifierEntries.Count)
+            throw new ArgumentOutOfRangeException(nameof(slotIndex));
+        var slot = entry.SpecifierEntries[slotIndex];
+        int oldValue = slot.Value;
+        slot.Value = value;
+        slot.Label = label;
+        if (entry.SpecifierDefault == oldValue)
+            entry.SpecifierDefault = value;
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
+    }
+
+    public void DeleteSpecifierEntry(string categoryName, int index, int slotIndex)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        if (slotIndex < 0 || slotIndex >= entry.SpecifierEntries.Count)
+            throw new ArgumentOutOfRangeException(nameof(slotIndex));
+        int removedValue = entry.SpecifierEntries[slotIndex].Value;
+        entry.SpecifierEntries.RemoveAt(slotIndex);
+        if (entry.SpecifierDefault == removedValue && entry.SpecifierEntries.Count > 0)
+            entry.SpecifierDefault = entry.SpecifierEntries[0].Value;
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
+    }
+
+    public void SetSpecifierDefault(string categoryName, int index, int value)
+    {
+        var entry = GetEntryOrThrow(categoryName, index);
+        entry.SpecifierDefault = value;
+        entry.IsDirty = true;
+        _categories[categoryName].IsDirty = true;
     }
 
     // ── Placement ────────────────────────────────────────────────────────
@@ -691,6 +757,28 @@ public class BuildingEditorModel
 
                 if (!string.IsNullOrEmpty(entry.Icon.BasePath) && !entry.Icon.BasePath!.StartsWith("res://"))
                     errors.Add($"Warning: Building '{entry.IdName}' icon.base_path '{entry.Icon.BasePath}' not starting with res://");
+
+                if (entry.SpecifierEnabled)
+                {
+                    if (entry.SpecifierEntries.Count == 0)
+                    {
+                        errors.Add($"Building '{entry.IdName}' specifier enabled but has no values");
+                    }
+                    else
+                    {
+                        var seenValues = new HashSet<int>();
+                        foreach (var s in entry.SpecifierEntries)
+                        {
+                            if (!seenValues.Add(s.Value))
+                                errors.Add($"Building '{entry.IdName}' specifier has duplicate value {s.Value}");
+                        }
+                        if (!seenValues.Contains(entry.SpecifierDefault))
+                        {
+                            errors.Add(
+                                $"Building '{entry.IdName}' specifier default {entry.SpecifierDefault} is not one of the configured values");
+                        }
+                    }
+                }
             }
         }
 
@@ -763,6 +851,21 @@ public class BuildingEditorModel
                 BehaviorId = beh.BehaviorId,
                 Config = new Dictionary<string, object>(beh.Config)
             });
+        }
+
+        if (def.Specifier != null)
+        {
+            entry.SpecifierEnabled = true;
+            for (int i = 0; i < def.Specifier.Values.Count; i++)
+            {
+                string label = i < def.Specifier.Labels.Count ? def.Specifier.Labels[i] : "";
+                entry.SpecifierEntries.Add(new SpecifierEntryEdit
+                {
+                    Value = def.Specifier.Values[i],
+                    Label = label
+                });
+            }
+            entry.SpecifierDefault = def.Specifier.Default;
         }
 
         return entry;

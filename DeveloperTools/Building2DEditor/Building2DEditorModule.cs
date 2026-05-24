@@ -6,6 +6,7 @@ using Structures.Enums;
 using Structures.Resources;
 using UtilityLibrary;
 using Debug;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.Building2DEditor;
 
@@ -412,13 +413,31 @@ public partial class Building2DEditorModule : BaseDebugModule
     private void OnSavePressed()
     {
         if (_model == null) return;
+
+        var invalidIds = new List<string>();
+        foreach (var shape in _model.Shapes)
+        {
+            if (!Building2DEditorGeometry.IsDrawablePolygon(shape.Vertices))
+                invalidIds.Add(string.IsNullOrEmpty(shape.Id) ? "(unnamed)" : shape.Id);
+        }
+        if (invalidIds.Count > 0)
+        {
+            string msg = "Cannot save. The following shapes have degenerate polygons (duplicate adjacent vertices or zero area):\n\n - "
+                + string.Join("\n - ", invalidIds);
+            ShowAcceptDialog("Save Error", msg);
+            return;
+        }
+
         try
         {
             Building2DEditorYamlIO.WriteAll(ShapesDirectory, _model.Shapes, _model.LoadedSourceFiles);
             _model.LoadFromDisk();
+            int reloaded = EditorDatabaseReloader.ReloadAll(
+                "BuildingShape2DDatabase",
+                "BuildingDatabase");
             RebuildShapeList();
             SetSelected(null);
-            ShowFeedback("Saved");
+            ShowFeedback($"Saved + reloaded {reloaded} DBs.");
         }
         catch (Exception ex)
         {

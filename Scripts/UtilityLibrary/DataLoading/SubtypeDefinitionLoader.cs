@@ -140,7 +140,55 @@ public static class SubtypeDefinitionLoader
         ReadStringList(entry, "add_resources", def.AddResources);
         ReadStringList(entry, "remove_resources", def.RemoveResources);
 
+        ReadRangeBlock(entry, "mesh", def.MeshRanges);
+        ReadVerticesPerEdge(entry, "mesh", def.VerticesPerEdgeRanges);
+        ReadRangeBlock(entry, "tectonics", def.TectonicRanges);
+        ReadRangeBlock(entry, "spherical_harmonics", def.SphericalHarmonicsRanges);
+
         return def;
+    }
+
+    private static void ReadRangeBlock(Dictionary<object, object> entry, string blockKey, Dictionary<string, FloatRange> target)
+    {
+        if (!entry.TryGetValue(blockKey, out var node) || node is not Dictionary<object, object> block) return;
+        foreach (var kvp in block)
+        {
+            string? key = kvp.Key?.ToString();
+            if (string.IsNullOrEmpty(key)) continue;
+            // vertices_per_edge is a list-of-ranges, handled by ReadVerticesPerEdge.
+            if (key == "vertices_per_edge") continue;
+            if (TryParseRange(kvp.Value, out var range))
+                target[key] = range;
+            else
+                GameLogger.Warning($"SubtypeDefinitionLoader: '{blockKey}.{key}' is not a 2-element [min, max] list; skipping.");
+        }
+    }
+
+    private static void ReadVerticesPerEdge(Dictionary<object, object> entry, string blockKey, List<FloatRange> target)
+    {
+        if (!entry.TryGetValue(blockKey, out var node) || node is not Dictionary<object, object> block) return;
+        if (!block.TryGetValue("vertices_per_edge", out var vpeNode) || vpeNode is not List<object> rows) return;
+        target.Clear();
+        int idx = 0;
+        foreach (var row in rows)
+        {
+            if (TryParseRange(row, out var r))
+                target.Add(r);
+            else
+                GameLogger.Warning($"SubtypeDefinitionLoader: '{blockKey}.vertices_per_edge[{idx}]' is not a 2-element [min, max] list; skipping.");
+            idx++;
+        }
+    }
+
+    private static bool TryParseRange(object? node, out FloatRange range)
+    {
+        range = default;
+        if (node is not List<object> list || list.Count != 2) return false;
+        float min = ParseFloat(list[0], float.NaN);
+        float max = ParseFloat(list[1], float.NaN);
+        if (float.IsNaN(min) || float.IsNaN(max)) return false;
+        range = new FloatRange(min, max);
+        return true;
     }
 
     private static void ReadStringList(Dictionary<object, object> dict, string key, List<string> target)

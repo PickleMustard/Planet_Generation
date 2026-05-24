@@ -2,7 +2,7 @@
 
 [ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_2l8rk"]
 [ext_resource type="Script" uid="uid://mbkaqw0mnfe2" path="res://Scripts/UI/BuildingInfo/PowerPanelDetails.cs" id="1_powerpanel"]
-[ext_resource type="PackedScene" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
+[ext_resource type="PackedScene" uid="uid://bn60vp4qos372" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
 
 [node name="PowerPanelDetails" type="Control" unique_id=2131492281]
 layout_mode = 3
@@ -194,7 +194,6 @@ text = "RECIPE · FUEL"
 
 [node name="RecipeDisplay" parent="Layout/Body/CenterColumn" unique_id=1472639811 instance=ExtResource("2_recipe")]
 layout_mode = 2
-theme = ExtResource("1_2l8rk")
 
 [node name="FuelScroll" type="ScrollContainer" parent="Layout/Body/CenterColumn" unique_id=1231888651]
 layout_mode = 2

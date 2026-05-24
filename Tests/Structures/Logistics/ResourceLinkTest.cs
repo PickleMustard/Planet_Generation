@@ -130,7 +130,7 @@ public class ResourceLinkTest
     public void TryEnqueue_NullProfile_ReturnsFalse()
     {
         var link = new ResourceLink();
-        AssertThat(link.TryEnqueue("iron", 10f)).IsFalse();
+        AssertThat(link.TryEnqueue("iron", 10)).IsFalse();
     }
 
     [TestCase]
@@ -147,9 +147,9 @@ public class ResourceLinkTest
             }
         };
 
-        AssertThat(link.TryEnqueue("", 10f)).IsFalse();
-        AssertThat(link.TryEnqueue("iron", 0f)).IsFalse();
-        AssertThat(link.TryEnqueue("iron", -5f)).IsFalse();
+        AssertThat(link.TryEnqueue("", 10)).IsFalse();
+        AssertThat(link.TryEnqueue("iron", 0)).IsFalse();
+        AssertThat(link.TryEnqueue("iron", -5)).IsFalse();
     }
 
     [TestCase]
@@ -166,10 +166,10 @@ public class ResourceLinkTest
             }
         };
 
-        AssertThat(link.TryEnqueue("iron", 10f)).IsTrue();
+        AssertThat(link.TryEnqueue("iron", 10)).IsTrue();
         AssertThat(link.InFlight).HasSize(1);
         AssertThat(link.InFlight[0].ResourceId).IsEqual("iron");
-        AssertThat(link.InFlight[0].Quantity).IsEqual(10f);
+        AssertThat(link.InFlight[0].Quantity).IsEqual(10);
     }
 
     [TestCase]
@@ -186,9 +186,9 @@ public class ResourceLinkTest
             }
         };
 
-        AssertThat(link.TryEnqueue("iron", 10f)).IsTrue();
-        AssertThat(link.TryEnqueue("copper", 10f)).IsTrue();
-        AssertThat(link.TryEnqueue("gold", 10f)).IsFalse();
+        AssertThat(link.TryEnqueue("iron", 10)).IsTrue();
+        AssertThat(link.TryEnqueue("copper", 10)).IsTrue();
+        AssertThat(link.TryEnqueue("gold", 10)).IsFalse();
         AssertThat(link.InFlight).HasSize(2);
     }
 
@@ -207,11 +207,11 @@ public class ResourceLinkTest
         };
 
         // 25 amount with package size 10 => 3 packages (10 + 10 + 5)
-        AssertThat(link.TryEnqueue("iron", 25f)).IsTrue();
+        AssertThat(link.TryEnqueue("iron", 25)).IsTrue();
         AssertThat(link.InFlight).HasSize(3);
-        AssertThat(link.InFlight[0].Quantity).IsEqual(10f);
-        AssertThat(link.InFlight[1].Quantity).IsEqual(10f);
-        AssertThat(link.InFlight[2].Quantity).IsEqual(5f);
+        AssertThat(link.InFlight[0].Quantity).IsEqual(10);
+        AssertThat(link.InFlight[1].Quantity).IsEqual(10);
+        AssertThat(link.InFlight[2].Quantity).IsEqual(5);
     }
 
     [TestCase]
@@ -229,10 +229,10 @@ public class ResourceLinkTest
         };
 
         // 25 amount, size 10, slots 2 => only 2 packages created (10 + 10)
-        AssertThat(link.TryEnqueue("iron", 25f)).IsTrue();
+        AssertThat(link.TryEnqueue("iron", 25)).IsTrue();
         AssertThat(link.InFlight).HasSize(2);
-        AssertThat(link.InFlight[0].Quantity).IsEqual(10f);
-        AssertThat(link.InFlight[1].Quantity).IsEqual(10f);
+        AssertThat(link.InFlight[0].Quantity).IsEqual(10);
+        AssertThat(link.InFlight[1].Quantity).IsEqual(10);
     }
 
     // ========================================================================
@@ -253,7 +253,7 @@ public class ResourceLinkTest
             }
         };
 
-        link.TryEnqueue("iron", 10f);
+        link.TryEnqueue("iron", 10);
         AssertThat(link.InFlight[0].Progress).IsEqual(0f);
 
         link.OnManufactureTick(1f);
@@ -277,7 +277,7 @@ public class ResourceLinkTest
             }
         };
 
-        link.TryEnqueue("iron", 10f);
+        link.TryEnqueue("iron", 10);
         link.InFlight[0].Stuck = true;
 
         link.OnManufactureTick(1f);
@@ -306,7 +306,7 @@ public class ResourceLinkTest
             }
         };
 
-        link.TryEnqueue("iron", 25f);
+        link.TryEnqueue("iron", 25);
         AssertThat(link.InFlight).HasSize(1);
 
         // Two ticks should complete the package (0.6 + 0.6 = 1.2 >= 1.0)
@@ -315,7 +315,7 @@ public class ResourceLinkTest
 
         AssertThat(link.InFlight).IsEmpty();
         AssertThat(link.ArrivalBuffer).IsEmpty();
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25);
     }
 
     [TestCase]
@@ -336,14 +336,14 @@ public class ResourceLinkTest
             }
         };
 
-        link.TryEnqueue("copper", 10f);
-        link.TryEnqueue("copper", 15f);
+        link.TryEnqueue("copper", 10);
+        link.TryEnqueue("copper", 15);
 
         link.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
         AssertThat(link.InFlight).IsEmpty();
-        AssertThat(building.InputStorage.GetQuantity("copper")).IsEqual(25f);
+        AssertThat(building.InputStorage.GetQuantity("copper")).IsEqual(25);
     }
 
     // ========================================================================
@@ -366,7 +366,7 @@ public class ResourceLinkTest
             }
         };
 
-        link.TryEnqueue("iron", 25f);
+        link.TryEnqueue("iron", 25);
         link.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
@@ -380,7 +380,7 @@ public class ResourceLinkTest
     // ========================================================================
 
     [TestCase]
-    public void OnManufactureTick_ArrivalBuffer_RetriesDepositWhenTimerFires()
+    public void OnManufactureTick_ArrivalBuffer_RetriesDepositEveryTick()
     {
         var building = new Building();
         building.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("iron")));
@@ -397,24 +397,20 @@ public class ResourceLinkTest
             }
         };
 
-        link.TryEnqueue("iron", 25f);
+        link.TryEnqueue("iron", 25);
         link.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
         // Package failed deposit and is now in ArrivalBuffer
         AssertThat(link.ArrivalBuffer).HasSize(1);
 
-        // After tick 2: BundleTimer decremented from 2 to 1, no retry yet
-        AssertThat(link.BundleTimer).IsEqual(1);
-
         // Now set an owner
         target.Owner = building;
 
-        // Tick 3: BundleTimer 1 -> 0, retry fires at end of tick and resets to 2
+        // Retry runs every tick regardless of BundleTime — first tick after owner is set delivers.
         link.OnManufactureTick(1f);
         AssertThat(link.ArrivalBuffer).IsEmpty();
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25f);
-        AssertThat(link.BundleTimer).IsEqual(2);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25);
     }
 
     [TestCase]
@@ -435,7 +431,7 @@ public class ResourceLinkTest
             }
         };
 
-        link.TryEnqueue("iron", 25f);
+        link.TryEnqueue("iron", 25);
         link.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
@@ -447,7 +443,7 @@ public class ResourceLinkTest
         // With BundleTime = 0, retry should happen on the very next tick
         link.OnManufactureTick(1f);
         AssertThat(link.ArrivalBuffer).IsEmpty();
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25);
     }
 
     // ========================================================================
@@ -456,7 +452,7 @@ public class ResourceLinkTest
 
 
     [TestCase]
-    public void OnManufactureTick_BundleTimer_CountsDownAndResets()
+    public void OnManufactureTick_BundleTimer_CountsDownAndStaysAtZero()
     {
         var link = new ResourceLink
         {
@@ -477,13 +473,72 @@ public class ResourceLinkTest
         link.OnManufactureTick(1f);
         AssertThat(link.BundleTimer).IsEqual(1);
 
-        // Tick 3: decrements to 0, then resets to BundleTime at end of tick
+        // Decrements to 0; no auto-reset — link sits ready for the next dispatch.
         link.OnManufactureTick(1f);
+        AssertThat(link.BundleTimer).IsEqual(0);
+
+        link.OnManufactureTick(1f);
+        AssertThat(link.BundleTimer).IsEqual(0);
+    }
+
+    [TestCase]
+    public void TryEnqueue_RespectsBundleCooldown()
+    {
+        var link = new ResourceLink
+        {
+            Profile = new LinkProfile
+            {
+                SlotCapacity = 4,
+                BundleTime = 3,
+                TransportSpeed = 0.01f,
+                PackageSize = 10
+            }
+        };
+
+        // First enqueue dispatches one package and starts the cooldown.
+        AssertThat(link.TryEnqueueAmount("iron", 50)).IsEqual(10);
+        AssertThat(link.InFlight).HasSize(1);
         AssertThat(link.BundleTimer).IsEqual(3);
 
-        // Continues counting down from reset value
+        // Second enqueue in the same tick is blocked by the cooldown.
+        AssertThat(link.TryEnqueueAmount("iron", 50)).IsEqual(0);
+        AssertThat(link.InFlight).HasSize(1);
+
+        // Cooldown counts down across ticks.
         link.OnManufactureTick(1f);
         AssertThat(link.BundleTimer).IsEqual(2);
+        AssertThat(link.TryEnqueueAmount("iron", 50)).IsEqual(0);
+
+        link.OnManufactureTick(1f);
+        AssertThat(link.BundleTimer).IsEqual(1);
+        AssertThat(link.TryEnqueueAmount("iron", 50)).IsEqual(0);
+
+        // After BundleTime ticks, the next dispatch is allowed and resets the cooldown.
+        link.OnManufactureTick(1f);
+        AssertThat(link.BundleTimer).IsEqual(0);
+        AssertThat(link.TryEnqueueAmount("iron", 50)).IsEqual(10);
+        AssertThat(link.InFlight).HasSize(2);
+        AssertThat(link.BundleTimer).IsEqual(3);
+    }
+
+    [TestCase]
+    public void TryEnqueue_BundleTimeZero_AllowsBackToBack()
+    {
+        var link = new ResourceLink
+        {
+            Profile = new LinkProfile
+            {
+                SlotCapacity = 4,
+                BundleTime = 0,
+                TransportSpeed = 0.01f,
+                PackageSize = 10
+            }
+        };
+
+        // With no cooldown, a single call still fills as many slots as needed.
+        AssertThat(link.TryEnqueueAmount("iron", 40)).IsEqual(40);
+        AssertThat(link.InFlight).HasSize(4);
+        AssertThat(link.BundleTimer).IsEqual(0);
     }
 
     // ========================================================================

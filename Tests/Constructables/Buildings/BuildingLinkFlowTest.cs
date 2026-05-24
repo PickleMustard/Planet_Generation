@@ -35,8 +35,8 @@ public class BuildingLinkFlowTest
         buildingA.Building.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
-        AssertThat(buildingB.InputStorage.GetQuantity("iron")).IsEqual(25f);
-        AssertThat(buildingA.OutputStorage.GetQuantity("iron")).IsEqual(0f);
+        AssertThat(buildingB.InputStorage.GetQuantity("iron")).IsEqual(25);
+        AssertThat(buildingA.OutputStorage.GetQuantity("iron")).IsEqual(0);
     }
 
     [TestCase]
@@ -59,8 +59,8 @@ public class BuildingLinkFlowTest
 
         engine.SingleTickForTesting();
 
-        AssertThat(buildingB.InputStorage.GetQuantity("coal")).IsEqual(10f);
-        AssertThat(buildingA.OutputStorage.GetQuantity("coal")).IsEqual(0f);
+        AssertThat(buildingB.InputStorage.GetQuantity("coal")).IsEqual(10);
+        AssertThat(buildingA.OutputStorage.GetQuantity("coal")).IsEqual(0);
 
         engine.Stop();
     }
@@ -90,13 +90,13 @@ public class BuildingLinkFlowTest
         manufacturingA.StartCycle(recipe, 10.0f);
 
         AssertThat(manufacturingA.State).IsEqual(ManufacturingState.Manufacturing);
-        AssertThat(buildingA.InputStorage.GetQuantity("iron_ore")).IsEqual(0f);
+        AssertThat(buildingA.InputStorage.GetQuantity("iron_ore")).IsEqual(0);
 
         // Tick enough to complete manufacturing (WorkRequired=0.1, speed=10 => 0.01s)
         buildingA.Building.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
-        AssertThat(buildingB.InputStorage.GetQuantity("iron")).IsEqual(5f);
+        AssertThat(buildingB.InputStorage.GetQuantity("iron")).IsEqual(5);
         AssertThat(manufacturingA.State).IsEqual(ManufacturingState.Idle);
     }
 
@@ -130,7 +130,7 @@ public class BuildingLinkFlowTest
         manufacturingA.OnManufactureTick(0.001f, buildingA.Building);
 
         AssertThat(manufacturingA.State).IsEqual(ManufacturingState.Manufacturing);
-        AssertThat(buildingA.InputStorage.GetQuantity("copper_ore")).IsEqual(0f);
+        AssertThat(buildingA.InputStorage.GetQuantity("copper_ore")).IsEqual(0);
     }
 
     [TestCase]
@@ -175,7 +175,7 @@ public class BuildingLinkFlowTest
         buildingA.Building.OnManufactureTick(0.001f);
 
         AssertThat(manufacturingA.State).IsEqual(ManufacturingState.Manufacturing);
-        AssertThat(buildingA.InputStorage.GetQuantity("silicon")).IsEqual(0f);
+        AssertThat(buildingA.InputStorage.GetQuantity("silicon")).IsEqual(0);
     }
 
     // ========================================================================
@@ -224,12 +224,12 @@ public class BuildingLinkFlowTest
         var transport = new TransportHubBehavior();
         transport.OnAttach(buildingA.Building);
         buildingA.Building.Behaviors.Add(transport);
-        transport.BulkBuffer["coal"] = 40f;
+        transport.BulkBuffer["coal"] = 40;
 
         buildingA.Building.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
-        AssertThat(buildingB.InputStorage.GetQuantity("coal")).IsEqual(40f);
+        AssertThat(buildingB.InputStorage.GetQuantity("coal")).IsEqual(40);
         AssertThat(transport.BulkBuffer.ContainsKey("coal")).IsFalse();
     }
 
@@ -243,14 +243,14 @@ public class BuildingLinkFlowTest
         var transport = new TransportHubBehavior();
         transport.OnAttach(buildingA.Building);
         buildingA.Building.Behaviors.Add(transport);
-        transport.BulkBuffer["water"] = 50f;
+        transport.BulkBuffer["water"] = 50;
 
         buildingA.Building.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
         // Only 10 fits in one package
-        AssertThat(buildingB.InputStorage.GetQuantity("water")).IsEqual(10f);
-        AssertThat(transport.BulkBuffer["water"]).IsEqual(40f);
+        AssertThat(buildingB.InputStorage.GetQuantity("water")).IsEqual(10);
+        AssertThat(transport.BulkBuffer["water"]).IsEqual(40);
     }
 
     // ========================================================================
@@ -284,8 +284,8 @@ public class BuildingLinkFlowTest
         senderMfg.OnManufactureTick(1f, sender.Building);
         link.OnManufactureTick(1f);
 
-        AssertThat(receiver.BulkStorage.GetQuantity("ore")).IsEqual(30f);
-        AssertThat(receiver.InputStorage.GetQuantity("ore")).IsEqual(0f);
+        AssertThat(receiver.BulkStorage.GetQuantity("ore")).IsEqual(30);
+        AssertThat(receiver.InputStorage.GetQuantity("ore")).IsEqual(0);
     }
 
     [TestCase]
@@ -310,8 +310,8 @@ public class BuildingLinkFlowTest
         source.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
-        AssertThat(receiver.InputStorage.GetQuantity("coal")).IsEqual(25f);
-        AssertThat(source.BulkStorage.GetQuantity("coal")).IsEqual(0f);
+        AssertThat(receiver.InputStorage.GetQuantity("coal")).IsEqual(25);
+        AssertThat(source.BulkStorage.GetQuantity("coal")).IsEqual(0);
     }
 
     [TestCase]
@@ -340,8 +340,8 @@ public class BuildingLinkFlowTest
         senderMfg.OnManufactureTick(1f, sender.Building);
         link.OnManufactureTick(1f);
 
-        AssertThat(receiver.BulkStorage.GetQuantity("iron")).IsEqual(15f);
-        AssertThat(receiver.InputStorage.GetQuantity("iron")).IsEqual(0f);
+        AssertThat(receiver.BulkStorage.GetQuantity("iron")).IsEqual(15);
+        AssertThat(receiver.InputStorage.GetQuantity("iron")).IsEqual(0);
     }
 
     [TestCase]
@@ -378,11 +378,11 @@ public class BuildingLinkFlowTest
         // the recipe's needs. Either ordering is observable via the cycle leaving WaitingForInputs.
         AssertThat(mfg.State).IsEqual(ManufacturingState.Manufacturing);
         // Total iron remaining across all storages plus held inputs must equal pre-tick total.
-        float totalAfter =
+        int totalAfter =
             building.BulkStorage.GetQuantity("iron")
             + building.InputStorage.GetQuantity("iron")
-            + (mfg.InputsHeld.TryGetValue("iron", out var held) ? held : 0f);
-        AssertThat(totalAfter).IsEqual(10f);
+            + (mfg.InputsHeld.TryGetValue("iron", out var held) ? held : 0);
+        AssertThat(totalAfter).IsEqual(10);
     }
 
     [TestCase]
@@ -408,9 +408,9 @@ public class BuildingLinkFlowTest
         producer.OnManufactureTick(1f);
         link.OnManufactureTick(1f);
 
-        AssertThat(producer.OutputStorage.GetQuantity("plate")).IsEqual(0f);
-        AssertThat(producer.BulkStorage.GetQuantity("plate")).IsEqual(0f);
-        AssertThat(receiver.InputStorage.GetQuantity("plate")).IsEqual(8f);
+        AssertThat(producer.OutputStorage.GetQuantity("plate")).IsEqual(0);
+        AssertThat(producer.BulkStorage.GetQuantity("plate")).IsEqual(0);
+        AssertThat(receiver.InputStorage.GetQuantity("plate")).IsEqual(8);
     }
 
     [TestCase]
@@ -430,12 +430,12 @@ public class BuildingLinkFlowTest
         routing.OnAttach(building);
         building.Behaviors.Add(routing);
 
-        var package = new ResourcePackage { ResourceId = "coal", Quantity = 12f };
+        var package = new ResourcePackage { ResourceId = "coal", Quantity = 12 };
         bool accepted = building.OnDelivery(package);
 
         AssertThat(accepted).IsTrue();
-        AssertThat(building.InputStorage.GetQuantity("coal")).IsEqual(12f);
-        AssertThat(building.BulkStorage.GetQuantity("coal")).IsEqual(0f);
+        AssertThat(building.InputStorage.GetQuantity("coal")).IsEqual(12);
+        AssertThat(building.BulkStorage.GetQuantity("coal")).IsEqual(0);
     }
 
     [TestCase]
@@ -451,12 +451,12 @@ public class BuildingLinkFlowTest
         routing.OnAttach(building);
         building.Behaviors.Add(routing);
 
-        var package = new ResourcePackage { ResourceId = "coal", Quantity = 5f };
+        var package = new ResourcePackage { ResourceId = "coal", Quantity = 5 };
         bool accepted = building.OnDelivery(package);
 
         AssertThat(accepted).IsFalse();
-        AssertThat(building.BulkStorage.GetQuantity("coal")).IsEqual(0f);
-        AssertThat(building.InputStorage.GetQuantity("coal")).IsEqual(0f);
+        AssertThat(building.BulkStorage.GetQuantity("coal")).IsEqual(0);
+        AssertThat(building.InputStorage.GetQuantity("coal")).IsEqual(0);
     }
 
     [TestCase]
@@ -472,11 +472,11 @@ public class BuildingLinkFlowTest
         routing.OnAttach(building);
         building.Behaviors.Add(routing);
 
-        var package = new ResourcePackage { ResourceId = "iron", Quantity = 30f };
+        var package = new ResourcePackage { ResourceId = "iron", Quantity = 30 };
         bool accepted = building.OnDelivery(package);
 
         AssertThat(accepted).IsFalse();
-        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(80f);
+        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(80);
     }
 
     [TestCase]
@@ -487,12 +487,12 @@ public class BuildingLinkFlowTest
         var building = new Building();
         building.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("iron")));
 
-        var package = new ResourcePackage { ResourceId = "iron", Quantity = 7f };
+        var package = new ResourcePackage { ResourceId = "iron", Quantity = 7 };
         bool accepted = building.OnDelivery(package);
 
         AssertThat(accepted).IsTrue();
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(7f);
-        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(0f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(7);
+        AssertThat(building.BulkStorage.GetQuantity("iron")).IsEqual(0);
     }
 
     [TestCase]
@@ -527,9 +527,9 @@ public class BuildingLinkFlowTest
         mfg.OnManufactureTick(1f, producer);
         link.OnManufactureTick(1f);
 
-        AssertThat(receiver.InputStorage.GetQuantity("plate")).IsEqual(5f);
-        AssertThat(producer.OutputStorage.GetQuantity("plate")).IsEqual(0f);
-        AssertThat(producer.BulkStorage.GetQuantity("plate")).IsEqual(0f);
+        AssertThat(receiver.InputStorage.GetQuantity("plate")).IsEqual(5);
+        AssertThat(producer.OutputStorage.GetQuantity("plate")).IsEqual(0);
+        AssertThat(producer.BulkStorage.GetQuantity("plate")).IsEqual(0);
     }
 
     // ========================================================================
@@ -562,7 +562,7 @@ public class BuildingLinkFlowTest
         // 1f easily exceeds WorkRequired/speed = 0.01s.
         mfg.OnManufactureTick(1f, building);
 
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1f);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(1);
         AssertThat(mfg.State).IsEqual(ManufacturingState.Idle);
     }
 

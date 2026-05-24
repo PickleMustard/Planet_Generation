@@ -116,7 +116,7 @@ public class ExtractionRecipeIntegrationTest
 
         mfg.OnManufactureTick(0f, building);
 
-        AssertThat(building.OutputStorage.GetQuantity("iron_ore")).IsEqual(10f * 0.5f);
+        AssertThat(building.OutputStorage.GetQuantity("iron_ore")).IsEqual(5);
     }
 
     [TestCase]

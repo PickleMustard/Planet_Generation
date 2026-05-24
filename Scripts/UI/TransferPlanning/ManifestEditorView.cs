@@ -10,10 +10,16 @@ using UtilityLibrary;
 
 namespace UI.TransferPlanning;
 
+public enum TransferMode
+{
+    Recurring,
+    OneTime,
+}
+
 /// <summary>
 /// View 4 — Manifest Editor. Drag a resource from the right-hand stockpile palette
 /// onto an empty manifest row; tweak units; pick a condition; press Finish to
-/// create a new <see cref="TransferSchedule"/>.
+/// create a new <see cref="TransferSchedule"/> or dispatch a one-time order.
 /// </summary>
 public partial class ManifestEditorView : Control
 {
@@ -30,6 +36,7 @@ public partial class ManifestEditorView : Control
 
     private readonly Dictionary<string, float> _proportions = new();
     private ConditionOption _condition = ConditionOption.Default;
+    private TransferMode _mode = TransferMode.Recurring;
 
     private VBoxContainer? _manifestRows;
     private VBoxContainer? _stockpileList;
@@ -40,6 +47,10 @@ public partial class ManifestEditorView : Control
     private Label? _itemSummary;
     private Button? _finishBtn;
     private Label? _destLabel;
+    private Control? _conditionPanel;
+    private Button? _modeRecurringBtn;
+    private Button? _modeOneTimeBtn;
+    private StepIndicator? _steps;
 
     public override void _Ready()
     {
@@ -60,6 +71,7 @@ public partial class ManifestEditorView : Control
         _editTarget = null;
         UpdateDestinationLabel();
         Reset();
+        SetModeToggleEnabled(true);
     }
 
     public void SetEditTarget(TransferSchedule schedule)
@@ -70,6 +82,9 @@ public partial class ManifestEditorView : Control
         foreach (var kvp in schedule.ResourceProportions)
             _proportions[kvp.Key] = kvp.Value;
         _condition = ResolveOption(schedule);
+        _mode = TransferMode.Recurring;
+        ApplyModeUi();
+        SetModeToggleEnabled(false);
         UpdateDestinationLabel();
         RebuildStockpile();
         RebuildManifestRows();
@@ -81,11 +96,19 @@ public partial class ManifestEditorView : Control
     {
         _proportions.Clear();
         _condition = ConditionOption.Default;
+        _mode = TransferMode.Recurring;
+        ApplyModeUi();
         UpdateDestinationLabel();
         RebuildStockpile();
         RebuildManifestRows();
         SelectConditionInDropdown();
         UpdateScale();
+    }
+
+    private void SetModeToggleEnabled(bool enabled)
+    {
+        if (_modeRecurringBtn != null) _modeRecurringBtn.Disabled = !enabled;
+        if (_modeOneTimeBtn != null) _modeOneTimeBtn.Disabled = !enabled;
     }
 
     private void BuildLayout()
@@ -104,15 +127,9 @@ public partial class ManifestEditorView : Control
         var stepRow = new HBoxContainer();
         stepRow.AddThemeConstantOverride("separation", 14);
         stepBar.AddChild(stepRow);
-        var steps = new StepIndicator { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        stepRow.AddChild(steps);
-        steps.SetSteps(new List<StepIndicator.Step>
-        {
-            new() { Label = "Pick destination", State = StepIndicator.StepState.Done },
-            new() { Label = "Build manifest", State = StepIndicator.StepState.Active },
-            new() { Label = "Set condition", State = StepIndicator.StepState.Active },
-            new() { Label = "Confirm", State = StepIndicator.StepState.Pending },
-        });
+        _steps = new StepIndicator { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        stepRow.AddChild(_steps);
+        UpdateSteps();
         _destLabel = new Label
         {
             Text = "DEST · —",
@@ -160,6 +177,8 @@ public partial class ManifestEditorView : Control
         var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         box.AddThemeConstantOverride("separation", 10);
         margin.AddChild(box);
+
+        box.AddChild(BuildModeToggleRow());
 
         var titleRow = new HBoxContainer();
         titleRow.AddThemeConstantOverride("separation", 8);
@@ -227,8 +246,8 @@ public partial class ManifestEditorView : Control
             new Callable(this, MethodName.OnCanDropData),
             new Callable(this, MethodName.OnDropData));
 
-        var conditionPanel = BuildConditionPanel();
-        box.AddChild(conditionPanel);
+        _conditionPanel = BuildConditionPanel();
+        box.AddChild(_conditionPanel);
 
         var spacer = new Control { SizeFlagsVertical = SizeFlags.ExpandFill };
         box.AddChild(spacer);
@@ -237,6 +256,78 @@ public partial class ManifestEditorView : Control
         box.AddChild(_scale);
 
         return margin;
+    }
+
+    private Control BuildModeToggleRow()
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 6);
+
+        var kicker = new Label
+        {
+            Text = "TRANSFER TYPE",
+            ThemeTypeVariation = "LabelMono",
+            CustomMinimumSize = new Vector2(140f, 0f),
+        };
+        kicker.AddThemeFontSizeOverride("font_size", 10);
+        kicker.AddThemeColorOverride("font_color", WireColors.InkFaint);
+        row.AddChild(kicker);
+
+        _modeRecurringBtn = new Button
+        {
+            Text = "Recurring Schedule",
+            ToggleMode = true,
+            ButtonPressed = true,
+        };
+        _modeRecurringBtn.Pressed += () => SetMode(TransferMode.Recurring);
+        row.AddChild(_modeRecurringBtn);
+
+        _modeOneTimeBtn = new Button
+        {
+            Text = "One-Time Order",
+            ToggleMode = true,
+            ButtonPressed = false,
+        };
+        _modeOneTimeBtn.Pressed += () => SetMode(TransferMode.OneTime);
+        row.AddChild(_modeOneTimeBtn);
+
+        return row;
+    }
+
+    private void SetMode(TransferMode mode)
+    {
+        if (_mode == mode)
+        {
+            // Keep the toggle in a consistent state if user clicks the active one.
+            if (_modeRecurringBtn != null) _modeRecurringBtn.ButtonPressed = _mode == TransferMode.Recurring;
+            if (_modeOneTimeBtn != null) _modeOneTimeBtn.ButtonPressed = _mode == TransferMode.OneTime;
+            return;
+        }
+        _mode = mode;
+        ApplyModeUi();
+    }
+
+    private void ApplyModeUi()
+    {
+        bool oneTime = _mode == TransferMode.OneTime;
+        if (_modeRecurringBtn != null) _modeRecurringBtn.ButtonPressed = !oneTime;
+        if (_modeOneTimeBtn != null) _modeOneTimeBtn.ButtonPressed = oneTime;
+        if (_conditionPanel != null) _conditionPanel.Visible = !oneTime;
+        if (_finishBtn != null) _finishBtn.Text = oneTime ? "Dispatch Now ✓" : "Finish & File Route ✓";
+        UpdateSteps();
+    }
+
+    private void UpdateSteps()
+    {
+        if (_steps == null) return;
+        bool oneTime = _mode == TransferMode.OneTime;
+        _steps.SetSteps(new List<StepIndicator.Step>
+        {
+            new() { Label = "Pick destination", State = StepIndicator.StepState.Done },
+            new() { Label = "Build manifest", State = StepIndicator.StepState.Active },
+            new() { Label = oneTime ? "Review" : "Set condition", State = StepIndicator.StepState.Active },
+            new() { Label = oneTime ? "Dispatch" : "Confirm", State = StepIndicator.StepState.Pending },
+        });
     }
 
     private Control BuildConditionPanel()
@@ -491,6 +582,12 @@ public partial class ManifestEditorView : Control
             return;
         }
 
+        if (_mode == TransferMode.OneTime)
+        {
+            DispatchOneTime();
+            return;
+        }
+
         if (_editTarget != null)
         {
             _behavior.RemoveSchedule(_editTarget.ScheduleId);
@@ -510,6 +607,39 @@ public partial class ManifestEditorView : Control
             return;
         }
         _behavior.StartSchedule(id);
+        EmitSignal(SignalName.RouteFiled);
+    }
+
+    private void DispatchOneTime()
+    {
+        if (_behavior == null || _draftDestination == null) return;
+        float capacity = _behavior.GetCapacity(_originBuildingId);
+        if (capacity <= 0f)
+        {
+            ToastSystem.Instance?.ShowError("Origin has no transfer capacity.");
+            return;
+        }
+        var db = ResourceDatabase.Instance;
+        var requested = new Dictionary<string, float>();
+        foreach (var kvp in _proportions)
+        {
+            float perUnitWeight = SlipDataBuilder.LookupTransportWeight(db, kvp.Key);
+            if (perUnitWeight <= 0f) continue;
+            int units = Mathf.FloorToInt(capacity * kvp.Value / perUnitWeight);
+            if (units <= 0) continue;
+            requested[kvp.Key] = units;
+        }
+        if (requested.Count == 0)
+        {
+            ToastSystem.Instance?.ShowError("Manifest is empty after rounding to whole units.");
+            return;
+        }
+        string? orderId = _behavior.DispatchOneTimeTransfer(_originBuildingId, _draftDestination, requested);
+        if (orderId == null)
+        {
+            ToastSystem.Instance?.ShowError("Failed to dispatch one-time transfer.");
+            return;
+        }
         EmitSignal(SignalName.RouteFiled);
     }
 

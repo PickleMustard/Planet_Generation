@@ -26,13 +26,13 @@ public class BuildingTest
         var package = new ResourcePackage
         {
             ResourceId = "iron",
-            Quantity = 25f
+            Quantity = 25
         };
 
         bool result = building.OnDelivery(package);
 
         AssertThat(result).IsTrue();
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(25);
     }
 
     [TestCase]
@@ -40,18 +40,18 @@ public class BuildingTest
     {
         var building = new Building();
         building.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("iron")));
-        building.InputStorage.Deposit("iron", 20f);
+        building.InputStorage.Deposit("iron", 20);
 
         var package = new ResourcePackage
         {
             ResourceId = "iron",
-            Quantity = 25f
+            Quantity = 25
         };
 
         bool result = building.OnDelivery(package);
 
         AssertThat(result).IsFalse();
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(20f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(20);
     }
 
     [TestCase]
@@ -69,16 +69,16 @@ public class BuildingTest
         building.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("iron")));
         building.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("copper")));
 
-        var pkg1 = new ResourcePackage { ResourceId = "iron", Quantity = 10f };
-        var pkg2 = new ResourcePackage { ResourceId = "copper", Quantity = 20f };
-        var pkg3 = new ResourcePackage { ResourceId = "iron", Quantity = 5f };
+        var pkg1 = new ResourcePackage { ResourceId = "iron", Quantity = 10 };
+        var pkg2 = new ResourcePackage { ResourceId = "copper", Quantity = 20 };
+        var pkg3 = new ResourcePackage { ResourceId = "iron", Quantity = 5 };
 
         AssertThat(building.OnDelivery(pkg1)).IsTrue();
         AssertThat(building.OnDelivery(pkg2)).IsTrue();
         AssertThat(building.OnDelivery(pkg3)).IsTrue();
 
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(15f);
-        AssertThat(building.InputStorage.GetQuantity("copper")).IsEqual(20f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(15);
+        AssertThat(building.InputStorage.GetQuantity("copper")).IsEqual(20);
     }
 
     [TestCase]
@@ -86,18 +86,18 @@ public class BuildingTest
     {
         var building = new Building();
         building.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("iron")));
-        building.InputStorage.Deposit("iron", 20f);
+        building.InputStorage.Deposit("iron", 20);
 
         var package = new ResourcePackage
         {
             ResourceId = "iron",
-            Quantity = 15f
+            Quantity = 15
         };
 
         bool result = building.OnDelivery(package);
 
         AssertThat(result).IsFalse();
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(20f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(20);
     }
 
     // ========================================================================
@@ -111,11 +111,11 @@ public class BuildingTest
         building.InputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("iron")));
         building.OutputStorage.AddSlot(new StorageSlot(SlotFilter.ForResource("iron")));
 
-        building.InputStorage.Deposit("iron", 50f);
-        building.OutputStorage.Deposit("iron", 30f);
+        building.InputStorage.Deposit("iron", 50);
+        building.OutputStorage.Deposit("iron", 30);
 
-        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(50f);
-        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(30f);
+        AssertThat(building.InputStorage.GetQuantity("iron")).IsEqual(50);
+        AssertThat(building.OutputStorage.GetQuantity("iron")).IsEqual(30);
     }
 
     [TestCase]
@@ -143,8 +143,8 @@ public class BuildingTest
     public void Storage_EmptyByDefault_HasNoSpaceForAnyResource()
     {
         var building = new Building();
-        AssertThat(building.InputStorage.HasSpace("iron", 1f)).IsFalse();
-        AssertThat(building.OutputStorage.HasSpace("copper", 1f)).IsFalse();
+        AssertThat(building.InputStorage.HasSpace("iron", 1)).IsFalse();
+        AssertThat(building.OutputStorage.HasSpace("copper", 1)).IsFalse();
     }
 
     // ========================================================================

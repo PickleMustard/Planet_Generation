@@ -38,7 +38,7 @@ namespace Structures.Resources
         private Dictionary<string, BuildingDefinition> _buildings = new();
 
         public string DatabaseName => "BuildingDatabase";
-        public IReadOnlyList<string> Dependencies { get; } = new[] { "BuildingShape2DDatabase" };
+        public IReadOnlyList<string> Dependencies { get; } = new[] { "BuildingShape2DDatabase", "BiomeDatabase" };
         public bool IsLoaded { get; private set; } = false;
         public float LoadProgress { get; private set; } = 0f;
 
@@ -353,20 +353,20 @@ namespace Structures.Resources
         }
 
         /// <summary>
-        /// Gets the icon for a building at a specific size.
+        /// Gets the icon for a building. Godot mipmaps handle runtime scaling.
         /// Always returns a valid texture (uses fallback if needed).
         /// </summary>
-        public Texture2D GetBuildingIcon(string buildingId, IconSize size = IconSize.Large)
+        public Texture2D GetBuildingIcon(string buildingId)
         {
             EnsureLoaded();
             if (TryGetBuilding(buildingId, out var building) && building != null)
             {
-                var texture = building.Icon?.GetTexture(size);
+                var texture = building.Icon?.Texture;
                 if (texture != null)
                     return texture;
             }
 
-            return IconDataLoader.GetFallbackIcon(size);
+            return IconDataLoader.GetFallbackIcon();
         }
 
         /// <summary>

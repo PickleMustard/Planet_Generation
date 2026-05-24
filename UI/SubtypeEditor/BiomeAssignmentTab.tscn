@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UI/SubtypeEditor/BiomeAssignmentTab.cs" id="1"]
+
+[node name="BiomeAssignmentTab" type="ScrollContainer" node_paths=PackedStringArray("_addRuleButton", "_rulesList")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1")
+_addRuleButton = NodePath("Root/Header/AddRuleButton")
+_rulesList = NodePath("Root/RulesList")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="HeaderLabel" type="Label" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Assigner Rules"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.95, 0.85, 0.5, 1)
+
+[node name="AddRuleButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+text = "+ Rule"
+
+[node name="RulesList" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3

@@ -787,7 +787,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     /// Storage change wake-up. Any quantity change signals that a sleeping behavior may now be
     /// able to make progress; register the station so it gets at least one tick to re-evaluate.
     /// </summary>
-    private void OnStationStorageUpdated(string resourceId, float delta)
+    private void OnStationStorageUpdated(string resourceId, int delta)
     {
         if (_isUnderConstruction || !IsActive)
             return;
