@@ -24,6 +24,10 @@ tooltips:
   tectonics.general_shear_scale: "Master multiplier on shear deformation across the surface."
   tectonics.general_compression_scale: "Master multiplier on compression uplift at convergent boundaries."
   tectonics.general_transform_scale: "Master multiplier on transform-fault offset displacement."
+  tectonics.boundary_smoothing_iterations: "Laplacian smoothing passes over per-edge boundary stress. 0 = raw stress field."
+  tectonics.boundary_smoothing_weight: "Blend weight (0-1) toward neighbor mean per smoothing pass. Higher = stronger smoothing."
+  tectonics.sample_velocity_at_edge_midpoint: "When true, sample plate velocity at edge midpoint to eliminate ω×r discontinuity across boundaries."
+  tectonics.max_continent_rotation: "Cap on rotational ω×r contribution to plate movement (degrees). Limits extreme outliers."
 
   # --- Spherical harmonics block (Phase 3 keys) ---
   spherical_harmonics.amplitude: "Overall magnitude of the harmonic displacement layer (rad-unit-fraction)."

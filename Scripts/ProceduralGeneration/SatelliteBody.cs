@@ -571,6 +571,38 @@ public partial class SatelliteBody : Node3D, IOrbitalBody, ISelectableBody
         );
     }
 
+    // --- Save/load restore hooks ---
+
+    /// <summary>Points this satellite's StrDb/Oct at geometry rebuilt by the save loader.</summary>
+    internal void AttachRestoredGeometry(StructureDatabase strDb, Octree<Point> oct)
+    {
+        this.StrDb = strDb;
+        this.Oct = oct;
+    }
+
+    /// <summary>
+    /// Restores the analytic-orbit state. When <paramref name="initialized"/> is true the satellite
+    /// resumes from the saved angle/radius/speed; otherwise it re-derives from its position on the
+    /// first physics frame (identical to a freshly generated satellite).
+    /// </summary>
+    internal void RestoreOrbitState(float angle, float radius, float speed, bool initialized)
+    {
+        _orbitalAngle = angle;
+        _orbitalRadius = radius;
+        _orbitalSpeed = speed;
+        _orbitalInitialized = initialized;
+    }
+
+    /// <summary>Restores a saved per-band occupancy count after InitializeOrbitSystem has rebuilt the bands.</summary>
+    internal void SetBandCount(int bandIndex, int count) => _bandSatelliteCounts[bandIndex] = count;
+
+    /// <summary>Snapshot of analytic-orbit state for serialization.</summary>
+    internal (float Angle, float Radius, float Speed, bool Initialized) OrbitStateSnapshot =>
+        (_orbitalAngle, _orbitalRadius, _orbitalSpeed, _orbitalInitialized);
+
+    /// <summary>Read-only view of per-band occupancy counts for serialization.</summary>
+    internal Dictionary<int, int> BandCountsSnapshot => _bandSatelliteCounts;
+
     /// <summary>
     /// Increments the satellite count for the specified band.
     /// </summary>

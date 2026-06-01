@@ -1,51 +1,72 @@
 resources:
   - id_name: grain
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 200
     tags: [crop]
+    configurable_values:
+      nutrition: 10
     icon:
       base_path: "res://Materials/Icons/grain"
   - id_name: vegetable
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 201
     tags: [crop]
+    configurable_values:
+      nutrition: 8
     icon:
       base_path: "res://Materials/Icons/vegetable"
   - id_name: protein
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 100
     tags: [unprocessed_food]
+    configurable_values:
+      nutrition: 25
     icon:
       base_path: "res://Materials/Icons/vegetable"
   - id_name: fish
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 200
     tags: [aquatic, unprocessed_food]
+    configurable_values:
+      nutrition: 20
     icon:
       base_path: "res://Materials/Icons/fish"
   - id_name: bread
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 199
     tags: [unprocessed_food]
+    configurable_values:
+      nutrition: 15
     icon:
       base_path: "res://Materials/Icons/grain"
   - id_name: mre
     resource_tier: 3
+    base_price: 4000
     state_of_matter: solid
     max_stack_size: 99
     tags: [edible, military]
+    configurable_values:
+      nutrition: 30
     icon:
       base_path: "res://Materials/Icons/grain"
   - id_name: canned_good
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 100
     transport_weight: 3
     tags: [processed_food]
+    configurable_values:
+      nutrition: 18
     icon:
       base_path: "res://Materials/Icons/can"

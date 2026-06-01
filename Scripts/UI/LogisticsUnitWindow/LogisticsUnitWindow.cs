@@ -5,9 +5,11 @@ using UtilityLibrary;
 namespace UI.LogisticsUnitWindow;
 
 /// <summary>
-/// GUI window for inspecting logistics units (ships).
-/// Panels arranged around screen edges: header (top-left), tabs (right), details (bottom).
-/// Opened via HUD click or cross-window transition from OrbitalBody/Station windows.
+/// Diegetic full-screen GUI window for inspecting a logistics unit (ship).
+/// The player camera is repurposed (via <see cref="LogisticsUnitOrbitCamera"/>)
+/// to frame the ship in the window's negative space; the cartouche sits upper-
+/// left, the tab strip upper-right, and the info panel along the bottom.
+/// Opened by a direct ship click or via cross-window navigation.
 /// </summary>
 public partial class LogisticsUnitWindow : Control
 {
@@ -20,20 +22,27 @@ public partial class LogisticsUnitWindow : Control
     private Button? _backButton;
 
     [Export]
-    private LogisticsUnitHeaderPanel? _headerPanel;
+    private LogisticsUnitCartouchePanel? _cartouchePanel;
 
     [Export]
     private LogisticsUnitTabbedPanel? _tabbedPanel;
 
     [Export]
-    private LogisticsUnitDetailsPanel? _detailsPanel;
+    private LogisticsUnitInfoPanel? _infoPanel;
+
+    [Export]
+    private LogisticsUnitOrbitCamera? _orbitCamera;
 
     private LogisticsUnit? _currentUnit;
+    private Camera3D? _playerCamera;
 
-    /// <summary>Whether this window is currently open.</summary>
+    // Right column holds the tab strip; the bottom strip holds the info panel.
+    // Used to push the ship into the open center-left negative space.
+    private const float TAB_PANEL_WIDTH = 440f;
+    private const float INFO_PANEL_HEIGHT = 240f;
+
     public bool IsOpen { get; private set; }
 
-    /// <summary>The logistics unit currently being inspected, or null.</summary>
     public LogisticsUnit? CurrentUnit => _currentUnit;
 
     [Signal]
@@ -49,47 +58,50 @@ public partial class LogisticsUnitWindow : Control
 
         if (_closeButton != null)
             _closeButton.Pressed += OnCloseButtonPressed;
-
         if (_backButton != null)
             _backButton.Pressed += OnBackPressed;
-    }
 
-    private void OnCloseButtonPressed()
-    {
-        EmitSignal(SignalName.WindowCloseRequested);
-    }
-
-    private void OnBackPressed()
-    {
-        EmitSignal(SignalName.BackRequested);
+        if (_tabbedPanel != null && _infoPanel != null)
+            _tabbedPanel.SectionSelected += OnSectionSelected;
     }
 
     public override void _ExitTree()
     {
+        if (_tabbedPanel != null)
+            _tabbedPanel.SectionSelected -= OnSectionSelected;
+
         if (Instance == this)
             Instance = null;
     }
 
+    private void OnCloseButtonPressed() => EmitSignal(SignalName.WindowCloseRequested);
+
+    private void OnBackPressed() => EmitSignal(SignalName.BackRequested);
+
     // ───────── Open / Close ─────────
 
-    public void ShowWindow(LogisticsUnit unit)
+    public void ShowWindow(LogisticsUnit unit, Camera3D playerCamera)
     {
         if (IsOpen)
             HideWindow();
 
         _currentUnit = unit;
+        _playerCamera = playerCamera;
         IsOpen = true;
         Visible = true;
 
         Input.SetMouseMode(Input.MouseModeEnum.Visible);
 
-        // Populate panels
-        _headerPanel?.Populate(unit);
-        _tabbedPanel?.Initialize(unit);
-        if (_tabbedPanel != null && _detailsPanel != null)
-            _detailsPanel.Initialize(unit, _tabbedPanel);
+        if (_orbitCamera != null && playerCamera != null)
+        {
+            _orbitCamera.ScreenOffset = ComputeCameraOffset();
+            _orbitCamera.BeginOrbit(playerCamera, unit);
+        }
 
-        // Listen for unit removal
+        _cartouchePanel?.Populate(unit);
+        _infoPanel?.Initialize(unit);
+        _tabbedPanel?.Initialize(unit); // emits SectionSelected → info panel populates
+
         if (unit is Node unitNode)
             unitNode.TreeExiting += OnUnitExiting;
 
@@ -103,20 +115,18 @@ public partial class LogisticsUnitWindow : Control
 
         IsOpen = false;
 
-        // Clear panels
-        _headerPanel?.Clear();
-        if (_tabbedPanel != null && _detailsPanel != null)
-            _detailsPanel.Disconnect(_tabbedPanel);
+        _orbitCamera?.EndOrbit();
+        _cartouchePanel?.Clear();
         _tabbedPanel?.Clear();
-        _detailsPanel?.Clear();
+        _infoPanel?.Clear();
 
-        // Disconnect unit signal
         if (_currentUnit is Node unitNode && IsInstanceValid(unitNode))
             unitNode.TreeExiting -= OnUnitExiting;
 
         Input.SetMouseMode(Input.MouseModeEnum.Captured);
 
         _currentUnit = null;
+        _playerCamera = null;
         Visible = false;
 
         GameLogger.Info("[LogisticsUnitWindow] Closed");
@@ -138,11 +148,18 @@ public partial class LogisticsUnitWindow : Control
 
     // ───────── Callbacks ─────────
 
+    private void OnSectionSelected(string sectionKey) => _infoPanel?.ShowSection(sectionKey);
+
     private void OnUnitExiting()
     {
-        GameLogger.Warning(
-            "[LogisticsUnitWindow] Inspected unit is leaving the tree — closing window"
-        );
+        GameLogger.Warning("[LogisticsUnitWindow] Inspected unit is leaving the tree — closing window");
         HideWindow();
+    }
+
+    private Vector2 ComputeCameraOffset()
+    {
+        // Positive X shifts the ship left (clear of the right tab strip);
+        // negative Y lifts it above the bottom info panel.
+        return new Vector2(TAB_PANEL_WIDTH * 0.5f, -INFO_PANEL_HEIGHT * 0.5f);
     }
 }

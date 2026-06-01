@@ -5,14 +5,12 @@ namespace UI.StateMachine;
 
 /// <summary>
 /// Sub-HSM for Station window management.
-/// Manages the main StationView state and sub-states for bespoke features
-/// (e.g. ShipQueueManagement for Shipyard stations).
+/// Manages the main StationView state.
 /// Attached to GUIController/Station node.
 /// </summary>
 public partial class StationHSM : LimboHsm
 {
     private LimboState? _stationView;
-    private LimboState? _shipQueueManagement;
 
     [Export]
     public LimboState? StationView
@@ -21,22 +19,9 @@ public partial class StationHSM : LimboHsm
         set => _stationView = value;
     }
 
-    [Export]
-    public LimboState? ShipQueueManagement
-    {
-        get => _shipQueueManagement;
-        set => _shipQueueManagement = value;
-    }
-
     public override void _Ready()
     {
         base._Ready();
-
-        if (_shipQueueManagement != null)
-        {
-            AddTransition(_stationView, _shipQueueManagement, "ship_queue_opened");
-            AddTransition(_shipQueueManagement, _stationView, "back_to_station");
-        }
 
         InitialState = _stationView;
 

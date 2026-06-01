@@ -160,6 +160,9 @@ public partial class LogisticsMovementController : Node
         // Initialize orbital state from parent
         InitializeOrbitalState();
 
+        // Apply any mid-transfer state queued by the save loader (no-op for normal spawns).
+        _logisticsUnit.ApplyPendingControllerRestore(this);
+
         GameLogger.Info("LogisticsMovementController: Ready");
     }
 
@@ -733,5 +736,63 @@ public partial class LogisticsMovementController : Node
     private void SetHostBody(Node newHost)
     {
         _logisticsUnit!.ReparentToHostBody(newHost);
+    }
+
+    // ========================================================================
+    // SAVE / RESTORE
+    // ========================================================================
+
+    /// <summary>The trajectory currently being executed, or null when not transferring.</summary>
+    public TrajectorySolution? ActiveTrajectory => _activeTrajectory;
+
+    public IOrbitalBody? OriginBody => _originBody;
+    public IOrbitalBody? DestinationBody => _destinationBody;
+    public IOrbitalBody? CentralBody => _centralBody;
+
+    public float TransferTime => _transferTime;
+    public float TimeInTransfer => _timeInTransfer;
+    public Vector3 DeparturePosition => _departurePosition;
+    public Vector3 TargetPosition => _targetPosition;
+    public Vector3 DeparturePositionGlobal => _departurePositionGlobal;
+    public float GravitationalParameter => _gravitationalParameter;
+
+    /// <summary>
+    /// Restores a mid-transfer state from a save. The unit must already be parented to the system
+    /// container (adrift) before calling, matching the in-flight tree placement. Body references are
+    /// resolved by the caller. Position is re-derived from the trajectory's classical elements on the
+    /// next physics frame, so only the temporal/orbital state needs restoring here.
+    /// </summary>
+    public void RestoreTransitState(
+        TrajectorySolution trajectory,
+        IOrbitalBody? originBody,
+        IOrbitalBody? destinationBody,
+        IOrbitalBody? centralBody,
+        float transferTime,
+        float timeInTransfer,
+        Vector3 departurePosition,
+        Vector3 targetPosition,
+        Vector3 departurePositionGlobal,
+        float gravitationalParameter,
+        BurnProfile? burnProfile,
+        TransitPhase currentTransitPhase,
+        float fuelConsumedThisTransfer,
+        SimulationMode simulationMode
+    )
+    {
+        _activeTrajectory = trajectory;
+        _originBody = originBody;
+        _destinationBody = destinationBody;
+        _centralBody = centralBody;
+        _transferTime = transferTime;
+        _timeInTransfer = timeInTransfer;
+        _departurePosition = departurePosition;
+        _targetPosition = targetPosition;
+        _departurePositionGlobal = departurePositionGlobal;
+        _gravitationalParameter = gravitationalParameter;
+        _burnProfile = burnProfile;
+        _currentTransitPhase = currentTransitPhase;
+        _fuelConsumedThisTransfer = fuelConsumedThisTransfer;
+        _currentSimulationMode = simulationMode;
+        _isTransferring = true;
     }
 }

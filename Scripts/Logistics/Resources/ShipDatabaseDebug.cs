@@ -55,8 +55,7 @@ namespace Logistics.Resources
                         .AddProperty("Cargo Capacity", ship.CargoCapacity)
                         .AddProperty("Fuel Capacity", ship.FuelCapacity)
                         .AddProperty("Engine Category", ship.EngineCategory ?? "")
-                        .AddProperty("Construction Time", $"{ship.ConstructionTime}s")
-                        .AddProperty("Work Required", ship.ConstructionTime);
+                        .AddProperty("Work Required", ship.WorkRequired);
 
                     var resourcesNode = shipNode.AddChild("Required Resources");
                     foreach (var resource in ship.RequiredResources)

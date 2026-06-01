@@ -1,0 +1,80 @@
+[gd_scene format=3 uid="uid://ijme6q2ufdyq"]
+
+[ext_resource type="Script" uid="uid://bhkf00gex0v5d" path="res://DeveloperTools/ShipEditor/ShipCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.16, 0.16, 0.19, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.35, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="ShipCard" type="PanelContainer" unique_id=584180807 node_paths=PackedStringArray("NameEdit", "MoveUpButton", "MoveDownButton", "ScalarGrid", "RequiredResourcesContainer", "Root")]
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("1_card")
+NameEdit = NodePath("Root/Header/NameEdit")
+MoveUpButton = NodePath("Root/Header/Actions/MoveUpButton")
+MoveDownButton = NodePath("Root/Header/Actions/MoveDownButton")
+ScalarGrid = NodePath("Root/ScalarGrid")
+RequiredResourcesContainer = NodePath("Root/RequiredResourcesContainer")
+Root = NodePath("Root")
+
+[node name="Root" type="VBoxContainer" parent="." unique_id=418366254]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="Root" unique_id=364103847]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NameEdit" type="LineEdit" parent="Root/Header" unique_id=4636557]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "name"
+
+[node name="Actions" type="VBoxContainer" parent="Root/Header" unique_id=1559969053]
+layout_mode = 2
+
+[node name="MoveUpButton" type="Button" parent="Root/Header/Actions" unique_id=1491632084]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Move up"
+text = "▲"
+
+[node name="MoveDownButton" type="Button" parent="Root/Header/Actions" unique_id=1299229018]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Move down"
+text = "▼"
+
+[node name="DeleteButton" type="Button" parent="Root/Header/Actions" unique_id=306581684]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Delete ship"
+text = "✕"
+
+[node name="ScalarGrid" type="GridContainer" parent="Root" unique_id=199046618]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="RequiredResourcesContainer" type="VBoxContainer" parent="Root" unique_id=212300944]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="text_changed" from="Root/Header/NameEdit" to="." method="OnNameChanged"]
+[connection signal="pressed" from="Root/Header/Actions/MoveUpButton" to="." method="OnMoveUp"]
+[connection signal="pressed" from="Root/Header/Actions/MoveDownButton" to="." method="OnMoveDown"]
+[connection signal="pressed" from="Root/Header/Actions/DeleteButton" to="." method="OnDelete"]

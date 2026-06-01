@@ -1,0 +1,19 @@
+buildings:
+  - id_name: chemical_plant
+    display_name: Chemical Plant
+    category: chemical
+    max_resource_tier: 2
+    work_required: 100
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 3
+    behaviors:
+      - behavior_id: ManufacturingBehavior
+        default_recipe: "pesticides"
+        alternative_recipes: []
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 8

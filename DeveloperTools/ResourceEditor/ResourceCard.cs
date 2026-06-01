@@ -40,12 +40,14 @@ public partial class ResourceCard : PanelContainer
     private Label _nameLabel = null!;
     private LineEdit _nameEdit = null!;
     private SpinBox _tierSpinBox = null!;
+    private SpinBox _priceSpinBox = null!;
     private HSlider _stackSlider = null!;
     private Label _stackValueLabel = null!;
     private HSlider _weightSlider = null!;
     private Label _weightValueLabel = null!;
     private OptionButton _stateOption = null!;
     private Button _tagsButton = null!;
+    private Button _configValuesButton = null!;
     private Button _moveUpButton = null!;
     private Button _moveDownButton = null!;
     private Button _deleteButton = null!;
@@ -53,6 +55,7 @@ public partial class ResourceCard : PanelContainer
     // --- Scene References ---
 
     private PackedScene? _tagsPopupScene;
+    private PackedScene? _configValuesPopupScene;
     private PackedScene? _iconPickerScene;
 
     // --- State ---
@@ -96,12 +99,14 @@ public partial class ResourceCard : PanelContainer
         _nameLabel = GetNode<Label>("%NameLabel");
         _nameEdit = GetNode<LineEdit>("%NameEdit");
         _tierSpinBox = GetNode<SpinBox>("%TierSpinBox");
+        _priceSpinBox = GetNode<SpinBox>("%PriceSpinBox");
         _stackSlider = GetNode<HSlider>("%StackSlider");
         _stackValueLabel = GetNode<Label>("%StackValueLabel");
         _weightSlider = GetNode<HSlider>("%WeightSlider");
         _weightValueLabel = GetNode<Label>("%WeightValueLabel");
         _stateOption = GetNode<OptionButton>("%StateOption");
         _tagsButton = GetNode<Button>("%TagsButton");
+        _configValuesButton = GetNode<Button>("%ConfigValuesButton");
         _moveUpButton = GetNode<Button>("%MoveUpButton");
         _moveDownButton = GetNode<Button>("%MoveDownButton");
         _deleteButton = GetNode<Button>("%DeleteButton");
@@ -114,6 +119,9 @@ public partial class ResourceCard : PanelContainer
         _tagsPopupScene = GD.Load<PackedScene>(
             "res://DeveloperTools/ResourceEditor/TagsPopup.tscn"
         );
+        _configValuesPopupScene = GD.Load<PackedScene>(
+            "res://DeveloperTools/ResourceEditor/ConfigurableValuesPopup.tscn"
+        );
         _iconPickerScene = GD.Load<PackedScene>(
             "res://DeveloperTools/ResourceEditor/IconPickerPopup.tscn"
         );
@@ -124,10 +132,12 @@ public partial class ResourceCard : PanelContainer
         _nameEdit.TextSubmitted += OnNameTextSubmitted;
         _nameEdit.FocusExited += OnNameFocusExited;
         _tierSpinBox.ValueChanged += OnTierChanged;
+        _priceSpinBox.ValueChanged += OnBasePriceChanged;
         _stackSlider.ValueChanged += OnStackSizeChanged;
         _weightSlider.ValueChanged += OnTransportWeightChanged;
         _stateOption.ItemSelected += OnStateSelected;
         _tagsButton.Pressed += OnTagsPressed;
+        _configValuesButton.Pressed += OnConfigValuesPressed;
         _moveUpButton.Pressed += OnMoveUpPressed;
         _moveDownButton.Pressed += OnMoveDownPressed;
         _deleteButton.Pressed += OnDeletePressed;
@@ -171,6 +181,9 @@ public partial class ResourceCard : PanelContainer
         // Tier
         _tierSpinBox.SetValueNoSignal(_entry.ResourceTier);
 
+        // Base price (stored as integer cents, displayed in currency units)
+        _priceSpinBox.SetValueNoSignal(_entry.BasePrice / 100.0);
+
         // Stack size
         _stackSlider.SetValueNoSignal(_entry.MaxStackSize);
         _stackValueLabel.Text = ((int)_entry.MaxStackSize).ToString();
@@ -191,6 +204,9 @@ public partial class ResourceCard : PanelContainer
 
         // Tags button
         _tagsButton.Text = $"Tags ({_entry.Tags.Count})";
+
+        // Configurable values button
+        _configValuesButton.Text = $"Config Values ({_entry.ConfigurableValues.Count})";
 
         // Move buttons
         if (!_model.Categories.ContainsKey(_categoryName))
@@ -380,6 +396,15 @@ public partial class ResourceCard : PanelContainer
         _entry = _model.Categories[_categoryName].Resources[_resourceIndex];
     }
 
+    private void OnBasePriceChanged(double value)
+    {
+        if (_model == null || _entry == null)
+            return;
+        int cents = (int)Math.Round(value * 100.0);
+        _model.UpdateResourceField(_categoryName, _resourceIndex, "BasePrice", cents);
+        _entry = _model.Categories[_categoryName].Resources[_resourceIndex];
+    }
+
     private void OnStackSizeChanged(double value)
     {
         if (_model == null || _entry == null)
@@ -436,6 +461,34 @@ public partial class ResourceCard : PanelContainer
             return;
         _entry = _model.Categories[_categoryName].Resources[_resourceIndex];
         _tagsButton.Text = $"Tags ({_entry.Tags.Count})";
+    }
+
+    // ========================================================================
+    // CONFIGURABLE VALUES
+    // ========================================================================
+
+    private void OnConfigValuesPressed()
+    {
+        if (_model == null || _entry == null || _configValuesPopupScene == null)
+            return;
+
+        var popup = _configValuesPopupScene.Instantiate<ConfigurableValuesPopup>();
+        popup.Initialize(_model, _categoryName, _resourceIndex, _entry);
+        AddChild(popup);
+
+        var buttonRect = _configValuesButton.GetGlobalRect();
+        popup.Position = new Vector2I((int)buttonRect.Position.X, (int)buttonRect.End.Y);
+
+        popup.ValuesChanged += OnConfigValuesChanged;
+        popup.Popup();
+    }
+
+    private void OnConfigValuesChanged()
+    {
+        if (_model == null || _entry == null)
+            return;
+        _entry = _model.Categories[_categoryName].Resources[_resourceIndex];
+        _configValuesButton.Text = $"Config Values ({_entry.ConfigurableValues.Count})";
     }
 
     // ========================================================================

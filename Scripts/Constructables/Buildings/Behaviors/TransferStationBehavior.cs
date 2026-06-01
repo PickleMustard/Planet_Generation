@@ -866,6 +866,34 @@ public partial class TransferStationBehavior : RefCounted, IBuildingBehavior, IB
 
     public IReadOnlyCollection<ActiveTransfer> GetActiveTransfers() => _activeTransfers.Values;
 
+    /// <summary>
+    /// Rehydrates transfer state from a save: restores the accumulated game-time clock and seeds the
+    /// active-transfer and schedule collections. Call after <see cref="OnRegister"/> so the endpoint
+    /// and origin schedule list already exist. Schedules are keyed by their stored origin id.
+    /// </summary>
+    public void RestoreState(
+        double totalTime,
+        IEnumerable<TransferOrder> activeOrders,
+        IEnumerable<TransferSchedule> schedules)
+    {
+        _totalTime = totalTime;
+
+        foreach (var order in activeOrders)
+            _activeTransfers[order.OrderId] = new ActiveTransfer { Order = order };
+
+        foreach (var schedule in schedules)
+        {
+            if (!_schedulesByOrigin.TryGetValue(schedule.OriginBuildingId, out var list))
+            {
+                list = new List<TransferSchedule>();
+                _schedulesByOrigin[schedule.OriginBuildingId] = list;
+            }
+            list.Add(schedule);
+            _lastProgressTimeBySchedule[schedule.ScheduleId] = totalTime;
+            _lastProgressSignalBySchedule[schedule.ScheduleId] = 0f;
+        }
+    }
+
     /// <summary>Game-time accumulated by this behavior's tick. Used by UI for derived progress calculations.</summary>
     public double TotalTime => _totalTime;
 

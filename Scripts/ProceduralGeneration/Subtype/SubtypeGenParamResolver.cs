@@ -105,6 +105,10 @@ public static class SubtypeGenParamResolver
         TryWriteFloat(sub, "general_shear_scale", def.TectonicRanges, "general_shear_scale", rng, useMidpoint);
         TryWriteFloat(sub, "general_compression_scale", def.TectonicRanges, "general_compression_scale", rng, useMidpoint);
         TryWriteFloat(sub, "general_transform_scale", def.TectonicRanges, "general_transform_scale", rng, useMidpoint);
+        TryWriteInt(sub, "boundary_smoothing_iterations", def.TectonicRanges, "boundary_smoothing_iterations", rng, useMidpoint);
+        TryWriteFloat(sub, "boundary_smoothing_weight", def.TectonicRanges, "boundary_smoothing_weight", rng, useMidpoint);
+        TryWriteFloat(sub, "max_continent_rotation", def.TectonicRanges, "max_continent_rotation", rng, useMidpoint);
+        sub["sample_velocity_at_edge_midpoint"] = def.SampleVelocityAtEdgeMidpoint;
 
         if (sub.Count > 0) meshParams.Add("tectonic", sub);
     }

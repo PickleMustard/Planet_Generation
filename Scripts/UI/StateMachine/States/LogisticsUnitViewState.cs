@@ -47,10 +47,19 @@ public partial class LogisticsUnitViewState : LimboState
             return;
         }
 
+        var playerCamera = GetViewport().GetCamera3D();
+        if (playerCamera == null)
+        {
+            GameLogger.Warning("LogisticsUnitViewState: no active Camera3D in viewport");
+            Dispatch("window_closed");
+            GameLogger.ExitFunction(nameof(_Enter));
+            return;
+        }
+
         _window.WindowCloseRequested += OnWindowCloseRequested;
         _window.BackRequested += OnBackRequested;
 
-        _window.ShowWindow(unit);
+        _window.ShowWindow(unit, playerCamera);
 
         GameLogger.ExitFunction(nameof(_Enter));
     }

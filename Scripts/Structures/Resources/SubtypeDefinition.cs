@@ -79,6 +79,12 @@ public sealed class SubtypeDefinition
     public Dictionary<string, FloatRange> TectonicRanges { get; set; } = new();
 
     /// <summary>
+    /// When true, the tectonic stage samples plate velocity at the shared edge midpoint to
+    /// eliminate the ω×r discontinuity across boundaries. Not a range; a single per-subtype flag.
+    /// </summary>
+    public bool SampleVelocityAtEdgeMidpoint { get; set; } = true;
+
+    /// <summary>
     /// Per-knob ranges for the spherical-harmonics deformer: <c>amplitude</c> plus the four
     /// per-band scales <c>band_scale_l0</c>..<c>band_scale_l3</c>.
     /// </summary>

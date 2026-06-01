@@ -65,7 +65,7 @@ public partial class BoardWorld : Node2D
     private readonly Dictionary<StationSatellite, StationNode2D> _stationNodes = new();
     private float _circleRadius;
     private float _shapeRadius = 64f;
-    private float _stationRingRadius;
+    private readonly List<float> _stationRingRadii = new();
 
     // ── Draw constants ──────────────────────────────────────────────────
 
@@ -177,6 +177,7 @@ public partial class BoardWorld : Node2D
             bus.BuildingConstructed += OnBuildingsChanged;
             bus.BuildingRemoved += OnBuildingsChanged;
             bus.ResourceLinkChanged += OnLinksChanged;
+            bus.StationConstructionStarted += OnStationConstructionStarted;
             bus.StationConstructed += OnStationConstructed;
             bus.StationRemoved += OnStationRemoved;
         }
@@ -190,6 +191,7 @@ public partial class BoardWorld : Node2D
             bus.BuildingConstructed -= OnBuildingsChanged;
             bus.BuildingRemoved -= OnBuildingsChanged;
             bus.ResourceLinkChanged -= OnLinksChanged;
+            bus.StationConstructionStarted -= OnStationConstructionStarted;
             bus.StationConstructed -= OnStationConstructed;
             bus.StationRemoved -= OnStationRemoved;
         }
@@ -219,10 +221,14 @@ public partial class BoardWorld : Node2D
 
     private void DrawStationRingOutline()
     {
-        if (_stationRingRadius <= 0f || _stationNodes.Count == 0)
+        if (_stationNodes.Count == 0)
             return;
-        DrawArc(Vector2.Zero, _stationRingRadius, 0f, Mathf.Tau,
-                CircleOutlineSegments, CircleOutlineColor, CircleOutlineWidth, antialiased: true);
+        foreach (var radius in _stationRingRadii)
+        {
+            if (radius <= 0f) continue;
+            DrawArc(Vector2.Zero, radius, 0f, Mathf.Tau,
+                    CircleOutlineSegments, CircleOutlineColor, CircleOutlineWidth, antialiased: true);
+        }
     }
 
     private void DrawDotGrid()
@@ -287,7 +293,7 @@ public partial class BoardWorld : Node2D
         _dragSourcePort = null;
         _circleRadius = 0f;
         _shapeRadius = 64f;
-        _stationRingRadius = 0f;
+        _stationRingRadii.Clear();
 
         var emptyBBox = new Rect2(Vector2.Zero, Vector2.Zero);
 
@@ -413,34 +419,46 @@ public partial class BoardWorld : Node2D
         foreach (var sn in _stationNodes.Values)
             sn.QueueFree();
         _stationNodes.Clear();
-        _stationRingRadius = 0f;
+        _stationRingRadii.Clear();
 
         if (_body == null) return;
 
+        // Include every station child — both completed and under construction.
         var stations = new List<StationSatellite>();
         var container = _body.SatellitesContainer;
         if (container != null)
         {
             foreach (var child in container.GetChildren())
             {
-                if (child is StationSatellite st && !st.IsUnderConstruction)
+                if (child is StationSatellite st)
                     stations.Add(st);
             }
         }
 
         if (stations.Count == 0) return;
 
-        var ring = BoardLayoutEngine.ComputeStationRing(stations, _circleRadius);
-        _stationRingRadius = BoardLayoutEngine.ComputeStationRingRadius(_circleRadius);
+        var layout = BoardLayoutEngine.ComputeStationRings(stations, _circleRadius);
+        _stationRingRadii.AddRange(layout.RingRadii);
 
         foreach (var s in stations)
         {
-            if (!ring.TryGetValue(s, out var pos)) continue;
+            if (!layout.Positions.TryGetValue(s, out var pos)) continue;
             var node = new StationNode2D();
             node.Setup(s, pos);
             AddChild(node);
             _stationNodes[s] = node;
         }
+    }
+
+    private void OnStationConstructionStarted(StationSatellite station)
+    {
+        if (_body == null || station == null) return;
+        if (_stationNodes.ContainsKey(station)) return;
+        if (station.GetParent() != _body.SatellitesContainer) return;
+        // A new station joins a band ring, shifting that ring's spacing — full rebuild.
+        BuildStationRing();
+        CameraController?.EnsureContentVisible(ContentBoundingBox);
+        QueueRedraw();
     }
 
     private void OnStationConstructed(StationSatellite station)
@@ -460,19 +478,16 @@ public partial class BoardWorld : Node2D
         _stationNodes.Remove(station);
         node.QueueFree();
 
-        // Recompute remaining station positions on the same ring.
+        // Recompute remaining station positions across all band rings.
         var remaining = new List<StationSatellite>(_stationNodes.Keys);
-        if (remaining.Count == 0)
+        _stationRingRadii.Clear();
+        if (remaining.Count > 0)
         {
-            _stationRingRadius = 0f;
-        }
-        else
-        {
-            var ring = BoardLayoutEngine.ComputeStationRing(remaining, _circleRadius);
-            _stationRingRadius = BoardLayoutEngine.ComputeStationRingRadius(_circleRadius);
+            var layout = BoardLayoutEngine.ComputeStationRings(remaining, _circleRadius);
+            _stationRingRadii.AddRange(layout.RingRadii);
             foreach (var s in remaining)
             {
-                if (ring.TryGetValue(s, out var pos) && _stationNodes.TryGetValue(s, out var n))
+                if (layout.Positions.TryGetValue(s, out var pos) && _stationNodes.TryGetValue(s, out var n))
                     n.Position = pos;
             }
         }

@@ -35,9 +35,10 @@ public class ShipDefinition
     public string EngineCategory { get; set; } = string.Empty;
 
     /// <summary>
-    /// Time required to construct the ship.
+    /// Total work tokens required to construct the ship. Construction completes when
+    /// accumulated work (work_per_tick added each manufacture tick) reaches this value.
     /// </summary>
-    public float ConstructionTime { get; set; }
+    public float WorkRequired { get; set; }
 
     /// <summary>
     /// Dictionary of required resources for construction (resource name -> amount).

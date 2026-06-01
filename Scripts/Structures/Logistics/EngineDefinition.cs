@@ -231,6 +231,12 @@ public class EngineDefinition
     public int ActiveModifierCount => _activeModifiers.Count;
 
     /// <summary>
+    /// Gets the currently active modifiers in application (insertion) order. Used by the save system
+    /// to persist and later re-apply modifiers deterministically.
+    /// </summary>
+    public IReadOnlyList<EngineModifier> GetActiveModifiers() => _activeModifiers.Values.ToList();
+
+    /// <summary>
     /// Checks if a modifier with the specified source exists.
     /// </summary>
     /// <param name="sourceId">The source identifier to check.</param>

@@ -104,7 +104,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
     /// <summary>
     /// Returns the first attached behavior of type T, or null. Replaces legacy
     /// subclass-specific queries — use GetBehavior&lt;ShipyardBehavior&gt;() instead of
-    /// checking CanBuildShips.
+    /// checking for ShipyardBehavior.
     /// </summary>
     public T? GetBehavior<T>()
         where T : class, IStationBehavior
@@ -226,6 +226,8 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
         _constructionState.TryStart();
 
+        RegisterAsTransferEndpoint();
+
         GameLogger.Info(
             $"StationSatellite {Name}: Construction started ({_constructionState.WorkRequired}s)"
         );
@@ -249,6 +251,8 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
         _constructionState.Cancel();
         _isUnderConstruction = false;
+
+        UnregisterAsTransferEndpoint();
 
         GameLogger.Info($"StationSatellite {Name}: Construction cancelled");
         return true;
@@ -329,35 +333,13 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         Node3D? model = definition.Visual?.CreateModelInstance(bodyRadius);
         InstallModel(model, definition.Name);
 
-        // Wire behaviors from definition refs
-        foreach (var refName in definition.BehaviorRefs)
+        // Wire behaviors from definition entries (config flows through IStationBehaviorConfigurable)
+        foreach (var entry in definition.BehaviorEntries)
         {
-            var behavior = StationBehaviorFactory.Create(refName);
+            var behavior = StationBehaviorFactory.Create(entry.BehaviorId, entry.Config);
             if (behavior == null) continue;
             Behaviors.Add(behavior);
             behavior.OnAttach(this);
-
-            // Inject definition values before OnRegister
-            if (behavior is StorageHubBehavior hub)
-            {
-                hub.StorageCapacity = definition.StorageCapacity;
-                hub.SlotFilters = definition.SlotFilters;
-            }
-            else if (behavior is OrbitalConstructorBehavior ctor)
-            {
-                ctor.WorkBudgetPerTick = definition.BuildingWorkBudgetPerTick;
-                ctor.RegularSlotCount = definition.RegularSlots;
-                ctor.OvertimeCostPercent = definition.OvertimeCostPercent;
-                ctor.SetOvertimeTarget(definition.OvertimeSlots);
-            }
-            else if (behavior is ShipyardBehavior shipyard)
-            {
-                shipyard.MaxParallelShipBuilds = definition.MaxParallelShipBuilds;
-            }
-            else if (behavior is TransferHubBehavior transfer)
-            {
-                transfer.EndpointDef = definition.TransferStation;
-            }
         }
         BulkStorage.StorageUpdated += OnStationStorageUpdated;
     }
@@ -372,6 +354,55 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     /// <summary>Whether this station is currently under construction.</summary>
     public bool IsUnderConstruction => _isUnderConstruction;
+
+    #region SaveLoad
+
+    /// <summary>
+    /// Overrides the auto-generated Id with one restored from a save. Must be called after the node
+    /// has entered the tree (<see cref="_EnterTree"/> assigns a fresh GUID) and before behaviors
+    /// register, since transfer endpoints key off the Id.
+    /// </summary>
+    public void SetSavedId(string id) => Id = id;
+
+    /// <summary>
+    /// Restores orbital state from a save instead of randomizing it via <see cref="InitializeOrbit"/>,
+    /// so the station resumes its exact arc. Position is re-derived from the angle each physics frame.
+    /// </summary>
+    public void RestoreOrbitalState(
+        IOrbitalBody host,
+        int bandIndex,
+        float angle,
+        float radius,
+        float speed,
+        float hostMass,
+        Vector3 velocity)
+    {
+        _parentBody = host;
+        BandIndex = bandIndex;
+        _orbitalAngle = angle;
+        _orbitalRadius = radius;
+        _orbitalSpeed = speed;
+        _hostMass = hostMass;
+        _velocity = velocity;
+        _isInitialized = true;
+    }
+
+    /// <summary>
+    /// Brings a restored, already-configured station online without running the construction flow:
+    /// mirrors <see cref="OnConstructionComplete"/> minus the construction signals and tick-engine
+    /// registration (the loader batch-registers tickables). Call after
+    /// <see cref="SetStationDefinition"/> and <see cref="RestoreOrbitalState"/>.
+    /// </summary>
+    public void ActivateFromSave()
+    {
+        _isUnderConstruction = false;
+        IsActive = true;
+        RestoreOriginalMaterial();
+        RegisterBehaviors();
+        RegisterAsTransferEndpoint();
+    }
+
+    #endregion
 
     protected virtual void OnConstructionComplete()
     {
@@ -412,8 +443,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
         if (_parentBody == null || string.IsNullOrEmpty(Id)) return;
         if (_parentBody.HasTransferEndpoint(Id)) return;
 
-        var def = _stationDefinition?.TransferStation
-            ?? TransferStationDefinition.DestinationOnly();
+        var def = TransferStationDefinition.DestinationOnly();
         _parentBody.RegisterTransferEndpoint(Id, def, this);
     }
 
@@ -459,6 +489,9 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
     /// <summary>Current orbital angular speed in rad/s.</summary>
     public float OrbitalSpeed => _orbitalSpeed;
+
+    /// <summary>Mass of the host body this station orbits. Exposed for save/load.</summary>
+    public float HostMass => _hostMass;
 
     // Orbital state fields
     private float _orbitalAngle;

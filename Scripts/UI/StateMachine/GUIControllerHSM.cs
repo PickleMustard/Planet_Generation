@@ -14,9 +14,9 @@ public partial class GUIControllerHSM : LimboHsm
     private LimboState? _hud;
     private LimboHsm? _voronoiCell;
     private LimboHsm? _orbitalBodyHSM;
-    private LimboHsm? _constructionHSM;
     private LimboHsm? _stationHSM;
     private LimboHsm? _logisticsUnitHSM;
+    private LimboHsm? _shipsOverviewHSM;
     private LimboHsm? _buildingHSM;
     private LimboState? _planetBoard;
     private LimboState? _gameStart;
@@ -44,13 +44,6 @@ public partial class GUIControllerHSM : LimboHsm
     }
 
     [Export]
-    public LimboHsm? ConstructionMenu
-    {
-        get => _constructionHSM;
-        set => _constructionHSM = value;
-    }
-
-    [Export]
     public LimboHsm? Station
     {
         get => _stationHSM;
@@ -62,6 +55,13 @@ public partial class GUIControllerHSM : LimboHsm
     {
         get => _logisticsUnitHSM;
         set => _logisticsUnitHSM = value;
+    }
+
+    [Export]
+    public LimboHsm? ShipsOverview
+    {
+        get => _shipsOverviewHSM;
+        set => _shipsOverviewHSM = value;
     }
 
     [Export]
@@ -109,11 +109,9 @@ public partial class GUIControllerHSM : LimboHsm
 
         AddTransition(_hud, _voronoiCell, new StringName("cell_selected"));
         AddTransition(_hud, _orbitalBodyHSM, new StringName("orbital_body_selected"));
-        AddTransition(_hud, _constructionHSM, new StringName("construction_menu_opened"));
 
         AddTransition(_voronoiCell, _hud, "window_closed");
         AddTransition(_orbitalBodyHSM, _hud, "window_closed");
-        AddTransition(_constructionHSM, _hud, "window_closed");
         AddTransition(_stationHSM, _hud, "window_closed");
 
         // Cross-window transitions
@@ -131,6 +129,12 @@ public partial class GUIControllerHSM : LimboHsm
         AddTransition(_logisticsUnitHSM, _orbitalBodyHSM, "back_to_orbital_body");
         AddTransition(_stationHSM, _logisticsUnitHSM, "logistics_unit_opened");
         AddTransition(_logisticsUnitHSM, _stationHSM, "back_to_station");
+
+        // Fleet overview transitions
+        AddTransition(_hud, _shipsOverviewHSM, "ships_overview_opened");
+        AddTransition(_shipsOverviewHSM, _hud, "window_closed");
+        AddTransition(_shipsOverviewHSM, _logisticsUnitHSM, "logistics_unit_opened");
+        AddTransition(_logisticsUnitHSM, _shipsOverviewHSM, "back_to_ships_overview");
 
         AddTransition(_voronoiCell, _buildingHSM, "building_details_opened");
         AddTransition(_orbitalBodyHSM, _buildingHSM, "building_details_opened");

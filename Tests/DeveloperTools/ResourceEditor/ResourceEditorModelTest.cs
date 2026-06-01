@@ -222,6 +222,16 @@ public class ResourceEditorModelTest
 	}
 
 	[TestCase]
+	public void UpdateResourceField_BasePrice_Updates()
+	{
+		var model = SetupModelWithEntry();
+		model.UpdateResourceField("ore", 0, "BasePrice", 1050);
+
+		AssertThat(model.Categories["ore"].Resources[0].BasePrice)
+			.IsEqual(1050);
+	}
+
+	[TestCase]
 	public void UpdateResourceField_MaxStackSize_Updates()
 	{
 		var model = SetupModelWithEntry();
@@ -338,6 +348,52 @@ public class ResourceEditorModelTest
 		model.Categories["ore"].Resources[0].IsDirty = false;
 
 		model.UpdateResourceTags("ore", 0, new HashSet<string> { "x" });
+		AssertThat(model.Categories["ore"].Resources[0].IsDirty).IsTrue();
+	}
+
+	// ========================================================================
+	// UPDATE CONFIGURABLE VALUES
+	// ========================================================================
+
+	[TestCase]
+	public void UpdateConfigurableValues_ReplacesMap()
+	{
+		var model = SetupModelWithEntry();
+		var newValues = new Dictionary<string, int>
+		{
+			["burn_potential"] = 30,
+			["nutrition"] = 5
+		};
+
+		model.UpdateConfigurableValues("ore", 0, newValues);
+
+		var values = model.Categories["ore"].Resources[0].ConfigurableValues;
+		AssertThat(values.Count).IsEqual(2);
+		AssertThat(values["burn_potential"]).IsEqual(30);
+		AssertThat(values["nutrition"]).IsEqual(5);
+	}
+
+	[TestCase]
+	public void UpdateConfigurableValues_CopiesInput()
+	{
+		var model = SetupModelWithEntry();
+		var newValues = new Dictionary<string, int> { ["k"] = 1 };
+		model.UpdateConfigurableValues("ore", 0, newValues);
+
+		// Mutating the source must not affect the stored copy.
+		newValues["k"] = 999;
+		AssertThat(model.Categories["ore"].Resources[0].ConfigurableValues["k"])
+			.IsEqual(1);
+	}
+
+	[TestCase]
+	public void UpdateConfigurableValues_SetsEntryDirty()
+	{
+		var model = SetupModelWithEntry();
+		model.Categories["ore"].Resources[0].IsDirty = false;
+
+		model.UpdateConfigurableValues("ore", 0,
+			new Dictionary<string, int> { ["x"] = 1 });
 		AssertThat(model.Categories["ore"].Resources[0].IsDirty).IsTrue();
 	}
 

@@ -2,16 +2,13 @@ stations:
   - name: Ramshackle_Builder
     station_type: Orbital_Architect
     construction_time: 0
-    can_build_ships: false
-    can_build_buildings: true
-    building_work_budget_per_tick: 1.0
-    regular_slots: 1
-    overtime_slots: 0
-    overtime_cost_percent: 0.10
     behaviors:
-      - StorageHubBehavior
-      - OrbitalConstructorBehavior
-    storage_capacity: 10
-    required_resources: {}
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "10"
+      - behavior_id: OrbitalConstructorBehavior
+        work_budget_per_tick: "1.0"
+        regular_slots: "1"
+        overtime_slots: "0"
+        overtime_cost_percent: "0.10"
     icon:
       base_path: "res://Assets/Icons/Stations/architect/ramshackle_builder"

@@ -12,19 +12,21 @@ using UtilityLibrary;
 
 namespace Constructables;
 
-public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructable
+public partial class LogisticsUnit : Node3D, IArtificialSatellite
 {
-    [Signal]
-    public delegate void OnCompletionEventHandler();
-
-    [Signal]
-    public delegate void OnConstructionBlockedEventHandler();
-
-    [Signal]
-    public delegate void OnConstructionResumedEventHandler();
-
     [Export]
     public string Id { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Save/load entry point: sets the persisted Id before the unit enters the scene
+    /// tree, so <see cref="_EnterTree"/> skips Guid generation and registers under
+    /// the saved Id. Called from <c>LogisticsMapper.Restore</c>.
+    /// </summary>
+    internal void SetPersistedId(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return;
+        Id = id;
+    }
 
     [Export]
     public Vector3 UnitPosition
@@ -49,233 +51,25 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
     [Export]
     public bool IsStationary { get; set; } = false;
 
-    // Construction state
-    private ConstructionState? _constructionState;
+    // Ship definition (operational specs: model, cargo, mass). Set once at build time, kept for life.
     private ShipDefinition? _shipDefinition;
-    private bool _isUnderConstruction;
 
-    /// <summary>The ship definition template used to construct this unit, if any.</summary>
+    /// <summary>The ship definition template this unit was built from, if any.</summary>
     public ShipDefinition? ShipDef => _shipDefinition;
 
-    /// <summary>Whether this unit is currently under construction.</summary>
-    public bool IsUnderConstruction => _isUnderConstruction;
-
-    /// <summary>The construction-yard station building this ship, if any.</summary>
+    /// <summary>The shipyard station that built (or is building) this ship, if any.</summary>
     public StationSatellite? ConstructingStation { get; set; }
 
     /// <summary>
-    /// True when the user has manually paused this ship's construction.
-    /// Independent of the resource-driven Blocked status; manual pause
-    /// releases the station's parallel-build slot.
-    /// </summary>
-    public bool IsManuallyPaused { get; private set; }
-
-    /// <summary>Sets the manual-pause flag (GUI-driven).</summary>
-    public void SetManualPause(bool paused) => IsManuallyPaused = paused;
-
-    /// <summary>
-    /// Display status for UI: "Paused" takes precedence over the internal
-    /// ConstructionStatus when the user has manually paused the build.
-    /// </summary>
-    public string GetDisplayStatus()
-    {
-        return IsManuallyPaused ? "Paused" : GetStatus();
-    }
-
-    #region IConstructable
-
-    [ExportGroup("Construction")]
-
-    [Export]
-    public float workRequired
-    {
-        get => _constructionState?.WorkRequired ?? 0f;
-        set { if (_constructionState != null) _constructionState.WorkRequired = value; }
-    }
-
-    [Export]
-    public float workDone
-    {
-        get => _constructionState?.WorkDone ?? 0f;
-        set { if (_constructionState != null) _constructionState.WorkDone = value; }
-    }
-
-    [Export]
-    public float ConstructionProgress
-    {
-        get => _constructionState?.GetProgress() ?? 0f;
-        set { }
-    }
-
-    [Export]
-    public string ConstructionStatusText
-    {
-        get => _constructionState?.Status.ToString() ?? "None";
-        set { }
-    }
-
-    [Export]
-    public Godot.Collections.Dictionary<string, int> requiredResources
-    {
-        get
-        {
-            var dict = new Godot.Collections.Dictionary<string, int>();
-            if (_constructionState != null)
-                foreach (var kvp in _constructionState.RequiredResources)
-                    dict[kvp.Key] = kvp.Value;
-            return dict;
-        }
-        set
-        {
-            if (_constructionState != null)
-            {
-                _constructionState.RequiredResources.Clear();
-                foreach (var kvp in value)
-                    _constructionState.RequiredResources[kvp.Key] = kvp.Value;
-            }
-        }
-    }
-
-    [Export]
-    public Godot.Collections.Dictionary<string, int> availableResources
-    {
-        get
-        {
-            var dict = new Godot.Collections.Dictionary<string, int>();
-            if (_constructionState != null)
-                foreach (var kvp in _constructionState.AvailableResources)
-                    dict[kvp.Key] = kvp.Value;
-            return dict;
-        }
-        set
-        {
-            if (_constructionState != null)
-            {
-                _constructionState.AvailableResources.Clear();
-                foreach (var kvp in value)
-                    _constructionState.AvailableResources[kvp.Key] = kvp.Value;
-            }
-        }
-    }
-
-    public bool CanConstruct(Godot.Collections.Dictionary LocationDetails)
-    {
-        // Check if parent station can build ships
-        if (LocationDetails.ContainsKey("parent_station"))
-        {
-            var parentStation = LocationDetails["parent_station"].As<StationSatellite>();
-            if (parentStation != null && parentStation.GetBehavior<ShipyardBehavior>() == null)
-            {
-                GameLogger.Warning($"LogisticsUnit: Parent station '{parentStation.Name}' has no ShipyardBehavior");
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public IConstructable StartConstruction(Godot.Collections.Dictionary LocationDetails)
-    {
-        if (_constructionState == null) return this;
-
-        _isUnderConstruction = true;
-        IsActive = false;
-        ProcessMode = ProcessModeEnum.Disabled;
-
-        _constructionState.TryStart();
-
-        GameLogger.Info($"LogisticsUnit {Name}: Construction started ({_constructionState.WorkRequired}s)");
-        return this;
-    }
-
-    public bool DefineTemplate(Godot.Collections.Dictionary templateData) => true;
-    public bool UpdateConfiguration(Godot.Collections.Dictionary updateData) => true;
-
-    public bool CancelConstruction()
-    {
-        if (_constructionState == null) return false;
-
-        _constructionState.Cancel();
-        _isUnderConstruction = false;
-
-        GameLogger.Info($"LogisticsUnit {Name}: Construction cancelled");
-        return true;
-    }
-
-    public string GetStatus()
-    {
-        return _constructionState?.Status.ToString() ?? "None";
-    }
-
-    public float GetProgress()
-    {
-        return _constructionState?.GetProgress() ?? 0f;
-    }
-
-    public void UpdateProgress(float delta)
-    {
-        if (_constructionState == null || !_isUnderConstruction) return;
-
-        var previousStatus = _constructionState.Status;
-        _constructionState.UpdateProgress(delta);
-
-        if (_constructionState.StatusChanged)
-        {
-            if (_constructionState.Status == ConstructionStatus.Blocked
-                && previousStatus == ConstructionStatus.InProgress)
-            {
-                EmitSignal(SignalName.OnConstructionBlocked);
-            }
-            else if (_constructionState.Status == ConstructionStatus.InProgress
-                && previousStatus == ConstructionStatus.Blocked)
-            {
-                EmitSignal(SignalName.OnConstructionResumed);
-            }
-            else if (_constructionState.Status == ConstructionStatus.Complete)
-            {
-                _isUnderConstruction = false;
-                EmitSignal(SignalName.OnCompletion);
-                GameLogger.Info($"LogisticsUnit {Name}: Construction complete");
-            }
-        }
-    }
-
-    public bool CheckRequiredResourcesAvailable()
-    {
-        return _constructionState?.CheckRequiredResourcesAvailable() ?? true;
-    }
-
-    public bool CanDemolish() => !_isUnderConstruction;
-    public bool DemolishConstructable() => false;
-    public bool CanDestroy() => true;
-    public bool DestroyConstructable()
-    {
-        QueueFree();
-        return true;
-    }
-
-    #endregion
-
-    /// <summary>
-    /// Configures this unit with a ship definition for construction.
+    /// Applies a ship definition's operational specs and installs its visual model. The constructing
+    /// station owns the build's work progress and resources (see <c>ShipyardBehavior</c>).
     /// </summary>
     public void SetShipDefinition(ShipDefinition definition)
     {
         _shipDefinition = definition;
-        _constructionState = new ConstructionState(
-            definition.ConstructionTime,
-            definition.RequiredResources
-        );
 
         Node3D? model = definition.Visual?.CreateModelInstance(1.0f);
         InstallModel(model, definition.Name);
-    }
-
-    /// <summary>
-    /// Delivers resources to this unit's construction site.
-    /// </summary>
-    public void DeliverResources(string resourceId, int amount)
-    {
-        _constructionState?.DeliverResources(resourceId, amount);
     }
 
     #region OrbitalParameters
@@ -301,6 +95,13 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
         set => _orbitalSpeed = value;
     }
 
+    /// <summary>Mass of the body this unit orbits (kg). Used by orbital-velocity calculations.</summary>
+    public float HostMass
+    {
+        get => _hostMass;
+        set => _hostMass = value;
+    }
+
     // Orbital state fields
     private float _orbitalAngle;
     private float _orbitalRadius;
@@ -308,6 +109,28 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
     private float _hostMass;
     private bool _isInitialized;
     private Vector3 _velocity;
+
+    /// <summary>
+    /// Restore hook invoked once by the movement controller's _Ready. The save loader sets this to
+    /// re-apply mid-transfer state onto the controller, which only exists after a deferred add_child
+    /// (see <see cref="InitializeMovementController"/>).
+    /// </summary>
+    private System.Action<LogisticsMovementController>? _pendingControllerRestore;
+
+    /// <summary>Marks the unit as initialized without running orbit placement (used on load, where
+    /// orbital parameters are restored directly from the save rather than recomputed).</summary>
+    public void MarkInitialized() => _isInitialized = true;
+
+    /// <summary>Queues a controller-restore action consumed when the movement controller is ready.</summary>
+    public void SetPendingControllerRestore(System.Action<LogisticsMovementController> action) =>
+        _pendingControllerRestore = action;
+
+    /// <summary>Invoked by the movement controller in its _Ready to apply any queued restore.</summary>
+    public void ApplyPendingControllerRestore(LogisticsMovementController controller)
+    {
+        _pendingControllerRestore?.Invoke(controller);
+        _pendingControllerRestore = null;
+    }
 
     /// <summary>
     /// Initializes the logistics unit's orbit using the host body's orbital parameters.
@@ -559,6 +382,12 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
 
     public override void _ExitTree()
     {
+        // Unregister BEFORE teardown so the registry never points at a half-destroyed unit.
+        // Godot fires _ExitTree on reparent too; the matching _EnterTree below re-registers
+        // under the same (preserved) Id, so reparenting is a no-op as far as the registry
+        // is concerned.
+        SystemData.FindForNode(this)?.UnregisterShip(this);
+
         GameLogger.Debug($"LogisticsUnit destroying: {Name}");
         _isInitialized = false;
         _isTraveling = false;
@@ -568,7 +397,31 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite, IConstructabl
 
     public override void _EnterTree()
     {
-        this.Id = Guid.NewGuid().ToString();
+        // Generate a fresh Id only when one wasn't assigned by the save/load path
+        // (LogisticsMapper.Restore -> SetPersistedId before AddChild).
+        if (string.IsNullOrEmpty(this.Id))
+            this.Id = Guid.NewGuid().ToString();
+
+        var systemData = SystemData.FindForNode(this);
+        if (systemData != null)
+        {
+            systemData.RegisterShip(this);
+        }
+        else
+        {
+            // Early during a load, ships enter a staging tree under LoadingScreen — the
+            // walk-up finds a "system_container" but not the SystemData sibling (GameScene
+            // hasn't run _Ready yet). SystemData._Ready backfills the registry by scanning
+            // its parent, so this deferred attempt is mostly belt-and-suspenders for the
+            // post-scene-swap path.
+            CallDeferred(nameof(TryDeferredRegister));
+        }
+    }
+
+    private void TryDeferredRegister()
+    {
+        if (!IsInsideTree()) return;
+        SystemData.FindForNode(this)?.RegisterShip(this);
     }
 
     public override void _Ready()

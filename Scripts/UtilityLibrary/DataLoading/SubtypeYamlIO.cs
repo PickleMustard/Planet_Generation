@@ -109,7 +109,7 @@ public static class SubtypeYamlIO
             WriteStringList(sb, "add_resources", s.AddResources);
             WriteStringList(sb, "remove_resources", s.RemoveResources);
             WriteMeshBlock(sb, s.MeshRanges, s.VerticesPerEdgeRanges);
-            WriteRangeBlock(sb, "tectonics", s.TectonicRanges);
+            WriteTectonicsBlock(sb, s.TectonicRanges, s.SampleVelocityAtEdgeMidpoint);
             WriteRangeBlock(sb, "spherical_harmonics", s.SphericalHarmonicsRanges);
         }
 
@@ -127,6 +127,23 @@ public static class SubtypeYamlIO
             var r = kvp.Value;
             Indent(sb, 3, $"{kvp.Key}: [{FormatFloat(r.Min)}, {FormatFloat(r.Max)}]");
         }
+    }
+
+    /// <summary>
+    /// Tectonics block emits the scalar ranges (as <see cref="WriteRangeBlock"/>) plus the
+    /// <c>sample_velocity_at_edge_midpoint</c> bool flag, emitted last. Skipped entirely when
+    /// there are no tectonic ranges (non-tectonic families).
+    /// </summary>
+    private static void WriteTectonicsBlock(StringBuilder sb, Dictionary<string, FloatRange> ranges, bool sampleVelocityAtEdgeMidpoint)
+    {
+        if (ranges.Count == 0) return;
+        Indent(sb, 2, "tectonics:");
+        foreach (var kvp in ranges.OrderBy(k => k.Key, StringComparer.Ordinal))
+        {
+            var r = kvp.Value;
+            Indent(sb, 3, $"{kvp.Key}: [{FormatFloat(r.Min)}, {FormatFloat(r.Max)}]");
+        }
+        Indent(sb, 3, $"sample_velocity_at_edge_midpoint: {(sampleVelocityAtEdgeMidpoint ? "true" : "false")}");
     }
 
     /// <summary>

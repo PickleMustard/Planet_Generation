@@ -36,6 +36,12 @@ namespace UtilityLibrary
         public string? SelectedTemplate { get; set; }
 
         /// <summary>
+        /// Path to a save file (user://...) the next LoadingScreen should load instead of generating
+        /// a fresh system. Set by MainMenu's Load entry, consumed and cleared by LoadingScreen.
+        /// </summary>
+        public string? SaveToLoadPath { get; set; }
+
+        /// <summary>
         /// C# event for requesting system generation. Used instead of a Godot signal
         /// because the parameters include Barycenter (a Node3D subclass).
         /// </summary>
@@ -62,6 +68,77 @@ namespace UtilityLibrary
                 barycenter
             );
         }
+
+        // ---------------------------------------------------------------------
+        // CompanyDataTracker signals — company-wide financial / standing state.
+        // All emitted on the main thread (player actions); no SafeEmit needed.
+        // ---------------------------------------------------------------------
+
+        [Signal]
+        public delegate void CompanyBudgetChangedEventHandler(double newBudget);
+
+        public void EmitCompanyBudgetChanged(double newBudget) =>
+            EmitSignal(SignalName.CompanyBudgetChanged, newBudget);
+
+        [Signal]
+        public delegate void CompanyDebtChangedEventHandler(double newDebt);
+
+        public void EmitCompanyDebtChanged(double newDebt) =>
+            EmitSignal(SignalName.CompanyDebtChanged, newDebt);
+
+        [Signal]
+        public delegate void CompanyAntagonismChangedEventHandler(float newAntagonism);
+
+        public void EmitCompanyAntagonismChanged(float newAntagonism) =>
+            EmitSignal(SignalName.CompanyAntagonismChanged, newAntagonism);
+
+        [Signal]
+        public delegate void CompanyResearchChangedEventHandler(double newResearch);
+
+        public void EmitCompanyResearchChanged(double newResearch) =>
+            EmitSignal(SignalName.CompanyResearchChanged, newResearch);
+
+        // ---------------------------------------------------------------------
+        // EconomyTracker signals — galactic market orders and price movement.
+        // Orders are player-driven and the price loop runs on a main-thread
+        // Godot Timer, so all of these are main-thread emits (no SafeEmit).
+        // ---------------------------------------------------------------------
+
+        [Signal]
+        public delegate void MarketOrderFilledEventHandler(
+            string resourceId,
+            int quantity,
+            double totalAmount,
+            bool isBuy
+        );
+
+        public void EmitMarketOrderFilled(
+            string resourceId,
+            int quantity,
+            double totalAmount,
+            bool isBuy
+        ) => EmitSignal(SignalName.MarketOrderFilled, resourceId, quantity, totalAmount, isBuy);
+
+        [Signal]
+        public delegate void MarketOrderRejectedEventHandler(
+            string resourceId,
+            int quantity,
+            string reason
+        );
+
+        public void EmitMarketOrderRejected(string resourceId, int quantity, string reason) =>
+            EmitSignal(SignalName.MarketOrderRejected, resourceId, quantity, reason);
+
+        [Signal]
+        public delegate void MarketPriceChangedEventHandler(string resourceId, double newPrice);
+
+        public void EmitMarketPriceChanged(string resourceId, double newPrice) =>
+            EmitSignal(SignalName.MarketPriceChanged, resourceId, newPrice);
+
+        [Signal]
+        public delegate void MarketPricesUpdatedEventHandler();
+
+        public void EmitMarketPricesUpdated() => EmitSignal(SignalName.MarketPricesUpdated);
 
         [Signal]
         public delegate void StartTimerEventHandler(
@@ -515,6 +592,30 @@ namespace UtilityLibrary
         }
 
         /// <summary>
+        /// Fired when a station begins construction (added to its body and placed in orbit,
+        /// before construction completes). Parameters: StationSatellite (the new station).
+        /// </summary>
+        [Signal]
+        public delegate void StationConstructionStartedEventHandler(StationSatellite station);
+
+        public void EmitStationConstructionStarted(StationSatellite station)
+        {
+            WarnOffMain(nameof(EmitStationConstructionStarted));
+            EmitSignal(SignalName.StationConstructionStarted, station);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitStationConstructionStarted"/>.
+        /// </summary>
+        public void SafeEmitStationConstructionStarted(StationSatellite station)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.StationConstructionStarted, station);
+            else
+                CallDeferred(MethodName.EmitStationConstructionStarted, station);
+        }
+
+        /// <summary>
         /// Fired right before a station exits the scene tree and unregisters its transfer endpoint.
         /// Parameters: StationSatellite (the station being removed).
         /// </summary>
@@ -523,6 +624,113 @@ namespace UtilityLibrary
 
         public void EmitStationRemoved(StationSatellite station) =>
             EmitSignal(SignalName.StationRemoved, station);
+
+        // --- Ship Construction Signals ---
+        // These replace ConstructionManager's direct ship signals.  Reachable from
+        // ManufactureTickEngine, so every Emit has a SafeEmit companion.
+
+        /// <summary>
+        /// Fired when a ship begins construction at a shipyard station.
+        /// Parameters: LogisticsUnit (the ship starting construction).
+        /// </summary>
+        [Signal]
+        public delegate void ShipConstructionStartedEventHandler(LogisticsUnit ship);
+
+        public void EmitShipConstructionStarted(LogisticsUnit ship)
+        {
+            WarnOffMain(nameof(EmitShipConstructionStarted));
+            EmitSignal(SignalName.ShipConstructionStarted, ship);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitShipConstructionStarted"/>.
+        /// </summary>
+        public void SafeEmitShipConstructionStarted(LogisticsUnit ship)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.ShipConstructionStarted, ship);
+            else
+                CallDeferred(MethodName.EmitShipConstructionStarted, ship);
+        }
+
+        /// <summary>
+        /// Fired when a ship finishes construction at a shipyard station and is activated.
+        /// Parameters: LogisticsUnit (the completed ship).
+        /// </summary>
+        [Signal]
+        public delegate void ShipConstructedEventHandler(LogisticsUnit ship);
+
+        public void EmitShipConstructed(LogisticsUnit ship)
+        {
+            WarnOffMain(nameof(EmitShipConstructed));
+            EmitSignal(SignalName.ShipConstructed, ship);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitShipConstructed"/>.
+        /// </summary>
+        public void SafeEmitShipConstructed(LogisticsUnit ship)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.ShipConstructed, ship);
+            else
+                CallDeferred(MethodName.EmitShipConstructed, ship);
+        }
+
+        /// <summary>
+        /// Fired when a ship's construction is cancelled at a shipyard station.
+        /// Parameters: LogisticsUnit (the cancelled ship).
+        /// </summary>
+        [Signal]
+        public delegate void ShipConstructionCancelledEventHandler(LogisticsUnit ship);
+
+        public void EmitShipConstructionCancelled(LogisticsUnit ship)
+        {
+            WarnOffMain(nameof(EmitShipConstructionCancelled));
+            EmitSignal(SignalName.ShipConstructionCancelled, ship);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitShipConstructionCancelled"/>.
+        /// </summary>
+        public void SafeEmitShipConstructionCancelled(LogisticsUnit ship)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.ShipConstructionCancelled, ship);
+            else
+                CallDeferred(MethodName.EmitShipConstructionCancelled, ship);
+        }
+
+        /// <summary>
+        /// Fired periodically during ship construction to report progress.
+        /// Parameters: shipName, progress (0–1), status display string.
+        /// Reachable from <c>ManufactureTickEngine</c> — always use
+        /// <see cref="SafeEmitShipConstructionProgress"/>.
+        /// </summary>
+        [Signal]
+        public delegate void ShipConstructionProgressUpdatedEventHandler(
+            string shipName,
+            float progress,
+            string status
+        );
+
+        public void EmitShipConstructionProgressUpdated(string shipName, float progress, string status)
+        {
+            WarnOffMain(nameof(EmitShipConstructionProgressUpdated));
+            EmitSignal(SignalName.ShipConstructionProgressUpdated, shipName, progress, status);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitShipConstructionProgressUpdated"/>.
+        /// Use from any code reachable from <c>ManufactureTickEngine</c>.
+        /// </summary>
+        public void SafeEmitShipConstructionProgress(string shipName, float progress, string status)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.ShipConstructionProgressUpdated, shipName, progress, status);
+            else
+                CallDeferred(MethodName.EmitShipConstructionProgressUpdated, shipName, progress, status);
+        }
 
         /// <summary>
         /// Fired after a building finishes construction and is registered with its
@@ -603,6 +811,50 @@ namespace UtilityLibrary
 
         public void EmitGameStarted(Building hq) =>
             EmitSignal(SignalName.GameStarted, hq);
+
+        // --- Station Sidebar Signals ---
+
+        /// <summary>
+        /// Fired when a station viewer panel requests a sidebar be shown.
+        /// Carries a label (sidebar title) and an array of item dictionaries.
+        /// Each dictionary should contain at minimum "name" and "id" keys;
+        /// additional keys are panel-specific (e.g. "mass", "time", "resources").
+        /// </summary>
+        [Signal]
+        public delegate void StationSidebarRequestedEventHandler(
+            string label,
+            Godot.Collections.Array<Dictionary> items
+        );
+
+        public void EmitStationSidebarRequested(string label, Godot.Collections.Array<Dictionary> items)
+        {
+            EmitSignal(SignalName.StationSidebarRequested, label, items);
+        }
+
+        /// <summary>
+        /// Fired when the station sidebar is dismissed (user closes it or panel
+        /// deactivates it). No payload — listeners simply hide the sidebar.
+        /// </summary>
+        [Signal]
+        public delegate void StationSidebarDismissedEventHandler();
+
+        public void EmitStationSidebarDismissed()
+        {
+            EmitSignal(SignalName.StationSidebarDismissed);
+        }
+
+        /// <summary>
+        /// Fired when the user selects an item in the station sidebar.
+        /// Carries the "id" value from the selected item dictionary, allowing
+        /// the originating panel to act on the selection.
+        /// </summary>
+        [Signal]
+        public delegate void StationSidebarItemSelectedEventHandler(string itemId);
+
+        public void EmitStationSidebarItemSelected(string itemId)
+        {
+            EmitSignal(SignalName.StationSidebarItemSelected, itemId);
+        }
 
         /// <summary>
         /// Fired when an economy is registered with the debug console.

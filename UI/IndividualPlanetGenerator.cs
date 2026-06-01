@@ -88,6 +88,18 @@ public partial class IndividualPlanetGenerator : Control
     public SpinBox? _transform_factor;
 
     [Export]
+    public SpinBox? _boundary_smoothing_iterations;
+
+    [Export]
+    public SpinBox? _boundary_smoothing_weight;
+
+    [Export]
+    public CheckBox? _sample_velocity_at_edge_midpoint;
+
+    [Export]
+    public SpinBox? _max_continent_rotation;
+
+    [Export]
     public Button? _generateBtn;
 
     [Export]
@@ -265,6 +277,15 @@ public partial class IndividualPlanetGenerator : Control
         SetTip(_shear_factor, "tectonics.general_shear_scale");
         SetTip(_compression_factor, "tectonics.general_compression_scale");
         SetTip(_transform_factor, "tectonics.general_transform_scale");
+        SetTip(_boundary_smoothing_iterations, "tectonics.boundary_smoothing_iterations");
+        SetTip(_boundary_smoothing_weight, "tectonics.boundary_smoothing_weight");
+        SetTip(_max_continent_rotation, "tectonics.max_continent_rotation");
+        if (_sample_velocity_at_edge_midpoint != null)
+        {
+            string tip = GenSettingTooltips.Get("tectonics.sample_velocity_at_edge_midpoint");
+            if (!string.IsNullOrEmpty(tip))
+                _sample_velocity_at_edge_midpoint.TooltipText = tip;
+        }
 
         static void SetTip(SpinBox? sb, string key)
         {
@@ -389,6 +410,27 @@ public partial class IndividualPlanetGenerator : Control
             SetTectonicRange(tectonics, "general_shear_scale", "General Shear Scale");
             SetTectonicRange(tectonics, "general_compression_scale", "General Compression Scale");
             SetTectonicRange(tectonics, "general_transform_scale", "General Transform Scale");
+            SetTectonicRange(
+                tectonics,
+                "boundary_smoothing_iterations",
+                "Boundary Smoothing Iterations",
+                isInt: true
+            );
+            SetTectonicRange(
+                tectonics,
+                "boundary_smoothing_weight",
+                "Boundary Smoothing Weight"
+            );
+            SetTectonicRange(tectonics, "max_continent_rotation", "Max Continent Rotation");
+
+            if (
+                _sample_velocity_at_edge_midpoint != null
+                && tectonics.ContainsKey("sample_velocity_at_edge_midpoint")
+            )
+            {
+                _sample_velocity_at_edge_midpoint.ButtonPressed =
+                    (bool)tectonics["sample_velocity_at_edge_midpoint"];
+            }
         }
 
         // Generate a name
@@ -580,6 +622,32 @@ public partial class IndividualPlanetGenerator : Control
             _transform_factor.Value,
             _transform_factor.Value,
         };
+        if (_boundary_smoothing_iterations != null)
+        {
+            int v = (int)_boundary_smoothing_iterations.Value;
+            tectonics["boundary_smoothing_iterations"] = new int[] { v, v };
+        }
+        if (_boundary_smoothing_weight != null)
+        {
+            tectonics["boundary_smoothing_weight"] = new double[]
+            {
+                _boundary_smoothing_weight.Value,
+                _boundary_smoothing_weight.Value,
+            };
+        }
+        if (_max_continent_rotation != null)
+        {
+            tectonics["max_continent_rotation"] = new double[]
+            {
+                _max_continent_rotation.Value,
+                _max_continent_rotation.Value,
+            };
+        }
+        if (_sample_velocity_at_edge_midpoint != null)
+        {
+            tectonics["sample_velocity_at_edge_midpoint"] =
+                _sample_velocity_at_edge_midpoint.ButtonPressed;
+        }
         dict["tectonics"] = tectonics;
 
         return dict;

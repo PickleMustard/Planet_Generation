@@ -7,8 +7,7 @@ namespace UI.BuildingInfo;
 
 /// <summary>
 /// Modal popup that lists a building's defined recipes (default + alternatives) and
-/// emits <see cref="RecipeSelected"/> when the player picks one. Mirrors the structure
-/// of <see cref="UI.Construction.StationSelectionPopup"/>.
+/// emits <see cref="RecipeSelected"/> when the player picks one.
 /// </summary>
 public partial class RecipeSelectionPopup : PanelContainer
 {

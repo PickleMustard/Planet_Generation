@@ -99,24 +99,7 @@ public abstract partial class BaseBuildingDetails : Control
     }
 
     protected void PopulateSlotGrid(GridContainer? grid, Storage? storage, PackedScene? slotScene)
-    {
-        if (grid == null) return;
-
-        foreach (var child in grid.GetChildren())
-        {
-            child.QueueFree();
-        }
-
-        if (storage == null || slotScene == null) return;
-
-        foreach (var slot in storage.Slots)
-        {
-            var item = slotScene.Instantiate<ResourceSlotItem>();
-            if (item == null) continue;
-            grid.AddChild(item);
-            item.SetSlot(slot);
-        }
-    }
+        => UI.Shared.SlotGrid.Populate(grid, storage, slotScene);
 
     /// <summary>
     /// Gets the ResourceDefinition for a resource ID.

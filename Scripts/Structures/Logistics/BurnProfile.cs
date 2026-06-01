@@ -232,6 +232,42 @@ public class BurnProfile
         return profile;
     }
 
+    /// <summary>
+    /// Reconstructs a burn profile from previously-saved values. Unlike <see cref="Calculate"/> this
+    /// does not recompute durations/fuel from mass — it restores the exact precomputed values so a
+    /// loaded transfer resumes its fuel consumption identically, independent of the ship's current
+    /// (post-burn) mass.
+    /// </summary>
+    public static BurnProfile Restore(
+        float accelBurnDuration,
+        float coastDuration,
+        float decelBurnDuration,
+        float totalDuration,
+        float accelFuelBudget,
+        float decelFuelBudget,
+        float totalFuelBudget,
+        float accelFuelRate,
+        float decelFuelRate,
+        float accelEndTime,
+        float decelStartTime
+    )
+    {
+        return new BurnProfile
+        {
+            AccelBurnDuration = accelBurnDuration,
+            CoastDuration = coastDuration,
+            DecelBurnDuration = decelBurnDuration,
+            TotalDuration = totalDuration,
+            AccelFuelBudget = accelFuelBudget,
+            DecelFuelBudget = decelFuelBudget,
+            TotalFuelBudget = totalFuelBudget,
+            AccelFuelRate = accelFuelRate,
+            DecelFuelRate = decelFuelRate,
+            AccelEndTime = accelEndTime,
+            DecelStartTime = decelStartTime,
+        };
+    }
+
     // ========================================================================
     // PHASE QUERIES
     // ========================================================================

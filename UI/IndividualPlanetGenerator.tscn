@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://b3q8gfkqfva6o" path="res://UI/Generation/TextureViewerPanel.tscn" id="2_ys7io"]
 [ext_resource type="PackedScene" path="res://UI/SubtypeEditor/SubtypeEditorTab.tscn" id="4_fktc5"]
 
-[node name="IndividualPlanetGeneratorUI" type="SplitContainer" unique_id=297984126 node_paths=PackedStringArray("_bodyTypeOption", "_mass", "_size", "_subdivisions", "_subdivisionsContainer", "_num_abberation", "_num_deformation", "_num_continents", "_stress_scale", "_shear_scale", "_max_propagation_distance", "_propagation_falloff", "_inactive_stress_threshold", "_height_factor", "_shear_factor", "_compression_factor", "_transform_factor", "_generateBtn", "_resetBtn", "_detailPanel", "_templatesList", "_textureViewer", "_subtypeEditorTab")]
+[node name="IndividualPlanetGeneratorUI" type="SplitContainer" unique_id=297984126 node_paths=PackedStringArray("_bodyTypeOption", "_mass", "_size", "_subdivisions", "_subdivisionsContainer", "_num_abberation", "_num_deformation", "_num_continents", "_stress_scale", "_shear_scale", "_max_propagation_distance", "_propagation_falloff", "_inactive_stress_threshold", "_height_factor", "_shear_factor", "_compression_factor", "_transform_factor", "_boundary_smoothing_iterations", "_boundary_smoothing_weight", "_sample_velocity_at_edge_midpoint", "_max_continent_rotation", "_generateBtn", "_resetBtn", "_detailPanel", "_templatesList", "_textureViewer", "_subtypeEditorTab")]
 layout_direction = 2
 anchors_preset = 15
 anchor_right = 1.0
@@ -36,6 +36,10 @@ _height_factor = NodePath("TabContainer/Parameters/GenerationScroll/ParametersCo
 _shear_factor = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/ShearFactorContent/ShearFactorSpinBox")
 _compression_factor = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/CompressionFactorContent/CompressionFactorSpinBox")
 _transform_factor = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/TransformFactorContent/TransformFactorSpinBox")
+_boundary_smoothing_iterations = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/BoundarySmoothingIterationsContent/BoundarySmoothingIterationsSpinBox")
+_boundary_smoothing_weight = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/BoundarySmoothingWeightContent/BoundarySmoothingWeightSpinBox")
+_sample_velocity_at_edge_midpoint = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/SampleVelocityAtEdgeMidpointContent/SampleVelocityAtEdgeMidpointCheckBox")
+_max_continent_rotation = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/MaxContinentRotationContent/MaxContinentRotationSpinBox")
 _generateBtn = NodePath("TabContainer/Parameters/GenerationRow/GenerateButton")
 _resetBtn = NodePath("TabContainer/Parameters/GenerationRow/ResetButton")
 _detailPanel = NodePath("TabContainer/Parameters/GenerationScroll/ParametersContainer/DetailPanel")
@@ -365,6 +369,65 @@ size_flags_horizontal = 3
 max_value = 10.0
 step = 0.1
 value = 1.0
+
+[node name="BoundarySmoothingIterationsContent" type="HBoxContainer" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=410001001]
+layout_mode = 2
+
+[node name="BoundarySmoothingIterationsLabel" type="Label" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/BoundarySmoothingIterationsContent" unique_id=410001002]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Boundary Smoothing Iterations"
+
+[node name="BoundarySmoothingIterationsSpinBox" type="SpinBox" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/BoundarySmoothingIterationsContent" unique_id=410001003]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 20.0
+step = 1.0
+value = 3.0
+
+[node name="BoundarySmoothingWeightContent" type="HBoxContainer" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=410001004]
+layout_mode = 2
+
+[node name="BoundarySmoothingWeightLabel" type="Label" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/BoundarySmoothingWeightContent" unique_id=410001005]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Boundary Smoothing Weight"
+
+[node name="BoundarySmoothingWeightSpinBox" type="SpinBox" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/BoundarySmoothingWeightContent" unique_id=410001006]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.2
+
+[node name="SampleVelocityAtEdgeMidpointContent" type="HBoxContainer" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=410001007]
+layout_mode = 2
+
+[node name="SampleVelocityAtEdgeMidpointLabel" type="Label" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/SampleVelocityAtEdgeMidpointContent" unique_id=410001008]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Sample Velocity At Edge Midpoint"
+
+[node name="SampleVelocityAtEdgeMidpointCheckBox" type="CheckBox" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/SampleVelocityAtEdgeMidpointContent" unique_id=410001009]
+layout_mode = 2
+size_flags_horizontal = 3
+button_pressed = true
+
+[node name="MaxContinentRotationContent" type="HBoxContainer" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection" unique_id=410001010]
+layout_mode = 2
+
+[node name="MaxContinentRotationLabel" type="Label" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/MaxContinentRotationContent" unique_id=410001011]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Max Continent Rotation"
+
+[node name="MaxContinentRotationSpinBox" type="SpinBox" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer/TectonicsSection/MaxContinentRotationContent" unique_id=410001012]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 360.0
+step = 1.0
+value = 60.0
+suffix = "°"
 
 [node name="HSeparator3" type="HSeparator" parent="TabContainer/Parameters/GenerationScroll/ParametersContainer" unique_id=960857283]
 layout_mode = 2

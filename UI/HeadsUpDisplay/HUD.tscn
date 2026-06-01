@@ -1,60 +1,9 @@
 [gd_scene format=3 uid="uid://cni3i1cmg5rym"]
 
-[ext_resource type="Texture2D" uid="uid://2ntuvmh4lk5k" path="res://Materials/Textures/GUI/RevenueBackgroundTexture.png" id="1_hdl04"]
-[ext_resource type="Texture2D" uid="uid://qeoe141k5nfw" path="res://UI/chevron_down.svg" id="2_pd1ex"]
-[ext_resource type="Texture2D" uid="uid://dg88r3ika2bw6" path="res://Materials/SVGs/solarsystem.svg" id="3_bg37d"]
-[ext_resource type="Texture2D" uid="uid://b3bwxkni3fmx4" path="res://Materials/SVGs/hricon.svg" id="4_1pp8m"]
-[ext_resource type="Texture2D" uid="uid://b7srix5qtliwx" path="res://Materials/SVGs/constructionicon.svg" id="5_piogl"]
-[ext_resource type="Texture2D" uid="uid://cufjb43ieueus" path="res://Materials/SVGs/marketicon.svg" id="6_4kej0"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_bg37d"]
+[ext_resource type="PackedScene" uid="uid://daut5m8r6t28a" path="res://UI/Components/ChamferedPanel.tscn" id="1_pd1ex"]
+[ext_resource type="PackedScene" uid="uid://b8cmdlayer01a" path="res://UI/CommandLayer/CommandLayer.tscn" id="4_1pp8m"]
 [ext_resource type="Script" uid="uid://bakvbrf51lc60" path="res://Scripts/UI/FarFieldIndicators/FarFieldIndicatorManager.cs" id="8_wkukm"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_phjdd"]
-content_margin_left = 6.0
-content_margin_top = 5.0
-content_margin_right = 6.0
-content_margin_bottom = 5.0
-bg_color = Color(0.027999999, 0.161, 0.18900001, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_color = Color(0.021999998, 0.1265, 0.1485, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 2
-expand_margin_left = 4.0
-expand_margin_top = 2.0
-expand_margin_right = 4.0
-expand_margin_bottom = 2.0
-shadow_color = Color(0.015522555, 0.11525858, 0.1369223, 1)
-shadow_size = 5
-shadow_offset = Vector2(0, 5)
-anti_aliasing = false
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wkukm"]
-content_margin_left = 6.0
-content_margin_top = 5.0
-content_margin_right = 6.0
-content_margin_bottom = 5.0
-bg_color = Color(0.027999999, 0.161, 0.18900001, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_color = Color(0.021999998, 0.1265, 0.1485, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 2
-expand_margin_left = 4.0
-expand_margin_top = 2.0
-expand_margin_right = 4.0
-expand_margin_bottom = 2.0
-shadow_color = Color(0.015522555, 0.11525858, 0.1369223, 1)
-shadow_size = 5
-shadow_offset = Vector2(0, 5)
-anti_aliasing = false
 
 [node name="Hud" type="Control" unique_id=1835559965]
 layout_mode = 3
@@ -67,277 +16,219 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 1
 
-[node name="TextureRect" type="TextureRect" parent="." unique_id=494298687]
-layout_mode = 0
-offset_right = 245.0
-offset_bottom = 77.0
-texture = ExtResource("1_hdl04")
+[node name="OverviewCartouche" type="MarginContainer" parent="." unique_id=2074786307]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.26
+anchor_bottom = 0.19
+offset_left = 8.0
+offset_top = 8.0
 
-[node name="RevenueContainer" type="HBoxContainer" parent="TextureRect" unique_id=509030916]
-layout_mode = 0
-offset_right = 205.0
-offset_bottom = 40.0
+[node name="VBoxContainer" type="VBoxContainer" parent="OverviewCartouche" unique_id=438033622]
+layout_mode = 2
 
-[node name="VSeparator" type="VSeparator" parent="TextureRect/RevenueContainer" unique_id=748813396]
+[node name="Panel" type="Panel" parent="OverviewCartouche/VBoxContainer" unique_id=431980037]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="OverviewCartouche/VBoxContainer/Panel" unique_id=367799195]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource("1_bg37d")
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="DetailsCartouche" type="VBoxContainer" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer" unique_id=1895570256]
+layout_mode = 2
+
+[node name="CompanyDetails" type="HBoxContainer" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche" unique_id=1920214066]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+
+[node name="CompanyNameLabel" type="RichTextLabel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/CompanyDetails" unique_id=1306676863]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.5
+size_flags_stretch_ratio = 1.5
+theme = ExtResource("1_bg37d")
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/normal_font_size = 16
+bbcode_enabled = true
+text = "Company Company Ltd"
+fit_content = true
+autowrap_mode = 1
 
-[node name="BalanceBackground" type="Panel" parent="TextureRect/RevenueContainer" unique_id=155434826]
+[node name="VSeparator" type="VSeparator" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/CompanyDetails" unique_id=1418678965]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 4.0
+size_flags_stretch_ratio = 0.2
 
-[node name="BalanceText" type="RichTextLabel" parent="TextureRect/RevenueContainer/BalanceBackground" unique_id=893833236]
+[node name="AccessoryDetailsLabel" type="RichTextLabel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/CompanyDetails" unique_id=33427413]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.2
+theme = ExtResource("1_bg37d")
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/normal_font_size = 6
+bbcode_enabled = true
+text = "Test Test Tests"
+fit_content = true
+scroll_active = false
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="BusinessDetails" type="HBoxContainer" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche" unique_id=992411652]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.2
+
+[node name="BalanceBackground" type="Panel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails" unique_id=974600705]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails/BalanceBackground" unique_id=691603647]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "100,000$"
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="BalanceLabel" type="RichTextLabel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails/BalanceBackground/MarginContainer" unique_id=368248636]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 14
+text = "100000 Balance"
 fit_content = true
-scroll_active = false
-autowrap_mode = 0
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="VSeparator2" type="VSeparator" parent="TextureRect/RevenueContainer" unique_id=1173623241]
+[node name="ProfitLossArrow" type="TextureRect" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails" unique_id=1368123088]
+layout_mode = 2
+
+[node name="RevenueBackground" type="Panel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails" unique_id=1807533063]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.5
 
-[node name="RevenueDirectionIcon" type="TextureRect" parent="TextureRect/RevenueContainer" unique_id=846730041]
+[node name="MarginContainer" type="MarginContainer" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails/RevenueBackground" unique_id=1831853691]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="RevenueLabel" type="RichTextLabel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails/RevenueBackground/MarginContainer" unique_id=667126853]
+layout_mode = 2
+text = "+ 2520"
+fit_content = true
+scroll_active = false
+vertical_alignment = 1
+
+[node name="OverviewButtons" type="HBoxContainer" parent="OverviewCartouche/VBoxContainer" unique_id=2034248038]
+layout_mode = 2
+
+[node name="OverviewButtonsBackground" parent="OverviewCartouche/VBoxContainer/OverviewButtons" unique_id=1758985598 instance=ExtResource("1_pd1ex")]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.3
-texture = ExtResource("2_pd1ex")
-expand_mode = 4
+ChamferPx = 40
+BorderWidth = 1.0
 
-[node name="RevenueText" type="RichTextLabel" parent="TextureRect/RevenueContainer" unique_id=1264215934]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.0
-
-[node name="ResearchOverviewContainer" type="HBoxContainer" parent="TextureRect" unique_id=660792677]
+[node name="MarginContainer" type="MarginContainer" parent="OverviewCartouche/VBoxContainer/OverviewButtons/OverviewButtonsBackground" unique_id=1824101767]
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.004
-anchor_top = 0.5
-anchor_right = 0.004
-anchor_bottom = 0.5
-offset_left = 0.01999998
-offset_right = 168.02
-offset_bottom = 40.0
-
-[node name="OverviewButtonsPanel" type="Panel" parent="." unique_id=607044851]
-layout_mode = 1
-anchors_preset = -1
-anchor_top = 0.123
-anchor_bottom = 0.123
-offset_top = 0.29599762
-offset_right = 166.0
-offset_bottom = 40.295998
-
-[node name="CenterContainer" type="CenterContainer" parent="OverviewButtonsPanel" unique_id=1919128473]
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 0.989
-anchor_bottom = 1.0
-offset_top = 0.99999994
-offset_right = 24.825989
-offset_bottom = 1.0
-grow_horizontal = 2
-scale = Vector2(0.87999976, 0.9599988)
-
-[node name="MarginContainer" type="MarginContainer" parent="OverviewButtonsPanel/CenterContainer" unique_id=74296981]
-layout_mode = 2
-theme_override_constants/margin_left = 2
-theme_override_constants/margin_top = 2
-theme_override_constants/margin_right = 2
-theme_override_constants/margin_bottom = 2
-
-[node name="HBoxContainer" type="HBoxContainer" parent="OverviewButtonsPanel/CenterContainer/MarginContainer" unique_id=1871883077]
-layout_mode = 2
-
-[node name="SystemOverview" type="Button" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=114352536]
-layout_mode = 2
-theme_override_constants/line_spacing = 10
-theme_override_font_sizes/font_size = 3
-text = "System
-Overview
-
-
-
-"
-vertical_icon_alignment = 2
-
-[node name="SystemOverviewIcon" type="TextureRect" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer/SystemOverview" unique_id=277314328]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
+anchor_right = 0.87700003
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("3_bg37d")
-expand_mode = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_bottom = 4
 
-[node name="VSeparator" type="VSeparator" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=1648114018]
+[node name="OverviewButtonsContainer" type="HBoxContainer" parent="OverviewCartouche/VBoxContainer/OverviewButtons/OverviewButtonsBackground/MarginContainer" unique_id=502893803]
 layout_mode = 2
+theme_override_constants/separation = 1
 
-[node name="HROverview" type="Button" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=1948089432]
-layout_mode = 2
-theme_override_constants/line_spacing = 16
-theme_override_font_sizes/font_size = 3
-text = "Workforce
-Resources"
-autowrap_trim_flags = 0
-
-[node name="HROverviewIcon" type="TextureRect" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer/HROverview" unique_id=622600439]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 1.0
-offset_top = 4.0
-offset_right = -3.0
-offset_bottom = -6.0
-grow_horizontal = 2
-grow_vertical = 2
-texture = ExtResource("4_1pp8m")
-expand_mode = 1
-
-[node name="VSeparator2" type="VSeparator" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=834869397]
-layout_mode = 2
-
-[node name="ConstructionOverview" type="Button" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=958100448]
-layout_mode = 2
-size_flags_stretch_ratio = 2.0
-theme_override_constants/line_spacing = 4
-theme_override_font_sizes/font_size = 3
-text = "Construction
-Overview"
-
-[node name="ConstructionOverviewIcon" type="TextureRect" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer/ConstructionOverview" unique_id=991864684]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 25.0
-offset_top = 6.0
-offset_right = 12.0
-offset_bottom = -12.0
-grow_horizontal = 2
-grow_vertical = 2
-rotation = 0.65100783
-texture = ExtResource("5_piogl")
-expand_mode = 1
-
-[node name="VSeparator3" type="VSeparator" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=970950123]
-layout_mode = 2
-
-[node name="ShipsOverview" type="Button" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=1887516596]
+[node name="SystemOverviewButton" type="Button" parent="OverviewCartouche/VBoxContainer/OverviewButtons/OverviewButtonsBackground/MarginContainer/OverviewButtonsContainer" unique_id=1248176966]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.0
-theme_override_constants/line_spacing = 10
-theme_override_font_sizes/font_size = 3
-text = "Ships
-Overview"
+theme = ExtResource("1_bg37d")
 
-[node name="ConstructionOverviewIcon" type="TextureRect" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer/ShipsOverview" unique_id=920644586]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-expand_mode = 3
-
-[node name="VSeparator4" type="VSeparator" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=654631568]
-layout_mode = 2
-
-[node name="MarketOverview" type="Button" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer" unique_id=503900727]
+[node name="ConstructionOverviewButton" type="Button" parent="OverviewCartouche/VBoxContainer/OverviewButtons/OverviewButtonsBackground/MarginContainer/OverviewButtonsContainer" unique_id=214975106]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.0
-theme_override_constants/line_spacing = 10
-theme_override_font_sizes/font_size = 3
-text = "Market
-Overview"
+theme = ExtResource("1_bg37d")
 
-[node name="MarketOverviewIcon" type="TextureRect" parent="OverviewButtonsPanel/CenterContainer/MarginContainer/HBoxContainer/MarketOverview" unique_id=334010891]
+[node name="ShipsOverviewButton" type="Button" parent="OverviewCartouche/VBoxContainer/OverviewButtons/OverviewButtonsBackground/MarginContainer/OverviewButtonsContainer" unique_id=1566549054]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_bg37d")
+
+[node name="AdministrationOverviewButton" type="Button" parent="OverviewCartouche/VBoxContainer/OverviewButtons/OverviewButtonsBackground/MarginContainer/OverviewButtonsContainer" unique_id=1892118441]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_bg37d")
+
+[node name="EconomyOverviewButton" type="Button" parent="OverviewCartouche/VBoxContainer/OverviewButtons/OverviewButtonsBackground/MarginContainer/OverviewButtonsContainer" unique_id=1253865485]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_bg37d")
+
+[node name="Container" type="Container" parent="OverviewCartouche/VBoxContainer/OverviewButtons" unique_id=480502504]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+
+[node name="TimeControlPanel" type="PanelContainer" parent="." unique_id=619360868]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -3.045412
-offset_top = 0.08333534
-offset_right = -3.045412
-offset_bottom = 0.08333588
+anchors_preset = -1
+anchor_left = 0.265
+anchor_top = 0.87
+anchor_right = 0.33
+anchor_bottom = 0.99
+
+[node name="ChyronPanel" type="PanelContainer" parent="." unique_id=890465484]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.335
+anchor_top = 0.91
+anchor_right = 0.72
+anchor_bottom = 0.98
 grow_horizontal = 2
-grow_vertical = 2
-texture = ExtResource("6_4kej0")
-expand_mode = 1
-
-[node name="Panel" type="Panel" parent="." unique_id=2063428210]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -120.0
-offset_right = 400.0
 grow_vertical = 0
 
-[node name="BuildMenuButton" type="Button" parent="Panel" unique_id=1020297876]
-layout_mode = 0
-offset_left = 27.0
-offset_top = 10.0
-offset_right = 115.0
-offset_bottom = 43.0
-theme_override_constants/outline_size = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_phjdd")
-text = "Construct"
-
-[node name="DemolishButton" type="Button" parent="Panel" unique_id=862237094]
-layout_mode = 0
-offset_left = 28.0
-offset_top = 55.0
-offset_right = 116.0
-offset_bottom = 88.0
-scale = Vector2(0.8, 0.8)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 12
-theme_override_styles/normal = SubResource("StyleBoxFlat_wkukm")
-text = "Demolish"
-alignment = 0
-
-[node name="ResearchMenuButton" type="Button" parent="Panel" unique_id=1325681856]
-layout_mode = 0
-offset_left = 135.0
-offset_top = 10.0
-offset_right = 223.0
-offset_bottom = 43.0
-theme_override_constants/outline_size = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_phjdd")
-text = "Research"
-
-[node name="TransferMenuButton" type="Button" parent="Panel" unique_id=1599536899]
-layout_mode = 0
-offset_left = 245.0
-offset_top = 10.0
-offset_right = 333.0
-offset_bottom = 43.0
-theme_override_constants/outline_size = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_phjdd")
-text = "Transfer"
+[node name="AntagonismPanel" type="PanelContainer" parent="." unique_id=1886810320]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.723
+anchor_top = 0.86
+anchor_right = 0.99
+anchor_bottom = 0.99
+grow_horizontal = 0
+grow_vertical = 0
 
 [node name="FarFieldIndicatorManager" type="Control" parent="." unique_id=247406334]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 4.0
+offset_bottom = 4.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("8_wkukm")
+
+[node name="CommandLayer" parent="." unique_id=900100001 instance=ExtResource("4_1pp8m")]
+layout_mode = 1

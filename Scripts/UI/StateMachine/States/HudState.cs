@@ -15,69 +15,31 @@ public partial class HudState : LimboState
         CTRL_CLICK,
     }
 
-    private Button? _constructionButton;
-    private Button? _demolishButton;
-    private Button? _researchButton;
-    private Button? _transferButton;
+    private Button? _shipsOverviewButton;
 
     [Export]
     public Control? hudUI;
 
+    // Construct / Demolish / Research / Transfer moved to the persistent
+    // CommandLayer (CommandLayerController). Only the ships-overview button
+    // (under OverviewCartouche) still lives in HUD.tscn.
     [Export]
-    public Button? constructionButton
+    public Button? shipsOverviewButton
     {
-        get => _constructionButton;
-        set => _constructionButton = value;
-    }
-
-    [Export]
-    public Button? demolishButton
-    {
-        get => _demolishButton;
-        set => _demolishButton = value;
-    }
-
-    [Export]
-    public Button? researchButton
-    {
-        get => _researchButton;
-        set => _researchButton = value;
-    }
-
-    [Export]
-    public Button? transferButton
-    {
-        get => _transferButton;
-        set => _transferButton = value;
+        get => _shipsOverviewButton;
+        set => _shipsOverviewButton = value;
     }
 
     public override void _Setup()
     {
-        _constructionButton!.ButtonDown += ConstructionButtonPressed;
-        _demolishButton!.ButtonDown += DemolishButtonPressed;
-        _researchButton!.ButtonDown += ResearchButtonPressed;
-        _transferButton!.ButtonDown += TransferButtonPressed;
+        if (_shipsOverviewButton != null)
+            _shipsOverviewButton.ButtonDown += ShipsOverviewButtonPressed;
     }
 
-    public void ConstructionButtonPressed()
+    public void ShipsOverviewButtonPressed()
     {
         InteractionStack.Push(Blackboard.Top(), "window_closed", new Godot.Collections.Dictionary());
-        GD.Print(Dispatch(new StringName("construction_menu_opened")));
-    }
-
-    public void DemolishButtonPressed()
-    {
-        Dispatch("demolish_interface");
-    }
-
-    public void ResearchButtonPressed()
-    {
-        Dispatch("research_interface");
-    }
-
-    public void TransferButtonPressed()
-    {
-        Dispatch("transfer_interface");
+        Dispatch("ships_overview_opened");
     }
 
     public override void _Enter()

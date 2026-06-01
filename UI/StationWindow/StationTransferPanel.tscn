@@ -1,0 +1,54 @@
+[gd_scene format=3 uid="uid://dtr5j6k2nqw8v"]
+
+[ext_resource type="Script" uid="uid://kqw81ihw7t01" path="res://Scripts/UI/StationWindow/StationTransferPanel.cs" id="1_transfer"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="2_theme"]
+
+[node name="StationTransferPanel" type="Control" node_paths=PackedStringArray("_header", "_list")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("2_theme")
+script = ExtResource("1_transfer")
+_header = NodePath("Margin/Root/Header")
+_list = NodePath("Margin/Root/Scroll/List")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Root" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="Header" type="Label" parent="Margin/Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+theme_override_font_sizes/font_size = 15
+text = "Transfers"
+
+[node name="HSeparator" type="HSeparator" parent="Margin/Root"]
+layout_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="List" type="VBoxContainer" parent="Margin/Root/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2

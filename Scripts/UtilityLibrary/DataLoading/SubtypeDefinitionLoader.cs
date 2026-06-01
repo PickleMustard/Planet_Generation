@@ -145,6 +145,9 @@ public static class SubtypeDefinitionLoader
         ReadRangeBlock(entry, "tectonics", def.TectonicRanges);
         ReadRangeBlock(entry, "spherical_harmonics", def.SphericalHarmonicsRanges);
 
+        if (entry.TryGetValue("tectonics", out var tectNode) && tectNode is Dictionary<object, object> tectBlock)
+            def.SampleVelocityAtEdgeMidpoint = ReadBool(tectBlock, "sample_velocity_at_edge_midpoint", true);
+
         return def;
     }
 
@@ -157,6 +160,8 @@ public static class SubtypeDefinitionLoader
             if (string.IsNullOrEmpty(key)) continue;
             // vertices_per_edge is a list-of-ranges, handled by ReadVerticesPerEdge.
             if (key == "vertices_per_edge") continue;
+            // sample_velocity_at_edge_midpoint is a bool, not a range; read separately.
+            if (key == "sample_velocity_at_edge_midpoint") continue;
             if (TryParseRange(kvp.Value, out var range))
                 target[key] = range;
             else
@@ -211,6 +216,13 @@ public static class SubtypeDefinitionLoader
     {
         if (!dict.TryGetValue(key, out var node) || node == null) return fallback;
         return ParseFloat(node, fallback);
+    }
+
+    private static bool ReadBool(Dictionary<object, object> dict, string key, bool fallback)
+    {
+        if (!dict.TryGetValue(key, out var node) || node == null) return fallback;
+        if (node is bool b) return b;
+        return bool.TryParse(node.ToString(), out var v) ? v : fallback;
     }
 
     private static float ParseFloat(object? node, float fallback)

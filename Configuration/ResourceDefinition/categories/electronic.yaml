@@ -1,44 +1,53 @@
 resources:
   - id_name: battery
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial]
   - id_name: capacitor
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 101
     tags: [electronic, industrial]
   - id_name: solar_cell
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial, solar]
   - id_name: pcb
     resource_tier: 2
+    base_price: 3000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial]
   - id_name: solid_state_battery
     resource_tier: 2
+    base_price: 3000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial]
   - id_name: motor
     resource_tier: 2
+    base_price: 3000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial]
   - id_name: microchip
     resource_tier: 3
+    base_price: 4000
     state_of_matter: solid
     max_stack_size: 100
   - id_name: quantum_chip
     resource_tier: 4
+    base_price: 5000
     state_of_matter: solid
     max_stack_size: 48
   - id_name: workstation
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 49
     tags: [electronic, labor, furniture]

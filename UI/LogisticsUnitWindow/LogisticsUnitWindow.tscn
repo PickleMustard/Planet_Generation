@@ -1,226 +1,134 @@
 [gd_scene format=3 uid="uid://b86337raoxhv2"]
 
-[ext_resource type="Script" uid="uid://bguuxvamnsh0q" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitWindow.cs" id="1_window"]
-[ext_resource type="Script" uid="uid://o3gok75kdws2" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitHeaderPanel.cs" id="2_header"]
-[ext_resource type="Script" uid="uid://c83lrw05flvdx" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitTabbedPanel.cs" id="3_tabbed"]
-[ext_resource type="Script" uid="uid://ctbguhlu43uex" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitDetailsPanel.cs" id="4_details"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitWindow.cs" id="1_window"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitOrbitCamera.cs" id="2_orbitcam"]
+[ext_resource type="PackedScene" path="res://UI/LogisticsUnitWindow/LogisticsUnitCartouchePanel.tscn" id="3_cartouche"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitTabbedPanel.cs" id="4_tabbed"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitInfoPanel.cs" id="5_info"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="6_theme"]
+[ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="7_elite"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.15, 0.15, 0.18, 0.92)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tabbed"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.15, 0.15, 0.18, 0.92)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_details"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.15, 0.15, 0.18, 0.92)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.3, 0.1, 0.1, 0.8)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_hover"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.5, 0.15, 0.15, 0.9)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[node name="LogisticsUnitWindow" type="Control" unique_id=1568640329 node_paths=PackedStringArray("_closeButton", "_headerPanel", "_tabbedPanel", "_detailsPanel", "_backButton")]
+[node name="LogisticsUnitWindow" type="Control" node_paths=PackedStringArray("_closeButton", "_backButton", "_cartouchePanel", "_tabbedPanel", "_infoPanel", "_orbitCamera")]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
-script = ExtResource("1_window")
-_closeButton = NodePath("CloseButton")
-_headerPanel = NodePath("HeaderPanel")
-_tabbedPanel = NodePath("TabbedPanel")
-_detailsPanel = NodePath("DetailsPanel")
-_backButton = NodePath("BackButton")
-
-[node name="HeaderPanel" type="PanelContainer" parent="." unique_id=836773915 node_paths=PackedStringArray("_unitNameLabel", "_unitTypeLabel", "_stateLabel", "_destinationLabel", "_currentLegLabel", "_fuelBar", "_fuelLabel")]
-layout_mode = 0
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 400.0
-offset_bottom = 280.0
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_header")
-script = ExtResource("2_header")
-_unitNameLabel = NodePath("MarginContainer/VBoxContainer/UnitNameLabel")
-_unitTypeLabel = NodePath("MarginContainer/VBoxContainer/TypeLabel")
-_stateLabel = NodePath("MarginContainer/VBoxContainer/StateLabel")
-_destinationLabel = NodePath("MarginContainer/VBoxContainer/DestinationLabel")
-_currentLegLabel = NodePath("MarginContainer/VBoxContainer/CurrentLegLabel")
-_fuelBar = NodePath("MarginContainer/VBoxContainer/FuelBar")
-_fuelLabel = NodePath("MarginContainer/VBoxContainer/FuelLabel")
-
-[node name="MarginContainer" type="MarginContainer" parent="HeaderPanel" unique_id=1846961125]
-layout_mode = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="HeaderPanel/MarginContainer" unique_id=307483809]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="UnitNameLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=2146924246]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "Unit Name"
-
-[node name="TypeLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=699140468]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
-theme_override_font_sizes/font_size = 14
-text = "Ship Type"
-
-[node name="HSeparator" type="HSeparator" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=351261696]
-layout_mode = 2
-
-[node name="StateLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=1491504269]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "State"
-
-[node name="DestinationLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=1669185478]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
-theme_override_font_sizes/font_size = 13
-text = "Destination: None"
-
-[node name="CurrentLegLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=169213765]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
-theme_override_font_sizes/font_size = 13
-text = "No active route"
-
-[node name="FuelBar" type="ProgressBar" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=1175236967]
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
-
-[node name="FuelLabel" type="Label" parent="HeaderPanel/MarginContainer/VBoxContainer" unique_id=386791994]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
-theme_override_font_sizes/font_size = 12
-text = "0 / 0 kg"
-
-[node name="TabbedPanel" type="PanelContainer" parent="." unique_id=1662271526]
-layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 697.0
-offset_top = 16.0
-offset_right = 1096.0
-offset_bottom = 34.0
-grow_horizontal = 0
+grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_tabbed")
-script = ExtResource("3_tabbed")
+mouse_filter = 2
+theme = ExtResource("6_theme")
+script = ExtResource("1_window")
+_closeButton = NodePath("CloseButton")
+_backButton = NodePath("BackButton")
+_cartouchePanel = NodePath("LogisticsUnitCartouchePanel")
+_tabbedPanel = NodePath("TabbedPanel")
+_infoPanel = NodePath("InfoPanel")
+_orbitCamera = NodePath("LogisticsUnitOrbitCamera")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="TabbedPanel" unique_id=654264841]
+[node name="LogisticsUnitOrbitCamera" type="Node" parent="."]
+script = ExtResource("2_orbitcam")
+
+[node name="LogisticsUnitCartouchePanel" parent="." instance=ExtResource("3_cartouche")]
+layout_mode = 1
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 396.0
+offset_bottom = 392.0
+grow_horizontal = 1
+grow_vertical = 1
+
+[node name="TabbedPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -456.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 148.0
+grow_horizontal = 0
+mouse_filter = 1
+theme = ExtResource("6_theme")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("4_tabbed")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabbedPanel"]
 layout_mode = 2
+theme = ExtResource("6_theme")
 theme_override_constants/separation = 8
 
-[node name="TabBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer" unique_id=55412175]
+[node name="TabBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer"]
 layout_mode = 2
+theme = ExtResource("6_theme")
 theme_override_constants/separation = 4
 
-[node name="TabContent" type="ScrollContainer" parent="TabbedPanel/VBoxContainer" unique_id=1771965606]
+[node name="SubButtonBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer"]
 layout_mode = 2
-size_flags_vertical = 3
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 4
 
-[node name="ContentContainer" type="VBoxContainer" parent="TabbedPanel/VBoxContainer/TabContent" unique_id=1391927451]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="DetailsPanel" type="PanelContainer" parent="." unique_id=2145043172]
+[node name="InfoPanel" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = 413.0
-offset_right = 225.0
-offset_bottom = 592.0
+offset_top = -240.0
+offset_right = -16.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_details")
-script = ExtResource("4_details")
+theme = ExtResource("6_theme")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("5_info")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="DetailsPanel" unique_id=1978879174]
+[node name="VBoxContainer" type="VBoxContainer" parent="InfoPanel"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 8
 
-[node name="DetailTitleLabel" type="Label" parent="DetailsPanel/VBoxContainer" unique_id=644810021]
+[node name="TitleLabel" type="Label" parent="InfoPanel/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme = ExtResource("6_theme")
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 22
 text = "Details"
 
-[node name="DetailContent" type="VBoxContainer" parent="DetailsPanel/VBoxContainer" unique_id=182043717]
+[node name="Columns" type="HBoxContainer" parent="InfoPanel/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 24
 
-[node name="PlaceholderLabel" type="Label" parent="DetailsPanel/VBoxContainer/DetailContent" unique_id=829764939]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
-theme_override_font_sizes/font_size = 13
-text = "Select an item above to view details"
-
-[node name="CloseButton" type="Button" parent="." unique_id=2115681406]
+[node name="CloseButton" type="Button" parent="."]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = 1056.0
+offset_left = -64.0
 offset_top = 16.0
-offset_right = 1096.0
+offset_right = -16.0
 offset_bottom = 56.0
 grow_horizontal = 0
+theme_type_variation = &"ButtonDanger"
+theme_override_fonts/font = ExtResource("7_elite")
 theme_override_font_sizes/font_size = 20
-theme_override_styles/normal = SubResource("StyleBoxFlat_close")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_hover")
-text = "X"
+text = "✕"
 
-[node name="BackButton" type="Button" parent="." unique_id=2055617997]
-layout_mode = 0
+[node name="BackButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -148.0
+offset_top = 16.0
+offset_right = -72.0
+offset_bottom = 56.0
+grow_horizontal = 0
 tooltip_text = "Back one panel"
 text = "← Back"

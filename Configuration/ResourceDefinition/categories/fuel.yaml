@@ -1,33 +1,54 @@
 resources:
   - id_name: uranium
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 50
+    configurable_values:
+      burn_potential: 80
   - id_name: hydrogen
     resource_tier: 2
+    base_price: 3000
     state_of_matter: fluid
     max_stack_size: 200
+    configurable_values:
+      burn_potential: 40
   - id_name: tritium
     resource_tier: 3
+    base_price: 4000
     state_of_matter: fluid
     max_stack_size: 100
+    configurable_values:
+      burn_potential: 120
   - id_name: liquid_uranium
     resource_tier: 2
+    base_price: 3000
     state_of_matter: fluid
     max_stack_size: 100
+    configurable_values:
+      burn_potential: 85
   - id_name: antimatter
     resource_tier: 3
+    base_price: 4000
     state_of_matter: fluid
     max_stack_size: 25
     transport_weight: 0.9
+    configurable_values:
+      burn_potential: 200
   - id_name: methane
     resource_tier: 1
+    base_price: 2000
     state_of_matter: fluid
     max_stack_size: 200
     transport_weight: 0.9
     tags: [power, heat]
+    configurable_values:
+      burn_potential: 30
   - id_name: hydrazine
     resource_tier: 2
+    base_price: 3000
     state_of_matter: fluid
     max_stack_size: 100
     tags: [power, heat]
+    configurable_values:
+      burn_potential: 50

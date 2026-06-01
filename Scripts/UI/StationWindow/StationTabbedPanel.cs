@@ -1,17 +1,18 @@
 using System.Collections.Generic;
 using Constructables;
 using Constructables.Stations;
+using Constructables.Stations.Behaviors;
 using Godot;
-using UtilityLibrary;
 
 namespace UI.StationWindow;
 
 /// <summary>
-/// Behavior-driven tabbed panel. Builds one tab per attached <see cref="IStationBehavior"/>,
-/// sorted by <see cref="IStationBehavior.Priority"/> descending. The first tab — the
-/// signature behavior — additionally exposes the station's bulk storage; the remaining
-/// tabs focus solely on their behavior. Mirrors the dynamic tab pattern in
-/// <see cref="UI.BuildingInfo.Administration.AdministrationTabbedPanel"/>.
+/// Behavior-driven tabbed panel. Builds one tab per composed <see cref="IStationBehavior"/> into a
+/// native <see cref="TabContainer"/>, mirroring the building GUI
+/// (<see cref="UI.BuildingInfo.Administration.AdministrationTabbedPanel"/>). The signature (★) tab is the
+/// station's identity behavior (shipyard / architect, else an overview). Storage and Transfer tabs are
+/// always present and pinned to the end, because every <see cref="StationSatellite"/> holds
+/// <c>BulkStorage</c> and registers as a transfer endpoint regardless of attached behaviors.
 /// </summary>
 public partial class StationTabbedPanel : PanelContainer
 {
@@ -19,225 +20,190 @@ public partial class StationTabbedPanel : PanelContainer
     public delegate void ItemSelectedEventHandler(string itemType, int itemIndex);
 
     [Export]
-    private PackedScene? _behaviorTabScene;
+    public TabContainer? _tabContainer;
+
+    private enum StationTabKind
+    {
+        Overview,
+        Shipyard,
+        Architect,
+        Transfer,
+        Storage,
+    }
 
     private sealed class TabSpec
     {
+        public StationTabKind Kind;
         public string Label = "";
         public IStationBehavior? Behavior;
-        public bool ShowStorage;
-        public StationBehaviorTab? Cached;
+        public bool ForceStorageGrid;
+        public bool Signature;
     }
 
     private StationSatellite? _station;
-    private HBoxContainer? _tabBar;
-    private VBoxContainer? _tabBodyContainer;
-    private int _activeIndex = -1;
-    private readonly List<TabSpec> _tabs = new();
-    private readonly List<Button> _tabButtons = new();
+    private readonly List<StationDetailPanel> _panels = new();
 
-    private StyleBox? _activeTabStyle;
-    private StyleBox? _inactiveTabStyle;
-
-    public override void _Ready()
-    {
-        _tabBar = GetNode<HBoxContainer>("VBoxContainer/TabBar");
-        _tabBodyContainer = GetNode<VBoxContainer>("VBoxContainer/TabBodyContainer");
-        BuildTabStyles();
-    }
+    public override void _Ready() { }
 
     public void Initialize(StationSatellite station)
     {
         Clear();
         _station = station;
 
-        BuildTabSpecsFromBehaviors();
-        RebuildTabBar();
-
-        if (_tabs.Count > 0)
+        if (_tabContainer == null)
         {
-            _activeIndex = -1;
-            SwitchTab(0);
+            UtilityLibrary.GameLogger.Warning("StationTabbedPanel: no TabContainer configured");
+            return;
         }
+
+        foreach (var spec in BuildTabSpecs(station))
+        {
+            var panel = InstancePanel(spec);
+            if (panel == null)
+                continue;
+
+            panel.Name = $"Tab_{spec.Kind}_{_panels.Count}";
+            _tabContainer.AddChild(panel);
+            int idx = _tabContainer.GetTabCount() - 1;
+            _tabContainer.SetTabTitle(idx, (spec.Signature ? "★ " : "") + spec.Label);
+
+            if (panel is StationArchitectPanel architect)
+                architect.ItemSelected += OnNestedItemSelected;
+
+            panel.SetStation(station, spec.Behavior);
+            _panels.Add(panel);
+        }
+
+        if (_tabContainer.GetTabCount() > 0)
+            _tabContainer.CurrentTab = 0;
     }
 
     public void Clear()
     {
-        DropCachedTabs();
-        ClearTabButtons();
-        _activeIndex = -1;
+        foreach (var panel in _panels)
+        {
+            if (!IsInstanceValid(panel))
+                continue;
+            if (panel is StationArchitectPanel architect)
+                architect.ItemSelected -= OnNestedItemSelected;
+            panel.Clear();
+            if (panel.GetParent() != null)
+                panel.GetParent().RemoveChild(panel);
+            panel.QueueFree();
+        }
+        _panels.Clear();
         _station = null;
-
-        if (_tabBodyContainer != null)
-        {
-            foreach (var child in _tabBodyContainer.GetChildren())
-                if (child is Node node && node.GetParent() == _tabBodyContainer)
-                    _tabBodyContainer.RemoveChild(node);
-        }
     }
 
-    private void BuildTabSpecsFromBehaviors()
+    private static List<TabSpec> BuildTabSpecs(StationSatellite station)
     {
-        _tabs.Clear();
-        if (_station == null)
-            return;
+        var specs = new List<TabSpec>();
+        var usedSpecial = new HashSet<StationTabKind>();
 
-        var ordered = new List<IStationBehavior>(_station.Behaviors);
+        // 1. Signature: the station's identity behavior (shipyard wins over architect).
+        var shipyard = station.GetBehavior<ShipyardBehavior>();
+        var architect = station.GetBehavior<OrbitalConstructorBehavior>();
+        if (shipyard != null)
+        {
+            specs.Add(new TabSpec { Kind = StationTabKind.Shipyard, Label = "Shipyard", Behavior = shipyard, Signature = true });
+            usedSpecial.Add(StationTabKind.Shipyard);
+        }
+        else if (architect != null)
+        {
+            specs.Add(new TabSpec { Kind = StationTabKind.Architect, Label = "Architect", Behavior = architect, Signature = true });
+            usedSpecial.Add(StationTabKind.Architect);
+        }
+
+        // 2. Remaining behavior tabs, highest priority first. Storage/Transfer are deferred to the
+        //    pinned end; shipyard/architect are deduped; everything else becomes a generic tab.
+        var ordered = new List<IStationBehavior>(station.Behaviors);
         ordered.Sort((a, b) => b.Priority.CompareTo(a.Priority));
-
-        if (ordered.Count == 0)
+        foreach (var behavior in ordered)
         {
-            _tabs.Add(new TabSpec
+            switch (MapBehaviorToTabKind(behavior))
             {
-                Label = "Overview",
-                Behavior = null,
-                ShowStorage = true,
-            });
-            return;
-        }
-
-        for (int i = 0; i < ordered.Count; i++)
-        {
-            _tabs.Add(new TabSpec
-            {
-                Label = LabelForBehavior(ordered[i]),
-                Behavior = ordered[i],
-                ShowStorage = i == 0,
-            });
-        }
-    }
-
-    private static string LabelForBehavior(IStationBehavior behavior) => behavior switch
-    {
-        Constructables.Stations.Behaviors.ShipyardBehavior => "Shipyard",
-        Constructables.Stations.Behaviors.OrbitalConstructorBehavior => "Architect",
-        Constructables.Stations.Behaviors.TransferHubBehavior => "Transfers",
-        Constructables.Stations.Behaviors.StorageHubBehavior => "Storage",
-        _ => behavior.GetType().Name.Replace("Behavior", ""),
-    };
-
-    private void RebuildTabBar()
-    {
-        ClearTabButtons();
-        if (_tabBar == null)
-            return;
-
-        for (int i = 0; i < _tabs.Count; i++)
-        {
-            int idx = i;
-            var spec = _tabs[i];
-            var btn = new Button
-            {
-                Text = i == 0 ? "★ " + spec.Label : spec.Label,
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            };
-            btn.AddThemeFontSizeOverride("font_size", 13);
-            btn.Pressed += () => SwitchTab(idx);
-            _tabBar.AddChild(btn);
-            _tabButtons.Add(btn);
-        }
-    }
-
-    public void SwitchTab(int idx)
-    {
-        if (idx < 0 || idx >= _tabs.Count || _station == null || _tabBodyContainer == null)
-            return;
-        if (idx == _activeIndex)
-            return;
-
-        // Detach previously active instance from the body container without freeing.
-        if (_activeIndex >= 0 && _activeIndex < _tabs.Count)
-        {
-            var prev = _tabs[_activeIndex].Cached;
-            if (prev != null && IsInstanceValid(prev) && prev.GetParent() != null)
-                prev.GetParent().RemoveChild(prev);
-        }
-
-        _activeIndex = idx;
-        UpdateTabButtonStyles();
-
-        var spec = _tabs[idx];
-        if (spec.Cached == null)
-        {
-            if (_behaviorTabScene == null)
-            {
-                GameLogger.Warning("StationTabbedPanel: no BehaviorTab scene configured");
-                return;
+                case StationTabKind.Shipyard:
+                    if (usedSpecial.Add(StationTabKind.Shipyard))
+                        specs.Add(new TabSpec { Kind = StationTabKind.Shipyard, Label = "Shipyard", Behavior = behavior });
+                    break;
+                case StationTabKind.Architect:
+                    if (usedSpecial.Add(StationTabKind.Architect))
+                        specs.Add(new TabSpec { Kind = StationTabKind.Architect, Label = "Architect", Behavior = behavior });
+                    break;
+                case StationTabKind.Transfer:
+                case StationTabKind.Storage:
+                    break; // pinned at the end
+                default:
+                    // Generic / unknown behavior: one tab each when it opts into display.
+                    if (behavior is IStationBehaviorDisplay display)
+                        specs.Add(new TabSpec { Kind = StationTabKind.Overview, Label = display.TabLabel, Behavior = behavior });
+                    break;
             }
-            spec.Cached = _behaviorTabScene.Instantiate<StationBehaviorTab>();
-            spec.Cached.ItemSelected += OnNestedItemSelected;
         }
 
-        spec.Cached.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        spec.Cached.SizeFlagsVertical = SizeFlags.ExpandFill;
-        _tabBodyContainer.AddChild(spec.Cached);
-        spec.Cached.Initialize(_station, spec.Behavior, spec.ShowStorage);
+        // 3. Ensure a signature exists: synthetic Overview when nothing else featured.
+        if (specs.Count == 0)
+            specs.Add(new TabSpec { Kind = StationTabKind.Overview, Label = "Overview", Behavior = null, Signature = true });
+        else if (!specs[0].Signature)
+            specs[0].Signature = true;
+
+        // 4. Always-present universal tabs, pinned in a consistent order at the end.
+        specs.Add(new TabSpec
+        {
+            Kind = StationTabKind.Transfer,
+            Label = "Transfers",
+            Behavior = station.GetBehavior<TransferHubBehavior>(),
+        });
+        specs.Add(new TabSpec
+        {
+            Kind = StationTabKind.Storage,
+            Label = "Storage",
+            Behavior = station.GetBehavior<StorageHubBehavior>(),
+            ForceStorageGrid = true,
+        });
+
+        return specs;
     }
 
-    private void OnNestedItemSelected(string itemType, int itemIndex)
-        => EmitSignal(SignalName.ItemSelected, itemType, itemIndex);
-
-    private void DropCachedTabs()
-    {
-        foreach (var spec in _tabs)
+    private static StationTabKind MapBehaviorToTabKind(IStationBehavior behavior) =>
+        behavior switch
         {
-            if (spec.Cached != null && IsInstanceValid(spec.Cached))
-            {
-                spec.Cached.ItemSelected -= OnNestedItemSelected;
-                if (spec.Cached.GetParent() != null)
-                    spec.Cached.GetParent().RemoveChild(spec.Cached);
-                spec.Cached.QueueFree();
-            }
-            spec.Cached = null;
-        }
-        _tabs.Clear();
-    }
-
-    private void ClearTabButtons()
-    {
-        if (_tabBar != null)
-        {
-            foreach (var btn in _tabButtons)
-                if (IsInstanceValid(btn))
-                    btn.QueueFree();
-        }
-        _tabButtons.Clear();
-    }
-
-    private void BuildTabStyles()
-    {
-        _activeTabStyle = new StyleBoxFlat
-        {
-            ContentMarginLeft = 8,
-            ContentMarginTop = 4,
-            ContentMarginRight = 8,
-            ContentMarginBottom = 4,
-            BgColor = new Color(0.25f, 0.25f, 0.3f, 1f),
-            CornerRadiusTopLeft = 4,
-            CornerRadiusTopRight = 4,
+            ShipyardBehavior => StationTabKind.Shipyard,
+            OrbitalConstructorBehavior => StationTabKind.Architect,
+            TransferHubBehavior => StationTabKind.Transfer,
+            StorageHubBehavior => StationTabKind.Storage,
+            _ => StationTabKind.Overview,
         };
-        _inactiveTabStyle = new StyleBoxFlat
+
+    // Each tab's layout is authored as a .tscn; behavior lives in the matching script.
+    private const string ShipyardScenePath = "res://UI/StationWindow/StationShipyardPanel.tscn";
+    private const string ArchitectScenePath = "res://UI/StationWindow/StationArchitectPanel.tscn";
+    private const string TransferScenePath = "res://UI/StationWindow/StationTransferPanel.tscn";
+    private const string GenericScenePath = "res://UI/StationWindow/StationGenericPanel.tscn";
+
+    private static StationDetailPanel? InstancePanel(TabSpec spec)
+    {
+        string path = spec.Kind switch
         {
-            ContentMarginLeft = 8,
-            ContentMarginTop = 4,
-            ContentMarginRight = 8,
-            ContentMarginBottom = 4,
-            BgColor = new Color(0.12f, 0.12f, 0.14f, 0.8f),
-            CornerRadiusTopLeft = 4,
-            CornerRadiusTopRight = 4,
+            StationTabKind.Shipyard => ShipyardScenePath,
+            StationTabKind.Architect => ArchitectScenePath,
+            StationTabKind.Transfer => TransferScenePath,
+            _ => GenericScenePath,
         };
+
+        var scene = ResourceLoader.Load<PackedScene>(path);
+        if (scene == null)
+        {
+            UtilityLibrary.GameLogger.Warning($"StationTabbedPanel: failed to load panel scene '{path}'");
+            return null;
+        }
+
+        var panel = scene.Instantiate<StationDetailPanel>();
+        if (panel is StationGenericPanel generic)
+            generic.ForceStorageGrid = spec.ForceStorageGrid;
+        return panel;
     }
 
-    private void UpdateTabButtonStyles()
-    {
-        if (_activeTabStyle == null || _inactiveTabStyle == null)
-            return;
-        for (int i = 0; i < _tabButtons.Count; i++)
-        {
-            _tabButtons[i].AddThemeStyleboxOverride(
-                "normal",
-                i == _activeIndex ? _activeTabStyle : _inactiveTabStyle
-            );
-        }
-    }
+    private void OnNestedItemSelected(string itemType, int itemIndex) =>
+        EmitSignal(SignalName.ItemSelected, itemType, itemIndex);
 }

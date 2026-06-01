@@ -1,0 +1,53 @@
+[gd_scene format=3 uid="uid://clyrmscqan6ff"]
+
+[ext_resource type="Script" uid="uid://uyhyk0j1wwy6" path="res://Scripts/UI/Chyron/ChyronPanel.cs" id="1_chyron"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_yqvhx"]
+
+[node name="ChyronPanel" type="PanelContainer" unique_id=1730767035]
+custom_minimum_size = Vector2(0, 40)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("1_yqvhx")
+script = ExtResource("1_chyron")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=807566612]
+layout_mode = 2
+theme = ExtResource("1_yqvhx")
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 4
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer" unique_id=1901987677]
+layout_mode = 2
+theme = ExtResource("1_yqvhx")
+
+[node name="KickerLabel" type="Label" parent="MarginContainer/HBoxContainer" unique_id=442003509]
+layout_mode = 2
+theme = ExtResource("1_yqvhx")
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.165, 0.145, 0.125, 0.45)
+theme_override_font_sizes/font_size = 9
+text = "BULLETIN ·"
+
+[node name="MessageText" type="RichTextLabel" parent="MarginContainer/HBoxContainer" unique_id=704618152]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_yqvhx")
+theme_type_variation = &"LabelMono"
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="PriorityBadge" type="Label" parent="MarginContainer/HBoxContainer" unique_id=1024854747]
+visible = false
+layout_mode = 2
+theme = ExtResource("1_yqvhx")
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.769, 0.329, 0.102, 1)
+theme_override_font_sizes/font_size = 9
+text = "◆"

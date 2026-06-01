@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Constructables;
 using Godot;
 
@@ -190,34 +191,71 @@ public static class BoardLayoutEngine
     public const float DefaultStationRadius = 36f;
 
     /// <summary>
-    /// Computes evenly-spaced positions for stations on a ring outside the buildings disk.
-    /// Stations spread around the full circle at angle <c>i · 2π / N</c> starting from the
-    /// top (<c>-π/2</c>), at radius <c>innerCircleRadius + StationRingGap + stationRadius</c>.
+    /// Radius at which the innermost station ring's centers sit.
     /// </summary>
-    public static Dictionary<StationSatellite, Vector2> ComputeStationRing(
+    public static float ComputeStationRingRadius(float innerCircleRadius, float stationRadius = DefaultStationRadius)
+        => innerCircleRadius + StationRingGap + stationRadius;
+
+    /// <summary>Radial gap (board-space pixels) between successive station rings.</summary>
+    public const float RingSpacing = 2f * DefaultStationRadius + StationRingGap;
+
+    /// <summary>
+    /// Result of <see cref="ComputeStationRings"/>: each station's board position plus the
+    /// distinct ring radii (one per orbit band present), sorted from innermost to outermost.
+    /// </summary>
+    public sealed class StationRingLayout
+    {
+        public Dictionary<StationSatellite, Vector2> Positions { get; } = new();
+        public List<float> RingRadii { get; } = new();
+    }
+
+    /// <summary>
+    /// Places stations on concentric rings grouped by orbit band (<see cref="StationSatellite.BandIndex"/>).
+    /// Distinct bands are sorted ascending (distance order) and mapped to ring ordinals 0,1,2…;
+    /// ring <c>k</c> sits at <c>ComputeStationRingRadius + k · RingSpacing</c>. Stations sharing a
+    /// band are spread evenly around their ring at angle <c>StartAngle + i · 2π / N</c>.
+    /// </summary>
+    public static StationRingLayout ComputeStationRings(
         IReadOnlyList<StationSatellite> stations,
         float innerCircleRadius,
         float stationRadius = DefaultStationRadius)
     {
-        var result = new Dictionary<StationSatellite, Vector2>();
+        var layout = new StationRingLayout();
         if (stations == null || stations.Count == 0)
-            return result;
+            return layout;
 
-        float ringR = ComputeStationRingRadius(innerCircleRadius, stationRadius);
-        float step = Mathf.Tau / stations.Count;
-        for (int i = 0; i < stations.Count; i++)
+        // Group stations by band, preserving a stable per-band order.
+        var byBand = new Dictionary<int, List<StationSatellite>>();
+        foreach (var s in stations)
         {
-            float angle = StartAngle + i * step;
-            result[stations[i]] = AngleToPosition(angle, ringR);
+            if (!byBand.TryGetValue(s.BandIndex, out var list))
+            {
+                list = new List<StationSatellite>();
+                byBand[s.BandIndex] = list;
+            }
+            list.Add(s);
         }
-        return result;
-    }
 
-    /// <summary>
-    /// Radius at which station centers sit on the outer ring.
-    /// </summary>
-    public static float ComputeStationRingRadius(float innerCircleRadius, float stationRadius = DefaultStationRadius)
-        => innerCircleRadius + StationRingGap + stationRadius;
+        float baseRadius = ComputeStationRingRadius(innerCircleRadius, stationRadius);
+        var bands = byBand.Keys.ToList();
+        bands.Sort();
+
+        for (int k = 0; k < bands.Count; k++)
+        {
+            float ringR = baseRadius + k * RingSpacing;
+            layout.RingRadii.Add(ringR);
+
+            var bandStations = byBand[bands[k]];
+            float step = Mathf.Tau / bandStations.Count;
+            for (int i = 0; i < bandStations.Count; i++)
+            {
+                float angle = StartAngle + i * step;
+                layout.Positions[bandStations[i]] = AngleToPosition(angle, ringR);
+            }
+        }
+
+        return layout;
+    }
 
     // ── Geometry helpers ──────────────────────────────────────────────
 

@@ -261,20 +261,10 @@ public static class StationConfigLoader
             Name = name,
             StationType = BaseConfigLoader.ReadString(dict, "station_type", ""),
             ConstructionTime = BaseConfigLoader.ReadFloat(dict, "construction_time", 0f),
-            CanBuildShips = BaseConfigLoader.ReadBool(dict, "can_build_ships", false),
-            MaxParallelShipBuilds = BaseConfigLoader.ReadInt(dict, "max_parallel_ship_builds", 1),
-            CanBuildBuildings = BaseConfigLoader.ReadBool(dict, "can_build_buildings", false),
-            BuildingWorkBudgetPerTick = BaseConfigLoader.ReadFloat(dict, "building_work_budget_per_tick", 1.0f),
-            RegularSlots = BaseConfigLoader.ReadInt(dict, "regular_slots", 1),
-            OvertimeSlots = BaseConfigLoader.ReadInt(dict, "overtime_slots", 0),
-            OvertimeCostPercent = BaseConfigLoader.ReadFloat(dict, "overtime_cost_percent", 0.10f),
             RequiredResources = BaseConfigLoader.ReadResourceDict(dict, "required_resources"),
             Visual = ParseVisualDefinition(dict),
             Icon = ParseIconDefinition(dict, $"station:{name}"),
-            BehaviorRefs = ParseBehaviorRefs(dict),
-            StorageCapacity = BaseConfigLoader.ReadInt(dict, "storage_capacity", 0),
-            SlotFilters = ParseSlotFilters(dict),
-            TransferStation = ParseTransferStationDefinition(dict),
+            BehaviorEntries = ParseBehaviorEntries(dict),
         };
 
         // Apply fallback if icon failed to load
@@ -414,31 +404,65 @@ public static class StationConfigLoader
         return visual;
     }
 
-    private static Godot.Collections.Array<string> ParseBehaviorRefs(Dictionary<object, object> dict)
+    /// <summary>
+    /// Parses the behaviors: YAML block into a list of StationBehaviorConfigEntry.
+    /// Supports bare strings (no config) and mapping entries with a behavior_id key
+    /// plus inline config. Mirrors BuildingConfigLoader.ParseBehaviorEntries.
+    /// </summary>
+    private static List<StationDefinition.StationBehaviorConfigEntry> ParseBehaviorEntries(
+        Dictionary<object, object> dict)
     {
-        var refs = new Godot.Collections.Array<string>();
+        var entries = new List<StationDefinition.StationBehaviorConfigEntry>();
 
         if (!dict.ContainsKey("behaviors"))
-            return refs;
+            return entries;
 
         if (dict["behaviors"] is not List<object> behaviorList)
-            return refs;
+            return entries;
 
         foreach (var entry in behaviorList)
         {
             if (entry is string s && !string.IsNullOrEmpty(s))
-                refs.Add(s);
+            {
+                entries.Add(new StationDefinition.StationBehaviorConfigEntry
+                {
+                    BehaviorId = s,
+                    Config = new Dictionary<string, object>()
+                });
+            }
+            else if (entry is Dictionary<object, object> entryDict)
+            {
+                string behaviorId = BaseConfigLoader.ReadString(entryDict, "behavior_id", "");
+                if (string.IsNullOrEmpty(behaviorId))
+                {
+                    GD.PrintErr("StationConfigLoader: behavior entry missing 'behavior_id' key");
+                    continue;
+                }
+
+                var config = new Dictionary<string, object>();
+                foreach (var kvp in entryDict)
+                {
+                    string key = kvp.Key?.ToString() ?? "";
+                    if (key == "behavior_id") continue;
+                    config[key] = kvp.Value;
+                }
+
+                entries.Add(new StationDefinition.StationBehaviorConfigEntry
+                {
+                    BehaviorId = behaviorId,
+                    Config = config
+                });
+            }
         }
 
-        return refs;
+        return entries;
     }
 
     /// <summary>
-    /// Parses the slot_filters YAML block into a list of (filter, count) pairs.
-    /// Keys use prefix syntax: "any", "state:solid", "state:fluid", "category:&lt;name&gt;",
-    /// "resource:&lt;id&gt;". A bare key falls back to category lookup (legacy behavior).
+    /// Parses a slot_filters config dict from a behavior entry.
+    /// Shared by StorageHubBehavior config parsing.
     /// </summary>
-    private static List<SlotFilterSpec> ParseSlotFilters(Dictionary<object, object> dict)
+    public static List<SlotFilterSpec> ParseSlotFiltersFromConfig(Dictionary<object, object> dict)
     {
         var specs = new List<SlotFilterSpec>();
 
@@ -452,8 +476,7 @@ public static class StationConfigLoader
         {
             string key = ((string)kvp.Key).Trim();
             int count = (int)NodeToFloat(kvp.Value, 0f);
-            if (count <= 0 || string.IsNullOrEmpty(key))
-                continue;
+            if (count <= 0 || string.IsNullOrEmpty(key)) continue;
 
             SlotFilter filter;
             if (string.Equals(key, "any", StringComparison.OrdinalIgnoreCase))
@@ -475,7 +498,6 @@ public static class StationConfigLoader
             }
             else
             {
-                // Legacy bare key: treat as category name.
                 filter = SlotFilter.ForCategory(key);
             }
 

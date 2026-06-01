@@ -389,6 +389,32 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         );
     }
 
+    // --- Save/load restore hooks ---
+
+    /// <summary>
+    /// Points this body's StrDb/Oct at geometry rebuilt by the save loader. Must be the same
+    /// StructureDatabase instance assigned to the mesh so runtime cell selection (which reads
+    /// this body's StrDb.PlanetMap) resolves against the rebuilt maps.
+    /// </summary>
+    internal void AttachRestoredGeometry(StructureDatabase strDb, Octree<Point> oct)
+    {
+        this.StrDb = strDb;
+        this.Oct = oct;
+    }
+
+    /// <summary>Previous-frame force for the Verlet fallback path. Ignored while a coordinator is active.</summary>
+    internal Vector3 SavedForce
+    {
+        get => _savedForce;
+        set => _savedForce = value;
+    }
+
+    /// <summary>Restores a saved per-band occupancy count after InitializeOrbitSystem has rebuilt the bands.</summary>
+    internal void SetBandCount(int bandIndex, int count) => _bandSatelliteCounts[bandIndex] = count;
+
+    /// <summary>Read-only view of per-band occupancy counts for serialization.</summary>
+    internal Godot.Collections.Dictionary<int, int> BandCountsSnapshot => _bandSatelliteCounts;
+
     /// <summary>
     /// Increments the satellite count for the specified band.
     /// </summary>
@@ -1057,6 +1083,28 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             "general_transform_scale",
             rng.RandfRange(generalTransformScale[0], generalTransformScale[1])
         );
+        if (definedMesh.ContainsKey("boundary_smoothing_iterations"))
+        {
+            int[] r = (int[])definedMesh["boundary_smoothing_iterations"];
+            tectDict.Add("boundary_smoothing_iterations", rng.RandiRange(r[0], r[1]));
+        }
+        if (definedMesh.ContainsKey("boundary_smoothing_weight"))
+        {
+            float[] r = (float[])definedMesh["boundary_smoothing_weight"];
+            tectDict.Add("boundary_smoothing_weight", rng.RandfRange(r[0], r[1]));
+        }
+        if (definedMesh.ContainsKey("max_continent_rotation"))
+        {
+            float[] r = (float[])definedMesh["max_continent_rotation"];
+            tectDict.Add("max_continent_rotation", rng.RandfRange(r[0], r[1]));
+        }
+        if (definedMesh.ContainsKey("sample_velocity_at_edge_midpoint"))
+        {
+            tectDict.Add(
+                "sample_velocity_at_edge_midpoint",
+                definedMesh["sample_velocity_at_edge_midpoint"].AsBool()
+            );
+        }
         meshParams.Add("tectonic", tectDict);
     }
 
