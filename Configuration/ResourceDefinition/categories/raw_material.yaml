@@ -1,6 +1,7 @@
 resources:
   - id_name: iron
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2
@@ -9,6 +10,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: copper
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 1.4
@@ -17,6 +19,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: gold
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
@@ -25,6 +28,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: nickel
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2
@@ -33,6 +37,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: clay
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 1.2
@@ -41,6 +46,7 @@ resources:
       base_path: "res://Materials/Icons/clay"
   - id_name: silicon
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 0.8
@@ -48,6 +54,7 @@ resources:
       base_path: "res://Materials/Icons/water"
   - id_name: plastic
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 0.5
@@ -56,6 +63,7 @@ resources:
       base_path: "res://Materials/Icons/water"
   - id_name: titanium
     resource_tier: 2
+    base_price: 3000
     state_of_matter: solid
     max_stack_size: 300
     tags: [metal, high_metal, material:titanium]
@@ -63,6 +71,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: tungsten
     resource_tier: 2
+    base_price: 3000
     state_of_matter: solid
     max_stack_size: 300
     transport_weight: 6
@@ -71,6 +80,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: aluminum
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 0.8
@@ -79,6 +89,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: silver
     resource_tier: 2
+    base_price: 3000
     state_of_matter: solid
     max_stack_size: 300
     transport_weight: 1.4
@@ -87,6 +98,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: wood
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 1.2
@@ -95,6 +107,7 @@ resources:
       base_path: "res://Materials/Icons/wood"
   - id_name: lead
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 300
     transport_weight: 5
@@ -103,6 +116,7 @@ resources:
       base_path: "res://Materials/Icons/ingot"
   - id_name: salt
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 1.8
@@ -110,6 +124,7 @@ resources:
       base_path: "res://Materials/Icons/water"
   - id_name: gravel
     resource_tier: 0
+    base_price: 1000
     state_of_matter: solid
     max_stack_size: 499
     transport_weight: 2
@@ -117,6 +132,7 @@ resources:
       base_path: "res://Materials/Icons/gravel"
   - id_name: fiber
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 0.3

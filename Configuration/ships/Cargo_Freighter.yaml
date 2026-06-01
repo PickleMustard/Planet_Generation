@@ -4,10 +4,9 @@ ships:
     cargo_capacity: 1000
     fuel_capacity: 200
     engine_category: Chemical
-    construction_time: 15.0
+    work_required: 15
     required_resources:
-      Steel: 200
-      Electronics: 50
+      aluminum: 50
     icon:
       base_path: "res://Assets/Icons/Ships/freighter/small_freighter"
 
@@ -16,7 +15,7 @@ ships:
     cargo_capacity: 5000
     fuel_capacity: 800
     engine_category: Chemical
-    construction_time: 30.0
+    work_required: 30
     required_resources:
       Steel: 800
       Electronics: 150
@@ -29,7 +28,7 @@ ships:
     cargo_capacity: 30000
     fuel_capacity: 5000
     engine_category: Nuclear
-    construction_time: 60.0
+    work_required: 60
     required_resources:
       Steel: 4000
       Electronics: 500
@@ -43,7 +42,7 @@ ships:
     cargo_capacity: 150000
     fuel_capacity: 25000
     engine_category: Nuclear
-    construction_time: 120.0
+    work_required: 120
     required_resources:
       Steel: 20000
       Electronics: 2000

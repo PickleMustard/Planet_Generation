@@ -69,6 +69,25 @@ public class ResourceDatabaseTest
 
     [TestCase]
     [RequireGodotRuntime]
+    public void BasePriceAndConfigurableValuesParsing()
+    {
+        var db = ResourceDatabase.Instance;
+        db.LoadData();
+        AssertThat(db.IsLoaded).IsTrue();
+
+        // iron_ore (tier 0) seeds base_price 1000 cents and has no configurable values.
+        AssertThat(db.TryGetResource("iron_ore", out var ironOre)).IsTrue();
+        AssertThat(ironOre!.BasePrice).IsEqual(1000);
+        AssertThat(ironOre.ConfigurableValues).IsEmpty();
+
+        // methane carries a developer-set burn_potential.
+        AssertThat(db.TryGetResource("methane", out var methane)).IsTrue();
+        AssertThat(methane!.ConfigurableValues.ContainsKey("burn_potential")).IsTrue();
+        AssertThat(methane.ConfigurableValues["burn_potential"]).IsEqual(30);
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
     public void GeneratableResources()
     {
         var db = ResourceDatabase.Instance;

@@ -6,6 +6,7 @@ using Structures.GameState;
 using Structures.Resources;
 using Structures.Transfers;
 using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 
 namespace Constructables.Stations.Behaviors;
 
@@ -16,7 +17,7 @@ namespace Constructables.Stations.Behaviors;
 /// <see cref="Buildings.Behaviors.TransferStationBehavior"/> but uses
 /// <see cref="StationResourceEndpoint"/> instead of <see cref="Buildings.BuildingResourceEndpoint"/>.
 /// </summary>
-public partial class TransferHubBehavior : RefCounted, IStationBehavior
+public partial class TransferHubBehavior : RefCounted, IStationBehavior, IStationBehaviorConfigurable
 {
     private StationSatellite? _owner;
     private IOrbitalBody? _body;
@@ -28,6 +29,23 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
 
     /// <summary>Transfer station definition parsed from YAML. Set before OnRegister.</summary>
     public TransferStationDefinition? EndpointDef { get; set; }
+
+    /// <summary>
+    /// Applies inline config from the behaviors: YAML block.
+    /// Reads <c>transfer_station</c> sub-dict to populate <see cref="EndpointDef"/>.
+    /// </summary>
+    public void Configure(Dictionary<string, object> config)
+    {
+        if (config.TryGetValue("transfer_station", out var ts) && ts is Dictionary<object, object> tsDict)
+        {
+            EndpointDef = new TransferStationDefinition
+            {
+                CargoCapacity = BaseConfigLoader.ReadFloat(tsDict, "cargo_capacity", 500.0f),
+                VehicleSpeed = BaseConfigLoader.ReadFloat(tsDict, "vehicle_speed", 50.0f),
+                MaxConcurrentTransfers = BaseConfigLoader.ReadInt(tsDict, "max_concurrent_transfers", 2),
+            };
+        }
+    }
 
     public StationSatellite? Owner => _owner;
 
@@ -744,6 +762,35 @@ public partial class TransferHubBehavior : RefCounted, IStationBehavior
     public bool IsTransferActive(string orderId) => _activeTransfers.ContainsKey(orderId);
 
     public IReadOnlyDictionary<string, ActiveTransfer> GetActiveTransfers() => _activeTransfers;
+
+    /// <summary>Accumulated game-time of this behavior's tick. Exposed for save/load.</summary>
+    public double TotalTime => _totalTime;
+
+    /// <summary>
+    /// Rehydrates transfer state from a save: restores the accumulated game-time clock and seeds the
+    /// active-transfer and schedule collections. Call after <see cref="OnRegister"/> so the endpoint
+    /// and origin schedule list already exist. Schedules are keyed by their stored origin id.
+    /// </summary>
+    public void RestoreState(
+        double totalTime,
+        IEnumerable<TransferOrder> activeOrders,
+        IEnumerable<TransferSchedule> schedules)
+    {
+        _totalTime = totalTime;
+
+        foreach (var order in activeOrders)
+            _activeTransfers[order.OrderId] = new ActiveTransfer { Order = order };
+
+        foreach (var schedule in schedules)
+        {
+            if (!_schedulesByOrigin.TryGetValue(schedule.OriginBuildingId, out var list))
+            {
+                list = new List<TransferSchedule>();
+                _schedulesByOrigin[schedule.OriginBuildingId] = list;
+            }
+            list.Add(schedule);
+        }
+    }
 
     public IReadOnlyList<TransferSchedule> GetAllSchedules()
     {

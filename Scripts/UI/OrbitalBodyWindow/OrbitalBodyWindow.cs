@@ -69,6 +69,14 @@ public partial class OrbitalBodyWindow : Control
     /// <summary>The body currently being inspected, or null.</summary>
     public IOrbitalBody? CurrentBody => _currentBody;
 
+    /// <summary>
+    /// When true, the window ignores all input (drag / cell-select). Set by the
+    /// placement overlay while placing on the inspected body so the placement
+    /// click isn't also consumed as a camera drag or cell selection. The window
+    /// stays visible throughout.
+    /// </summary>
+    public bool InteractionSuspended { get; set; }
+
     [Signal]
     public delegate void WindowCloseRequestedEventHandler();
 
@@ -224,6 +232,11 @@ public partial class OrbitalBodyWindow : Control
     public override void _UnhandledInput(InputEvent @event)
     {
         if (!IsOpen)
+            return;
+
+        // Placement overlay owns input while placing on this body — ignore
+        // drag/cell-select so the placement click isn't double-handled.
+        if (InteractionSuspended)
             return;
 
         // Escape handling moved to GUIManager - emit signal instead

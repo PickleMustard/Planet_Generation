@@ -22,8 +22,17 @@ public partial class BuildingPlacementMode : Node
     [Signal]
     public delegate void PlacementCancelledEventHandler();
 
+    /// <summary>
+    /// When true, the placement reticle follows the mouse cursor instead of the
+    /// screen center. Used when placing over the Orbital Body Window (cursor
+    /// visible, body off-center). Defaults false → classic captured-mouse,
+    /// center-reticle behavior.
+    /// </summary>
+    public bool UseMousePosition { get; set; }
+
     private BuildingDefinition _definition = null!;
     private Camera3D? _camera;
+    private Node3D? _targetBodyNode;
     private Node3D? _ghostContainer;
     private Node3D? _ghostNode;
     private VoronoiCell? _hoveredCell;
@@ -44,9 +53,17 @@ public partial class BuildingPlacementMode : Node
     private bool _previewWarningEmitted;
     private int _gridRadius;
 
-    public void Initialize(BuildingDefinition definition)
+    /// <summary>
+    /// <paramref name="targetBody"/> locks placement to one body (the inspected
+    /// body when launched from the Orbital Body Window, or the aimed body from
+    /// the HUD). When set, raycast hits on any other body are ignored so the
+    /// reticle can't wander onto a background planet. Mirrors
+    /// <see cref="StationPlacementMode"/>'s body lock.
+    /// </summary>
+    public void Initialize(BuildingDefinition definition, IOrbitalBody? targetBody = null)
     {
         _definition = definition;
+        _targetBodyNode = targetBody as Node3D;
         _isActive = true;
         _lastCameraTransform = default;
 
@@ -98,7 +115,9 @@ public partial class BuildingPlacementMode : Node
             if (mouseButton.ButtonIndex == MouseButton.Left)
             {
                 OnPlacementClick();
-                //GetViewport().SetInputAsHandled();
+                // Consume the click so neither HudState (HUD launch) nor the
+                // Orbital Body Window (in-window launch) also reacts to it.
+                GetViewport().SetInputAsHandled();
             }
         }
 
@@ -129,10 +148,12 @@ public partial class BuildingPlacementMode : Node
     private void CastRayFromScreenCenter()
     {
         var viewport = GetViewport();
-        var screenCenter = viewport.GetVisibleRect().Size / 2.0f;
+        var aimPoint = UseMousePosition
+            ? viewport.GetMousePosition()
+            : viewport.GetVisibleRect().Size / 2.0f;
 
-        Vector3 origin = _camera!.ProjectRayOrigin(screenCenter);
-        Vector3 direction = origin + _camera.ProjectRayNormal(screenCenter) * 1000f;
+        Vector3 origin = _camera!.ProjectRayOrigin(aimPoint);
+        Vector3 direction = origin + _camera.ProjectRayNormal(aimPoint) * 1000f;
 
         var query = PhysicsRayQueryParameters3D.Create(origin, direction);
         query.CollideWithAreas = true;
@@ -151,6 +172,14 @@ public partial class BuildingPlacementMode : Node
         var selectableBody = FindSelectableBody(collider);
 
         if (selectableBody == null)
+        {
+            ClearHover();
+            return;
+        }
+
+        // Lock to the chosen body: ignore hits on anything else so placement
+        // stays on the body the player selected/inspected.
+        if (_targetBodyNode != null && (Node3D)selectableBody != _targetBodyNode)
         {
             ClearHover();
             return;

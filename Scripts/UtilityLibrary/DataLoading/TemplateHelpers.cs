@@ -429,7 +429,7 @@ public static class TemplateHelpers
     private static Dictionary LoadTectonics(Dictionary raw)
     {
         var result = new Dictionary();
-        string[] intRangeKeys = { "num_continents" };
+        string[] intRangeKeys = { "num_continents", "boundary_smoothing_iterations" };
         string[] floatRangeKeys =
         {
             "stress_scale",
@@ -441,7 +441,10 @@ public static class TemplateHelpers
             "general_shear_scale",
             "general_compression_scale",
             "general_transform_scale",
+            "boundary_smoothing_weight",
+            "max_continent_rotation",
         };
+        string[] boolKeys = { "sample_velocity_at_edge_midpoint" };
 
         foreach (var key in intRangeKeys)
         {
@@ -458,6 +461,14 @@ public static class TemplateHelpers
             {
                 var range = ReadFloatRange(raw, key, (0f, 1f));
                 result[key] = new float[] { range.Item1, range.Item2 };
+            }
+        }
+
+        foreach (var key in boolKeys)
+        {
+            if (raw.TryGetValue(key, out var v))
+            {
+                result[key] = v.AsBool();
             }
         }
 

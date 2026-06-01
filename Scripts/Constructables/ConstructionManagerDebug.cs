@@ -124,7 +124,7 @@ public partial class ConstructionManager : IDebugDataProvider
                 $"[color=green]Station '{station.Name}' construction started in band {bandIndex} on '{Name}'[/color]"
             );
             ctx.WriteLine($"Template: {stationDef.Name} | Type: {stationDef.StationType} | Time: {stationDef.ConstructionTime}s");
-            ctx.WriteLine($"Can build ships: {stationDef.CanBuildShips}");
+            ctx.WriteLine($"Can build ships: {stationDef.HasBehavior("ShipyardBehavior")}");
         }
         else
         {
@@ -253,7 +253,7 @@ public partial class ConstructionManager : IDebugDataProvider
                 ctx.WriteError($"Ship template '{templateName}' not found. Available templates:");
                 var allShips = ShipDatabase.Instance.GetAllShips().Values;
                 foreach (var s in allShips)
-                    ctx.WriteLine($"  {s.Name} ({s.DryMass}kg, {s.ConstructionTime}s)");
+                    ctx.WriteLine($"  {s.Name} ({s.DryMass}kg, {s.WorkRequired:F0} work)");
                 return 1;
             }
         }
@@ -261,10 +261,57 @@ public partial class ConstructionManager : IDebugDataProvider
         // Generate name if not provided
         name ??= NameGenerator.GenerateShipName();
 
+        // Find a station with ShipyardBehavior on this body, or create a bare ship
+        Godot.Collections.Array<Godot.Node> satellites;
+        if (body.SatellitesContainer != null)
+            satellites = body.SatellitesContainer.GetChildren();
+        else
+            satellites = new Godot.Collections.Array<Godot.Node>();
+        StationSatellite? shipyardStation = null;
+        ShipyardBehavior? shipyard = null;
+        foreach (var child in satellites)
+        {
+            if (child is StationSatellite station)
+            {
+                var yard = station.GetBehavior<ShipyardBehavior>();
+                if (yard != null)
+                {
+                    shipyardStation = station;
+                    shipyard = yard;
+                    break;
+                }
+            }
+        }
+
         LogisticsUnit ship;
         try
         {
-            ship = CreateLogisticsUnit(body, bandIndex.Value, name, shipDef);
+            if (shipDef != null && shipyard != null && shipyardStation != null)
+            {
+                // Use ShipyardBehavior for ships with definitions
+                ship = shipyard.CreateAndEnqueueShip(body, bandIndex.Value, shipDef, name);
+            }
+            else
+            {
+                // Bare instant spawn (no construction mode)
+                ship = new LogisticsUnit { Name = name };
+                body.SatellitesContainer.AddChild(ship);
+                ship.Initialize(body, bandIndex.Value);
+                ship.InitializeCargo();
+
+                if (shipDef != null)
+                {
+                    ship.SetShipDefinition(shipDef);
+                    ship.SetFuelCapacity(shipDef.FuelCapacity);
+                    ship.SetDryMass(shipDef.DryMass);
+                }
+                else
+                {
+                    ship.SetFuelCapacity(1000f);
+                }
+
+                body.IncrementBandCount(bandIndex.Value);
+            }
         }
         catch (Exception ex)
         {
@@ -283,7 +330,7 @@ public partial class ConstructionManager : IDebugDataProvider
             ctx.WriteLine(
                 $"[color=green]Ship '{ship.Name}' construction started in band {bandIndex.Value} on '{Name}'[/color]"
             );
-            ctx.WriteLine($"Template: {shipDef.Name} | Mass: {shipDef.DryMass}kg | Time: {shipDef.ConstructionTime}s");
+            ctx.WriteLine($"Template: {shipDef.Name} | Mass: {shipDef.DryMass}kg | Work: {shipDef.WorkRequired:F0}");
         }
         else
         {
@@ -307,10 +354,9 @@ public partial class ConstructionManager : IDebugDataProvider
     public int ConstructionStatusCommand(CommandContext ctx, string[] args)
     {
         var stations = _stationsUnderConstruction;
-        var ships = _shipsUnderConstruction;
         var buildings = _buildingsUnderConstruction;
 
-        if (stations.Count == 0 && ships.Count == 0 && buildings.Count == 0)
+        if (stations.Count == 0 && buildings.Count == 0)
         {
             ctx.WriteLine("No items under construction.");
             return 0;
@@ -331,17 +377,6 @@ public partial class ConstructionManager : IDebugDataProvider
                     _ => ""
                 };
                 ctx.WriteLine($"  {station.Name} - {station.GetStatus()} ({progress:F1}%) Band {station.BandIndex}{typeInfo}");
-            }
-        }
-
-        if (ships.Count > 0)
-        {
-            ctx.WriteLine($"[color=yellow]Ships ({ships.Count}):[/color]");
-            foreach (var ship in ships)
-            {
-                float progress = ship.GetProgress() * 100f;
-                string parent = ship.ConstructingStation != null ? $" @ {ship.ConstructingStation.Name}" : "";
-                ctx.WriteLine($"  {ship.Name} - {ship.GetStatus()} ({progress:F1}%) Band {ship.BandIndex}{parent}");
             }
         }
 
@@ -383,7 +418,6 @@ public partial class ConstructionManager : IDebugDataProvider
     DebugDataNode IDataProvider.GetData()
     {
         var node = new DebugDataNode(Name.ToString())
-            .AddProperty("# Ships in Construction", _shipsUnderConstruction.Count)
             .AddProperty("# Stations in Construction", _stationsUnderConstruction.Count)
             .AddProperty("# Buildings in Construction", _buildingsUnderConstruction.Count);
 

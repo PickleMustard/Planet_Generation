@@ -20,6 +20,20 @@ public class ResourceDefinition
     public int ResourceTier { get; set; }
 
     /// <summary>
+    /// Starting market price in hundredths of a currency unit (cents). Stored as an
+    /// integer to avoid floating-point math; the two least-significant digits are the
+    /// decimal portion (e.g. 1050 displays as 10.50).
+    /// </summary>
+    public int BasePrice { get; set; }
+
+    /// <summary>
+    /// Optional sub-system tuning values, keyed by free-form name (e.g. burn_potential,
+    /// nutrition). Values are integers. Only set explicitly by the developer — never
+    /// auto-assigned during generation.
+    /// </summary>
+    public Dictionary<string, int> ConfigurableValues { get; set; } = new();
+
+    /// <summary>
     /// The category or type classification of the resource.
     /// </summary>
     public string? ResourceType { get; set; }

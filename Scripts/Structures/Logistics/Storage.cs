@@ -258,6 +258,54 @@ public partial class Storage : Resource
         return total;
     }
 
+    /// <summary>
+    /// Repopulates slot contents from a saved snapshot (resource id → whole units). Units are
+    /// placed into existing accepting slots first; any remainder gets fresh resource-locked slots
+    /// sized to the resource's MaxStackSize. Used by the save/load system — the fractional buffer
+    /// is intentionally not restored. Slots created here mirror the resource-locked slots that a
+    /// running recipe / storage hub would have produced, so capacity is not artificially inflated.
+    /// </summary>
+    public void RestoreContents(IReadOnlyDictionary<string, int> quantities)
+    {
+        if (quantities == null)
+            return;
+
+        foreach (var kv in quantities)
+        {
+            string id = kv.Key;
+            int qty = kv.Value;
+            if (string.IsNullOrEmpty(id) || qty <= 0)
+                continue;
+
+            int free = GetFreeSpace(id);
+            int intoExisting = System.Math.Min(free, qty);
+            if (intoExisting > 0)
+            {
+                Deposit(id, intoExisting);
+                qty -= intoExisting;
+            }
+
+            if (qty <= 0)
+                continue;
+
+            var def = ResolveResource(id);
+            int stackSize = def?.MaxStackSize ?? StorageSlot.FallbackCapacity;
+            if (stackSize <= 0)
+                stackSize = StorageSlot.FallbackCapacity;
+
+            while (qty > 0)
+            {
+                int amt = System.Math.Min(stackSize, qty);
+                AddSlot(new StorageSlot(SlotFilter.ForResource(id))
+                {
+                    OccupiedResourceId = id,
+                    Quantity = amt,
+                });
+                qty -= amt;
+            }
+        }
+    }
+
     public IReadOnlyDictionary<string, int> GetAllQuantities()
     {
         var result = new Dictionary<string, int>();

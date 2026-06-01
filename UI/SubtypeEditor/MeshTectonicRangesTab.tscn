@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://UI/SubtypeEditor/MeshTectonicRangesTab.cs" id="1"]
 
-[node name="MeshTectonicRangesTab" type="ScrollContainer" node_paths=PackedStringArray("_meshHeader", "_meshRows", "_vpeHeader", "_vpeCountSpin", "_vpeRowsContainer", "_tectonicHeader", "_tectRows")]
+[node name="MeshTectonicRangesTab" type="ScrollContainer" node_paths=PackedStringArray("_meshHeader", "_meshRows", "_vpeHeader", "_vpeCountSpin", "_vpeRowsContainer", "_tectonicHeader", "_tectRows", "_sampleVelocityRow", "_sampleVelocityCheck")]
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("1")
@@ -13,6 +13,8 @@ _vpeCountSpin = NodePath("Container/VpeCountRow/VpeCountSpin")
 _vpeRowsContainer = NodePath("Container/VpeRowsContainer")
 _tectonicHeader = NodePath("Container/TectonicHeader")
 _tectRows = NodePath("Container/TectRows")
+_sampleVelocityRow = NodePath("Container/SampleVelocityRow")
+_sampleVelocityCheck = NodePath("Container/SampleVelocityRow/SampleVelocityCheck")
 
 [node name="Container" type="VBoxContainer" parent="."]
 layout_mode = 2
@@ -68,3 +70,15 @@ theme_override_colors/font_color = Color(0.95, 0.85, 0.5, 1)
 [node name="TectRows" type="VBoxContainer" parent="Container"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="SampleVelocityRow" type="HBoxContainer" parent="Container"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SampleVelocityLabel" type="Label" parent="Container/SampleVelocityRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "Sample Velocity At Edge Midpoint"
+
+[node name="SampleVelocityCheck" type="CheckBox" parent="Container/SampleVelocityRow"]
+layout_mode = 2

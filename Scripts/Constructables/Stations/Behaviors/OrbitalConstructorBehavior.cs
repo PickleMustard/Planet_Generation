@@ -20,7 +20,7 @@ namespace Constructables.Stations.Behaviors;
 /// where N is the count of currently-occupied overtime slots. The multiplier is recomputed
 /// every tick so it tracks live occupancy. Regular slots are never affected.
 /// </summary>
-public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior
+public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, IStationBehaviorConfigurable
 {
     public sealed class SlotRecord
     {
@@ -44,6 +44,23 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior
 
     /// <summary>Per-occupied-overtime-slot resource cost multiplier increment.</summary>
     public float OvertimeCostPercent { get; set; } = 0.10f;
+
+    /// <summary>
+    /// Applies inline config from the behaviors: YAML block.
+    /// Reads <c>work_budget_per_tick</c>, <c>regular_slots</c>,
+    /// <c>overtime_slots</c>, and <c>overtime_cost_percent</c>.
+    /// </summary>
+    public void Configure(Dictionary<string, object> config)
+    {
+        if (config.TryGetValue("work_budget_per_tick", out var wbp))
+            WorkBudgetPerTick = System.Convert.ToSingle(wbp);
+        if (config.TryGetValue("regular_slots", out var rs))
+            RegularSlotCount = System.Convert.ToInt32(rs);
+        if (config.TryGetValue("overtime_slots", out var os))
+            SetOvertimeTarget(System.Convert.ToInt32(os));
+        if (config.TryGetValue("overtime_cost_percent", out var ocp))
+            OvertimeCostPercent = System.Convert.ToSingle(ocp);
+    }
 
     private readonly List<SlotRecord> _regularSlots = new();
     private readonly List<SlotRecord> _overtimeSlots = new();

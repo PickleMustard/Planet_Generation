@@ -4,7 +4,7 @@ ships:
     cargo_capacity: 30000
     fuel_capacity: 8000
     engine_category: Nuclear
-    construction_time: 90.0
+    work_required: 90
     required_resources:
       Steel: 8000
       Electronics: 1000
@@ -18,7 +18,7 @@ ships:
     cargo_capacity: 200000
     fuel_capacity: 40000
     engine_category: Nuclear
-    construction_time: 180.0
+    work_required: 180
     required_resources:
       Steel: 40000
       Electronics: 5000
@@ -32,7 +32,7 @@ ships:
     cargo_capacity: 1000000
     fuel_capacity: 200000
     engine_category: Fusion
-    construction_time: 360.0
+    work_required: 360
     required_resources:
       Steel: 200000
       Electronics: 25000
@@ -46,7 +46,7 @@ ships:
     cargo_capacity: 150000
     fuel_capacity: 100000
     engine_category: Fusion
-    construction_time: 240.0
+    work_required: 240
     required_resources:
       Steel: 100000
       Electronics: 15000

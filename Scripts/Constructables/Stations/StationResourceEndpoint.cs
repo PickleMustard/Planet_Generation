@@ -19,7 +19,17 @@ public sealed class StationResourceEndpoint : IResourceEndpoint
     public StationSatellite Owner => _owner;
 
     public int DepositResource(string resourceId, float amount)
-        => _owner.BulkStorage.Deposit(resourceId, amount);
+    {
+        if (_owner.IsUnderConstruction)
+        {
+            int wholeAmount = Mathf.FloorToInt(amount);
+            if (wholeAmount > 0)
+                _owner.DeliverResources(resourceId, wholeAmount);
+            _owner.BulkStorage.Deposit(resourceId, amount);
+            return wholeAmount;
+        }
+        return _owner.BulkStorage.Deposit(resourceId, amount);
+    }
 
     public int WithdrawResource(string resourceId, int amount)
         => _owner.BulkStorage.Withdraw(resourceId, amount);

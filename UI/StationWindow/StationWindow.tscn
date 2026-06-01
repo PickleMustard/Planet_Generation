@@ -1,14 +1,15 @@
-[gd_scene load_steps=7 format=3 uid="uid://tejc44gqclpv"]
+[gd_scene format=3 uid="uid://tejc44gqclpv"]
 
 [ext_resource type="Script" uid="uid://vpk3thqhttuu" path="res://Scripts/UI/StationWindow/StationWindow.cs" id="1_window"]
-[ext_resource type="Script" path="res://Scripts/UI/StationWindow/StationOrbitCamera.cs" id="2_orbitcam"]
-[ext_resource type="PackedScene" uid="uid://station_cartouche_panel" path="res://UI/StationWindow/StationCartouchePanel.tscn" id="3_cartouche"]
+[ext_resource type="Script" uid="uid://coiqxxk8uan2f" path="res://Scripts/UI/StationWindow/StationOrbitCamera.cs" id="2_orbitcam"]
+[ext_resource type="PackedScene" uid="uid://b33x5giscukws" path="res://UI/StationWindow/StationCartouchePanel.tscn" id="3_cartouche"]
 [ext_resource type="Script" uid="uid://nxjrnvar72a2" path="res://Scripts/UI/StationWindow/StationTabbedPanel.cs" id="4_tabbed"]
-[ext_resource type="PackedScene" uid="uid://station_behavior_tab" path="res://UI/StationWindow/StationBehaviorTab.tscn" id="5_behavior_tab"]
+[ext_resource type="PackedScene" uid="uid://u2h5jpagw5gp" path="res://UI/Components/FilterableSidebar.tscn" id="5_fwb1k"]
 [ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="6_theme"]
 [ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="7_elite"]
+[ext_resource type="PackedScene" uid="uid://bqg7n2x8klm3p" path="res://UI/StationWindow/StationGenericPanel.tscn" id="7_fwb1k"]
 
-[node name="StationWindow" type="Control" node_paths=PackedStringArray("_closeButton", "_backButton", "_cartouchePanel", "_tabbedPanel", "_orbitCamera")]
+[node name="StationWindow" type="Control" unique_id=1675658805 node_paths=PackedStringArray("_closeButton", "_backButton", "_cartouchePanel", "_tabbedPanel", "_orbitCamera", "_sidebar")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -23,11 +24,12 @@ _backButton = NodePath("BackButton")
 _cartouchePanel = NodePath("StationCartouchePanel")
 _tabbedPanel = NodePath("StationTabbedPanel")
 _orbitCamera = NodePath("StationOrbitCamera")
+_sidebar = NodePath("StationSidebar")
 
-[node name="StationOrbitCamera" type="Node" parent="."]
+[node name="StationOrbitCamera" type="Node" parent="." unique_id=1329383069]
 script = ExtResource("2_orbitcam")
 
-[node name="StationCartouchePanel" parent="." instance=ExtResource("3_cartouche")]
+[node name="StationCartouchePanel" parent="." unique_id=1527257939 instance=ExtResource("3_cartouche")]
 layout_mode = 1
 anchors_preset = 0
 anchor_right = 0.0
@@ -39,11 +41,20 @@ offset_bottom = 376.0
 grow_horizontal = 1
 grow_vertical = 1
 
-[node name="StationTabbedPanel" type="PanelContainer" parent="." node_paths=PackedStringArray()]
+[node name="StationSidebar" parent="." unique_id=1193007207 instance=ExtResource("5_fwb1k")]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.25
+anchor_right = 0.34
+offset_top = 16.0
+offset_right = 8.0
+offset_bottom = -16.0
+grow_horizontal = 0
+
+[node name="StationTabbedPanel" type="PanelContainer" parent="." unique_id=287218175 node_paths=PackedStringArray("_tabContainer")]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.3333
-anchor_top = 0.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
@@ -51,27 +62,32 @@ offset_top = 16.0
 offset_right = -16.0
 offset_bottom = -16.0
 mouse_filter = 1
+theme = ExtResource("6_theme")
 theme_type_variation = &"PaperPanel"
 script = ExtResource("4_tabbed")
-_behaviorTabScene = ExtResource("5_behavior_tab")
+_tabContainer = NodePath("MarginContainer/HBoxContainer/StationTabs")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="StationTabbedPanel"]
+[node name="MarginContainer" type="MarginContainer" parent="StationTabbedPanel" unique_id=154121982]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme = ExtResource("6_theme")
+theme_override_constants/margin_top = 40
 
-[node name="TabBar" type="HBoxContainer" parent="StationTabbedPanel/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="StationTabbedPanel/MarginContainer" unique_id=1604374051]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme = ExtResource("6_theme")
 
-[node name="HSepTab" type="HSeparator" parent="StationTabbedPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="TabBodyContainer" type="VBoxContainer" parent="StationTabbedPanel/VBoxContainer"]
+[node name="StationTabs" type="TabContainer" parent="StationTabbedPanel/MarginContainer/HBoxContainer" unique_id=1596202336]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme = ExtResource("6_theme")
+current_tab = 0
 
-[node name="CloseButton" type="Button" parent="."]
+[node name="StationGenericPanel" parent="StationTabbedPanel/MarginContainer/HBoxContainer/StationTabs" unique_id=2081622176 instance=ExtResource("7_fwb1k")]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="CloseButton" type="Button" parent="." unique_id=1767340687]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -86,7 +102,8 @@ theme_override_fonts/font = ExtResource("7_elite")
 theme_override_font_sizes/font_size = 20
 text = "✕"
 
-[node name="BackButton" type="Button" parent="."]
+[node name="BackButton" type="Button" parent="." unique_id=217185871]
+visible = false
 layout_mode = 0
 offset_left = 16.0
 offset_top = 16.0
@@ -94,4 +111,5 @@ offset_right = 96.0
 offset_bottom = 56.0
 tooltip_text = "Back one panel"
 text = "← Back"
-visible = false
+
+[editable path="StationSidebar"]

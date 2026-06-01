@@ -1,6 +1,7 @@
 resources:
   - id_name: low_voltage_wire
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial]
@@ -8,6 +9,7 @@ resources:
       base_path: "res://Materials/Icons/wire"
   - id_name: high_voltage_wire
     resource_tier: 2
+    base_price: 3000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial]
@@ -15,6 +17,7 @@ resources:
       base_path: "res://Materials/Icons/wire"
   - id_name: superconductive_wire
     resource_tier: 3
+    base_price: 4000
     state_of_matter: solid
     max_stack_size: 100
     tags: [electronic, industrial]

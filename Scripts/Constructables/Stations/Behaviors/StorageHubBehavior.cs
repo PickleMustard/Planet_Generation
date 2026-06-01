@@ -13,7 +13,7 @@ namespace Constructables.Stations.Behaviors;
 /// <see cref="SlotFilter.Any"/>. Storage population is one-time setup —
 /// <see cref="WantsTick"/> returns <c>false</c>.
 /// </summary>
-public partial class StorageHubBehavior : RefCounted, IStationBehavior
+public partial class StorageHubBehavior : RefCounted, IStationBehavior, IStationBehaviorConfigurable, IStationBehaviorDisplay
 {
     private StationSatellite? _owner;
     private readonly List<StorageSlot> _addedSlots = new();
@@ -27,6 +27,18 @@ public partial class StorageHubBehavior : RefCounted, IStationBehavior
     /// <see cref="SlotFilter.Any"/>.
     /// </summary>
     public List<SlotFilterSpec> SlotFilters { get; set; } = new();
+
+    /// <summary>
+    /// Applies inline config from the behaviors: YAML block.
+    /// Reads <c>storage_capacity</c> and <c>slot_filters</c>.
+    /// </summary>
+    public void Configure(Dictionary<string, object> config)
+    {
+        if (config.TryGetValue("storage_capacity", out var sc))
+            StorageCapacity = System.Convert.ToInt32(sc);
+        if (config.TryGetValue("slot_filters", out var sf) && sf is Dictionary<object, object> filtersDict)
+            SlotFilters = UtilityLibrary.DataLoading.StationConfigLoader.ParseSlotFiltersFromConfig(filtersDict);
+    }
 
     public StationSatellite? Owner => _owner;
 
@@ -75,4 +87,16 @@ public partial class StorageHubBehavior : RefCounted, IStationBehavior
 
     public bool WantsTick => false;
     public int Priority => 0;
+
+    // --- IStationBehaviorDisplay ---
+
+    public string TabLabel => "Storage";
+
+    public bool ShowStorageGrid => true;
+
+    public IEnumerable<(string Key, string Value)> GetDisplayRows()
+    {
+        yield return ("Slot Capacity", StorageCapacity.ToString());
+        yield return ("Filter Specs", SlotFilters.Count.ToString());
+    }
 }

@@ -201,6 +201,58 @@ public class BoardLayoutEngineTest
         AssertThat(result.NewCircleRadius).IsGreaterEqual(originalRadius);
     }
 
+    // ── Station ring tests ──────────────────────────────────────────
+
+    [TestCase]
+    public void ComputeStationRings_EmptyList_ReturnsEmpty()
+    {
+        var layout = LayoutEngine.ComputeStationRings(new List<StationSatellite>(), 100f);
+
+        AssertThat(layout.Positions.Count).IsEqual(0);
+        AssertThat(layout.RingRadii.Count).IsEqual(0);
+    }
+
+    [TestCase]
+    public void ComputeStationRings_DistinctBands_PlacedOnSeparateRings()
+    {
+        // Bands 0 and 5 → two ring ordinals (0,1) regardless of the raw band gap.
+        var inner = new StationSatellite { BandIndex = 0 };
+        var outerA = new StationSatellite { BandIndex = 5 };
+        var outerB = new StationSatellite { BandIndex = 5 };
+
+        var layout = LayoutEngine.ComputeStationRings(
+            new List<StationSatellite> { inner, outerA, outerB }, 100f);
+
+        float baseR = LayoutEngine.ComputeStationRingRadius(100f);
+        float ring1 = baseR + LayoutEngine.RingSpacing;
+
+        AssertThat(layout.RingRadii.Count).IsEqual(2);
+        AssertThat(Mathf.IsEqualApprox(layout.RingRadii[0], baseR, 0.5f)).IsTrue();
+        AssertThat(Mathf.IsEqualApprox(layout.RingRadii[1], ring1, 0.5f)).IsTrue();
+
+        // Band 0 sits on the inner ring; band 5 on the outer ring.
+        AssertThat(Mathf.IsEqualApprox(layout.Positions[inner].Length(), baseR, 0.5f)).IsTrue();
+        AssertThat(Mathf.IsEqualApprox(layout.Positions[outerA].Length(), ring1, 0.5f)).IsTrue();
+        AssertThat(Mathf.IsEqualApprox(layout.Positions[outerB].Length(), ring1, 0.5f)).IsTrue();
+
+        // Two stations sharing a band are spread apart, not stacked.
+        AssertThat(layout.Positions[outerA].DistanceTo(layout.Positions[outerB])).IsGreater(1f);
+    }
+
+    [TestCase]
+    public void ComputeStationRings_SingleBand_OneRing()
+    {
+        var s1 = new StationSatellite { BandIndex = 2 };
+        var s2 = new StationSatellite { BandIndex = 2 };
+
+        var layout = LayoutEngine.ComputeStationRings(new List<StationSatellite> { s1, s2 }, 100f);
+
+        float baseR = LayoutEngine.ComputeStationRingRadius(100f);
+        AssertThat(layout.RingRadii.Count).IsEqual(1);
+        AssertThat(Mathf.IsEqualApprox(layout.Positions[s1].Length(), baseR, 0.5f)).IsTrue();
+        AssertThat(Mathf.IsEqualApprox(layout.Positions[s2].Length(), baseR, 0.5f)).IsTrue();
+    }
+
     // ── Geometry helper tests (pure unit tests) ─────────────────────
 
     [TestCase]

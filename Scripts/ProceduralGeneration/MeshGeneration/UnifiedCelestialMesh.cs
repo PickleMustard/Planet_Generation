@@ -122,13 +122,13 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Dictionary of continents indexed by their starting cell index.
     /// Populated after mesh generation with tectonics enabled.
     /// </summary>
-    public Dictionary<int, Continent>? Continents { get; private set; }
+    public Dictionary<int, Continent>? Continents { get; internal set; }
 
     /// <summary>
     /// The detected generation type based on configuration parameters.
     /// Determines which pipeline will be used for mesh generation.
     /// </summary>
-    public BodyGenerationType GenerationType { get; private set; }
+    public BodyGenerationType GenerationType { get; internal set; }
 
     [ExportCategory("Planet Generation")]
     [ExportGroup("Mesh Generation")]
@@ -341,6 +341,37 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     [Export]
     public float GeneralTransformScale = 1.1f;
 
+    /// <summary>
+    /// Number of Laplacian smoothing iterations applied to per-edge boundary stress
+    /// after raw stress is computed. 0 disables smoothing entirely; higher values
+    /// trade boundary feature sharpness for vertex-to-vertex continuity along ridges.
+    /// </summary>
+    [Export]
+    public int BoundaryStressSmoothingIterations = 3;
+
+    /// <summary>
+    /// Blend weight in [0,1] for each smoothing iteration. 0 = no blending,
+    /// 1 = fully replace each edge's stress with its neighbor mean each pass.
+    /// </summary>
+    [Export]
+    public float BoundaryStressSmoothingWeight = 0.2f;
+
+    /// <summary>
+    /// When true, samples each plate's velocity field at the shared edge midpoint
+    /// rather than using bulk per-cell MovementDirection. Removes a major source of
+    /// stress discontinuity between vertex-adjacent boundary edges.
+    /// </summary>
+    [Export]
+    public bool SampleVelocityAtEdgeMidpoint = true;
+
+    /// <summary>
+    /// Maximum absolute continent rotation (degrees). Rotation is sampled uniformly
+    /// in [-MaxContinentRotation, +MaxContinentRotation]. Caps the ω × r contribution
+    /// to per-cell movement so extreme rotational outliers do not dominate stress.
+    /// </summary>
+    [Export]
+    public float MaxContinentRotation = 60f;
+
     [ExportCategory("Asteroid Generation")]
     [ExportGroup("Scaling Settings")]
     /// <summary>
@@ -467,7 +498,13 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     {
         if (_placementImage == null || _placementWidth != width || _placementHeight != height)
         {
-            _placementImage = Image.CreateFromData(width, height, false, Image.Format.R8, perCellCode);
+            _placementImage = Image.CreateFromData(
+                width,
+                height,
+                false,
+                Image.Format.R8,
+                perCellCode
+            );
             if (_placementTexture == null)
                 _placementTexture = ImageTexture.CreateFromImage(_placementImage);
             else
@@ -664,7 +701,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 InactiveStressThreshold,
                 GeneralHeightScale,
                 GeneralShearScale,
-                GeneralCompressionScale
+                GeneralCompressionScale,
+                BoundaryStressSmoothingIterations,
+                BoundaryStressSmoothingWeight,
+                SampleVelocityAtEdgeMidpoint
             );
         }
 
@@ -1216,7 +1256,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 GameLogger.EnterFunction("AssignGeothermalVents", "");
                 try
                 {
-                    if (StrDb == null || StrDb.VoronoiCells == null || StrDb.VoronoiCells.Count == 0)
+                    if (
+                        StrDb == null
+                        || StrDb.VoronoiCells == null
+                        || StrDb.VoronoiCells.Count == 0
+                    )
                     {
                         GameLogger.ExitFunction("AssignGeothermalVents", "Skipped - no cells");
                         return 0;
@@ -1391,9 +1435,16 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// </summary>
     private static float ReadBandScale(Godot.Collections.Dictionary shConfig, string key)
     {
-        if (!shConfig.ContainsKey(key)) return -1f;
-        try { return (float)shConfig[key]; }
-        catch { return -1f; }
+        if (!shConfig.ContainsKey(key))
+            return -1f;
+        try
+        {
+            return (float)shConfig[key];
+        }
+        catch
+        {
+            return -1f;
+        }
     }
 
     private BodyGenerationType DetectGenerationType(Godot.Collections.Dictionary meshParams)
@@ -1650,6 +1701,43 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         }
                         catch { }
                     }
+                    if (tect.ContainsKey("boundary_smoothing_iterations"))
+                    {
+                        try
+                        {
+                            BoundaryStressSmoothingIterations = tect[
+                                "boundary_smoothing_iterations"
+                            ]
+                                .As<int>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("boundary_smoothing_weight"))
+                    {
+                        try
+                        {
+                            BoundaryStressSmoothingWeight = tect["boundary_smoothing_weight"]
+                                .As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("sample_velocity_at_edge_midpoint"))
+                    {
+                        try
+                        {
+                            SampleVelocityAtEdgeMidpoint = tect["sample_velocity_at_edge_midpoint"]
+                                .As<bool>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("max_continent_rotation"))
+                    {
+                        try
+                        {
+                            MaxContinentRotation = tect["max_continent_rotation"].As<float>();
+                        }
+                        catch { }
+                    }
                 }
             }
             catch { }
@@ -1791,7 +1879,12 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 foreach (Point p in cell.Points)
                 {
                     float latitude = p.Position.Normalized().Y;
-                    p.Biome = _biomeAssigner.AssignBiome(this, p.Height, c.averageMoisture, latitude);
+                    p.Biome = _biomeAssigner.AssignBiome(
+                        this,
+                        p.Height,
+                        c.averageMoisture,
+                        latitude
+                    );
                 }
                 cell.CalculateCellBiome();
             }
@@ -1908,7 +2001,8 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 crustType == Continent.CRUST_TYPE.Oceanic
                     ? rand.RandfRange(-10.0f, -3.0f)
                     : rand.RandfRange(1.2f, 7.0f);
-            float rotation = Mathf.DegToRad(rand.RandiRange(-360, 360));
+            float rotationCapDeg = Mathf.Max(0f, MaxContinentRotation);
+            float rotation = Mathf.DegToRad(rand.RandfRange(-rotationCapDeg, rotationCapDeg));
             float velocity = rand.RandfRange(0.3f, 1.7f);
             var continent = new Continent(
                 startingCellIndex,
@@ -2037,17 +2131,20 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         // Normalize cell heights into [0, 1] for placement-constraint comparisons.
         // Raw Height stays in world units for tectonics; NormalizedHeight is what
         // YAML min_elevation/max_elevation values match against.
-        float minH = float.MaxValue, maxH = float.MinValue;
+        float minH = float.MaxValue,
+            maxH = float.MinValue;
         for (int i = 0; i < neighborChart.Length; i++)
         {
-            if (neighborChart[i] == -1) continue;
+            if (neighborChart[i] == -1)
+                continue;
             minH = Mathf.Min(minH, cells[i].Height);
             maxH = Mathf.Max(maxH, cells[i].Height);
         }
         float range = Mathf.Max(maxH - minH, 0.0001f);
         for (int i = 0; i < neighborChart.Length; i++)
         {
-            if (neighborChart[i] == -1) continue;
+            if (neighborChart[i] == -1)
+                continue;
             cells[i].NormalizedHeight = (cells[i].Height - minH) / range;
         }
 
@@ -2319,6 +2416,89 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         GD.Print($"FaceIndex: {faceIndex}");
         st.CallDeferred("commit", arrMesh!);
     }
+
+    /// <summary>
+    /// Rebuilds the renderable ArrayMesh and the runtime selection structures (PlanetMap,
+    /// FaceToCellMap, octree, per-cell bounding boxes) from cells whose vertex positions are
+    /// already in their final (post-generation) state — used by the save/load loader.
+    ///
+    /// Unlike <see cref="GenerateSurfaceMesh"/> this NEVER re-projects vertices: positions are
+    /// emitted verbatim so a loaded body is byte-identical to the saved one. It also always
+    /// populates the StrDb maps and octree (the generation path only does so on the projection
+    /// branch), since runtime cell selection depends on them regardless of body type.
+    /// </summary>
+    public void RebuildSurfaceMeshFromCells(List<VoronoiCell> voronoiList, Octree<Point> oct)
+    {
+        var arrMesh = Mesh as ArrayMesh;
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        st.SetCustomFormat(0, SurfaceTool.CustomFormat.RgbFloat);
+
+        var material = CreateSurfaceMaterials();
+        st.SetMaterial(material);
+        int faceIndex = 0;
+        foreach (VoronoiCell vor in voronoiList)
+        {
+            for (int i = 0; i < vor.Points.Length / 3; i++)
+            {
+                var centroid = Vector3.Zero;
+                centroid += vor.Points[3 * i].Position;
+                centroid += vor.Points[3 * i + 1].Position;
+                centroid += vor.Points[3 * i + 2].Position;
+                centroid /= 3.0f;
+
+                var p0 = vor.Points[3 * i].Position;
+                var p1 = vor.Points[3 * i + 1].Position;
+                var p2 = vor.Points[3 * i + 2].Position;
+                var normal = (p1 - p0).Cross(p2 - p0).Normalized();
+                var tangent = (p0 - centroid).Normalized();
+                var bitangent = normal.Cross(tangent).Normalized();
+                var min_u = Mathf.Inf;
+                var min_v = Mathf.Inf;
+                var max_u = -Mathf.Inf;
+                var max_v = -Mathf.Inf;
+                for (int j = 2; j >= 0; j--)
+                {
+                    Point vp = vor.Points[3 * i + j];
+                    var rel_pos = vp.Position - centroid;
+                    var u = rel_pos.Dot(tangent);
+                    var v = rel_pos.Dot(bitangent);
+                    min_u = Mathf.Min(min_u, u);
+                    min_v = Mathf.Min(min_v, v);
+                    max_u = Mathf.Max(max_u, u);
+                    max_v = Mathf.Max(max_v, v);
+
+                    var uv = new Vector2(
+                        (u - min_u) / (max_u - min_u),
+                        (v - min_v) / (max_v - min_v)
+                    );
+                    st.SetUV(uv);
+                    float borderFlag = vp.isOnContinentBorder ? 1.0f : 0.0f;
+                    st.SetNormal(tangent);
+                    st.SetCustom(0, new Color(vor.Index, borderFlag, vor.ContinentIndex));
+
+                    Color baseBiomeColor = UseCellBiomeForColoring
+                        ? GetBiomeColor(vor.Biome, vor.Height)
+                        : GetBiomeColor(vp.Biome, vp.Height);
+                    st.SetColor(baseBiomeColor);
+
+                    st.AddVertex(vp.Position);
+                    StrDb!.AddPointForCellPlanet(vp, vor);
+                    oct.Insert(vp);
+                }
+                StrDb!.AddFaceToCellMap(faceIndex, vor);
+                faceIndex++;
+            }
+            vor.GenerateBoundingBox();
+        }
+        // Synchronous commit: this runs on the main thread during load. Deferring with a
+        // local SurfaceTool risks GC freeing it before the deferred call fires, silently
+        // dropping the surface and leaving an empty ArrayMesh (flaky missing mesh on load).
+        st.Commit(arrMesh);
+    }
+
+    /// <summary>Public entry point for building trimesh collision after a restore.</summary>
+    public void CreateCollisionsFromOctree(Octree<Point> oct) => CreateCollisions(oct);
 
     private void GenerateVoronoiCellsInternal(Octree<Point> oct)
     {

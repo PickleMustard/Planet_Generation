@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://cf6xfr162f71d"]
+[gd_scene format=3 uid="uid://cf6xfr162f71d"]
 
 [ext_resource type="Script" uid="uid://b5jg0uvoduw3y" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyWindow.cs" id="1_window"]
 [ext_resource type="Script" uid="uid://u0wcdcuqic8n" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyOrbitCamera.cs" id="2_orbitcam"]
@@ -6,11 +6,12 @@
 [ext_resource type="Script" uid="uid://8gjsathfdvst" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyTabbedPanel.cs" id="4_tabbed"]
 [ext_resource type="Script" uid="uid://b4q5dkcyk45fp" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyDetailsPanel.cs" id="5_details"]
 [ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="6_theme"]
-[ext_resource type="PackedScene" uid="uid://compassrose_cmp" path="res://UI/Components/CompassRose.tscn" id="7_compass"]
-[ext_resource type="PackedScene" uid="uid://reticleoverlay_cmp" path="res://UI/Components/ReticleOverlay.tscn" id="8_reticle"]
+[ext_resource type="PackedScene" path="res://UI/Components/CompassRose.tscn" id="7_compass"]
+[ext_resource type="PackedScene" path="res://UI/Components/ReticleOverlay.tscn" id="8_reticle"]
 [ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="9_elite"]
+[ext_resource type="PackedScene" uid="uid://b8cmdlayer01a" path="res://UI/CommandLayer/CommandLayer.tscn" id="10_xx6xa"]
 
-[node name="OrbitalBodyWindow" type="Control" node_paths=PackedStringArray("_closeButton", "_headerPanel", "_tabbedPanel", "_detailsPanel", "_backButton", "_compassRose", "_reticleOverlay")]
+[node name="OrbitalBodyWindow" type="Control" unique_id=983015756 node_paths=PackedStringArray("_closeButton", "_backButton", "_headerPanel", "_tabbedPanel", "_detailsPanel", "_compassRose", "_reticleOverlay")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -21,41 +22,35 @@ mouse_filter = 2
 theme = ExtResource("6_theme")
 script = ExtResource("1_window")
 _closeButton = NodePath("CloseButton")
+_backButton = NodePath("BackButton")
 _headerPanel = NodePath("OrbitalBodyHeaderPanel")
 _tabbedPanel = NodePath("TabbedPanel")
 _detailsPanel = NodePath("DetailsPanel")
-_backButton = NodePath("BackButton")
 _compassRose = NodePath("CompassRose")
 _reticleOverlay = NodePath("ReticleOverlay")
 
-[node name="OrbitalBodyOrbitCamera" type="Node" parent="."]
+[node name="OrbitalBodyOrbitCamera" type="Node" parent="." unique_id=1781861843]
 script = ExtResource("2_orbitcam")
 
-[node name="ReticleOverlay" parent="." instance=ExtResource("8_reticle")]
-mouse_filter = 2
-
-[node name="OrbitalBodyHeaderPanel" parent="." instance=ExtResource("3_header")]
-layout_mode = 1
+[node name="ReticleOverlay" parent="." unique_id=916238545 instance=ExtResource("8_reticle")]
 anchors_preset = 0
-anchor_right = 0.0
-anchor_bottom = 0.0
+
+[node name="OrbitalBodyHeaderPanel" parent="." unique_id=1538686214 instance=ExtResource("3_header")]
+layout_mode = 1
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 396.0
 offset_bottom = 376.0
-grow_horizontal = 1
-grow_vertical = 1
 
-[node name="CompassRose" parent="." instance=ExtResource("7_compass")]
+[node name="CompassRose" parent="." unique_id=574189290 instance=ExtResource("7_compass")]
 layout_mode = 1
 anchors_preset = 0
 offset_left = 32.0
 offset_top = 392.0
 offset_right = 124.0
 offset_bottom = 484.0
-mouse_filter = 2
 
-[node name="TabbedPanel" type="PanelContainer" parent="."]
+[node name="TabbedPanel" type="PanelContainer" parent="." unique_id=1215111170]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 1.0
@@ -70,69 +65,70 @@ mouse_filter = 1
 theme_type_variation = &"PaperPanel"
 script = ExtResource("4_tabbed")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="TabbedPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="TabbedPanel" unique_id=576247293]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="TabBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer"]
+[node name="TabBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer" unique_id=2101767444]
 layout_mode = 2
 theme_override_constants/separation = -2
 
-[node name="OverviewBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar"]
+[node name="OverviewBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar" unique_id=638856201]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TabActive"
 text = "Overview"
 
-[node name="BuildingsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar"]
+[node name="BuildingsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar" unique_id=1643079292]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TabInactive"
 text = "Buildings"
 
-[node name="GridsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar"]
+[node name="GridsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar" unique_id=398195726]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TabInactive"
 text = "Grids"
 
-[node name="StationsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar"]
+[node name="StationsBtn" type="Button" parent="TabbedPanel/VBoxContainer/TabBar" unique_id=125879600]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"TabInactive"
 text = "Stations"
 
-[node name="TabSubHead" type="PanelContainer" parent="TabbedPanel/VBoxContainer"]
+[node name="TabSubHead" type="PanelContainer" parent="TabbedPanel/VBoxContainer" unique_id=985165252]
 layout_mode = 2
 theme_type_variation = &"Ribbon"
 
-[node name="HBox" type="HBoxContainer" parent="TabbedPanel/VBoxContainer/TabSubHead"]
+[node name="HBox" type="HBoxContainer" parent="TabbedPanel/VBoxContainer/TabSubHead" unique_id=1680910657]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="TabbedPanel/VBoxContainer/TabSubHead/HBox"]
+[node name="Title" type="Label" parent="TabbedPanel/VBoxContainer/TabSubHead/HBox" unique_id=944997512]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"LabelHand"
 text = "Register"
 
-[node name="Caption" type="Label" parent="TabbedPanel/VBoxContainer/TabSubHead/HBox"]
+[node name="Caption" type="Label" parent="TabbedPanel/VBoxContainer/TabSubHead/HBox" unique_id=1427373964]
 layout_mode = 2
 theme_type_variation = &"LabelFaint"
 text = "SCALE 1 : 250,000"
 
-[node name="TabContent" type="ScrollContainer" parent="TabbedPanel/VBoxContainer"]
+[node name="TabContent" type="ScrollContainer" parent="TabbedPanel/VBoxContainer" unique_id=338170273]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ContentContainer" type="VBoxContainer" parent="TabbedPanel/VBoxContainer/TabContent"]
+[node name="ContentContainer" type="VBoxContainer" parent="TabbedPanel/VBoxContainer/TabContent" unique_id=760517928]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="DetailsPanel" type="PanelContainer" parent="."]
+[node name="DetailsPanel" type="PanelContainer" parent="." unique_id=1125706579]
 layout_mode = 1
 anchors_preset = -1
+anchor_left = 0.2
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -143,44 +139,44 @@ mouse_filter = 1
 theme_type_variation = &"PaperPanel"
 script = ExtResource("5_details")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="DetailsPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="DetailsPanel" unique_id=1069896472]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="Ribbon" type="PanelContainer" parent="DetailsPanel/VBoxContainer"]
+[node name="Ribbon" type="PanelContainer" parent="DetailsPanel/VBoxContainer" unique_id=631004360]
 layout_mode = 2
 theme_type_variation = &"Ribbon"
 
-[node name="HBox" type="HBoxContainer" parent="DetailsPanel/VBoxContainer/Ribbon"]
+[node name="HBox" type="HBoxContainer" parent="DetailsPanel/VBoxContainer/Ribbon" unique_id=30494066]
 layout_mode = 2
 
-[node name="DetailTitleLabel" type="Label" parent="DetailsPanel/VBoxContainer/Ribbon/HBox"]
+[node name="DetailTitleLabel" type="Label" parent="DetailsPanel/VBoxContainer/Ribbon/HBox" unique_id=769287831]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"LabelHand"
 text = "Details"
 
-[node name="DetailCaption" type="Label" parent="DetailsPanel/VBoxContainer/Ribbon/HBox"]
+[node name="DetailCaption" type="Label" parent="DetailsPanel/VBoxContainer/Ribbon/HBox" unique_id=1508689761]
 layout_mode = 2
 theme_type_variation = &"LabelFaint"
 text = "KEY · VOL. 1"
 
-[node name="DetailScroll" type="ScrollContainer" parent="DetailsPanel/VBoxContainer"]
+[node name="DetailScroll" type="ScrollContainer" parent="DetailsPanel/VBoxContainer" unique_id=372517817]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="DetailContent" type="VBoxContainer" parent="DetailsPanel/VBoxContainer/DetailScroll"]
+[node name="DetailContent" type="VBoxContainer" parent="DetailsPanel/VBoxContainer/DetailScroll" unique_id=1732106750]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="PlaceholderLabel" type="Label" parent="DetailsPanel/VBoxContainer/DetailScroll/DetailContent"]
+[node name="PlaceholderLabel" type="Label" parent="DetailsPanel/VBoxContainer/DetailScroll/DetailContent" unique_id=1715066480]
 layout_mode = 2
 theme_type_variation = &"LabelFaint"
 text = "Select an item above to view details"
 
-[node name="CloseButton" type="Button" parent="."]
+[node name="CloseButton" type="Button" parent="." unique_id=402752527]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -195,7 +191,8 @@ theme_override_fonts/font = ExtResource("9_elite")
 theme_override_font_sizes/font_size = 20
 text = "✕"
 
-[node name="BackButton" type="Button" parent="."]
+[node name="BackButton" type="Button" parent="." unique_id=222692353]
+visible = false
 layout_mode = 0
 offset_left = 16.0
 offset_top = 16.0
@@ -203,4 +200,6 @@ offset_right = 96.0
 offset_bottom = 56.0
 tooltip_text = "Back one panel"
 text = "← Back"
-visible = false
+
+[node name="CommandLayer" parent="." unique_id=900100001 instance=ExtResource("10_xx6xa")]
+layout_mode = 1

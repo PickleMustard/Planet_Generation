@@ -1,6 +1,7 @@
 resources:
   - id_name: can
     resource_tier: 1
+    base_price: 2000
     state_of_matter: solid
     max_stack_size: 100
     tags: [processed]

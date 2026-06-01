@@ -53,7 +53,7 @@ namespace Logistics.Resources
                     var stationNode = categoryNode.AddChild(station.Name ?? "Unknown")
                         .AddProperty("Station Type", station.StationType ?? "")
                         .AddProperty("Construction Time", $"{station.ConstructionTime}s")
-                        .AddProperty("Can Build Ships", station.CanBuildShips);
+                        .AddProperty("Can Build Ships", station.HasBehavior("ShipyardBehavior"));
 
                     var resourcesNode = stationNode.AddChild("Required Resources");
                     foreach (var resource in station.RequiredResources)

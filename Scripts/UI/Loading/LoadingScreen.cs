@@ -86,8 +86,17 @@ namespace UI.Loading
             // Connect to SignalBus for progress updates
             ConnectToSignals();
 
-            // Load template and start generation
-            LoadTemplateAndStartGeneration();
+            // If a save file was requested, load it instead of generating a fresh system.
+            string? savePath = SignalBus.Instance?.SaveToLoadPath;
+            if (!string.IsNullOrEmpty(savePath))
+            {
+                LoadSavedGame(savePath!);
+            }
+            else
+            {
+                // Load template and start generation
+                LoadTemplateAndStartGeneration();
+            }
 
             // Start update timer
             _startTime = (float)Time.GetTicksMsec() / 1000f;
@@ -175,6 +184,59 @@ namespace UI.Loading
                     "SignalBus.Instance is null - cannot connect to progress signals"
                 );
             }
+        }
+
+        /// <summary>
+        /// Loads a saved game: reads the save, builds the bodies (with restored geometry) into the
+        /// in-tree generation container, then transitions to GameScene which restores the trackers.
+        /// </summary>
+        private void LoadSavedGame(string savePath)
+        {
+            GameLogger.EnterFunction(nameof(LoadSavedGame));
+
+            if (_loadingLabel != null)
+                _loadingLabel.Text = "LOADING SAVE";
+
+            // Consume the request so a later fresh start doesn't re-trigger a load.
+            if (SignalBus.Instance != null)
+                SignalBus.Instance.SaveToLoadPath = null;
+
+            if (!UtilityLibrary.SaveLoad.SaveLoader.BeginLoad(savePath))
+            {
+                ShowErrorAndReturn($"Failed to read save file: {savePath}");
+                return;
+            }
+
+            LoadGameSceneInBackground();
+
+            if (_generationContainer == null)
+            {
+                ShowErrorAndReturn("Could not prepare a container for the loaded system.");
+                return;
+            }
+
+            try
+            {
+                UtilityLibrary.SaveLoad.SaveLoader.BuildSystem(_generationContainer);
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to build loaded system: {ex.Message}\n{ex.StackTrace}");
+                ShowErrorAndReturn($"Failed to build loaded system: {ex.Message}");
+                return;
+            }
+
+            UpdateProgress(1.0f);
+            if (_loadingLabel != null)
+                _loadingLabel.Text = "LOADING COMPLETE";
+
+            // Allow deferred mesh commits / orbit-init child adds to settle, then swap scenes.
+            var timer = new Timer { WaitTime = 1.0, OneShot = true };
+            timer.Timeout += TransitionToGameScene;
+            AddChild(timer);
+            timer.Start();
+
+            GameLogger.ExitFunction(nameof(LoadSavedGame));
         }
 
         /// <summary>

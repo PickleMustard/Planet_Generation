@@ -153,6 +153,7 @@ public static class ResourceEditorYamlIO
         {
             YamlIndent.AppendLine(sb, 1, $"- id_name: {entry.IdName}");
             YamlIndent.AppendLine(sb, 2, $"resource_tier: {entry.ResourceTier}");
+            YamlIndent.AppendLine(sb, 2, $"base_price: {entry.BasePrice}");
             YamlIndent.AppendLine(sb, 2, $"state_of_matter: " +
                 $"{entry.StateOfMatter.ToString().ToLowerInvariant()}");
             YamlIndent.AppendLine(sb, 2, $"max_stack_size: {(int)entry.MaxStackSize}");
@@ -169,6 +170,17 @@ public static class ResourceEditorYamlIO
             {
                 var tagList = string.Join(", ", entry.Tags);
                 YamlIndent.AppendLine(sb, 2, $"tags: [{tagList}]");
+            }
+
+            // configurable_values: block, omit if empty; sort keys for stable diffs
+            if (entry.ConfigurableValues.Count > 0)
+            {
+                YamlIndent.AppendLine(sb, 2, "configurable_values:");
+                foreach (var kvp in entry.ConfigurableValues.OrderBy(k => k.Key,
+                    StringComparer.Ordinal))
+                {
+                    YamlIndent.AppendLine(sb, 3, $"{kvp.Key}: {kvp.Value}");
+                }
             }
 
             // icon section: omit if IconBasePath is null/empty

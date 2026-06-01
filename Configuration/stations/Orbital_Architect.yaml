@@ -1,56 +1,52 @@
 stations:
   - name: Small_Orbital_Architect
     station_type: Orbital_Architect
-    construction_time: 45.0
-    can_build_ships: false
-    can_build_buildings: true
-    building_work_budget_per_tick: 1.0
-    regular_slots: 1
-    overtime_slots: 1
-    overtime_cost_percent: 0.10
+    construction_time: 45
     behaviors:
-      - StorageHubBehavior
-      - OrbitalConstructorBehavior
-    storage_capacity: 10
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "10"
+      - behavior_id: OrbitalConstructorBehavior
+        work_budget_per_tick: "1.0"
+        regular_slots: "1"
+        overtime_slots: "1"
+        overtime_cost_percent: "0.10"
     required_resources:
-      Steel: 800
-      Electronics: 200
+      glass: 100
+      steel: 100
+      ceramics: 20
+      low_voltage_wire: 30
     icon:
       base_path: "res://Assets/Icons/Stations/architect/small_orbital_architect"
 
   - name: Large_Orbital_Architect
     station_type: Orbital_Architect
-    construction_time: 120.0
-    can_build_ships: false
-    can_build_buildings: true
-    building_work_budget_per_tick: 3.0
-    regular_slots: 3
-    overtime_slots: 2
-    overtime_cost_percent: 0.10
+    construction_time: 120
     behaviors:
-      - StorageHubBehavior
-      - OrbitalConstructorBehavior
-    storage_capacity: 10
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "10"
+      - behavior_id: OrbitalConstructorBehavior
+        work_budget_per_tick: "3.0"
+        regular_slots: "3"
+        overtime_slots: "2"
+        overtime_cost_percent: "0.10"
     required_resources:
-      Steel: 3000
-      Electronics: 800
-      Machinery: 400
+      steel: 1
+      high_tensile_wire: 1
+      motor: 1
     icon:
       base_path: "res://Assets/Icons/Stations/architect/large_orbital_architect"
 
   - name: industrial_construction_ring
     station_type: Orbital_Architect
-    construction_time: 500.0
-    can_build_ships: false
-    can_build_buildings: true
-    building_work_budget_per_tick: 10.0
-    regular_slots: 6
-    overtime_slots: 4
-    overtime_cost_percent: 0.10
+    construction_time: 500
     behaviors:
-      - StorageHubBehavior
-      - OrbitalConstructorBehavior
-    storage_capacity: 10
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "10"
+      - behavior_id: OrbitalConstructorBehavior
+        work_budget_per_tick: "10.0"
+        regular_slots: "6"
+        overtime_slots: "4"
+        overtime_cost_percent: "0.10"
     required_resources:
       stradium: 5000
       microchip: 1000

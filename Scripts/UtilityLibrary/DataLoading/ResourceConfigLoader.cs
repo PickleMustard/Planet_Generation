@@ -242,6 +242,8 @@ public static class ResourceConfigLoader
         {
             IdName = idName,
             ResourceTier = ReadInt(dict, "resource_tier", 0),
+            BasePrice = ReadInt(dict, "base_price", 0),
+            ConfigurableValues = ReadIntMap(dict, "configurable_values"),
             ResourceType = resourceType, // May be overridden later
             Tags = ReadTags(dict, "tags"),
             TransportWeight = ReadFloat(dict, "transport_weight", 1.0f),
@@ -312,6 +314,25 @@ public static class ResourceConfigLoader
         }
 
         return tags;
+    }
+
+    private static Dictionary<string, int> ReadIntMap(Dictionary<object, object> dict, string key)
+    {
+        var map = new Dictionary<string, int>();
+
+        if (!dict.ContainsKey(key) || dict[key] is not Dictionary<object, object> rawMap)
+            return map;
+
+        foreach (var kvp in rawMap)
+        {
+            string? mapKey = kvp.Key?.ToString();
+            if (string.IsNullOrWhiteSpace(mapKey))
+                continue;
+
+            map[mapKey] = NodeToInt(kvp.Value, 0);
+        }
+
+        return map;
     }
 
     private static Color ReadColor(Dictionary<object, object> dict, string key, Color fallback)

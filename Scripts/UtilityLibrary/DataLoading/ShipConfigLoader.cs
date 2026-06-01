@@ -266,7 +266,7 @@ public static class ShipConfigLoader
             CargoCapacity = BaseConfigLoader.ReadFloat(dict, "cargo_capacity", 0f),
             FuelCapacity = BaseConfigLoader.ReadFloat(dict, "fuel_capacity", 0f),
             EngineCategory = BaseConfigLoader.ReadString(dict, "engine_category", ""),
-            ConstructionTime = BaseConfigLoader.ReadFloat(dict, "construction_time", 0f),
+            WorkRequired = BaseConfigLoader.ReadFloat(dict, "work_required", 0f),
             RequiredResources = BaseConfigLoader.ReadResourceDict(dict, "required_resources"),
             Visual = ParseVisualDefinition(dict),
             Icon = ParseIconDefinition(dict, $"ship:{name}"),

@@ -1,0 +1,91 @@
+[gd_scene format=3 uid="uid://cdjolvymko7hj"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_kfnd7"]
+[ext_resource type="Script" uid="uid://dqvwq22hrhghb" path="res://Scripts/UI/StationWindow/ShipyardPanel.cs" id="1_panel"]
+[ext_resource type="PackedScene" uid="uid://ysxhc2yx5n72" path="res://UI/StationWindow/ShipyardSlotCard.tscn" id="2_slotcard"]
+
+[node name="ShipyardPanel" type="VBoxContainer" unique_id=1326831797 node_paths=PackedStringArray("_headerLabel", "_slotsContainer", "_queueSection", "_queueContainer", "_startConstructionButton", "_ghostViewportContainer", "_ghostViewport", "_ghostCamera", "_ghostModelRoot")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_kfnd7")
+theme_override_constants/separation = 8
+script = ExtResource("1_panel")
+_headerLabel = NodePath("HeaderContainer/HeaderLabel")
+_slotsContainer = NodePath("SlotsContainer")
+_queueSection = NodePath("QueueSection")
+_queueContainer = NodePath("QueueSection/QueueContainer")
+_startConstructionButton = NodePath("StartConstructionButton")
+_ghostViewportContainer = NodePath("GhostPreviewContainer")
+_ghostViewport = NodePath("GhostPreviewContainer/SubViewport")
+_ghostCamera = NodePath("GhostPreviewContainer/SubViewport/GhostCamera")
+_ghostModelRoot = NodePath("GhostPreviewContainer/SubViewport/GhostModelRoot")
+_slotCardScene = ExtResource("2_slotcard")
+
+[node name="HeaderContainer" type="HBoxContainer" parent="." unique_id=1988324356]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+
+[node name="HeaderLabel" type="Label" parent="HeaderContainer" unique_id=297149135]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_kfnd7")
+text = "Shipyard - Slots: 0/0"
+
+[node name="HSeparator" type="HSeparator" parent="." unique_id=486102324]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+
+[node name="SlotsContainer" type="HBoxContainer" parent="." unique_id=1104768020]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+theme_override_constants/separation = 8
+
+[node name="QueueSection" type="VBoxContainer" parent="." unique_id=190621903]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+theme_override_constants/separation = 4
+
+[node name="QueueLabel" type="Label" parent="QueueSection" unique_id=1053933268]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+text = "Build Queue"
+
+[node name="QueueContainer" type="VBoxContainer" parent="QueueSection" unique_id=1128148023]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+theme_override_constants/separation = 2
+
+[node name="HSeparator2" type="HSeparator" parent="." unique_id=1395580371]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+
+[node name="StartConstructionButton" type="Button" parent="." unique_id=1209220761]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+text = "Start Construction"
+
+[node name="HSeparator3" type="HSeparator" parent="." unique_id=1529883104]
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+
+[node name="GhostPreviewContainer" type="SubViewportContainer" parent="." unique_id=1851249357]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+theme = ExtResource("1_kfnd7")
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="GhostPreviewContainer" unique_id=1665258320]
+handle_input_locally = false
+size = Vector2i(1152, 200)
+render_target_update_mode = 4
+
+[node name="GhostCamera" type="Camera3D" parent="GhostPreviewContainer/SubViewport" unique_id=1646551425]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 2.5)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="GhostPreviewContainer/SubViewport" unique_id=136469123]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 2, 0)
+
+[node name="GhostModelRoot" type="Node3D" parent="GhostPreviewContainer/SubViewport" unique_id=296300494]

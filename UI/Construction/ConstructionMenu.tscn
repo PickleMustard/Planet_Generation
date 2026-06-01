@@ -1,107 +1,36 @@
-[gd_scene format=3 uid="uid://cvc6k2wepyqn8"]
+[gd_scene format=3 uid="uid://b8cnstmenu01a"]
 
-[ext_resource type="Script" uid="uid://ly3cuewe3kbq" path="res://Scripts/UI/Construction/ConstructionMenu.cs" id="1_nuxyx"]
+[ext_resource type="Script" uid="uid://namu2ny5f45j" path="res://Scripts/UI/Construction/ConstructionMenuController.cs" id="1_ctrl"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="2_theme"]
 
-[node name="ConstructionMenu" type="PanelContainer" unique_id=722322480 node_paths=PackedStringArray("_tabContainer", "_stationsList", "_shipsList", "_buildingsList", "_detailLabel", "_buildButton", "_cancelButton", "_backButton", "_closeToHudButton")]
-custom_minimum_size = Vector2(600, 500)
-anchor_left = 0.5
-anchor_top = 0.5
+[node name="ConstructionMenu" type="PanelContainer" node_paths=PackedStringArray("_tabContainer")]
+layout_mode = 3
+anchors_preset = -1
+anchor_left = 0.01
+anchor_top = 0.32
 anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -300.0
-offset_top = -250.0
-offset_right = 300.0
-offset_bottom = 250.0
-script = ExtResource("1_nuxyx")
-_tabContainer = NodePath("MainVBox/TabContainer")
-_stationsList = NodePath("MainVBox/TabContainer/Stations/StationsList")
-_shipsList = NodePath("MainVBox/TabContainer/Ships/ShipsList")
-_buildingsList = NodePath("MainVBox/TabContainer/Buildings/BuildingsList")
-_detailLabel = NodePath("MainVBox/FooterVBox/DetailLabel")
-_buildButton = NodePath("MainVBox/FooterVBox/ButtonBar/BuildButton")
-_cancelButton = NodePath("MainVBox/FooterVBox/ButtonBar/CancelButton")
-_backButton = NodePath("MainVBox/HeaderBar/BackButton")
-_closeToHudButton = NodePath("MainVBox/HeaderBar/CloseToHudButton")
+anchor_bottom = 0.77
+mouse_filter = 0
+theme = ExtResource("2_theme")
+script = ExtResource("1_ctrl")
+_tabContainer = NodePath("Margin/VBox/TabContainer")
 
-[node name="MainVBox" type="VBoxContainer" parent="." unique_id=1986742922]
+[node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
 
-[node name="HeaderBar" type="HBoxContainer" parent="MainVBox" unique_id=613035085]
+[node name="VBox" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
 
-[node name="BackButton" type="Button" parent="MainVBox/HeaderBar"]
+[node name="Title" type="Label" parent="Margin/VBox"]
 layout_mode = 2
-text = "←"
-
-[node name="CloseToHudButton" type="Button" parent="MainVBox/HeaderBar"]
-layout_mode = 2
-text = "✕"
-
-[node name="TitleLabel" type="Label" parent="MainVBox" unique_id=1310253182]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 16
 text = "Construction"
-horizontal_alignment = 1
 
-[node name="TabContainer" type="TabContainer" parent="MainVBox" unique_id=1251215047]
+[node name="TabContainer" type="TabContainer" parent="Margin/VBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-current_tab = 0
-
-[node name="Stations" type="VBoxContainer" parent="MainVBox/TabContainer" unique_id=1273703898]
-visible = false
-layout_mode = 2
-metadata/_tab_index = 0
-
-[node name="StationsList" type="ItemList" parent="MainVBox/TabContainer/Stations" unique_id=1039534995]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="Ships" type="VBoxContainer" parent="MainVBox/TabContainer" unique_id=475031958]
-visible = false
-layout_mode = 2
-metadata/_tab_index = 1
-
-[node name="ShipsList" type="ItemList" parent="MainVBox/TabContainer/Ships" unique_id=147547945]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="Buildings" type="VBoxContainer" parent="MainVBox/TabContainer" unique_id=2027705671]
-visible = false
-layout_mode = 2
-metadata/_tab_index = 2
-
-[node name="BuildingsList" type="ItemList" parent="MainVBox/TabContainer/Buildings" unique_id=967151653]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="FooterVBox" type="VBoxContainer" parent="MainVBox" unique_id=392996411]
-layout_mode = 2
-
-[node name="DetailLabel" type="RichTextLabel" parent="MainVBox/FooterVBox" unique_id=1267204253]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 0
-bbcode_enabled = true
-fit_content = true
-scroll_active = false
-
-[node name="ButtonBar" type="HBoxContainer" parent="MainVBox/FooterVBox" unique_id=354905895]
-layout_mode = 2
-alignment = 2
-
-[node name="BuildButton" type="Button" parent="MainVBox/FooterVBox/ButtonBar" unique_id=1418324762]
-layout_mode = 2
-disabled = true
-text = "Build Selected"
-
-[node name="CancelButton" type="Button" parent="MainVBox/FooterVBox/ButtonBar" unique_id=1304212299]
-layout_mode = 2
-text = "Cancel"

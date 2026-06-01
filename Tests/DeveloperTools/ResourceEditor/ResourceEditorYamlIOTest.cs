@@ -96,6 +96,121 @@ public class ResourceEditorYamlIOTest
 	}
 
 	// ========================================================================
+	// BASE PRICE + CONFIGURABLE VALUES
+	// ========================================================================
+
+	[TestCase]
+	[RequireGodotRuntime]
+	public void WriteCategory_BasePrice_AlwaysEmitted()
+	{
+		var category = new ResourceEditorModel.ResourceCategoryData
+		{
+			CategoryName = "ore",
+			Resources = new List<ResourceEditorModel.ResourceEditEntry>
+			{
+				new()
+				{
+					IdName = "iron_ore",
+					ResourceTier = 0,
+					BasePrice = 1050,
+					StateOfMatter = StateOfMatter.Solid,
+					MaxStackSize = 100f,
+					Tags = new HashSet<string>()
+				},
+				new()
+				{
+					IdName = "free_dirt",
+					ResourceTier = 0,
+					BasePrice = 0,
+					StateOfMatter = StateOfMatter.Solid,
+					MaxStackSize = 100f,
+					Tags = new HashSet<string>()
+				}
+			}
+		};
+
+		string filePath = $"{_tempDir}/ore.yaml";
+		ResourceEditorYamlIO.WriteCategory(filePath, category);
+
+		using var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Read);
+		string content = file.GetAsText();
+
+		AssertThat(content).Contains("base_price: 1050");
+		AssertThat(content).Contains("base_price: 0");
+	}
+
+	[TestCase]
+	[RequireGodotRuntime]
+	public void WriteCategory_ConfigurableValues_BlockEmittedSortedWhenPresent()
+	{
+		var category = new ResourceEditorModel.ResourceCategoryData
+		{
+			CategoryName = "fuel",
+			Resources = new List<ResourceEditorModel.ResourceEditEntry>
+			{
+				new()
+				{
+					IdName = "methane",
+					ResourceTier = 1,
+					BasePrice = 2000,
+					StateOfMatter = StateOfMatter.Fluid,
+					MaxStackSize = 200f,
+					Tags = new HashSet<string>(),
+					ConfigurableValues = new Dictionary<string, int>
+					{
+						["nutrition"] = 5,
+						["burn_potential"] = 30
+					}
+				}
+			}
+		};
+
+		string filePath = $"{_tempDir}/fuel.yaml";
+		ResourceEditorYamlIO.WriteCategory(filePath, category);
+
+		using var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Read);
+		string content = file.GetAsText();
+
+		AssertThat(content).Contains("configurable_values:");
+		AssertThat(content).Contains("burn_potential: 30");
+		AssertThat(content).Contains("nutrition: 5");
+		// Sorted (ordinal): burn_potential before nutrition
+		AssertThat(content.IndexOf("burn_potential", StringComparison.Ordinal))
+			.IsLess(content.IndexOf("nutrition", StringComparison.Ordinal));
+	}
+
+	[TestCase]
+	[RequireGodotRuntime]
+	public void WriteCategory_EmptyConfigurableValues_BlockOmitted()
+	{
+		var category = new ResourceEditorModel.ResourceCategoryData
+		{
+			CategoryName = "ore",
+			Resources = new List<ResourceEditorModel.ResourceEditEntry>
+			{
+				new()
+				{
+					IdName = "iron_ore",
+					ResourceTier = 0,
+					BasePrice = 1000,
+					StateOfMatter = StateOfMatter.Solid,
+					MaxStackSize = 100f,
+					Tags = new HashSet<string>(),
+					ConfigurableValues = new Dictionary<string, int>()
+				}
+			}
+		};
+
+		string filePath = $"{_tempDir}/ore.yaml";
+		ResourceEditorYamlIO.WriteCategory(filePath, category);
+
+		using var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Read);
+		string content = file.GetAsText();
+
+		AssertThat(content.Contains("configurable_values")).IsFalse();
+	}
+
+	// ========================================================================
 	// OMISSION RULES
 	// ========================================================================
 

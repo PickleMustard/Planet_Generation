@@ -39,6 +39,9 @@ public partial class MeshTectonicRangesTab : ScrollContainer
         ("general_shear_scale",       "General Shear Scale",       0,   10,   0.05,"Master multiplier on shear deformation."),
         ("general_compression_scale", "General Compression Scale", 0,   10,   0.05,"Master multiplier on compression uplift."),
         ("general_transform_scale",   "General Transform Scale",   0,   10,   0.05,"Master multiplier on transform-fault offset."),
+        ("boundary_smoothing_iterations","Boundary Smoothing Iterations",0, 10, 1,   "Laplacian smoothing passes over per-edge boundary stress. 0 = raw stress field."),
+        ("boundary_smoothing_weight", "Boundary Smoothing Weight", 0,   1,    0.05,"Blend weight (0-1) toward neighbor mean per smoothing pass."),
+        ("max_continent_rotation",    "Max Continent Rotation",    0,   180,  1,   "Cap on rotational ω×r contribution to plate movement (degrees)."),
     };
 
     [Export] private Label? _meshHeader;
@@ -48,11 +51,14 @@ public partial class MeshTectonicRangesTab : ScrollContainer
     [Export] private VBoxContainer? _vpeRowsContainer;
     [Export] private Label? _tectonicHeader;
     [Export] private VBoxContainer? _tectRows;
+    [Export] private HBoxContainer? _sampleVelocityRow;
+    [Export] private CheckBox? _sampleVelocityCheck;
 
     private readonly Dictionary<string, FloatRangeRow> _meshRowMap = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FloatRangeRow> _tectRowMap = new(StringComparer.Ordinal);
     private readonly List<FloatRangeRow> _vpeRows = new();
     private bool _suppressVpeCount;
+    private bool _suppressSampleVelocity;
 
     public void Initialize(SubtypeEditorModel model)
     {
@@ -65,6 +71,12 @@ public partial class MeshTectonicRangesTab : ScrollContainer
         BuildMeshAndTectRows();
         if (_vpeCountSpin != null)
             _vpeCountSpin.ValueChanged += OnVpeCountChanged;
+        if (_sampleVelocityCheck != null)
+        {
+            _sampleVelocityCheck.Toggled += OnSampleVelocityToggled;
+            _sampleVelocityCheck.TooltipText =
+                GenSettingTooltips.Get("tectonics.sample_velocity_at_edge_midpoint");
+        }
     }
 
     private void BuildMeshAndTectRows()
@@ -101,6 +113,7 @@ public partial class MeshTectonicRangesTab : ScrollContainer
         {
             foreach (var r in _meshRowMap.Values) r.SetValue(null);
             foreach (var r in _tectRowMap.Values) r.SetValue(null);
+            SetSampleVelocitySilently(true);
             SetVpeCountSilently(0);
             RebuildVpeRows(0, ranges: null);
             ToggleTectonics(true);
@@ -116,6 +129,8 @@ public partial class MeshTectonicRangesTab : ScrollContainer
         foreach (var (key, row) in _tectRowMap)
             row.SetValue(def.TectonicRanges.TryGetValue(key, out var r) ? r : null);
 
+        SetSampleVelocitySilently(def.SampleVelocityAtEdgeMidpoint);
+
         int vpeCount = Math.Clamp(def.VerticesPerEdgeRanges.Count, 0, VpeMaxLevels);
         SetVpeCountSilently(vpeCount);
         RebuildVpeRows(vpeCount, def.VerticesPerEdgeRanges);
@@ -128,6 +143,24 @@ public partial class MeshTectonicRangesTab : ScrollContainer
     {
         if (_tectonicHeader != null) _tectonicHeader.Visible = show;
         foreach (var r in _tectRowMap.Values) r.Visible = show;
+        if (_sampleVelocityRow != null) _sampleVelocityRow.Visible = show;
+    }
+
+    private void SetSampleVelocitySilently(bool value)
+    {
+        _suppressSampleVelocity = true;
+        try { if (_sampleVelocityCheck != null) _sampleVelocityCheck.ButtonPressed = value; }
+        finally { _suppressSampleVelocity = false; }
+    }
+
+    private void OnSampleVelocityToggled(bool pressed)
+    {
+        if (_suppressSampleVelocity) return;
+        if (string.IsNullOrEmpty(_subtypeId)) return;
+        var def = _model.GetById(_subtypeId);
+        if (def == null) return;
+        def.SampleVelocityAtEdgeMidpoint = pressed;
+        _model.MarkDirty(_subtypeId);
     }
 
     private static bool SupportsTectonics(BodyFamily family) => family switch

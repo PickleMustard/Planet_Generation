@@ -4,7 +4,7 @@ ships:
     cargo_capacity: 50
     fuel_capacity: 100
     engine_category: Electric
-    construction_time: 10.0
+    work_required: 10
     required_resources:
       Steel: 50
       Electronics: 30
@@ -16,7 +16,7 @@ ships:
     cargo_capacity: 150
     fuel_capacity: 200
     engine_category: Chemical
-    construction_time: 15.0
+    work_required: 15
     required_resources:
       Steel: 100
       Electronics: 60
@@ -28,7 +28,7 @@ ships:
     cargo_capacity: 300
     fuel_capacity: 500
     engine_category: Chemical
-    construction_time: 20.0
+    work_required: 20
     required_resources:
       Steel: 200
       Electronics: 100
@@ -41,7 +41,7 @@ ships:
     cargo_capacity: 500
     fuel_capacity: 1500
     engine_category: Nuclear
-    construction_time: 40.0
+    work_required: 40
     required_resources:
       Steel: 400
       Electronics: 200

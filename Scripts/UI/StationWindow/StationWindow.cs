@@ -1,5 +1,7 @@
 using Constructables;
 using Godot;
+using Godot.Collections;
+using UI.Components;
 using UtilityLibrary;
 
 namespace UI.StationWindow;
@@ -10,6 +12,11 @@ namespace UI.StationWindow;
 /// frame the station in the left third of the viewport with the station's
 /// parent body behind it; the right two thirds host the cartouche (upper
 /// left) and a behavior-driven tabbed panel.
+/// <para>
+/// The embedded <see cref="FilterableSidebar"/> is driven by
+/// <see cref="SignalBus.StationSidebarRequested"/> so that any child panel
+/// can request sidebar content without holding a direct reference.
+/// </para>
 /// </summary>
 public partial class StationWindow : Control
 {
@@ -29,6 +36,9 @@ public partial class StationWindow : Control
 
     [Export]
     private StationOrbitCamera? _orbitCamera;
+
+    [Export]
+    private FilterableSidebar? _sidebar;
 
     private StationSatellite? _currentStation;
     private Camera3D? _playerCamera;
@@ -63,6 +73,17 @@ public partial class StationWindow : Control
             _closeButton.Pressed += OnCloseButtonPressed;
         if (_backButton != null)
             _backButton.Pressed += OnBackPressed;
+
+        // Hide sidebar initially
+        if (_sidebar != null)
+            _sidebar.Visible = false;
+
+        // Subscribe to SignalBus for sidebar events
+        if (SignalBus.Instance != null)
+        {
+            SignalBus.Instance.StationSidebarRequested += OnSidebarRequested;
+            SignalBus.Instance.StationSidebarDismissed += OnSidebarDismissed;
+        }
     }
 
     private void OnCloseButtonPressed()
@@ -73,6 +94,12 @@ public partial class StationWindow : Control
 
     public override void _ExitTree()
     {
+        if (SignalBus.Instance != null)
+        {
+            SignalBus.Instance.StationSidebarRequested -= OnSidebarRequested;
+            SignalBus.Instance.StationSidebarDismissed -= OnSidebarDismissed;
+        }
+
         if (Instance == this)
             Instance = null;
     }
@@ -110,6 +137,13 @@ public partial class StationWindow : Control
             return;
 
         IsOpen = false;
+
+        // Hide the built-in sidebar
+        if (_sidebar != null)
+        {
+            _sidebar.ClearItems();
+            _sidebar.Visible = false;
+        }
 
         _orbitCamera?.EndOrbit();
         _cartouchePanel?.Clear();
@@ -151,5 +185,95 @@ public partial class StationWindow : Control
     {
         GameLogger.Warning("[StationWindow] Inspected station is leaving the tree — closing window");
         HideWindow();
+    }
+
+    // --- StationSidebar signal handlers ---
+
+    /// <summary>
+    /// Handles <see cref="SignalBus.StationSidebarRequested"/>.
+    /// Populates the embedded sidebar with the supplied items and makes it visible.
+    /// Each item dictionary should contain at minimum "id" and "name" keys.
+    /// </summary>
+    private void OnSidebarRequested(string label, Godot.Collections.Array<Dictionary> items)
+    {
+        if (_sidebar == null)
+        {
+            GameLogger.Warning("[StationWindow] Sidebar node not configured — cannot show");
+            return;
+        }
+
+        _sidebar.SetTitle(label);
+        _sidebar.SetSearchPlaceholder("Search…");
+        _sidebar.ClearItems();
+
+        foreach (var itemDict in items)
+        {
+            string id = itemDict.TryGetValue("id", out var idVar) ? idVar.AsString() : "";
+            string name = itemDict.TryGetValue("name", out var nameVar) ? nameVar.AsString() : id;
+            string mass = itemDict.TryGetValue("mass", out var massVar) ? massVar.AsString() : "";
+            string time = itemDict.TryGetValue("time", out var timeVar) ? timeVar.AsString() : "";
+            string resources = itemDict.TryGetValue("resources", out var resVar) ? resVar.AsString() : "";
+
+            // Whole row is clickable — no per-item button. Capturing `id` per
+            // iteration is correct (foreach declares a fresh variable each pass).
+            var row = new SidebarListItem(id);
+
+            var nameLabel = new Label
+            {
+                Text = name,
+                CustomMinimumSize = new Vector2(120, 0),
+            };
+            nameLabel.AddThemeFontSizeOverride("font_size", 13);
+            row.AddCell(nameLabel);
+
+            if (!string.IsNullOrEmpty(mass))
+            {
+                var massLabel = new Label { Text = mass };
+                massLabel.AddThemeFontSizeOverride("font_size", 12);
+                massLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.75f, 0.8f));
+                row.AddCell(massLabel);
+            }
+
+            if (!string.IsNullOrEmpty(time))
+            {
+                var timeLabel = new Label { Text = time };
+                timeLabel.AddThemeFontSizeOverride("font_size", 12);
+                timeLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.75f, 0.8f));
+                row.AddCell(timeLabel);
+            }
+
+            if (!string.IsNullOrEmpty(resources))
+            {
+                var resLabel = new Label { Text = resources };
+                resLabel.AddThemeFontSizeOverride("font_size", 11);
+                resLabel.AddThemeColorOverride("font_color", new Color(0.55f, 0.55f, 0.6f));
+                resLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                row.AddCell(resLabel);
+            }
+
+            row.Activated += selectedId =>
+            {
+                SignalBus.Instance?.EmitStationSidebarItemSelected(selectedId);
+            };
+
+            _sidebar.AddItem(row, filterText: name);
+        }
+
+        _sidebar.Visible = true;
+        GameLogger.Info($"[StationWindow] Sidebar opened: {label} ({items.Count} items)");
+    }
+
+    /// <summary>
+    /// Handles <see cref="SignalBus.StationSidebarDismissed"/>.
+    /// Hides the sidebar and clears its contents.
+    /// </summary>
+    private void OnSidebarDismissed()
+    {
+        if (_sidebar == null)
+            return;
+
+        _sidebar.ClearItems();
+        _sidebar.Visible = false;
+        GameLogger.Info("[StationWindow] Sidebar dismissed");
     }
 }

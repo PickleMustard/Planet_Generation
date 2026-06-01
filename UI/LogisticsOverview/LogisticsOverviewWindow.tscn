@@ -1,0 +1,116 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsOverview/LogisticsOverviewWindow.cs" id="1_window"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="2_theme"]
+[ext_resource type="PackedScene" uid="uid://u2h5jpagw5gp" path="res://UI/Components/FilterableSidebar.tscn" id="3_sidebar"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsOverview/LogisticsOverviewDetailsPanel.cs" id="4_details"]
+[ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="5_elite"]
+
+[node name="LogisticsOverviewWindow" type="Control" node_paths=PackedStringArray("_closeButton", "_sortOption", "_sidebar", "_detailsPanel", "_viewInDepthButton")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_window")
+_closeButton = NodePath("CloseButton")
+_sortOption = NodePath("LeftColumn/SortOption")
+_sidebar = NodePath("LeftColumn/FleetSidebar")
+_detailsPanel = NodePath("DetailsPanel")
+_viewInDepthButton = NodePath("ViewInDepthButton")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.07, 0.06, 0.05, 0.35)
+
+[node name="LeftColumn" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 332.0
+offset_bottom = -16.0
+grow_vertical = 2
+theme = ExtResource("2_theme")
+theme_override_constants/separation = 8
+
+[node name="SortOption" type="OptionButton" parent="LeftColumn"]
+layout_mode = 2
+theme = ExtResource("2_theme")
+
+[node name="FleetSidebar" parent="LeftColumn" instance=ExtResource("3_sidebar")]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DetailsPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 348.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -72.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("4_details")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="DetailsPanel"]
+layout_mode = 2
+theme = ExtResource("2_theme")
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="DetailsPanel/VBoxContainer"]
+layout_mode = 2
+theme = ExtResource("2_theme")
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 28
+text = "No unit selected"
+
+[node name="Body" type="VBoxContainer" parent="DetailsPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("2_theme")
+theme_override_constants/separation = 6
+
+[node name="ViewInDepthButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -236.0
+offset_top = -56.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = ExtResource("2_theme")
+theme_type_variation = &"ButtonPrimary"
+text = "View In-Depth →"
+
+[node name="CloseButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -64.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 56.0
+grow_horizontal = 0
+theme_type_variation = &"ButtonDanger"
+theme_override_fonts/font = ExtResource("5_elite")
+theme_override_font_sizes/font_size = 20
+text = "✕"

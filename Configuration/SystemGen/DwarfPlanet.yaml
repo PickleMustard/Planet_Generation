@@ -36,6 +36,10 @@ celestial:
       general_shear_scale: [14.0, 14.0]
       general_compression_scale: [30.0, 30.0]
       general_transform_scale: [1.25, 1.25]
+      boundary_smoothing_iterations: [3, 3]
+      boundary_smoothing_weight: [0.2, 0.2]
+      max_continent_rotation: [60.0, 60.0]
+      sample_velocity_at_edge_midpoint: true
 
     # noise_settings is a separate (non-subtype) generation knob; keep as range.
     noise_settings:
@@ -72,6 +76,10 @@ satellite:
       general_shear_scale: [14.0, 14.0]
       general_compression_scale: [30.0, 30.0]
       general_transform_scale: [1.25, 1.25]
+      boundary_smoothing_iterations: [3, 3]
+      boundary_smoothing_weight: [0.2, 0.2]
+      max_continent_rotation: [60.0, 60.0]
+      sample_velocity_at_edge_midpoint: true
 
     noise_settings:
       amplitude_range: [0.5, 1.2]

@@ -37,3 +37,7 @@ celestial:
       general_shear_scale: [1.0, 1.0]
       general_compression_scale: [1.0, 1.0]
       general_transform_scale: [1.0, 1.0]
+      boundary_smoothing_iterations: [3, 3]
+      boundary_smoothing_weight: [0.2, 0.2]
+      max_continent_rotation: [60.0, 60.0]
+      sample_velocity_at_edge_midpoint: true

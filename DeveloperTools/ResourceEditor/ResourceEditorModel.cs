@@ -30,6 +30,8 @@ public class ResourceEditorModel
 	{
 		public string IdName { get; set; } = "";
 		public int ResourceTier { get; set; }
+		public int BasePrice { get; set; }
+		public Dictionary<string, int> ConfigurableValues { get; set; } = new();
 		public string? ResourceType { get; set; }
 		public float TransportWeight { get; set; } = 1.0f;
 		public float MaxStackSize { get; set; } = 100f;
@@ -197,8 +199,8 @@ public class ResourceEditorModel
 
 	/// <summary>
 	/// Updates a single field on a resource entry by field name.
-	/// Supported field names: IdName, ResourceTier, MaxStackSize, TransportWeight,
-	/// StateOfMatter, IconBasePath, IconScale, IconTint.
+	/// Supported field names: IdName, ResourceTier, BasePrice, MaxStackSize,
+	/// TransportWeight, StateOfMatter, IconBasePath, IconScale, IconTint.
 	/// Throws if category not found, index out of range, or unknown field name.
 	/// </summary>
 	public void UpdateResourceField(string categoryName, int index,
@@ -213,6 +215,9 @@ public class ResourceEditorModel
 				break;
 			case "ResourceTier":
 				entry.ResourceTier = Convert.ToInt32(value);
+				break;
+			case "BasePrice":
+				entry.BasePrice = Convert.ToInt32(value);
 				break;
 			case "MaxStackSize":
 				entry.MaxStackSize = Convert.ToSingle(value);
@@ -254,6 +259,18 @@ public class ResourceEditorModel
 	{
 		var entry = GetEntryOrThrow(categoryName, index);
 		entry.Tags = new HashSet<string>(newTags);
+		entry.IsDirty = true;
+	}
+
+	/// <summary>
+	/// Replaces the configurable values map on a resource entry.
+	/// Throws if category not found or index out of range.
+	/// </summary>
+	public void UpdateConfigurableValues(string categoryName, int index,
+		Dictionary<string, int> newValues)
+	{
+		var entry = GetEntryOrThrow(categoryName, index);
+		entry.ConfigurableValues = new Dictionary<string, int>(newValues);
 		entry.IsDirty = true;
 	}
 
@@ -368,6 +385,9 @@ public class ResourceEditorModel
 		{
 			IdName = def.IdName ?? "",
 			ResourceTier = def.ResourceTier,
+			BasePrice = def.BasePrice,
+			ConfigurableValues = new Dictionary<string, int>(
+				def.ConfigurableValues ?? new Dictionary<string, int>()),
 			ResourceType = def.ResourceType,
 			TransportWeight = def.TransportWeight,
 			MaxStackSize = def.MaxStackSize,

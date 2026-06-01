@@ -11,6 +11,8 @@ namespace UI
     {
         // UI References
         private Button? _startButton;
+        private Button? _loadButton;
+        private Control? _loadMenu;
         private Button? _settingsButton;
         private Button? _debugButton;
         private Button? _developerToolsButton;
@@ -26,6 +28,9 @@ namespace UI
         private Control? _building2DEditorOverlay;
         private Control? _linkProfileEditorOverlay;
         private Control? _biomeEditorOverlay;
+        private Control? _shipEditorOverlay;
+        private Control? _stationEditorOverlay;
+        private Control? _engineEditorOverlay;
         private Control? _templateMenu;
 
         public override void _Ready()
@@ -53,6 +58,7 @@ namespace UI
             if (vboxContainer != null)
             {
                 _startButton = vboxContainer.GetNodeOrNull<Button>("StartButton");
+                _loadButton = vboxContainer.GetNodeOrNull<Button>("LoadButton");
                 _settingsButton = vboxContainer.GetNodeOrNull<Button>("SettingsButton");
                 _debugButton = vboxContainer.GetNodeOrNull<Button>("DebugButton");
                 _developerToolsButton = vboxContainer.GetNodeOrNull<Button>("DeveloperToolsButton");
@@ -76,6 +82,23 @@ namespace UI
             if (_startButton != null)
             {
                 _startButton.Pressed += OnStartButtonPressed;
+            }
+
+            // Create a Load Game button programmatically when the scene doesn't define one.
+            if (_loadButton == null)
+            {
+                var vbox = GetNodeOrNull<VBoxContainer>("VBoxContainer");
+                if (vbox != null)
+                {
+                    _loadButton = new Button { Text = "Load Game", Name = "LoadButton" };
+                    vbox.AddChild(_loadButton);
+                    if (_startButton != null)
+                        vbox.MoveChild(_loadButton, _startButton.GetIndex() + 1);
+                }
+            }
+            if (_loadButton != null)
+            {
+                _loadButton.Pressed += OnLoadButtonPressed;
             }
 
             if (_settingsButton != null)
@@ -235,6 +258,118 @@ namespace UI
                 GameLogger.Info(
                     "Transitioning to LoadingScreen with template: " + templateFileName
                 );
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to transition to loading screen: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Called when the Load Game button is pressed. Lists save files in user://saves.
+        /// </summary>
+        private void OnLoadButtonPressed()
+        {
+            GameLogger.Info("Load Game button pressed");
+            if (_loadMenu != null)
+            {
+                _loadMenu.Visible = true;
+                return;
+            }
+            CreateSaveSelectionMenu();
+        }
+
+        /// <summary>
+        /// Builds a menu listing available save files (user://saves/*.yaml).
+        /// </summary>
+        private void CreateSaveSelectionMenu()
+        {
+            var panel = new Panel { Name = "SaveSelectionMenu", Size = new Vector2(500, 400) };
+            panel.Position = (new Vector2(Size.X, Size.Y) - panel.Size) / 2;
+            AddChild(panel);
+
+            var marginContainer = new MarginContainer();
+            marginContainer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            marginContainer.AddThemeConstantOverride("margin_left", 15);
+            marginContainer.AddThemeConstantOverride("margin_right", 15);
+            marginContainer.AddThemeConstantOverride("margin_top", 15);
+            marginContainer.AddThemeConstantOverride("margin_bottom", 15);
+            panel.AddChild(marginContainer);
+
+            var vbox = new VBoxContainer { Name = "VBoxContainer" };
+            vbox.SizeFlagsVertical = SizeFlags.ExpandFill;
+            marginContainer.AddChild(vbox);
+
+            var titleLabel = new Label
+            {
+                Text = "Load Saved Game",
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            vbox.AddChild(titleLabel);
+
+            var scrollContainer = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+            vbox.AddChild(scrollContainer);
+
+            var saveList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            scrollContainer.AddChild(saveList);
+
+            const string saveDir = "user://saves";
+            DirAccess.MakeDirRecursiveAbsolute(saveDir);
+            var files = DirAccess.GetFilesAt(saveDir);
+            bool anySaves = false;
+            if (files != null)
+            {
+                foreach (var file in files)
+                {
+                    if (!file.EndsWith(".yaml"))
+                        continue;
+                    anySaves = true;
+                    var fullPath = $"{saveDir}/{file}";
+                    var button = new Button
+                    {
+                        Text = file.Replace(".yaml", ""),
+                        SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                    };
+                    button.Pressed += () => OnSaveSelected(fullPath);
+                    saveList.AddChild(button);
+                }
+            }
+
+            if (!anySaves)
+            {
+                saveList.AddChild(new Label
+                {
+                    Text = "No saved games found.",
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                });
+            }
+
+            var closeButton = new Button { Text = "Cancel" };
+            closeButton.Pressed += () =>
+            {
+                panel.QueueFree();
+                _loadMenu = null;
+            };
+            vbox.AddChild(closeButton);
+
+            _loadMenu = panel;
+        }
+
+        /// <summary>
+        /// Called when a save file is selected. Stores the path and transitions to LoadingScreen.
+        /// </summary>
+        private void OnSaveSelected(string savePath)
+        {
+            GameLogger.Info($"Save selected: {savePath}");
+            if (SignalBus.Instance != null)
+            {
+                SignalBus.Instance.SaveToLoadPath = savePath;
+                SignalBus.Instance.SelectedTemplate = null;
+            }
+            try
+            {
+                GetTree().ChangeSceneToFile("res://Scenes/LoadingScreen.tscn");
             }
             catch (Exception ex)
             {
@@ -543,6 +678,33 @@ namespace UI
                 biomeEditorButton.Text = "Biome Editor";
                 biomeEditorButton.Pressed += OnBiomeEditorButtonPressed;
                 vbox.AddChild(biomeEditorButton);
+            }
+
+            // Ship Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/ShipEditor/ShipEditorModule.tscn"))
+            {
+                var shipEditorButton = new Button();
+                shipEditorButton.Text = "Ship Editor";
+                shipEditorButton.Pressed += OnShipEditorButtonPressed;
+                vbox.AddChild(shipEditorButton);
+            }
+
+            // Station Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/StationEditor/StationEditorModule.tscn"))
+            {
+                var stationEditorButton = new Button();
+                stationEditorButton.Text = "Station Editor";
+                stationEditorButton.Pressed += OnStationEditorButtonPressed;
+                vbox.AddChild(stationEditorButton);
+            }
+
+            // Engine Editor
+            if (ResourceLoader.Exists("res://DeveloperTools/EngineEditor/EngineEditorModule.tscn"))
+            {
+                var engineEditorButton = new Button();
+                engineEditorButton.Text = "Engine Editor";
+                engineEditorButton.Pressed += OnEngineEditorButtonPressed;
+                vbox.AddChild(engineEditorButton);
             }
 #endif
 
@@ -1003,6 +1165,108 @@ namespace UI
 
             GameLogger.ExitFunction(nameof(OnBiomeEditorButtonPressed));
         }
+
+        /// <summary>
+        /// Builds a fullscreen editor overlay (header bar + Back button + module
+        /// instance) for the given module scene. Returns the overlay, or null if
+        /// the scene could not be loaded. <paramref name="onClosed"/> runs when the
+        /// Back button is pressed so the caller can clear its overlay field.
+        /// </summary>
+        private Control? OpenEditorOverlay(string title, string scenePath, Action onClosed)
+        {
+            var prefab = ResourceLoader.Load<PackedScene>(scenePath);
+            if (prefab == null)
+            {
+                GameLogger.Warning($"{scenePath} not found");
+                ShowNotification($"{title} not available.");
+                return null;
+            }
+
+            var overlay = new Panel { Name = $"{title.Replace(" ", "")}Overlay" };
+            overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            AddChild(overlay);
+
+            var vbox = new VBoxContainer();
+            vbox.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            overlay.AddChild(vbox);
+
+            var headerBar = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            vbox.AddChild(headerBar);
+
+            var titleLabel = new Label { Text = title, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            headerBar.AddChild(titleLabel);
+
+            var backButton = new Button { Text = "Back" };
+            backButton.Pressed += () =>
+            {
+                overlay.QueueFree();
+                onClosed();
+            };
+            headerBar.AddChild(backButton);
+
+            var moduleInstance = prefab.Instantiate<Control>();
+            moduleInstance.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            moduleInstance.SizeFlagsVertical = SizeFlags.ExpandFill;
+            vbox.AddChild(moduleInstance);
+
+            // BaseDebugModule._Ready() hides the module by default; force-show outside
+            // the debug TabContainer so the panel renders.
+            moduleInstance.CallDeferred(Control.MethodName.Show);
+
+            GameLogger.Info($"{title} overlay opened");
+            return overlay;
+        }
+
+        private void OnShipEditorButtonPressed()
+        {
+            if (_shipEditorOverlay != null) { _shipEditorOverlay.Visible = true; return; }
+            try
+            {
+                _shipEditorOverlay = OpenEditorOverlay(
+                    "Ship Editor",
+                    "res://DeveloperTools/ShipEditor/ShipEditorModule.tscn",
+                    () => _shipEditorOverlay = null);
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Ship Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+        }
+
+        private void OnStationEditorButtonPressed()
+        {
+            if (_stationEditorOverlay != null) { _stationEditorOverlay.Visible = true; return; }
+            try
+            {
+                _stationEditorOverlay = OpenEditorOverlay(
+                    "Station Editor",
+                    "res://DeveloperTools/StationEditor/StationEditorModule.tscn",
+                    () => _stationEditorOverlay = null);
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Station Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+        }
+
+        private void OnEngineEditorButtonPressed()
+        {
+            if (_engineEditorOverlay != null) { _engineEditorOverlay.Visible = true; return; }
+            try
+            {
+                _engineEditorOverlay = OpenEditorOverlay(
+                    "Engine Editor",
+                    "res://DeveloperTools/EngineEditor/EngineEditorModule.tscn",
+                    () => _engineEditorOverlay = null);
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Engine Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+        }
 #endif
 
         /// <summary>
@@ -1085,6 +1349,8 @@ namespace UI
         {
             if (_startButton != null)
                 _startButton.Pressed -= OnStartButtonPressed;
+            if (_loadButton != null)
+                _loadButton.Pressed -= OnLoadButtonPressed;
             if (_settingsButton != null)
                 _settingsButton.Pressed -= OnSettingsButtonPressed;
             if (_debugButton != null)

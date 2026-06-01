@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Constructables;
 using Constructables.Tick;
 using Godot;
 using UtilityLibrary;
@@ -23,6 +24,12 @@ public partial class SystemData : Node
 
     private ManufactureTickEngine? _engine;
 
+    // Authoritative ship registry keyed by LogisticsUnit.Id. Replaces tree-walking
+    // discovery (per-body SatellitesContainer scans, recursive system_container walks).
+    // Single-threaded: mutations come only from LogisticsUnit._EnterTree/_ExitTree, which
+    // Godot runs on the main thread. ThreadPooler never spawns or frees scene nodes.
+    private readonly Dictionary<string, LogisticsUnit> _ships = new();
+
     /// <summary>
     /// Boots the ManufactureTickEngine as soon as SystemData enters the scene tree
     /// (during GameScene._Ready, before any building can be placed). This guarantees
@@ -32,7 +39,35 @@ public partial class SystemData : Node
     {
         if (_engine == null)
             _engine = ManufactureTickEngine.Start();
+
+        // Backfill ships that were added to the system_container BEFORE this SystemData
+        // attached (the save-load path adds ships under a LoadingScreen-owned staging
+        // container; their _EnterTree register attempt finds no SystemData and silently
+        // skips). Scan the parent recursively now that we're alive.
+        BackfillShipRegistry();
+
         base._Ready();
+    }
+
+    private void BackfillShipRegistry()
+    {
+        var container = GetParent();
+        if (container == null) return;
+        int before = _ships.Count;
+        BackfillRecursive(container);
+        int added = _ships.Count - before;
+        if (added > 0)
+            GameLogger.Info($"[SystemData] Registry backfill: {added} ship(s) discovered (total: {_ships.Count}).");
+    }
+
+    private void BackfillRecursive(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            if (child is LogisticsUnit unit)
+                RegisterShip(unit);
+            BackfillRecursive(child);
+        }
     }
 
     /// <summary>
@@ -81,5 +116,92 @@ public partial class SystemData : Node
     {
         EndGame();
         base._ExitTree();
+    }
+
+    // ---------------- Ship Registry ----------------
+
+    /// <summary>Live count of registered LogisticsUnits.</summary>
+    public int ShipCount => _ships.Count;
+
+    /// <summary>
+    /// Registers a LogisticsUnit by its <see cref="LogisticsUnit.Id"/>. Idempotent for the
+    /// same instance. On Id collision with a different instance (save corruption), logs
+    /// an error and replaces the existing entry — the displaced ship's later
+    /// <c>_ExitTree</c> will not unregister the replacement (see <see cref="UnregisterShip"/>).
+    /// </summary>
+    public void RegisterShip(LogisticsUnit unit)
+    {
+        if (unit == null) return;
+        if (string.IsNullOrEmpty(unit.Id))
+        {
+            GameLogger.Error($"[SystemData] RegisterShip rejected: ship '{unit.Name}' has empty Id.");
+            return;
+        }
+
+        if (_ships.TryGetValue(unit.Id, out var existing))
+        {
+            if (ReferenceEquals(existing, unit))
+                return; // idempotent
+            GameLogger.Error($"[SystemData] Id collision on '{unit.Id}': replacing existing instance '{existing.Name}' with '{unit.Name}'.");
+        }
+
+        _ships[unit.Id] = unit;
+    }
+
+    /// <summary>
+    /// Unregisters the given instance. Returns true when the entry was removed.
+    /// Guards against ejecting a replacement entry: if the registry holds a different
+    /// instance under the same Id, the call is a no-op.
+    /// </summary>
+    public bool UnregisterShip(LogisticsUnit unit)
+    {
+        if (unit == null || string.IsNullOrEmpty(unit.Id)) return false;
+        if (_ships.TryGetValue(unit.Id, out var existing) && ReferenceEquals(existing, unit))
+        {
+            _ships.Remove(unit.Id);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>Tries to resolve a ship by its persisted Id.</summary>
+    public bool TryGetShip(string id, out LogisticsUnit? unit)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            unit = null;
+            return false;
+        }
+        return _ships.TryGetValue(id, out unit);
+    }
+
+    /// <summary>
+    /// Returns the live values collection. Callers iterating must not mutate the
+    /// registry (Register/Unregister) during iteration; copy with <c>.ToArray()</c>
+    /// when in doubt.
+    /// </summary>
+    public IReadOnlyCollection<LogisticsUnit> GetAllShips() => _ships.Values;
+
+    /// <summary>
+    /// Locates the SystemData attached to <c>system_container</c> by walking up from
+    /// any Node already in the scene tree. Robust to scene-path differences; falls
+    /// back to the absolute path when no <c>system_container</c> ancestor is found.
+    /// </summary>
+    public static SystemData? FindForNode(Node node)
+    {
+        if (node == null) return null;
+        for (var n = node; n != null; n = n.GetParent())
+        {
+            if (n.Name == "system_container")
+                return n.GetNodeOrNull<SystemData>("SystemData");
+        }
+        var tree = node.GetTree();
+        return tree != null ? FindIn(tree) : null;
+    }
+
+    /// <summary>Resolves SystemData via the canonical absolute path.</summary>
+    public static SystemData? FindIn(SceneTree tree)
+    {
+        return tree?.Root?.GetNodeOrNull<SystemData>("GameScene/system_container/SystemData");
     }
 }

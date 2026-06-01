@@ -72,7 +72,7 @@ public partial class StructureDatabase
     /// Number of Voronoi cells generated for this body, captured at FinalizeDB time so
     /// it survives the VoronoiCells clear. Used by placement-highlight buffer sizing.
     /// </summary>
-    public int CellCount { get; private set; }
+    public int CellCount { get; internal set; }
 
     /// <summary>
     /// Set of all vertices that are part of Voronoi cells.
