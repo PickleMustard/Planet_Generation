@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using Structures.Enums;
 
 namespace Structures.MeshGeneration;
 
@@ -12,48 +11,87 @@ public partial class Point : Resource, IEquatable<Point>
     private float[] _position = new float[3];
     private float _stress;
 
-    // Deterministic, collision-free mapping from quantized coordinates -> unique index
+    // Deterministic, collision-free mapping from quantized coordinates -> unique index.
+    // QUANT_SCALE = 1e6 preserves the prior 6-decimal quantization without relying on a
+    // 32-bit hash (which had ~birthday-paradox collision risk and was per-process randomized,
+    // producing intermittent antipodal-vertex mixups in the mesh pipeline).
+    private const float QUANT_SCALE = 1e6f;
     private static readonly object IndexLock = new object();
-    private static readonly Dictionary<(int ix, int iy, int iz), int> KeyToIndex = new Dictionary<(int, int, int), int>();
+    private static readonly Dictionary<(int ix, int iy, int iz), int> KeyToIndex =
+        new Dictionary<(int, int, int), int>();
     private static int NextIndex = 0;
 
-    public float[] Components { get { return _position; } set { value.CopyTo(_position, 0); } }
-    public int Index { get { return _index; } set { _index = value; } }
-    public int VectorSpace { get { return 3; } }
-    public Vector3 Position { get { return new Vector3(_position[0], _position[1], _position[2]); } set { _position[0] = value.X; _position[1] = value.Y; _position[2] = value.Z; } }
-    public HashSet<int> ContinentIndecies { get; set; }
+    public float[] Components
+    {
+        get { return _position; }
+        set { value.CopyTo(_position, 0); }
+    }
+    public int Index
+    {
+        get { return _index; }
+        set { _index = value; }
+    }
+    public int VectorSpace
+    {
+        get { return 3; }
+    }
+    public Vector3 Position
+    {
+        get { return new Vector3(_position[0], _position[1], _position[2]); }
+        set
+        {
+            _position[0] = value.X;
+            _position[1] = value.Y;
+            _position[2] = value.Z;
+        }
+    }
+    public HashSet<int>? ContinentIndecies { get; set; }
     public float Height { get; set; }
     public Vector3 Velocity { get; set; }
-    public float Stress { get { return _stress; } set { _stress = value; } }
+    public float Stress
+    {
+        get { return _stress; }
+        set { _stress = value; }
+    }
     public bool isOnContinentBorder { get; set; }
     public float Radius { get; set; }
-    public Biome.BiomeType Biome { get; set; }
+    public string Biome { get; set; } = "biome_grassland";
 
-    private static int QuantizeKey(float x, float y, float z)
+    private static (int, int, int) QuantizeKey(float x, float y, float z)
     {
-        // Normalize tiny values to 0 to avoid -0 vs +0 differences, then round
-        float qx = MathF.Round(x, 6);
-        float qy = MathF.Round(y, 6);
-        float qz = MathF.Round(z, 6);
-
-        String key = $"{qx},{qy},{qz}";
-        return HashCode.Combine(qx, qy, qz);
+        // Normalize -0 to +0 so signed-zero pairs collapse.
+        int ix = (int)MathF.Round((x == 0f ? 0f : x) * QUANT_SCALE);
+        int iy = (int)MathF.Round((y == 0f ? 0f : y) * QUANT_SCALE);
+        int iz = (int)MathF.Round((z == 0f ? 0f : z) * QUANT_SCALE);
+        return (ix, iy, iz);
     }
 
     public static int DetermineIndex(float x, float y, float z)
     {
         var key = QuantizeKey(x, y, z);
-        return key;
+        lock (IndexLock)
+        {
+            if (KeyToIndex.TryGetValue(key, out int existing))
+                return existing;
+            int assigned = NextIndex++;
+            KeyToIndex[key] = assigned;
+            return assigned;
+        }
     }
 
-    public bool Equals(Point other)
+    public bool Equals(Point? other)
     {
-        if ((Object)other == null) return false;
+        if (other is null)
+            return false;
         return other.Index == Index;
     }
 
-    public override bool Equals(Object obj)
+    public override bool Equals(object? obj)
     {
+        if (obj is null)
+            return false;
+        if (obj is Point p)
+            return Equals(p);
         return false;
     }
 
@@ -120,27 +158,44 @@ public partial class Point : Resource, IEquatable<Point>
         Index = copy.Index;
         if (copy.VectorSpace == 3)
         {
-            ContinentIndecies = new HashSet<int>(((Point)copy).ContinentIndecies);
+            ContinentIndecies = new HashSet<int>(((Point)copy).ContinentIndecies ?? []);
             Radius = 0;
         }
     }
 
-    public static Vector3[] ToVectors3(IEnumerable<Point> points) => points.Select(point => ((Point)point).ToVector3()).ToArray();
-    public static Point[] ToPoints(IEnumerable<Vector3> vertices) => vertices.Select(vertex => ToPoint(vertex)).ToArray();
+    public static Vector3[] ToVectors3(IEnumerable<Point> points) =>
+        points.Select(point => ((Point)point).ToVector3()).ToArray();
+
+    public static Point[] ToPoints(IEnumerable<Vector3> vertices) =>
+        vertices.Select(vertex => ToPoint(vertex)).ToArray();
+
     public static Point ToPoint(Vector3 vertex) => new Point(vertex);
+
     public Vector3 ToVector3() => new Vector3(Components[0], Components[1], Components[2]);
+
     public Vector2 ToVector2() => new Vector2(Components[0], Components[1]);
-    public Edge ReverseEdge(Edge e) { var t = e.Q; e.Q = e.P; e.P = t; return e; }
+
+    public Edge ReverseEdge(Edge e)
+    {
+        var t = e.Q;
+        e.Q = e.P;
+        e.P = t;
+        return e;
+    }
 
     private string printContinents()
     {
         string continents = "";
-        foreach (int continentIndex in ContinentIndecies)
+        if (ContinentIndecies != null)
         {
-            continents += $"{continentIndex}, ";
+            foreach (int continentIndex in ContinentIndecies)
+            {
+                continents += $"{continentIndex}, ";
+            }
         }
         return continents;
     }
 
-    public override string ToString() => $"Point: ({Index},{Components[0]},{Components[1]},{Components[2]}) Continents: {printContinents()}";
+    public override string ToString() =>
+        $"Point: ({Index},{Components[0]},{Components[1]},{Components[2]}) Continents: {printContinents()}";
 }

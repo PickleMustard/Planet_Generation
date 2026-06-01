@@ -1,0 +1,5 @@
+engines:
+  - name: Ion Drive
+    specific_impulse: 3000
+    thrust: 2.5
+    description: An electric propulsion system that accelerates ions using electrostatic forces. Provides extremely high specific impulse but very low thrust. Ideal for deep space missions where propellant efficiency matters more than acceleration.

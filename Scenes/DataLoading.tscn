@@ -1,0 +1,83 @@
+[gd_scene format=3 uid="uid://l2v6kfdilokw"]
+
+[ext_resource type="Script" uid="uid://dqxd78vpnkrgj" path="res://Scripts/UtilityLibrary/DataLoading/DataLoadingScene.cs" id="1_ljjnp"]
+
+[node name="DataLoading" type="Node" unique_id=1653922006]
+script = ExtResource("1_ljjnp")
+
+[node name="Background" type="ColorRect" parent="." unique_id=248862575]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 1)
+
+[node name="LoadingUI" type="Control" parent="." unique_id=360697447]
+layout_mode = 3
+anchor_left = 0.2
+anchor_top = 0.2
+anchor_right = 0.8
+anchor_bottom = 0.8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="LoadingUI" unique_id=614426181]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="LoadingUI/VBoxContainer" unique_id=1738216160]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Loading Game Data"
+horizontal_alignment = 1
+
+[node name="OverallProgressBar" type="ProgressBar" parent="LoadingUI/VBoxContainer" unique_id=1435411802]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatusLabel" type="Label" parent="LoadingUI/VBoxContainer" unique_id=1507746574]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Initializing..."
+horizontal_alignment = 1
+
+[node name="DatabaseProgressContainer" type="VBoxContainer" parent="LoadingUI/VBoxContainer" unique_id=1923593386]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ErrorPanel" type="Panel" parent="LoadingUI/VBoxContainer" unique_id=1969791927]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="LoadingUI/VBoxContainer/ErrorPanel" unique_id=653003333]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+alignment = 1
+
+[node name="ErrorMessageLabel" type="Label" parent="LoadingUI/VBoxContainer/ErrorPanel/VBoxContainer2" unique_id=2007892761]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Error loading databases. Please try again."
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="LoadingUI/VBoxContainer/ErrorPanel/VBoxContainer2" unique_id=1791256022]
+layout_mode = 2
+size_flags_vertical = 0
+alignment = 1
+
+[node name="RetryButton" type="Button" parent="LoadingUI/VBoxContainer/ErrorPanel/VBoxContainer2/HBoxContainer" unique_id=1362520184]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+text = "Retry"
+
+[node name="SkipButton" type="Button" parent="LoadingUI/VBoxContainer/ErrorPanel/VBoxContainer2/HBoxContainer" unique_id=1948238598]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+text = "Skip"
+
+[node name="DataLoader" type="Node" parent="." unique_id=502138]

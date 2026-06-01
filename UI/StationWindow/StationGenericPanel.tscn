@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://bqg7n2x8klm3p"]
+
+[ext_resource type="Script" uid="uid://d3r1hpv2worvj" path="res://Scripts/UI/StationWindow/StationGenericPanel.cs" id="1_generic"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="2_theme"]
+[ext_resource type="PackedScene" uid="uid://chkw22orhpf0b" path="res://UI/BuildingInfo/ResourceSlotItem.tscn" id="3_slotitem"]
+
+[node name="StationGenericPanel" type="Control" node_paths=PackedStringArray("_rows", "_storageBlock", "_storageHeader", "_slotsGrid")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("2_theme")
+script = ExtResource("1_generic")
+_rows = NodePath("Margin/Root/Rows")
+_storageBlock = NodePath("Margin/Root/StorageBlock")
+_storageHeader = NodePath("Margin/Root/StorageBlock/StorageHeader")
+_slotsGrid = NodePath("Margin/Root/StorageBlock/Scroll/SlotsGrid")
+_resourceSlotItemScene = ExtResource("3_slotitem")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Root" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Rows" type="VBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StorageBlock" type="VBoxContainer" parent="Margin/Root"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="HSeparator" type="HSeparator" parent="Margin/Root/StorageBlock"]
+layout_mode = 2
+
+[node name="StorageHeader" type="Label" parent="Margin/Root/StorageBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "BULK SLOTS"
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Root/StorageBlock"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SlotsGrid" type="GridContainer" parent="Margin/Root/StorageBlock/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 8

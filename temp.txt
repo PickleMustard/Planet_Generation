@@ -1,0 +1,145 @@
+recipes:
+  - recipe_id: "tunnel_boring"
+    display_name: "Tunnel Boring"
+    description: Deep underground drilling to access mineral veins and ore deposits.
+    category: extraction
+    work_required: 20.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/tunnel_boring"
+
+    input_resources:
+      - power: 8
+
+    output_resources:
+      - iron_ore: 10
+      - copper_ore: 4
+
+  - recipe_id: "ore_processing"
+    display_name: "Ore Processing"
+    description: Crushes and separates raw ore into refined mineral concentrates.
+    category: extraction
+    work_required: 15.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/ore_processing"
+
+    input_resources:
+      - iron_ore: 10
+      - power: 5
+
+    output_resources:
+      - iron: 8
+
+  - recipe_id: "smelting"
+    display_name: "Smelting"
+    description: High-temperature processing to refine raw ore into usable metals.
+    category: extraction
+    work_required: 25.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/smelting"
+
+    input_resources:
+      - iron_ore: 8
+      - copper_ore: 4
+      - power: 10
+
+    output_resources:
+      - iron: 6
+      - copper: 3
+      - steel: 2
+
+  - recipe_id: "excavation"
+    display_name: "Excavation"
+    description: Surface-level quarrying to extract stone and mineral deposits.
+    category: extraction
+    work_required: 15.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/excavation"
+
+    input_resources:
+      - power: 4
+
+    output_resources:
+      - clay: 8
+      - iron_ore: 3
+
+  - recipe_id: "crushing"
+    display_name: "Crushing"
+    description: Mechanical crushing of large rock formations into processable material.
+    category: extraction
+    work_required: 10.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/crushing"
+
+    input_resources:
+      - power: 3
+
+    output_resources:
+      - clay: 12
+      - condensed_carbon: 2
+
+  - recipe_id: "sorting"
+    display_name: "Sorting"
+    description: Automated sorting of crushed material to separate valuable minerals.
+    category: extraction
+    work_required: 12.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/sorting"
+
+    input_resources:
+      - clay: 10
+      - power: 2
+
+    output_resources:
+      - iron_ore: 4
+      - copper_ore: 2
+      - gold_ore: 1
+
+  - recipe_id: "deep_core_drilling"
+    display_name: "Deep Core Drilling"
+    description: Subsea drilling platform extracting minerals from the ocean floor.
+    category: extraction
+    work_required: 30.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/deep_core_drilling"
+
+    input_resources:
+      - power: 12
+
+    output_resources:
+      - iron_ore: 8
+      - cobalt_ore: 4
+      - nickel_ore: 3
+
+  - recipe_id: "underwater_extraction"
+    display_name: "Underwater Extraction"
+    description: Specialized equipment for harvesting dissolved minerals from seawater.
+    category: extraction
+    work_required: 25.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/underwater_extraction"
+
+    input_resources:
+      - water: 20
+      - power: 8
+
+    output_resources:
+      - gold_ore: 2
+      - platinum_ore: 1
+      - loadstone_ore: 1
+
+  - recipe_id: "mineral_processing"
+    display_name: "Mineral Processing"
+    description: Refines raw underwater minerals into usable industrial materials.
+    category: extraction
+    work_required: 20.0
+    icon:
+      base_path: "res://Assets/Icons/Recipes/extraction/mineral_processing"
+
+    input_resources:
+      - cobalt_ore: 4
+      - nickel_ore: 3
+      - power: 6
+
+    output_resources:
+      - steel: 4
+      - copper: 3

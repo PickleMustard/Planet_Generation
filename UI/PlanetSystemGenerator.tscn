@@ -1,9 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://ca805w5kf1f7q"]
+[gd_scene format=3 uid="uid://ca805w5kf1f7q"]
 
 [ext_resource type="Script" uid="uid://btbyafcvgv7bv" path="res://UI/PlanetSystemGenerator.cs" id="1_pj1xb"]
 [ext_resource type="Texture2D" uid="uid://brr6hxw3n4roy" path="res://UI/xmark.svg" id="2_pj1xb"]
+[ext_resource type="Script" uid="uid://ms1uy8bpn1v0" path="res://UI/SectionHeader.cs" id="3_shdr"]
 
-[node name="PlanetSystemGeneratorUI" type="Control"]
+[node name="PlanetSystemGeneratorUI" type="Control" unique_id=1499828822]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,7 +12,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Panel" type="Panel" parent="."]
+[node name="Panel" type="Panel" parent="." unique_id=1093617823]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -24,7 +25,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_pj1xb")
 
-[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+[node name="MarginContainer" type="MarginContainer" parent="Panel" unique_id=2116935774]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,95 +33,257 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="TabContainer" type="TabContainer" parent="Panel/MarginContainer"]
+[node name="TabContainer" type="TabContainer" parent="Panel/MarginContainer" unique_id=727392017]
 custom_minimum_size = Vector2(460, 0)
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 drag_to_rearrange_enabled = true
 
-[node name="BodiesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer"]
+[node name="BodiesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer" unique_id=1835170465]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 metadata/_tab_index = 0
 
-[node name="ControlsRow" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
+[node name="Separator" type="HSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab" unique_id=975421584]
 layout_mode = 2
 
-[node name="BodiesLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
-layout_mode = 2
-text = "Bodies"
-
-[node name="AddBody" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
-layout_mode = 2
-text = "+"
-
-[node name="RemoveBody" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
-layout_mode = 2
-text = "-"
-
-[node name="CountLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/ControlsRow"]
-layout_mode = 2
-text = "0 bodies"
-
-[node name="Scroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-draw_focus_border = true
-horizontal_scroll_mode = 0
-
-[node name="BodiesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/Scroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="Separator" type="HSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
+[node name="GenerationMargin" type="MarginContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab" unique_id=318184503]
 layout_mode = 2
 
-[node name="GenerationMargin" type="MarginContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab"]
+[node name="GenerationRow" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin" unique_id=1556874672]
 layout_mode = 2
 
-[node name="GenerationRow" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin"]
-layout_mode = 2
-
-[node name="SaveFileButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+[node name="SaveFileButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow" unique_id=1196162941]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 size_flags_stretch_ratio = 3.0
 text = "Save System"
 
-[node name="VSeparator" type="VSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+[node name="VSeparator" type="VSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow" unique_id=223131570]
 layout_mode = 2
 
-[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+[node name="GenerateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow" unique_id=563581377]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 size_flags_stretch_ratio = 3.0
 text = "Generate System"
 
-[node name="VSeparator2" type="VSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+[node name="VSeparator2" type="VSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow" unique_id=633853959]
 layout_mode = 2
 
-[node name="ValidateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+[node name="ValidateButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow" unique_id=1528834503]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 size_flags_stretch_ratio = 3.0
 text = "Validate System"
 
-[node name="StabilityIndicator" type="TextureRect" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow"]
+[node name="StabilityIndicator" type="TextureRect" parent="Panel/MarginContainer/TabContainer/BodiesTab/GenerationMargin/GenerationRow" unique_id=1004259704]
 layout_mode = 2
 texture = ExtResource("2_pj1xb")
 expand_mode = 3
 stretch_mode = 5
 
-[node name="TemplatesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer"]
+[node name="SystemScrollBar" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab" unique_id=1178711286]
+layout_mode = 2
+size_flags_vertical = 3
+vertical_scroll_mode = 2
+
+[node name="SystemScrollContainer" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar" unique_id=1680612915]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DominantBodiesSection" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer" unique_id=649787859]
+layout_mode = 2
+script = ExtResource("3_shdr")
+
+[node name="Header" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection" unique_id=26724324]
+layout_mode = 2
+
+[node name="CollapseButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/Header" unique_id=1689539244]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+toggle_mode = true
+button_pressed = true
+text = "▼"
+
+[node name="HeaderLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/Header" unique_id=308054458]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+text = "Dominant Bodies"
+
+[node name="AddButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/Header" unique_id=873709603]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "+"
+
+[node name="RemoveButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/Header" unique_id=610814062]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "-"
+
+[node name="CountLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/Header" unique_id=749467672]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.5
+text = "0 items"
+
+[node name="SharedOrbitalParams" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection"]
+visible = false
+layout_mode = 2
+
+[node name="ApogeeContent" type="GridContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelApogee" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams/ApogeeContent"]
+layout_mode = 2
+text = "Apogee"
+
+[node name="apogee" type="SpinBox" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams/ApogeeContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1
+
+[node name="PerigeeContent" type="GridContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelPerigee" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams/PerigeeContent"]
+layout_mode = 2
+text = "Perigee"
+
+[node name="perigee" type="SpinBox" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/SharedOrbitalParams/PerigeeContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1
+
+[node name="Content" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection" unique_id=402574604]
+layout_mode = 2
+
+[node name="ContentScroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/Content" unique_id=1437069256]
+layout_mode = 2
+
+[node name="DominantBodiesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/DominantBodiesSection/Content/ContentScroll" unique_id=113405431]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Separator1" type="HSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer" unique_id=227776690]
+layout_mode = 2
+
+[node name="SatelliteBeltsSection" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer" unique_id=284259920]
+layout_mode = 2
+script = ExtResource("3_shdr")
+
+[node name="Header" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection" unique_id=1174603293]
+layout_mode = 2
+
+[node name="CollapseButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection/Header" unique_id=765537189]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+toggle_mode = true
+button_pressed = true
+text = "▼"
+
+[node name="HeaderLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection/Header" unique_id=955734469]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+text = "Satellite Belts"
+
+[node name="AddButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection/Header" unique_id=1684267998]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "+"
+
+[node name="RemoveButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection/Header" unique_id=317300175]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "-"
+
+[node name="CountLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection/Header" unique_id=2052299421]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.5
+text = "0 items"
+
+[node name="Content" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection" unique_id=828139765]
+layout_mode = 2
+
+[node name="ContentScroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection/Content" unique_id=687476684]
+layout_mode = 2
+
+[node name="SatelliteBeltsList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/SatelliteBeltsSection/Content/ContentScroll" unique_id=2054821671]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Separator2" type="HSeparator" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer" unique_id=1391040304]
+layout_mode = 2
+
+[node name="PlanetaryBodiesSection" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer" unique_id=314987159]
+layout_mode = 2
+script = ExtResource("3_shdr")
+
+[node name="Header" type="HBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection" unique_id=1784334503]
+layout_mode = 2
+
+[node name="CollapseButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection/Header" unique_id=1348338480]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+toggle_mode = true
+button_pressed = true
+text = "▼"
+
+[node name="HeaderLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection/Header" unique_id=1475929407]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+text = "Planetary Bodies"
+
+[node name="AddButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection/Header" unique_id=1267316104]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "+"
+
+[node name="RemoveButton" type="Button" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection/Header" unique_id=544122152]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "-"
+
+[node name="CountLabel" type="Label" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection/Header" unique_id=1203398281]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.5
+text = "0 items"
+
+[node name="Content" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection" unique_id=2124678385]
+layout_mode = 2
+
+[node name="ContentScroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection/Content" unique_id=1022940617]
+layout_mode = 2
+
+[node name="PlanetaryBodiesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/BodiesTab/SystemScrollBar/SystemScrollContainer/PlanetaryBodiesSection/Content/ContentScroll" unique_id=161157891]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TemplatesTab" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer" unique_id=1108426845]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
@@ -128,16 +291,16 @@ size_flags_vertical = 3
 theme_override_constants/separation = 8
 metadata/_tab_index = 1
 
-[node name="TemplatesLabel" type="Label" parent="Panel/MarginContainer/TabContainer/TemplatesTab"]
+[node name="TemplatesLabel" type="Label" parent="Panel/MarginContainer/TabContainer/TemplatesTab" unique_id=1924783240]
 layout_mode = 2
 text = "System Templates"
 
-[node name="TemplatesScroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/TemplatesTab"]
+[node name="TemplatesScroll" type="ScrollContainer" parent="Panel/MarginContainer/TabContainer/TemplatesTab" unique_id=1715936197]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="TemplatesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/TemplatesTab/TemplatesScroll"]
+[node name="TemplatesList" type="VBoxContainer" parent="Panel/MarginContainer/TabContainer/TemplatesTab/TemplatesScroll" unique_id=1797205029]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

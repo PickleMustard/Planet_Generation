@@ -1,0 +1,25 @@
+resources:
+  - id_name: stradium
+    resource_tier: 3
+    base_price: 4000
+    state_of_matter: solid
+    max_stack_size: 100
+    tags: [metal, ferrous]
+    icon:
+      base_path: "res://Materials/Icons/ingot"
+  - id_name: electrum
+    resource_tier: 3
+    base_price: 4000
+    state_of_matter: solid
+    max_stack_size: 100
+    tags: [metal, gold, copper, silver]
+    icon:
+      base_path: "res://Materials/Icons/ingot"
+  - id_name: ignicite
+    resource_tier: 4
+    base_price: 5000
+    state_of_matter: solid
+    max_stack_size: 100
+    tags: [metal, tungsten, stradium, platinum, heatproof]
+    icon:
+      base_path: "res://Materials/Icons/ingot"

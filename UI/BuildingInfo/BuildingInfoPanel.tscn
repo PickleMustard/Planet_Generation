@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://sn5ksr7arjsu"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_4vtni"]
+[ext_resource type="Script" uid="uid://cmno6b51c0cri" path="res://Scripts/UI/BuildingInfo/BuildingInfoPanel.cs" id="1_panel"]
+[ext_resource type="PackedScene" uid="uid://bpnh558aud6gl" path="res://UI/BuildingInfo/BuildingInfoHeader.tscn" id="2_header"]
+[ext_resource type="PackedScene" uid="uid://cwq8swb4wvw66" path="res://UI/BuildingInfo/BuildingPanelDetails.tscn" id="3_buildingpanel"]
+[ext_resource type="PackedScene" uid="uid://b7ypcljfms5v5" path="res://UI/BuildingInfo/PowerPanelDetails.tscn" id="4_powerpanel"]
+[ext_resource type="PackedScene" uid="uid://dkq5mblru0vex" path="res://UI/BuildingInfo/HubPanelDetails.tscn" id="5_hubpanel"]
+[ext_resource type="PackedScene" uid="uid://b4amxdapjeomd" path="res://UI/BuildingInfo/AdminPlaceholderDetails.tscn" id="6_adminfallback"]
+[ext_resource type="PackedScene" uid="uid://2xnnxa8ga43r" path="res://UI/BuildingInfo/Administration/HQAdminDetails.tscn" id="7_hqadmin"]
+
+[node name="BuildingInfoPanel" type="PanelContainer" unique_id=822308389 node_paths=PackedStringArray("Header", "DetailsContainer")]
+custom_minimum_size = Vector2(350, 400)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource("1_4vtni")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("1_panel")
+Header = NodePath("MarginContainer/MainVBox/BuildingInfoHeader")
+DetailsContainer = NodePath("MarginContainer/MainVBox/DetailsContainer")
+BuildingPanelDetailsScene = ExtResource("3_buildingpanel")
+PowerPanelDetailsScene = ExtResource("4_powerpanel")
+HubPanelDetailsScene = ExtResource("5_hubpanel")
+AdminBuildingScenes = Dictionary[String, PackedScene]({
+"company_headquarters": ExtResource("7_hqadmin")
+})
+AdminFallbackDetailsScene = ExtResource("6_adminfallback")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1791458449]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_4vtni")
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="MainVBox" type="VBoxContainer" parent="MarginContainer" unique_id=126088890]
+layout_mode = 2
+theme = ExtResource("1_4vtni")
+theme_override_constants/separation = 16
+
+[node name="BuildingInfoHeader" parent="MarginContainer/MainVBox" unique_id=335754872 instance=ExtResource("2_header")]
+layout_mode = 2
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/MainVBox" unique_id=706570239]
+layout_mode = 2
+theme = ExtResource("1_4vtni")
+
+[node name="DetailsContainer" type="VBoxContainer" parent="MarginContainer/MainVBox" unique_id=1165924376]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_4vtni")

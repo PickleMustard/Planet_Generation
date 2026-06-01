@@ -1,0 +1,12 @@
+categories:
+  - name: Orbital_Habitat
+    description: General-purpose orbital stations for crew habitation and basic operations
+
+  - name: Shipyard
+    description: Stations equipped with construction bays capable of building ships
+
+  - name: Refinery
+    description: Industrial stations for processing raw materials into refined goods
+
+  - name: Orbital_Architect
+    description: Stations that manage construction of surface buildings via orbital work beams

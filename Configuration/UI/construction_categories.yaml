@@ -1,0 +1,39 @@
+# Developer-curated category buttons for the construction menu.
+# Each tab maps to a database (Buildings -> BuildingDatabase.GetBuildingsByCategory,
+# Stations -> StationDatabase.GetStationsByCategory). `key` is matched
+# case-insensitively against a building's `category` / a station's `station_type`.
+# `label` is the button text. List order = button order.
+tabs:
+  - name: Buildings
+    categories:
+      - key: administration
+        label: Administration
+      - key: power
+        label: Power
+      - key: extraction
+        label: Extraction
+      - key: fluid_extraction
+        label: Fluid Extraction
+      - key: raw_material_production
+        label: Raw Materials
+      - key: commodity_production
+        label: Commodities
+      - key: chemical
+        label: Chemical
+      - key: agriculture
+        label: Agriculture
+      - key: food_goods
+        label: Food
+      - key: logistics
+        label: Logistics
+
+  - name: Stations
+    categories:
+      - key: Orbital_Habitat
+        label: Habitats
+      - key: Shipyard
+        label: Shipyards
+      - key: Refinery
+        label: Refineries
+      - key: Orbital_Architect
+        label: Architects

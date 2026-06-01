@@ -1,0 +1,25 @@
+categories:
+  potential:
+    - mythology
+    - scientists
+    - explorers
+    - adjectives
+
+celestial:
+  template:
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 1000000
+    size: 50
+
+  # Phase 8: type-level safe-default midpoints. Per-subtype ranges live in
+  # Configuration/Subtypes/black_hole_subtypes.yaml.
+  mesh:
+    base_mesh:
+      subdivisions: 1
+      vertices_per_edge: [[8, 8]]
+      num_abberations: 1
+      num_deformation_cycles: 1
+
+    spherical_harmonics:
+      amplitude_range: [0.1, 0.1]

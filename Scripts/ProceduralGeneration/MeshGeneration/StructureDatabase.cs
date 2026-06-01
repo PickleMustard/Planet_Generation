@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using Structures.MeshGeneration;
 using Structures.GameState;
+using Structures.MeshGeneration;
 using UtilityLibrary;
 
 namespace ProceduralGeneration.MeshGeneration;
@@ -13,7 +13,7 @@ namespace ProceduralGeneration.MeshGeneration;
 /// Provides thread-safe operations for creating, updating, and querying mesh elements with support for
 /// both legacy and canonical data structures. Manages mesh generation phases from ungenerated to dual mesh.
 /// </summary>
-public class StructureDatabase
+public partial class StructureDatabase
 {
     /// <summary>
     /// Gets the unique index identifier for this structure database instance.
@@ -38,10 +38,8 @@ public class StructureDatabase
         /// <summary>
         /// State after dual mesh (Voronoi) generation is complete.
         /// </summary>
-        DualMesh = 2
+        DualMesh = 2,
     }
-
-
 
     /// <summary>
     /// Thread synchronization object for ensuring thread-safe operations on the database.
@@ -52,6 +50,7 @@ public class StructureDatabase
     public HashSet<Edge> UsedEdges = new HashSet<Edge>();
     public HashSet<Point> UsedPoints = new HashSet<Point>();
     public Dictionary<Edge, List<Triangle>> EdgeTriangles = new Dictionary<Edge, List<Triangle>>();
+
     /// <summary>
     /// Gets or sets the current mesh generation state. Starts at Ungenerated and increments after each mesh generation phase.
     /// </summary>
@@ -63,9 +62,17 @@ public class StructureDatabase
     public Dictionary<int, Point> VoronoiVertices = new Dictionary<int, Point>();
 
     /// <summary>
-    /// List of all Voronoi cells in the mesh.
+    /// List of all Voronoi cells in the mesh. Cleared by FinalizeDB to free memory
+    /// once the mesh is built; runtime code that needs cell count after finalization
+    /// should read <see cref="CellCount"/> instead.
     /// </summary>
     public List<VoronoiCell> VoronoiCells = new List<VoronoiCell>();
+
+    /// <summary>
+    /// Number of Voronoi cells generated for this body, captured at FinalizeDB time so
+    /// it survives the VoronoiCells clear. Used by placement-highlight buffer sizing.
+    /// </summary>
+    public int CellCount { get; internal set; }
 
     /// <summary>
     /// Set of all vertices that are part of Voronoi cells.
@@ -75,29 +82,37 @@ public class StructureDatabase
     /// <summary>
     /// Dictionary mapping points to the Voronoi cells that contain them.
     /// </summary>
-    public Dictionary<Point, HashSet<VoronoiCell>> CellMap = new Dictionary<Point, HashSet<VoronoiCell>>();
+    public Dictionary<Point, HashSet<VoronoiCell>> CellMap =
+        new Dictionary<Point, HashSet<VoronoiCell>>();
 
     /// <summary>
     /// Dictionary mapping edges to the Voronoi cells that contain them.
     /// </summary>
-    public Dictionary<Edge, HashSet<VoronoiCell>> EdgeMap = new Dictionary<Edge, HashSet<VoronoiCell>>();
+    public Dictionary<Edge, HashSet<VoronoiCell>> EdgeMap =
+        new Dictionary<Edge, HashSet<VoronoiCell>>();
 
     /// <summary>
     /// Dictionary mapping points to triangles in Voronoi diagrams.
     /// </summary>
-    public Dictionary<Point, HashSet<Triangle>> VoronoiTriMap = new Dictionary<Point, HashSet<Triangle>>();
+    public Dictionary<Point, HashSet<Triangle>> VoronoiTriMap =
+        new Dictionary<Point, HashSet<Triangle>>();
 
     /// <summary>
     /// Dictionary mapping edges to triangles in Voronoi diagrams.
     /// </summary>
-    public Dictionary<Edge, HashSet<Triangle>> VoronoiEdgeTriMap = new Dictionary<Edge, HashSet<Triangle>>();
+    public Dictionary<Edge, HashSet<Triangle>> VoronoiEdgeTriMap =
+        new Dictionary<Edge, HashSet<Triangle>>();
 
     /// <summary>
     /// Dictionary mapping source points to destination points and their connecting edges for dual mesh.
     /// </summary>
-    public Dictionary<Point, HashSet<HalfEdge>> worldHalfEdgeMap = new Dictionary<Point, HashSet<HalfEdge>>();
+    public Dictionary<Point, HashSet<HalfEdge>> worldHalfEdgeMap =
+        new Dictionary<Point, HashSet<HalfEdge>>();
 
-    public Dictionary<Point, HashSet<VoronoiCell>> PlanetMap = new Dictionary<Point, HashSet<VoronoiCell>>();
+    public Dictionary<Point, HashSet<VoronoiCell>> PlanetMap =
+        new Dictionary<Point, HashSet<VoronoiCell>>();
+
+    public Dictionary<int, VoronoiCell> FaceToCellMap = new Dictionary<int, VoronoiCell>();
 
     // Canonical registries (Phase 0)
     /// <summary>
@@ -123,17 +138,20 @@ public class StructureDatabase
     /// <summary>
     /// Canonical registry mapping edge keys to lists of triangles that share that edge.
     /// </summary>
-    internal Dictionary<EdgeKey, List<Triangle>> TrianglesByEdgeKey = new Dictionary<EdgeKey, List<Triangle>>();
+    internal Dictionary<EdgeKey, List<Triangle>> TrianglesByEdgeKey =
+        new Dictionary<EdgeKey, List<Triangle>>();
 
     /// <summary>
     /// Canonical registry mapping points to their outgoing half-edges.
     /// </summary>
-    internal Dictionary<Point, HashSet<HalfEdge>> OutHalfEdgesByPoint = new Dictionary<Point, HashSet<HalfEdge>>();
+    internal Dictionary<Point, HashSet<HalfEdge>> OutHalfEdgesByPoint =
+        new Dictionary<Point, HashSet<HalfEdge>>();
 
     /// <summary>
     /// Canonical registry mapping edge keys to Voronoi cells.
     /// </summary>
-    internal Dictionary<EdgeKey, HashSet<VoronoiCell>> EdgeKeyCellMap = new Dictionary<EdgeKey, HashSet<VoronoiCell>>();
+    internal Dictionary<EdgeKey, HashSet<VoronoiCell>> EdgeKeyCellMap =
+        new Dictionary<EdgeKey, HashSet<VoronoiCell>>();
 
     // Phase 3–4: Internal containers and validation toggle
     /// <summary>
@@ -206,6 +224,10 @@ public class StructureDatabase
         {
             if (BaseVertices.TryGetValue(index, out var existing))
             {
+#if DEBUG
+                if (!existing.Position.IsEqualApprox(pos))
+                    GameLogger.Critical($"Point index collision: idx={index} stored={existing.Position} requested={pos}");
+#endif
                 return existing;
             }
             else
@@ -230,7 +252,7 @@ public class StructureDatabase
     /// 2. Falls back to legacy HalfEdgesFrom dictionary
     /// 3. Finally checks legacy Edges by index
     /// </remarks>
-    public bool TryGetEdge(Point a, Point b, out Edge edge)
+    public bool TryGetEdge(Point a, Point b, out Edge? edge)
     {
         lock (lockObject)
         {
@@ -239,7 +261,7 @@ public class StructureDatabase
             {
                 foreach (var h in set)
                 {
-                    if (h.Twin.From == b)
+                    if (h.Twin!.From == b)
                     {
                         int idx = Edge.DefineIndex(a, b);
                         break;
@@ -267,7 +289,7 @@ public class StructureDatabase
         {
             if (TryGetEdge(a, b, out var found))
             {
-                return found;
+                return found!;
             }
             // Create new legacy edge and mirror canonicals
             var e = Edge.MakeEdge(a, b);
@@ -293,7 +315,8 @@ public class StructureDatabase
         GameLogger.EnterFunction("GetOrCreateEdge", $"Point a={a},Point b={b},index={index}");
         lock (lockObject)
         {
-            if (TryGetEdge(a, b, out var found)) return found;
+            if (TryGetEdge(a, b, out var found))
+                return found!;
             var e = Edge.MakeEdge(index, a, b);
             RegisterEdgeCanonicalAndLegacy(e);
             GameLogger.ExitFunction("GetOrCreateEdge");
@@ -329,13 +352,15 @@ public class StructureDatabase
                     case MeshState.BaseMesh:
                         if (OutHalfEdgesByPoint.TryGetValue(p, out var baseEdges))
                         {
-                            foreach (var e in baseEdges) result.Add(UndirectedEdgeIndex[e.Key]);
+                            foreach (var e in baseEdges)
+                                result.Add(UndirectedEdgeIndex[e.Key]);
                         }
                         break;
                     case MeshState.DualMesh:
                         if (worldHalfEdgeMap.TryGetValue(p, out var EdgeSet))
                         {
-                            foreach (var e in EdgeSet) result.Add(UndirectedEdgeIndex[e.Key]);
+                            foreach (var e in EdgeSet)
+                                result.Add(UndirectedEdgeIndex[e.Key]);
                         }
                         break;
                 }
@@ -368,13 +393,15 @@ public class StructureDatabase
     public Triangle AddTriangle(List<Point> points)
     {
         // Wires edges, updates registries + legacy (base maps)
-        if (points == null || points.Count != 3) throw new ArgumentException("Triangle requires exactly 3 points");
+        if (points == null || points.Count != 3)
+            throw new ArgumentException("Triangle requires exactly 3 points");
         lock (lockObject)
         {
             // Ensure points exist
             foreach (var p in points)
             {
-                if (!BaseVertices.ContainsKey(p.Index)) BaseVertices[p.Index] = p;
+                if (!BaseVertices.ContainsKey(p.Index))
+                    BaseVertices[p.Index] = p;
             }
             // Create/wire edges in order
             var e0 = GetOrCreateEdge(points[0], points[1]);
@@ -383,16 +410,20 @@ public class StructureDatabase
 
             // Allocate next non-negative triangle id
             int newId = 0;
-            while (newId < int.MaxValue && TrianglesById.ContainsKey(newId)) newId++;
+            while (newId < int.MaxValue && TrianglesById.ContainsKey(newId))
+                newId++;
             var tri = new Triangle(newId, new List<Point>(points), new List<Edge> { e0, e1, e2 });
 
             RegisterTriangleInRegistriesOnly(tri);
 
             // Mirror legacy maps for base mesh
             BaseTris.Add(tri);
-            if (!EdgeTriangles.ContainsKey(e0)) EdgeTriangles[e0] = new List<Triangle>();
-            if (!EdgeTriangles.ContainsKey(e1)) EdgeTriangles[e1] = new List<Triangle>();
-            if (!EdgeTriangles.ContainsKey(e2)) EdgeTriangles[e2] = new List<Triangle>();
+            if (!EdgeTriangles.ContainsKey(e0))
+                EdgeTriangles[e0] = new List<Triangle>();
+            if (!EdgeTriangles.ContainsKey(e1))
+                EdgeTriangles[e1] = new List<Triangle>();
+            if (!EdgeTriangles.ContainsKey(e2))
+                EdgeTriangles[e2] = new List<Triangle>();
             EdgeTriangles[e0].Add(tri);
             EdgeTriangles[e1].Add(tri);
             EdgeTriangles[e2].Add(tri);
@@ -423,11 +454,13 @@ public class StructureDatabase
                 EdgeKey eKey = EdgeKey.From(e.P, e.Q);
                 if (TrianglesByEdgeKey.TryGetValue(eKey, out var list))
                 {
-                    foreach (var t in list) result.Add(t);
+                    foreach (var t in list)
+                        result.Add(t);
                 }
                 else if (EdgeTriangles.TryGetValue(e, out list))
                 {
-                    foreach (var t in list) result.Add(t);
+                    foreach (var t in list)
+                        result.Add(t);
                 }
             }
             return result;
@@ -470,12 +503,13 @@ public class StructureDatabase
     /// It first checks the canonical registry via EdgeKey, then falls back to the legacy system.
     /// Returns true only if exactly two triangles share the edge, which is required for flipping.
     /// </remarks>
-    public bool FlipEdge(Edge e, out Triangle t1, out Triangle t2)
+    public bool FlipEdge(Edge e, out Triangle? t1, out Triangle? t2)
     {
         lock (lockObject)
         {
             var key = EdgeKey.From(e.P, e.Q);
-            t1 = null; t2 = null;
+            t1 = null;
+            t2 = null;
             if (TrianglesByEdgeKey.TryGetValue(key, out var list))
             {
                 if (list.Count == 2)
@@ -492,15 +526,18 @@ public class StructureDatabase
             }
             // Legacy fallback
             List<Triangle> tmp = new List<Triangle>();
-            if (EdgeTriangles.TryGetValue(e, out var l1)) tmp.AddRange(l1);
+            if (EdgeTriangles.TryGetValue(e, out var l1))
+                tmp.AddRange(l1);
             //var rev = e.ReverseEdge();
             //if (EdgeTriangles.TryGetValue(rev, out var l2)) tmp.AddRange(l2);
             if (tmp.Count == 2)
             {
-                t1 = tmp[0]; t2 = tmp[1];
+                t1 = tmp[0];
+                t2 = tmp[1];
                 return true;
             }
-            if (tmp.Count == 1) t1 = tmp[0];
+            if (tmp.Count == 1)
+                t1 = tmp[0];
             return false;
         }
     }
@@ -539,7 +576,8 @@ public class StructureDatabase
         lock (lockObject)
         {
             // Registry first
-            if (!BaseVertices.ContainsKey(point.Index)) BaseVertices[point.Index] = point;
+            if (!BaseVertices.ContainsKey(point.Index))
+                BaseVertices[point.Index] = point;
 
             // Preserve legacy structure/actions by state (currently only Ungenerated branch mutates)
             switch (state)
@@ -586,7 +624,10 @@ public class StructureDatabase
     /// </remarks>
     public Edge AddEdge(Point p1, Point p2, int index)
     {
-        GameLogger.EnterFunction("AddEdge", $"MeshState: {state}, From {p1} to {p2} with index {index}");
+        GameLogger.EnterFunction(
+            "AddEdge",
+            $"MeshState: {state}, From {p1} to {p2} with index {index}"
+        );
         Edge returnEdge = GetOrCreateEdge(p1, p2, index);
         GameLogger.ExitFunction("AddEdge", $"edgeIndex={returnEdge.Index}");
         return returnEdge;
@@ -610,6 +651,7 @@ public class StructureDatabase
         }
         GameLogger.ExitFunction("AddEdge");
     }
+
     /// <summary>
     /// Adds a pre-existing triangle to the mesh structure.
     /// </summary>
@@ -634,25 +676,36 @@ public class StructureDatabase
             {
                 case MeshState.Ungenerated:
                     //BaseTris.Add(((Point)triangle.Points[0], (Point)triangle.Points[1], (Point)triangle.Points[2]), triangle);
-                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[0])) EdgeTriangles[(Edge)triangle.Edges[0]] = new List<Triangle>();
-                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[1])) EdgeTriangles[(Edge)triangle.Edges[1]] = new List<Triangle>();
-                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[2])) EdgeTriangles[(Edge)triangle.Edges[2]] = new List<Triangle>();
+                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[0]))
+                        EdgeTriangles[(Edge)triangle.Edges[0]] = new List<Triangle>();
+                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[1]))
+                        EdgeTriangles[(Edge)triangle.Edges[1]] = new List<Triangle>();
+                    if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[2]))
+                        EdgeTriangles[(Edge)triangle.Edges[2]] = new List<Triangle>();
                     EdgeTriangles[(Edge)triangle.Edges[0]].Add(triangle);
                     EdgeTriangles[(Edge)triangle.Edges[1]].Add(triangle);
                     EdgeTriangles[(Edge)triangle.Edges[2]].Add(triangle);
-                    GameLogger.Info($"Added triangle {triangle.Index} to BaseTris and EdgeTriangles");
+                    GameLogger.Info(
+                        $"Added triangle {triangle.Index} to BaseTris and EdgeTriangles"
+                    );
                     break;
                 case MeshState.BaseMesh:
                     foreach (Point p in triangle.Points)
                     {
-                        var found = VoronoiTriMap.TryGetValue(p, out HashSet<Triangle> value);
-                        if (!found) { VoronoiTriMap.Add(p, new HashSet<Triangle>()); }
+                        var found = VoronoiTriMap.TryGetValue(p, out HashSet<Triangle>? value);
+                        if (!found)
+                        {
+                            VoronoiTriMap.Add(p, new HashSet<Triangle>());
+                        }
                         VoronoiTriMap[p].Add(triangle);
                     }
                     foreach (Edge e in triangle.Edges)
                     {
-                        var found = VoronoiEdgeTriMap.TryGetValue(e, out HashSet<Triangle> value);
-                        if (!found) { VoronoiEdgeTriMap.Add(e, new HashSet<Triangle>()); }
+                        var found = VoronoiEdgeTriMap.TryGetValue(e, out HashSet<Triangle>? value);
+                        if (!found)
+                        {
+                            VoronoiEdgeTriMap.Add(e, new HashSet<Triangle>());
+                        }
                         VoronoiEdgeTriMap[e].Add(triangle);
                         UpdateWorldEdgeMap((Point)e.P, (Point)e.Q);
                     }
@@ -676,7 +729,10 @@ public class StructureDatabase
     /// </remarks>
     public void UpdatePointBaseMesh(Point point, Point newPoint)
     {
-        GameLogger.EnterFunction("UpdatePointBaseMesh", $"pointIndex={point.Index} -> newIndex={newPoint.Index}");
+        GameLogger.EnterFunction(
+            "UpdatePointBaseMesh",
+            $"pointIndex={point.Index} -> newIndex={newPoint.Index}"
+        );
         lock (lockObject)
         {
             BaseVertices[newPoint.Index] = newPoint;
@@ -704,7 +760,8 @@ public class StructureDatabase
 
         // Canonical undirected index (do not overwrite once present)
         var key = EdgeKey.From(e.P, e.Q);
-        if (!UndirectedEdgeIndex.ContainsKey(key)) UndirectedEdgeIndex[key] = e;
+        if (!UndirectedEdgeIndex.ContainsKey(key))
+            UndirectedEdgeIndex[key] = e;
 
         if (!worldHalfEdgeMap.TryGetValue(p1, out var set))
         {
@@ -725,7 +782,6 @@ public class StructureDatabase
             worldHalfEdgeMap[p2].Add(e.halfEdges[1]);
         }
         GameLogger.ExitFunction("UpdateWorldEdgeMap");
-
     }
 
     /// <summary>
@@ -743,7 +799,10 @@ public class StructureDatabase
     /// </remarks>
     public void UpdateEdge(Edge edge, Edge newEdge)
     {
-        GameLogger.EnterFunction("UpdateEdge", $"edgeIndex={edge.Index}  -> newIndex={newEdge.Index}");
+        GameLogger.EnterFunction(
+            "UpdateEdge",
+            $"edgeIndex={edge.Index}  -> newIndex={newEdge.Index}"
+        );
         lock (lockObject)
         {
             // Remove canonical half-edges for old edge
@@ -769,7 +828,10 @@ public class StructureDatabase
     /// </remarks>
     public void UpdateTriangle(Triangle triangle, Triangle newTriangle)
     {
-        GameLogger.EnterFunction("UpdateTriangle", $"triIndex={triangle.Index} -> newIndex={newTriangle.Index}");
+        GameLogger.EnterFunction(
+            "UpdateTriangle",
+            $"triIndex={triangle.Index} -> newIndex={newTriangle.Index}"
+        );
         lock (lockObject)
         {
             // Canonical: replace in registry and edge-key map
@@ -784,7 +846,10 @@ public class StructureDatabase
                 {
                     for (int i = 0; i < list.Count; i++)
                     {
-                        if (list[i].Index == triangle.Index) { list[i] = newTriangle; }
+                        if (list[i].Index == triangle.Index)
+                        {
+                            list[i] = newTriangle;
+                        }
                     }
                 }
                 else
@@ -798,9 +863,12 @@ public class StructureDatabase
             //EdgeTriangles[(Edge)triangle.Edges[1]].Remove(triangle);
             //EdgeTriangles[(Edge)triangle.Edges[2]].Remove(triangle);
             BaseTris.Add(triangle);
-            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[0])) EdgeTriangles[(Edge)triangle.Edges[0]] = new List<Triangle>();
-            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[1])) EdgeTriangles[(Edge)triangle.Edges[1]] = new List<Triangle>();
-            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[2])) EdgeTriangles[(Edge)triangle.Edges[2]] = new List<Triangle>();
+            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[0]))
+                EdgeTriangles[(Edge)triangle.Edges[0]] = new List<Triangle>();
+            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[1]))
+                EdgeTriangles[(Edge)triangle.Edges[1]] = new List<Triangle>();
+            if (!EdgeTriangles.ContainsKey((Edge)triangle.Edges[2]))
+                EdgeTriangles[(Edge)triangle.Edges[2]] = new List<Triangle>();
             EdgeTriangles[(Edge)triangle.Edges[0]].Add(newTriangle);
             EdgeTriangles[(Edge)triangle.Edges[1]].Add(newTriangle);
             EdgeTriangles[(Edge)triangle.Edges[2]].Add(newTriangle);
@@ -823,7 +891,9 @@ public class StructureDatabase
         GameLogger.EnterFunction("SelectRandomPoint");
         lock (lockObject)
         {
-            List<Point> points = new List<Point>(BaseVertices.Values.Where(p => !UsedPoints.Contains(p)));
+            List<Point> points = new List<Point>(
+                BaseVertices.Values.Where(p => !UsedPoints.Contains(p))
+            );
             Point selected = points[rand.RandiRange(0, points.Count - 1)];
             GameLogger.ExitFunction("SelectRandomPoint", $"returned pointIndex={selected.Index}");
             return selected;
@@ -877,10 +947,12 @@ public class StructureDatabase
     {
         lock (lockObject)
         {
-            if (VoronoiVertices.TryGetValue(index, out var p)) return p;
+            if (VoronoiVertices.TryGetValue(index, out var p))
+                return p;
             var point = new Point(pos, index);
             VoronoiVertices[index] = point;
-            if (!BaseVertices.ContainsKey(index)) BaseVertices[index] = point;
+            if (!BaseVertices.ContainsKey(index))
+                BaseVertices[index] = point;
             return point;
         }
     }
@@ -932,24 +1004,32 @@ public class StructureDatabase
             set.Add(cell);
 
             // Mirror to legacy EdgeMap only if a matching legacy key (same endpoints, any instance) exists
-            if (BaseVertices.TryGetValue(key.A, out var pa) && BaseVertices.TryGetValue(key.B, out var pb))
+            if (
+                BaseVertices.TryGetValue(key.A, out var pa)
+                && BaseVertices.TryGetValue(key.B, out var pb)
+            )
             {
-                Edge matchAB = null;
-                Edge matchBA = null;
+                Edge? matchAB = null;
+                Edge? matchBA = null;
                 foreach (var kv in EdgeMap)
                 {
                     var e = kv.Key;
-                    if (e.P == pa && e.Q == pb) matchAB = e;
-                    else if (e.P == pb && e.Q == pa) matchBA = e;
-                    if (matchAB != null && matchBA != null) break;
+                    if (e.P == pa && e.Q == pb)
+                        matchAB = e;
+                    else if (e.P == pb && e.Q == pa)
+                        matchBA = e;
+                    if (matchAB is not null && matchBA is not null)
+                        break;
                 }
-                if (matchAB != null)
+                if (matchAB is not null)
                 {
-                    if (!EdgeMap[matchAB].Contains(cell)) EdgeMap[matchAB].Add(cell);
+                    if (!EdgeMap[matchAB].Contains(cell))
+                        EdgeMap[matchAB].Add(cell);
                 }
-                if (matchBA != null)
+                if (matchBA is not null)
                 {
-                    if (!EdgeMap[matchBA].Contains(cell)) EdgeMap[matchBA].Add(cell);
+                    if (!EdgeMap[matchBA].Contains(cell))
+                        EdgeMap[matchBA].Add(cell);
                 }
             }
         }
@@ -966,6 +1046,23 @@ public class StructureDatabase
             }
             set.Add(cell);
         }
+    }
+
+    public void AddFaceToCellMap(int faceIndex, VoronoiCell cell)
+    {
+        lock (lockObject)
+        {
+            FaceToCellMap.Add(faceIndex, cell);
+        }
+    }
+
+    public VoronoiCell? GetCellFromIndex(int index)
+    {
+        if (FaceToCellMap.TryGetValue(index, out var cell))
+        {
+            return cell;
+        }
+        return null;
     }
 
     // ===== Phase 3–4: Phase reset hook =====
@@ -1010,6 +1107,8 @@ public class StructureDatabase
 
     public void FinalizeDB()
     {
+        if (VoronoiCells.Count > 0)
+            CellCount = VoronoiCells.Count;
         worldHalfEdgeMap.Clear();
         VoronoiCells.Clear();
         VoronoiCellVertices.Clear();
@@ -1035,15 +1134,18 @@ public class StructureDatabase
     private void RegisterEdgeCanonicalAndLegacy(Edge e)
     {
         // Points registry
-        if (!BaseVertices.ContainsKey(e.P.Index)) BaseVertices[e.P.Index] = e.P;
-        if (!BaseVertices.ContainsKey(e.Q.Index)) BaseVertices[e.Q.Index] = e.Q;
+        if (!BaseVertices.ContainsKey(e.P.Index))
+            BaseVertices[e.P.Index] = e.P;
+        if (!BaseVertices.ContainsKey(e.Q.Index))
+            BaseVertices[e.Q.Index] = e.Q;
 
         // Canonical half-edges (both directions, twin-linked)
         EnsureHalfEdgePair(e.P, e.Q);
 
         // Canonical undirected index (do not overwrite once present)
         var key = EdgeKey.From(e.P, e.Q);
-        if (!UndirectedEdgeIndex.ContainsKey(key)) UndirectedEdgeIndex[key] = e;
+        if (!UndirectedEdgeIndex.ContainsKey(key))
+            UndirectedEdgeIndex[key] = e;
     }
 
     /// <summary>
@@ -1059,7 +1161,8 @@ public class StructureDatabase
     /// </remarks>
     private void RegisterTriangleInRegistriesOnly(Triangle tri)
     {
-        if (!TrianglesById.ContainsKey(tri.Index)) TrianglesById[tri.Index] = tri;
+        if (!TrianglesById.ContainsKey(tri.Index))
+            TrianglesById[tri.Index] = tri;
         // Ensure all edges have canonical entries and register edge->triangle
         for (int i = 0; i < 3; i++)
         {
@@ -1075,7 +1178,8 @@ public class StructureDatabase
 
             // Ensure half-edges exist and optionally set Left for forward orientation
             var hf = FindHalfEdge(e.P, e.Q);
-            if (hf != null && hf.Left == null) hf.Left = tri;
+            if (hf != null && hf.Left == null)
+                hf.Left = tri;
         }
     }
 
@@ -1095,14 +1199,18 @@ public class StructureDatabase
         var rev = FindHalfEdge(b, a);
         if (fwd != null && rev != null)
         {
-            if (fwd.Twin == null) fwd.Twin = rev;
-            if (rev.Twin == null) rev.Twin = fwd;
+            if (fwd.Twin == null)
+                fwd.Twin = rev;
+            if (rev.Twin == null)
+                rev.Twin = fwd;
             return;
         }
 
         // Create missing ones
-        if (fwd == null) fwd = CreateHalfEdge(a, b);
-        if (rev == null) rev = CreateHalfEdge(b, a);
+        if (fwd == null)
+            fwd = CreateHalfEdge(a, b);
+        if (rev == null)
+            rev = CreateHalfEdge(b, a);
         fwd.Twin = rev;
         rev.Twin = fwd;
     }
@@ -1142,13 +1250,14 @@ public class StructureDatabase
     /// This method searches the OutHalfEdgesByPoint dictionary for a half-edge
     /// that starts at the specified 'from' point and ends at the specified 'to' point.
     /// </remarks>
-    private HalfEdge FindHalfEdge(Point from, Point to)
+    private HalfEdge? FindHalfEdge(Point from, Point to)
     {
         if (OutHalfEdgesByPoint.TryGetValue(from, out var set))
         {
             foreach (var h in set)
             {
-                if (h.Twin.From == to) return h;
+                if (h.Twin!.From == to)
+                    return h;
             }
         }
         return null;
@@ -1170,12 +1279,14 @@ public class StructureDatabase
         var rev = FindHalfEdge(b, a);
         if (fwd != null)
         {
-            if (OutHalfEdgesByPoint.TryGetValue(a, out var set)) set.Remove(fwd);
+            if (OutHalfEdgesByPoint.TryGetValue(a, out var set))
+                set.Remove(fwd);
             //HalfEdgeById.Remove(fwd.Id);
         }
         if (rev != null)
         {
-            if (OutHalfEdgesByPoint.TryGetValue(b, out var set2)) set2.Remove(rev);
+            if (OutHalfEdgesByPoint.TryGetValue(b, out var set2))
+                set2.Remove(rev);
             //HalfEdgeById.Remove(rev.Id);
         }
     }
@@ -1198,7 +1309,11 @@ public class StructureDatabase
     /// <param name="p1">The starting point of the edge.</param>
     /// <param name="p2">The ending point of the edge.</param>
     /// <returns>true if the edge exists in the nested dictionary; otherwise, false.</returns>
-    private static bool MapContains(Dictionary<Point, Dictionary<Point, Edge>> map, Point p1, Point p2)
+    private static bool MapContains(
+        Dictionary<Point, Dictionary<Point, Edge>> map,
+        Point p1,
+        Point p2
+    )
     {
         if (map.ContainsKey(p1))
         {
@@ -1218,12 +1333,16 @@ public class StructureDatabase
         return map[p1] != null;
     }
 
+    [Obsolete("Use canonical registries and facades; this view is read-only.")]
+    public System.Collections.ObjectModel.ReadOnlyDictionary<
+        Edge,
+        List<Triangle>
+    > LegacyEdgeTriangles =>
+        new System.Collections.ObjectModel.ReadOnlyDictionary<Edge, List<Triangle>>(EdgeTriangles);
 
     [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<Edge, List<Triangle>> LegacyEdgeTriangles => new System.Collections.ObjectModel.ReadOnlyDictionary<Edge, List<Triangle>>(EdgeTriangles);
-
-    [Obsolete("Use canonical registries and facades; this view is read-only.")]
-    public System.Collections.ObjectModel.ReadOnlyDictionary<int, Point> LegacyCircumcenters => new System.Collections.ObjectModel.ReadOnlyDictionary<int, Point>(VoronoiVertices);
+    public System.Collections.ObjectModel.ReadOnlyDictionary<int, Point> LegacyCircumcenters =>
+        new System.Collections.ObjectModel.ReadOnlyDictionary<int, Point>(VoronoiVertices);
 
     // ===== Phase 3–4: Internal container types =====
     /// <summary>
@@ -1240,14 +1359,16 @@ public class StructureDatabase
         /// Initializes a new instance of the BaseContainer class.
         /// </summary>
         /// <param name="db">The parent StructureDatabase instance.</param>
-        internal BaseContainer(StructureDatabase db) { this.db = db; }
+        internal BaseContainer(StructureDatabase db)
+        {
+            this.db = db;
+        }
 
         /// <summary>
         /// Gets a read-only dictionary of base triangles keyed by their three vertex points.
         /// </summary>
         public System.Collections.ObjectModel.ReadOnlyCollection<Triangle> Triangles =>
             new System.Collections.ObjectModel.ReadOnlyCollection<Triangle>(db.BaseTris.ToList());
-
     }
 
     /// <summary>
@@ -1264,19 +1385,31 @@ public class StructureDatabase
         /// Initializes a new instance of the DualContainer class.
         /// </summary>
         /// <param name="db">The parent StructureDatabase instance.</param>
-        internal DualContainer(StructureDatabase db) { this.db = db; }
+        internal DualContainer(StructureDatabase db)
+        {
+            this.db = db;
+        }
 
         /// <summary>
         /// Gets a read-only dictionary mapping edges to the Voronoi cells that contain them.
         /// </summary>
-        public System.Collections.ObjectModel.ReadOnlyDictionary<EdgeKey, HashSet<VoronoiCell>> EdgeCells =>
-            new System.Collections.ObjectModel.ReadOnlyDictionary<EdgeKey, HashSet<VoronoiCell>>(db.EdgeKeyCellMap);
+        public System.Collections.ObjectModel.ReadOnlyDictionary<
+            EdgeKey,
+            HashSet<VoronoiCell>
+        > EdgeCells =>
+            new System.Collections.ObjectModel.ReadOnlyDictionary<EdgeKey, HashSet<VoronoiCell>>(
+                db.EdgeKeyCellMap
+            );
 
         /// <summary>
         /// Gets a read-only dictionary mapping points to the Voronoi cells that contain them.
         /// </summary>
-        public System.Collections.ObjectModel.ReadOnlyDictionary<Point, HashSet<VoronoiCell>> CellMap =>
-            new System.Collections.ObjectModel.ReadOnlyDictionary<Point, HashSet<VoronoiCell>>(db.CellMap);
+        public System.Collections.ObjectModel.ReadOnlyDictionary<
+            Point,
+            HashSet<VoronoiCell>
+        > CellMap =>
+            new System.Collections.ObjectModel.ReadOnlyDictionary<Point, HashSet<VoronoiCell>>(
+                db.CellMap
+            );
     }
 }
-

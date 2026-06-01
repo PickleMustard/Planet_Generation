@@ -37,7 +37,7 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
     public bool Insert(T point)
     {
         if (!root.Contains(point)) return false;
-        _points.Add(point);
+        if (!_points.Add(point)) return true;
         try
         {
             return root.Insert(point);
@@ -56,9 +56,9 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
         return result;
     }
 
-    public T FindNearest(T query)
+    public T? FindNearest(T query)
     {
-        T nearest = null;
+        T? nearest = null;
         float bestDistSq = float.MaxValue;
         int level = 0;
         FindNearestRecursive(root, query, ref bestDistSq, ref nearest, ref level);
@@ -66,7 +66,7 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
         return nearest;
     }
 
-    private void FindNearestRecursive(OctreeNode<T> node, T query, ref float bestDistSq, ref T nearest, ref int level)
+    private void FindNearestRecursive(OctreeNode<T> node, T query, ref float bestDistSq, ref T? nearest, ref int level)
     {
         if (node.DistanceToPointSq(query) >= bestDistSq) return;
         foreach (var point in node.points)
@@ -79,14 +79,35 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
             }
             level++;
         }
+
+        // Sort children by proximity to the query point so the closest octant
+        // is visited first. This establishes a tight bestDistSq early, allowing
+        // more aggressive pruning of distant octants.
+        Span<(int index, float dist)> childDists = stackalloc (int, float)[8];
+        int count = 0;
         for (int i = 0; i < 8; i++)
         {
             if (node.children[i] != null)
             {
-                FindNearestRecursive(node.children[i], query, ref bestDistSq, ref nearest, ref level);
+                childDists[count++] = (i, node.children[i].DistanceToPointSq(query));
             }
         }
-
+        // Simple insertion sort — at most 8 elements, no allocations
+        for (int i = 1; i < count; i++)
+        {
+            var key = childDists[i];
+            int j = i - 1;
+            while (j >= 0 && childDists[j].dist > key.dist)
+            {
+                childDists[j + 1] = childDists[j];
+                j--;
+            }
+            childDists[j + 1] = key;
+        }
+        for (int i = 0; i < count; i++)
+        {
+            FindNearestRecursive(node.children[childDists[i].index], query, ref bestDistSq, ref nearest, ref level);
+        }
     }
 
     private void queryRangeRecursive(OctreeNode<T> node, Aabb range, Array<T> result)
@@ -110,6 +131,7 @@ public partial class Octree<[MustBeVariant] T> : Resource where T : Point
 public class OctreeNode<[MustBeVariant] T> where T : Point
 {
     const int NODE_CAPACITY = 16;
+    const int MAX_DEPTH = 16;
 
     public Aabb boundary { get; private set; }
     public Array<T> points { get; private set; }
@@ -124,14 +146,17 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
 
     public void Grow(float factor)
     {
-        Vector3 start = boundary.Position + boundary.Position * (factor / 2f);
-        Vector3 size = boundary.Size + boundary.Size * (factor);
-        boundary = new Aabb(start, size).Abs();
+        // Expand symmetrically around the current center. Godot's Aabb.Position is the
+        // min-corner, not the center, so naive `position + position * k` shifts the box.
+        Vector3 center = boundary.GetCenter();
+        Vector3 newSize = boundary.Size * (1f + factor);
+        Vector3 newPos = center - newSize / 2f;
+        boundary = new Aabb(newPos, newSize).Abs();
         foreach (var child in children)
         {
             if (child != null)
             {
-                child.Grow(factor / 2f);
+                child.Grow(factor);
             }
         }
     }
@@ -180,7 +205,7 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
         return boundary.HasPoint(point.Position);
     }
 
-    public void Subdivide()
+    public void Subdivide(int depth)
     {
         Vector3 childHalfDim = boundary.Size / 4f;
 
@@ -196,26 +221,26 @@ public class OctreeNode<[MustBeVariant] T> where T : Point
             children[i] = new OctreeNode<T>(new Aabb(aabbStart, size).Abs());
         }
 
-        //foreach (var point in points)
-        //{
-        //    int octant = GetOctant(point);
-        //    children[octant].Insert(point);
-        //}
+        foreach (var point in points)
+        {
+            int octant = GetOctant(point);
+            children[octant].Insert(point, depth + 1);
+        }
 
-        //points.Clear();
+        points.Clear();
     }
 
-    public bool Insert(T point)
+    public bool Insert(T point, int depth = 0)
     {
         if (!boundary.HasPoint(point.Position)) return false;
-        if (IsLeaf() && points.Count < NODE_CAPACITY)
+        if (IsLeaf() && (points.Count < NODE_CAPACITY || depth >= MAX_DEPTH))
         {
             points.Add(point);
             return true;
         }
         if (IsLeaf())
-            Subdivide();
+            Subdivide(depth);
         int octant = GetOctant(point);
-        return children[octant].Insert(point);
+        return children[octant].Insert(point, depth + 1);
     }
 }

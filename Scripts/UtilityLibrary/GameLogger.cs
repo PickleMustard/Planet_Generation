@@ -1,7 +1,7 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace UtilityLibrary
 {
@@ -9,14 +9,81 @@ namespace UtilityLibrary
     {
         public enum Mode
         {
-            DEBUG, CRITICAL, ERROR, WARNING, INFO, PROD
+            DEBUG, INFO, WARNING, ERROR, CRITICAL, PROD
         }
         private static readonly string LogDirectory = "logs";
         private static readonly string LogFilePath = Path.Combine(LogDirectory, "debug.log");
         private static readonly object LockObject = new object();
 
-        public static Mode logMode { get; set; } = Mode.PROD;
+        public static Mode logMode { get; set; } = Mode.DEBUG;
+        private static bool _logToFile = true;
+        private static bool _logToConsole = true;
 
+        private static readonly ConfigurableProvider Provider = new ConfigurableProvider();
+
+        private class ConfigurableProvider : IConfigurable
+        {
+            public string SettingsCategory => "logging";
+
+            public IEnumerable<ConfigEntry> GetConfigEntries() => new[]
+            {
+                new ConfigEntry
+                {
+                    Key = "level",
+                    ValueType = typeof(string),
+                    DefaultValue = "DEBUG",
+                    ValidOptions = new[] { "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "PROD" },
+                    Description = "Minimum log level to output",
+                    RequiresRestart = false
+                },
+                new ConfigEntry
+                {
+                    Key = "log_to_file",
+                    ValueType = typeof(bool),
+                    DefaultValue = true,
+                    Description = "Write log messages to logs/debug.log",
+                    RequiresRestart = false
+                },
+                new ConfigEntry
+                {
+                    Key = "log_to_console",
+                    ValueType = typeof(bool),
+                    DefaultValue = true,
+                    Description = "Print log messages to Godot console",
+                    RequiresRestart = false
+                }
+            };
+
+            public void ApplySetting(string key, object value)
+            {
+                switch (key)
+                {
+                    case "level":
+                        var levelStr = value.ToString();
+                        if (Enum.TryParse<Mode>(levelStr, out var modeEnum))
+                        {
+                            logMode = modeEnum;
+                        }
+                        break;
+                    case "log_to_file":
+                        _logToFile = (bool)value;
+                        break;
+                    case "log_to_console":
+                        _logToConsole = (bool)value;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            public object? GetSettingDefault(string key) => key switch
+            {
+                "level" => "DEBUG",
+                "log_to_file" => true,
+                "log_to_console" => true,
+                _ => null
+            };
+        }
 
         static GameLogger()
         {
@@ -33,6 +100,15 @@ namespace UtilityLibrary
             }
 
             File.Create(LogFilePath).Close();
+        }
+
+        /// <summary>
+        /// Initializes GameLogger by registering with RuntimeSettings.
+        /// Called lazily when settings provider is available.
+        /// </summary>
+        public static void Initialize()
+        {
+            RuntimeSettings.Instance?.RegisterConfigurable(Provider);
         }
 
         private static Mode ConvertStringToMode(String input)
@@ -168,6 +244,21 @@ namespace UtilityLibrary
                 return;
             }
 
+            // Use internal cached values as defaults to avoid querying RuntimeSettings
+            // on every log call (which would cause recursive issues during initialization)
+            bool logToFile = _logToFile;
+            bool logToConsole = _logToConsole;
+
+            // Only query RuntimeSettings if it's available and has the settings registered
+            if (RuntimeSettings.Instance != null)
+            {
+                if (RuntimeSettings.Instance.HasSetting("logging", "log_to_file"))
+                    logToFile = RuntimeSettings.Instance.GetSetting<bool>("logging", "log_to_file");
+
+                if (RuntimeSettings.Instance.HasSetting("logging", "log_to_console"))
+                    logToConsole = RuntimeSettings.Instance.GetSetting<bool>("logging", "log_to_console");
+            }
+
             lock (LockObject)
             {
                 try
@@ -178,14 +269,18 @@ namespace UtilityLibrary
                     string formattedMessage = $"[{timestamp}] [{levelString.PadRight(8)}] {categoryTag}{message}";
 
                     // Write to file
-                    File.AppendAllText(LogFilePath, formattedMessage + System.Environment.NewLine);
+                    if (logToFile)
+                    {
+                        File.AppendAllText(LogFilePath, formattedMessage + System.Environment.NewLine);
+                    }
 
-                    if (level == GameLogger.Mode.DEBUG && GameLogger.logMode <= GameLogger.Mode.DEBUG)
-                        GD.Print(formattedMessage);
-                    else if ((level == GameLogger.Mode.CRITICAL || level == GameLogger.Mode.ERROR || level == GameLogger.Mode.WARNING) && GameLogger.logMode <= GameLogger.Mode.ERROR)
-                        GD.PrintErr(formattedMessage);
-                    else if (level == GameLogger.Mode.INFO && GameLogger.logMode <= GameLogger.Mode.INFO)
-                        GD.Print(formattedMessage);
+                    if (logToConsole && level >= logMode)
+                    {
+                        if (level >= Mode.WARNING)
+                            GD.PrintErr(formattedMessage);
+                        else
+                            GD.Print(formattedMessage);
+                    }
                 }
                 catch (Exception ex)
                 {

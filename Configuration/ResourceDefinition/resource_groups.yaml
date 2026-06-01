@@ -1,0 +1,44 @@
+# Resource Groups — reusable sets of resource IDs
+# Referenced by subtype configs in planetary_resource_config.yaml
+
+basicFuels:
+  - water
+
+commonOres:
+  - iron_ore
+  - copper_ore
+  - nickel_ore
+  - bauxite_ore
+  - lithium_ore
+
+frozenVolatiles:
+  - water_ice
+
+fusionMaterials:
+  - hydrogen
+  - tritium
+
+habitableFoods:
+  - grain
+  - vegetable
+  - protein
+
+industrialMaterials:
+  - clay
+  - silicon
+  - gravel
+  - salt
+
+preciousOres:
+  - gold_ore
+  - platinum_ore
+  - cobalt_ore
+  - tungsten_ore
+  - titanium_ore
+  - silver_ore
+
+radioactiveOres:
+  - uranium_ore
+
+rareOres:
+  - loadstone_ore

@@ -1,0 +1,66 @@
+dominant:
+- type: Star
+  template:
+    mass: 500000
+    size: 500
+    position:
+    - 0
+    - 0
+    - 0
+    velocity:
+    - 0
+    - 0
+    - 0
+  central_parameters:
+    inclination: 0
+    starting_angle: 0
+  subtype_weights:
+    subtype_star_binary_primary: 0.125
+    subtype_star_blue_supergiant: 0.125
+    subtype_star_main_sequence: 0.125
+    subtype_star_red_dwarf: 0.125
+    subtype_star_red_giant: 0.125
+    subtype_star_variable_star: 0.125
+    subtype_star_white_dwarf: 0.125
+    subtype_star_yellow_dwarf: 0.125
+planetary:
+- type: RockyPlanet
+  template:
+    mass: 1000
+    size: 150
+  orbital_parameters:
+    apogee: 3000
+    perigee: 3000
+    starting_angle: 0
+    vertical_offset: 0
+    orbital_center_index: -1
+    parent_body: barycenter
+  subtype_weights:
+    subtype_rocky_cool: 0.1111
+    subtype_rocky_desert: 0.1111
+    subtype_rocky_ice: 0.1111
+    subtype_rocky_ocean: 0.1111
+    subtype_rocky_rusted: 0.1111
+    subtype_rocky_scoured: 0.1111
+    subtype_rocky_temperate: 0.1111
+    subtype_rocky_tropical: 0.1111
+    subtype_rocky_volcanic: 0.1111
+- type: GasGiant
+  template:
+    mass: 5000
+    size: 300
+  orbital_parameters:
+    apogee: 5000
+    perigee: 5000
+    starting_angle: 0
+    vertical_offset: 0
+    orbital_center_index: -1
+    parent_body: barycenter
+  subtype_weights:
+    subtype_gas_giant_cold_jupiter: 0.1429
+    subtype_gas_giant_failed_star: 0.1429
+    subtype_gas_giant_hot_jupiter: 0.1429
+    subtype_gas_giant_puffy_giant: 0.1429
+    subtype_gas_giant_ringed_giant: 0.1429
+    subtype_gas_giant_standard_jupiter: 0.1429
+    subtype_gas_giant_stormy_giant: 0.1429

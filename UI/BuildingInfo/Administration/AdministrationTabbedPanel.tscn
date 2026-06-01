@@ -1,0 +1,148 @@
+[gd_scene format=3 uid="uid://clbk5vd1ptxcy"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_8ykbm"]
+[ext_resource type="Script" uid="uid://bx84kibttmnkt" path="res://Scripts/UI/BuildingInfo/Administration/AdministrationTabbedPanel.cs" id="1_admintabs"]
+[ext_resource type="PackedScene" uid="uid://cwq8swb4wvw66" path="res://UI/BuildingInfo/BuildingPanelDetails.tscn" id="2_mfg"]
+[ext_resource type="PackedScene" uid="uid://b7ypcljfms5v5" path="res://UI/BuildingInfo/PowerPanelDetails.tscn" id="3_power"]
+[ext_resource type="PackedScene" uid="uid://dkq5mblru0vex" path="res://UI/BuildingInfo/HubPanelDetails.tscn" id="4_storage"]
+[ext_resource type="PackedScene" path="res://UI/BuildingInfo/Administration/ResearchPanelDetails.tscn" id="5_research"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_admin_tab_active"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.769, 0.329, 0.102, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_color = Color(0.165, 0.145, 0.125, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+
+[node name="AdministrationTabbedPanel" type="Control" unique_id=1557094360 node_paths=PackedStringArray("BuildingNameLabel", "BuildingCodeLabel", "BuildingTagLabel", "StatStrip", "RenderPlaceholderLabel", "BehaviorChipsContainer", "TabBar", "TabBodyContainer")]
+custom_minimum_size = Vector2(720, 480)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_8ykbm")
+script = ExtResource("1_admintabs")
+ManufacturingTabScene = ExtResource("2_mfg")
+PowerTabScene = ExtResource("3_power")
+StorageTabScene = ExtResource("4_storage")
+ResearchTabScene = ExtResource("5_research")
+BuildingNameLabel = NodePath("RootVBox/BodyHSplit/LeftColumn/BuildingNameLabel")
+BuildingCodeLabel = NodePath("RootVBox/BodyHSplit/LeftColumn/BuildingCodeLabel")
+BuildingTagLabel = NodePath("RootVBox/BodyHSplit/LeftColumn/BuildingTagLabel")
+StatStrip = NodePath("RootVBox/StatStrip")
+RenderPlaceholderLabel = NodePath("RootVBox/BodyHSplit/LeftColumn/RenderPlaceholder/RenderLabel")
+BehaviorChipsContainer = NodePath("RootVBox/BodyHSplit/LeftColumn/BehaviorChipsContainer")
+TabBar = NodePath("RootVBox/BodyHSplit/RightColumn/TabBar")
+TabBodyContainer = NodePath("RootVBox/BodyHSplit/RightColumn/TabBodyContainer")
+
+[node name="RootVBox" type="VBoxContainer" parent="." unique_id=1698610531]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_8ykbm")
+theme_override_constants/separation = 8
+
+[node name="StatStrip" type="HBoxContainer" parent="RootVBox" unique_id=437947561]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_override_constants/separation = 12
+
+[node name="HSepStatStrip" type="HSeparator" parent="RootVBox" unique_id=113041286]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+
+[node name="BodyHSplit" type="HSplitContainer" parent="RootVBox" unique_id=301751543]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_8ykbm")
+split_offsets = PackedInt32Array(260)
+split_offset = 260
+
+[node name="LeftColumn" type="VBoxContainer" parent="RootVBox/BodyHSplit" unique_id=1849301632]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_override_constants/separation = 6
+
+[node name="RenderPlaceholder" type="PanelContainer" parent="RootVBox/BodyHSplit/LeftColumn" unique_id=2051121486]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+
+[node name="RenderLabel" type="Label" parent="RootVBox/BodyHSplit/LeftColumn/RenderPlaceholder" unique_id=1010132930]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_type_variation = &"LabelMono"
+text = "3D · Building"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HSepLeft" type="HSeparator" parent="RootVBox/BodyHSplit/LeftColumn" unique_id=1387656313]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+
+[node name="BuildingNameLabel" type="Label" parent="RootVBox/BodyHSplit/LeftColumn" unique_id=1504433857]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+text = "—"
+
+[node name="BuildingCodeLabel" type="Label" parent="RootVBox/BodyHSplit/LeftColumn" unique_id=1513206146]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_type_variation = &"LabelMono"
+
+[node name="BuildingTagLabel" type="Label" parent="RootVBox/BodyHSplit/LeftColumn" unique_id=1502934008]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_type_variation = &"LabelMono"
+text = "ADMIN"
+
+[node name="BehaviorsHeader" type="Label" parent="RootVBox/BodyHSplit/LeftColumn" unique_id=394972181]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_type_variation = &"LabelMono"
+text = "BEHAVIORS"
+
+[node name="BehaviorChipsContainer" type="VBoxContainer" parent="RootVBox/BodyHSplit/LeftColumn" unique_id=1885543094]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_override_constants/separation = 2
+
+[node name="RightColumn" type="VBoxContainer" parent="RootVBox/BodyHSplit" unique_id=1933407402]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_8ykbm")
+theme_override_constants/separation = 6
+
+[node name="TabBar" type="HBoxContainer" parent="RootVBox/BodyHSplit/RightColumn" unique_id=602330786]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+theme_override_constants/separation = 4
+
+[node name="_StyleProbeBtn" type="Button" parent="RootVBox/BodyHSplit/RightColumn/TabBar" unique_id=1901758082]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_8ykbm")
+theme_override_styles/normal = SubResource("StyleBoxFlat_admin_tab_active")
+text = "·"
+
+[node name="HSepTab" type="HSeparator" parent="RootVBox/BodyHSplit/RightColumn" unique_id=1628040739]
+layout_mode = 2
+theme = ExtResource("1_8ykbm")
+
+[node name="TabBodyContainer" type="VBoxContainer" parent="RootVBox/BodyHSplit/RightColumn" unique_id=1161403481]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_8ykbm")

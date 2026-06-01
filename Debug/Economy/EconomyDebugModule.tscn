@@ -1,0 +1,261 @@
+[gd_scene load_steps=3 format=3 uid="uid://economy_debug_module"]
+
+[ext_resource type="Script" path="res://Debug/Economy/EconomyDebugModule.cs" id="1_economy"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
+bg_color = Color(0.12, 0.12, 0.14, 1)
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+
+[node name="EconomyDebugModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_economy")
+
+[node name="SplitContainer" type="HSplitContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+split_offsets = PackedInt32Array(250)
+
+[node name="LeftPanel" type="PanelContainer" parent="SplitContainer"]
+layout_mode = 2
+
+[node name="EconomyList" type="ItemList" parent="SplitContainer/LeftPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightPanel" type="PanelContainer" parent="SplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DetailScroll" type="ScrollContainer" parent="SplitContainer/RightPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 2
+
+[node name="DetailContainer" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="HeaderSection" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderPanel" type="PanelContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+
+[node name="HeaderLabel" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection/HeaderPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Economy Info"
+
+[node name="HeaderContent" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="TypeRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection/HeaderContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection/HeaderContent/TypeRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Type:"
+
+[node name="HeaderTypeValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection/HeaderContent/TypeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="IDRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection/HeaderContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection/HeaderContent/IDRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "ID:"
+
+[node name="HeaderIdValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/HeaderSection/HeaderContent/IDRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="PowerSection" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderPanel" type="PanelContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+
+[node name="HeaderLabel" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/HeaderPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Power"
+
+[node name="PowerContent" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="GenerationRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/GenerationRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Generation:"
+
+[node name="PowerGenValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/GenerationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="ConsumptionRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/ConsumptionRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Consumption:"
+
+[node name="PowerConValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/ConsumptionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="StoredRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/StoredRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Stored:"
+
+[node name="PowerStoredValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/StoredRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="DeficitRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/DeficitRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Deficit:"
+
+[node name="PowerDeficitValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/PowerSection/PowerContent/DeficitRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="BuildingsSection" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderPanel" type="PanelContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+
+[node name="HeaderLabel" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection/HeaderPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Buildings"
+
+[node name="BuildingsContent" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ActiveRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection/BuildingsContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection/BuildingsContent/ActiveRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Active:"
+
+[node name="BuildingsActiveValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection/BuildingsContent/ActiveRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="PausedRow" type="HBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection/BuildingsContent"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection/BuildingsContent/PausedRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Paused:"
+
+[node name="BuildingsPausedValue" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/BuildingsSection/BuildingsContent/PausedRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+text = "-"
+
+[node name="StockpilesSection" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderPanel" type="PanelContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/StockpilesSection"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+
+[node name="HeaderLabel" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/StockpilesSection/HeaderPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Stockpiles by Category"
+
+[node name="StockpilesContainer" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/StockpilesSection"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ShortagesSection" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderPanel" type="PanelContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/ShortagesSection"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+
+[node name="HeaderLabel" type="Label" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/ShortagesSection/HeaderPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Active Shortages"
+
+[node name="ShortagesContainer" type="VBoxContainer" parent="SplitContainer/RightPanel/DetailScroll/DetailContainer/ShortagesSection"]
+layout_mode = 2
+theme_override_constants/separation = 2

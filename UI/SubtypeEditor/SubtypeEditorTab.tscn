@@ -1,0 +1,62 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://UI/SubtypeEditor/SubtypeEditorTab.cs" id="1"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/SubtypeBrowserPanel.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://UI/SubtypeEditor/SubtypeDetailPanel.tscn" id="3"]
+
+[node name="SubtypeEditorTab" type="VBoxContainer" node_paths=PackedStringArray("_saveButton", "_reloadButton", "_generateMidpointButton", "_generateRandomButton", "_resetSelectionButton", "_feedbackLabel", "_split", "_subtypeBrowser", "_subtypeDetail")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1")
+_saveButton = NodePath("Toolbar/SaveButton")
+_reloadButton = NodePath("Toolbar/ReloadButton")
+_generateMidpointButton = NodePath("Toolbar/GenerateMidpointButton")
+_generateRandomButton = NodePath("Toolbar/GenerateRandomButton")
+_resetSelectionButton = NodePath("Toolbar/ResetSelectionButton")
+_feedbackLabel = NodePath("Toolbar/FeedbackLabel")
+_split = NodePath("Split")
+_subtypeBrowser = NodePath("Split/SubtypeBrowserPanel")
+_subtypeDetail = NodePath("Split/SubtypeDetailPanel")
+
+[node name="Toolbar" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SaveButton" type="Button" parent="Toolbar"]
+layout_mode = 2
+text = "Save"
+
+[node name="ReloadButton" type="Button" parent="Toolbar"]
+layout_mode = 2
+text = "Reload from disk"
+
+[node name="VSeparator" type="VSeparator" parent="Toolbar"]
+layout_mode = 2
+
+[node name="GenerateMidpointButton" type="Button" parent="Toolbar"]
+layout_mode = 2
+text = "Generate (midpoint)"
+
+[node name="GenerateRandomButton" type="Button" parent="Toolbar"]
+layout_mode = 2
+text = "Generate (random)"
+
+[node name="ResetSelectionButton" type="Button" parent="Toolbar"]
+layout_mode = 2
+text = "Reset selection"
+
+[node name="FeedbackLabel" type="Label" parent="Toolbar"]
+layout_mode = 2
+visible = false
+theme_override_colors/font_color = Color(0.4, 1, 0.4, 1)
+
+[node name="Split" type="HSplitContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SubtypeBrowserPanel" parent="Split" instance=ExtResource("2")]
+layout_mode = 2
+
+[node name="SubtypeDetailPanel" parent="Split" instance=ExtResource("3")]
+layout_mode = 2

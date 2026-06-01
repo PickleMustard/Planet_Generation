@@ -1,13 +1,18 @@
-using Godot;
-using Structures.MeshGeneration;
-using Structures.Enums;
-using Structures.GameState;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using Godot;
+using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.ColorSystem;
+using ProceduralGeneration.MeshGeneration.ResourceGeneration;
+using ProceduralGeneration.TextureGeneration;
+using Structures;
+using Structures.Enums;
+using Structures.GameState;
+using Structures.MeshGeneration;
+using Structures.Resources;
 using UtilityLibrary;
-using PlanetGeneration;
+using UtilityLibrary.TaskSystem;
 
 /// <summary>
 /// Unified celestial body mesh generation system that consolidates functionality from CelestialBodyMesh and SatelliteBodyMesh.
@@ -60,18 +65,19 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         /// Generate using only noise-based deformation without tectonic processes or scaling.
         /// Creates purely procedural terrain features.
         /// </summary>
-        NoiseOnly
+        NoiseOnly,
+
+        /// <summary>
+        /// Generate using Spherical Harmonics global shape deformation combined with noise-based surface detail.
+        /// Suitable for satellite bodies (moons, asteroids) with realistic large-scale shape variation
+        /// and fine surface irregularities. SH deformation creates ellipsoidal/irregular base shapes
+        /// while noise adds surface texture.
+        /// </summary>
+        SphericalHarmonicsWithNoise,
     }
 
     [Signal]
     public delegate void GeneratedVoronoiCellsEventHandler();
-
-    /// <summary>
-    /// Static progress tracking object for generation operations.
-    /// Used to monitor and report progress during the asynchronous mesh generation process.
-    /// </summary>
-    public static GenericPercent percent;
-
 
     /// <summary>
     /// Maximum height value found during terrain generation.
@@ -98,32 +104,34 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     protected RandomNumberGenerator rand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
 
     /// <summary>
-    /// Instance reference to this UnifiedCelestialMesh.
-    /// Provides access to the current instance for external components and systems.
-    /// </summary>
-    public UnifiedCelestialMesh Instance { get; }
-
-    /// <summary>
     /// Structure database containing all mesh data and relationships.
     /// Central repository for all mesh structures including vertices, edges, faces, and their relationships.
     /// </summary>
-    public StructureDatabase StrDb;
+    public StructureDatabase? StrDb;
 
     /// <summary>
     /// Tectonic generation system for simulating plate tectonics.
     /// Handles the simulation of tectonic plate movement, stress calculations, and terrain deformation.
     /// </summary>
-    protected TectonicGeneration tectonics;
+    protected TectonicGeneration? tectonics;
+
+    private Octree<Point>? _octree;
+    private String? _name;
+
+    /// <summary>
+    /// Dictionary of continents indexed by their starting cell index.
+    /// Populated after mesh generation with tectonics enabled.
+    /// </summary>
+    public Dictionary<int, Continent>? Continents { get; internal set; }
 
     /// <summary>
     /// The detected generation type based on configuration parameters.
     /// Determines which pipeline will be used for mesh generation.
     /// </summary>
-    public BodyGenerationType GenerationType { get; private set; }
+    public BodyGenerationType GenerationType { get; internal set; }
 
     [ExportCategory("Planet Generation")]
     [ExportGroup("Mesh Generation")]
-
     /// <summary>
     /// Number of subdivision levels for the base mesh. Higher values create more detailed meshes.
     /// Each subdivision level increases the number of faces by a factor of 4, exponentially increasing mesh complexity.
@@ -168,6 +176,27 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     public bool ProjectToSphere = true;
 
     /// <summary>
+    /// Whether to use cell-based biome for mesh coloring instead of point-based biome.
+    /// When enabled, the biome of each Voronoi cell is used for coloring the entire cell.
+    /// When disabled, each point retains its individual biome for coloring.
+    /// </summary>
+    /// <remarks>
+    /// Cell-based biome provides more consistent coloring across cells and better reflects
+    /// the dominant biome type for gameplay purposes like resource generation.
+    /// Default is false to maintain backward compatibility with existing point-based system.
+    /// </remarks>
+    [Export]
+    public bool UseCellBiomeForColoring = true;
+
+    /// <summary>
+    /// The body classification used to select biome, color, and resource assigners.
+    /// Set by CelestialBody/SatelliteBody after construction.
+    /// </summary>
+    public BodyClassification? Classification { get; set; }
+    private IBiomeAssigner? _biomeAssigner;
+    private IColorMapper? _colorMapper;
+
+    /// <summary>
     /// Random seed for procedural generation. Set to 0 for random seed.
     /// Controls the deterministic generation of terrain features for reproducible results.
     /// </summary>
@@ -201,7 +230,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     public int NumDeformationCycles = 3;
 
     [ExportGroup("Tectonic Settings")]
-
     /// <summary>
     /// Number of continents to generate on the celestial body.
     /// Determines how many distinct continental landmasses are created during generation.
@@ -313,9 +341,39 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     [Export]
     public float GeneralTransformScale = 1.1f;
 
+    /// <summary>
+    /// Number of Laplacian smoothing iterations applied to per-edge boundary stress
+    /// after raw stress is computed. 0 disables smoothing entirely; higher values
+    /// trade boundary feature sharpness for vertex-to-vertex continuity along ridges.
+    /// </summary>
+    [Export]
+    public int BoundaryStressSmoothingIterations = 3;
+
+    /// <summary>
+    /// Blend weight in [0,1] for each smoothing iteration. 0 = no blending,
+    /// 1 = fully replace each edge's stress with its neighbor mean each pass.
+    /// </summary>
+    [Export]
+    public float BoundaryStressSmoothingWeight = 0.2f;
+
+    /// <summary>
+    /// When true, samples each plate's velocity field at the shared edge midpoint
+    /// rather than using bulk per-cell MovementDirection. Removes a major source of
+    /// stress discontinuity between vertex-adjacent boundary edges.
+    /// </summary>
+    [Export]
+    public bool SampleVelocityAtEdgeMidpoint = true;
+
+    /// <summary>
+    /// Maximum absolute continent rotation (degrees). Rotation is sampled uniformly
+    /// in [-MaxContinentRotation, +MaxContinentRotation]. Caps the ω × r contribution
+    /// to per-cell movement so extreme rotational outliers do not dominate stress.
+    /// </summary>
+    [Export]
+    public float MaxContinentRotation = 60f;
+
     [ExportCategory("Asteroid Generation")]
     [ExportGroup("Scaling Settings")]
-
     /// <summary>
     /// Scale factors for non-uniform scaling along X, Y, Z axes.
     /// Values greater than 1 elongate the axis, less than 1 compress it.
@@ -325,7 +383,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     public Vector3 ScaleFactors { get; set; } = new Vector3(1.0f, 1.0f, 1.0f);
 
     [ExportGroup("Noise Settings")]
-
     /// <summary>
     /// Amplitude of noise displacement. Higher values create more exaggerated surface irregularities.
     /// Typical range: 0.1f (subtle) to 0.5f (extreme).
@@ -355,24 +412,1005 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     public int NoiseSeed { get; set; } = 0;
 
     /// <summary>
+    /// Lacunarity for fractal noise. Controls how much frequency increases per octave.
+    /// Standard FBM value is 2.0. Higher values create more detailed high-frequency features.
+    /// </summary>
+    [Export]
+    public float NoiseLacunarity { get; set; } = 2.0f;
+
+    /// <summary>
+    /// Gain for fractal noise. Controls how much amplitude decreases per octave.
+    /// Standard FBM value is 0.5. Values above 1.0 cause amplitude to grow (chaotic patterns).
+    /// </summary>
+    [Export]
+    public float NoiseGain { get; set; } = 0.5f;
+
+    /// <summary>
     /// Noise generator instance for procedural deformation.
     /// Uses Godot's FastNoiseLite for efficient 3D noise computation.
     /// </summary>
-    private FastNoiseLite noise;
+    private FastNoiseLite? noise;
+
+    /// <summary>
+    /// Spherical Harmonics deformer for global shape deformation.
+    /// Used by SphericalHarmonicsWithNoise pipeline for satellite bodies.
+    /// </summary>
+    private SphericalHarmonicsDeformer? _shDeformer;
+
+    /// <summary>
+    /// Amplitude for Spherical Harmonics deformation. Controls the magnitude
+    /// of the global shape variation. Default: 0.3f.
+    /// </summary>
+    private float _shAmplitude = 0.3f;
+
+    protected Dictionary<string, ResourceDeposit>? _satelliteResources;
+
+    /// <summary>
+    /// Gets the satellite-level resource deposits for this body.
+    /// Only populated for satellite-type bodies (NoiseOnly/ScalingWithNoise generation).
+    /// </summary>
+    public Dictionary<string, ResourceDeposit>? SatelliteResources => _satelliteResources;
+
+    /// <summary>
+    /// Per-instance ShaderMaterial instances for the cell selection highlight shader.
+    /// One per surface (continent) in the ArrayMesh. Used to set the selected_cell_id
+    /// uniform independently per body.
+    /// </summary>
+    private List<ShaderMaterial> _cellHighlightMaterials = new List<ShaderMaterial>();
+    private List<ShaderMaterial> _continentHighlightMaterials = new List<ShaderMaterial>();
+
+    private Image? _placementImage;
+    private ImageTexture? _placementTexture;
+    private byte[]? _placementBuffer;
+    private int _placementWidth;
+    private int _placementHeight;
+
+    /// <summary>
+    /// Gets the list of cell highlight shader materials for this mesh.
+    /// Each entry corresponds to one surface in the ArrayMesh.
+    /// Use <see cref="SetSelectedCell"/> to update the selected cell across all surfaces.
+    /// </summary>
+    public IReadOnlyList<ShaderMaterial> CellHighlightMaterials => _cellHighlightMaterials;
+    public IReadOnlyList<ShaderMaterial> ContinentHighlightMaterials =>
+        _continentHighlightMaterials;
+
+    /// <summary>
+    /// Sets the selected cell ID on all cell highlight materials for this mesh.
+    /// Pass -1.0f to clear the selection.
+    /// </summary>
+    /// <param name="cellId">The VoronoiCell.Index to highlight, or -1.0f for no selection.</param>
+    public void SetSelectedCell(float cellId)
+    {
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("selected_cell_id", cellId);
+        }
+    }
+
+    /// <summary>
+    /// Uploads per-cell highlight codes for the placement preview, replacing the
+    /// previous fixed-size uniform arrays. The buffer is indexed by
+    /// <c>VoronoiCell.Index</c>. Codes: 0 = none, 1 = footprint valid, 2 = footprint
+    /// invalid, 3 = new coverage, 4 = dominant existing grid, 5 = absorbed existing
+    /// grid (see <c>cell_selection_highlight.gdshader</c>).
+    /// </summary>
+    public void SetPlacementHighlightData(byte[] perCellCode, int width, int height)
+    {
+        if (_placementImage == null || _placementWidth != width || _placementHeight != height)
+        {
+            _placementImage = Image.CreateFromData(
+                width,
+                height,
+                false,
+                Image.Format.R8,
+                perCellCode
+            );
+            if (_placementTexture == null)
+                _placementTexture = ImageTexture.CreateFromImage(_placementImage);
+            else
+                _placementTexture.SetImage(_placementImage);
+            _placementWidth = width;
+            _placementHeight = height;
+        }
+        else
+        {
+            _placementImage.SetData(width, height, false, Image.Format.R8, perCellCode);
+            _placementTexture!.Update(_placementImage);
+        }
+
+        var size = new Vector2I(width, height);
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("placement_cell_data", _placementTexture);
+            mat.SetShaderParameter("placement_data_size", size);
+            mat.SetShaderParameter("placement_data_active", true);
+        }
+    }
+
+    /// <summary>
+    /// Returns (and lazily allocates) a reusable byte buffer sized to hold one code
+    /// per Voronoi cell on this mesh. Callers receive a zeroed buffer they can
+    /// populate and pass back to <see cref="SetPlacementHighlightData"/>.
+    /// </summary>
+    public byte[] AcquirePlacementBuffer(out int width, out int height)
+    {
+        int cellCount = StrDb?.CellCount ?? 0;
+        if (cellCount <= 0)
+        {
+            width = 0;
+            height = 0;
+            return System.Array.Empty<byte>();
+        }
+        width = Mathf.Min(cellCount, 4096);
+        height = (cellCount + width - 1) / width;
+        int needed = width * height;
+        if (_placementBuffer == null || _placementBuffer.Length != needed)
+            _placementBuffer = new byte[needed];
+        else
+            System.Array.Clear(_placementBuffer, 0, _placementBuffer.Length);
+        return _placementBuffer;
+    }
+
+    /// <summary>
+    /// Enables or disables the pulse animation on the cell selection highlight.
+    /// Used by CellViewPanel to animate the selected cell while the info window is open.
+    /// </summary>
+    public void SetPulseEnabled(bool enabled)
+    {
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("pulse_enabled", enabled);
+        }
+    }
+
+    /// <summary>
+    /// Clears placement highlighting, returning to normal selection mode. Keeps the
+    /// data texture allocated for reuse on the next placement preview.
+    /// </summary>
+    public void ClearPlacementHighlight()
+    {
+        foreach (var mat in _cellHighlightMaterials)
+        {
+            mat.SetShaderParameter("placement_data_active", false);
+        }
+    }
+
+    /// <summary>
+    /// Highlights the continent with the given continent index across all materials.
+    /// </summary>
+    /// <param name="continentIndex">The continent index to highlight (-1 to clear).</param>
+    public void SetSelectedContinent(int continentIndex)
+    {
+        foreach (var mat in _continentHighlightMaterials)
+        {
+            mat.SetShaderParameter("selected_continent_index", (float)continentIndex);
+        }
+    }
+
+    /// <summary>
+    /// Clears continent selection highlighting on all materials.
+    /// </summary>
+    public void ClearSelectedContinent()
+    {
+        foreach (var mat in _continentHighlightMaterials)
+        {
+            mat.SetShaderParameter("selected_continent_index", -1.0f);
+        }
+    }
+
+    // Pre-loaded shader resources (loaded on main thread in constructor, safe for background use)
+    private static Shader? _rockyPlanetShader;
+    private static ShaderMaterial? _outlinerMaterialBase;
+    private static ShaderMaterial? _cellHighlightMaterialBase;
+    private static ShaderMaterial? _continentHighlightMaterialBase;
+
+    /// <summary>
+    /// Ensures the shared shader resources are loaded (must be called on main thread).
+    /// Uses lazy initialization so resources are only loaded once across all instances.
+    /// </summary>
+    private static void EnsureShaderResourcesLoaded()
+    {
+        _rockyPlanetShader ??= GD.Load<Shader>("res://Shaders/rocky_planet_shader.gdshader");
+        _outlinerMaterialBase ??= GD.Load<ShaderMaterial>(
+            "res://Materials/voronoi_outliner_material.tres"
+        );
+        _cellHighlightMaterialBase ??= GD.Load<ShaderMaterial>(
+            "res://Materials/cell_selection_highlight_material.tres"
+        );
+        _continentHighlightMaterialBase ??= GD.Load<ShaderMaterial>(
+            "res://Materials/continent_selection_highlight_material.tres"
+        );
+    }
+
+    /// <summary>
+    /// Creates per-instance material duplicates for one surface of the mesh.
+    /// Must be called on the main thread (called from constructor or _Ready).
+    /// The returned ShaderMaterial is the root material to set on the SurfaceTool.
+    /// </summary>
+    private ShaderMaterial CreateSurfaceMaterials()
+    {
+        EnsureShaderResourcesLoaded();
+
+        var material = new ShaderMaterial();
+        material.Shader = _rockyPlanetShader;
+
+        // Duplicate all overlay materials so each body/surface has independent uniforms.
+        var outlinerInstance = (ShaderMaterial)_outlinerMaterialBase!.Duplicate();
+        var cellHighlightInstance = (ShaderMaterial)_cellHighlightMaterialBase!.Duplicate();
+        cellHighlightInstance.SetShaderParameter("selected_cell_id", -1.0f);
+        _cellHighlightMaterials.Add(cellHighlightInstance);
+
+        var continentHighlightInstance = (ShaderMaterial)
+            _continentHighlightMaterialBase!.Duplicate();
+        continentHighlightInstance.SetShaderParameter("continent_selected", false);
+        _continentHighlightMaterials.Add(continentHighlightInstance);
+
+        // Chain: rocky_planet_shader -> voronoi_outliner -> cell_selection_highlight -> continent_selection_highlight
+        cellHighlightInstance.NextPass = continentHighlightInstance;
+        outlinerInstance.NextPass = cellHighlightInstance;
+        material.NextPass = outlinerInstance;
+
+        return material;
+    }
 
     [ExportCategory("Thread Pool Settings")]
-    [Export] public bool UseThreadPool = true;
-    [Export] public TaskPriority TaskPriority = TaskPriority.High;
+    [Export]
+    public bool UseThreadPool = true;
 
-    public override void _Ready()
+    [Export]
+    public TaskPriority TaskPriority = TaskPriority.High;
+
+    public UnifiedCelestialMesh()
     {
+        // Pre-load shader resources on the main thread so they're cached
+        // for later use by GenerateSurfaceMesh (which may run on a background thread).
+        EnsureShaderResourcesLoaded();
+
         // Initialize noise generator
         noise = new FastNoiseLite();
-        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.ValueCubic;
-        noise.FractalType = FastNoiseLite.FractalTypeEnum.Ridged;
+        noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Perlin;
+        noise.FractalType = FastNoiseLite.FractalTypeEnum.Fbm;
         noise.FractalOctaves = NoiseOctaves;
-        noise.FractalLacunarity = 5.0f;
-        noise.FractalGain = 4.5f;
+        noise.FractalLacunarity = NoiseLacunarity;
+        noise.FractalGain = NoiseGain;
+    }
+
+    public void StartMeshGeneration(
+        IOrbitalBody parent,
+        Octree<Point> oct,
+        Action<UnifiedCelestialMesh> onCompleted,
+        Action<UnifiedCelestialMesh, string> onFailed
+    )
+    {
+        this.CallDeferred("set_mesh", new ArrayMesh());
+
+        _octree = oct;
+
+        if (
+            GenerationType == BodyGenerationType.TectonicsOnly
+            || GenerationType == BodyGenerationType.TectonicsWithNoise
+        )
+        {
+            tectonics = new TectonicGeneration(
+                StrDb!,
+                rand,
+                StressScale,
+                ShearScale,
+                MaxPropagationDistance,
+                PropagationFalloff,
+                InactiveStressThreshold,
+                GeneralHeightScale,
+                GeneralShearScale,
+                GeneralCompressionScale,
+                BoundaryStressSmoothingIterations,
+                BoundaryStressSmoothingWeight,
+                SampleVelocityAtEdgeMidpoint
+            );
+        }
+
+        QueueMeshGenerationPackage(
+            parent,
+            oct,
+            () => OnMeshGenerationComplete(onCompleted),
+            (error) => OnMeshGenerationFailed(onFailed, error)
+        );
+    }
+
+    private void QueueMeshGenerationPackage(
+        IOrbitalBody parent,
+        Octree<Point> oct,
+        Action onCompleted,
+        Action<string> onFailed
+    )
+    {
+        var builder = new WorkPackageBuilder()
+            .WithName(_name!)
+            .WithPriority(UtilityLibrary.TaskSystem.TaskPriority.High);
+
+        AddFirstPassSteps(builder);
+        builder.AddStep(
+            "IncrementMeshState",
+            () =>
+            {
+                StrDb!.IncrementMeshState();
+                return 0;
+            }
+        );
+        AddSecondPassSteps(builder, oct);
+        AddTexturePassSteps(builder, parent);
+
+        builder.OnCompleted(name =>
+        {
+            SignalBus.Instance?.CallDeferred("EmitStopTimer", name);
+            onCompleted?.Invoke();
+        });
+
+        builder.OnFailed(
+            (name, error) =>
+            {
+                SignalBus.Instance?.CallDeferred("EmitStopTimer", name);
+                onFailed?.Invoke(error);
+            }
+        );
+
+        var package = builder.Build();
+        SignalBus.Instance!.EmitQueuePackage(package);
+    }
+
+    private void AddFirstPassSteps(WorkPackageBuilder builder)
+    {
+        BaseMeshGeneration baseMesh = new BaseMeshGeneration(
+            rand,
+            StrDb!,
+            subdivide,
+            VerticesPerEdge,
+            this
+        );
+        builder.AddStep(
+            "PopulateArrays",
+            () =>
+            {
+                GameLogger.EnterFunction("PopulateArrays", "");
+                try
+                {
+                    baseMesh.PopulateArrays();
+                    GameLogger.ExitFunction(
+                        "PopulateArrays",
+                        $"Vertices: {StrDb!.BaseVertices.Count}, Edges: {StrDb!.UsedEdges.Count}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"PopulateArrays Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"PopulateArrays Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "GenerateNonDeformedFaces",
+            () =>
+            {
+                GameLogger.EnterFunction("GenerateNonDeformedFaces", "");
+                try
+                {
+                    baseMesh.GenerateNonDeformedFaces();
+                    GameLogger.ExitFunction(
+                        "GenerateNonDeformedFaces",
+                        $"Triangles: {StrDb!.BaseTris.Count}, HalfEdges: {StrDb!.HalfEdgeById.Count}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error(
+                        $"GenerateNonDeformedFaces Error: {e.Message}\n{e.StackTrace}"
+                    );
+                    GD.PrintErr($"GenerateNonDeformedFaces Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "GenerateTriangleList",
+            () =>
+            {
+                GameLogger.EnterFunction("GenerateTriangleList", "");
+                try
+                {
+                    baseMesh.GenerateTriangleList();
+                    GameLogger.ExitFunction(
+                        "GenerateTriangleList",
+                        $"Triangles: {StrDb!.Base.Triangles.Count}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"GenerateTriangleList Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"GenerateTriangleList Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "DeformMesh",
+            () =>
+            {
+                GameLogger.EnterFunction(
+                    "DeformMesh",
+                    $"Cycles: {NumDeformationCycles}, Aberrations: {NumAbberations}"
+                );
+                try
+                {
+                    var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb!.Base.Triangles.Count;
+                    float OptimalSideLength =
+                        Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
+                    baseMesh.InitiateDeformation(
+                        NumDeformationCycles,
+                        NumAbberations,
+                        OptimalSideLength
+                    );
+                    GameLogger.ExitFunction(
+                        "DeformMesh",
+                        $"OptimalSideLength: {OptimalSideLength:F4}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"DeformMesh Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"DeformMesh Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+    }
+
+    private void AddSecondPassSteps(WorkPackageBuilder builder, Octree<Point> oct)
+    {
+        builder.AddStep(
+            "GenerateVoronoiCells",
+            () =>
+            {
+                GameLogger.EnterFunction("GenerateVoronoiCells", "");
+                try
+                {
+                    GenerateVoronoiCellsInternal(oct);
+                    GameLogger.ExitFunction(
+                        "GenerateVoronoiCells",
+                        $"VoronoiCells: {StrDb!.VoronoiCells.Count}, Vertices: {StrDb!.VoronoiCellVertices.Count}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"GenerateVoronoiCells Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"GenerateVoronoiCells Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "FloodFillContinents",
+            () =>
+            {
+                GameLogger.EnterFunction("FloodFillContinents", $"NumContinents: {NumContinents}");
+                try
+                {
+                    var continents = FloodFillContinentsInternal();
+                    GameLogger.ExitFunction(
+                        "FloodFillContinents",
+                        $"Continents: {continents?.Count ?? 0}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"FloodFillContinents Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"FloodFillContinents Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "CalculateBoundaryCells",
+            () =>
+            {
+                GameLogger.EnterFunction("CalculateBoundaryCells", "");
+                try
+                {
+                    if (Continents == null)
+                    {
+                        GameLogger.ExitFunction(
+                            "CalculateBoundaryCells",
+                            "Skipped - no continents"
+                        );
+                        return 0;
+                    }
+                    CalculateBoundaryCellsInternal(Continents);
+                    GameLogger.ExitFunction(
+                        "CalculateBoundaryCells",
+                        $"Processed {StrDb!.VoronoiCells.Count} cells"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"CalculateBoundaryCells Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"CalculateBoundaryCells Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "CalculateInteriorness",
+            () =>
+            {
+                GameLogger.EnterFunction("CalculateInteriorness", "");
+                try
+                {
+                    if (Continents == null)
+                    {
+                        GameLogger.ExitFunction("CalculateInteriorness", "Skipped - no continents");
+                        return 0;
+                    }
+                    CalculateInteriornessInternal(Continents);
+                    GameLogger.ExitFunction(
+                        "CalculateInteriorness",
+                        "Interiorness calculated for all cells"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"CalculateInteriorness Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"CalculateInteriorness Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        if (
+            GenerationType == BodyGenerationType.TectonicsOnly
+            || GenerationType == BodyGenerationType.TectonicsWithNoise
+        )
+        {
+            builder.AddStep(
+                "UpdateVertexHeights",
+                () =>
+                {
+                    GameLogger.EnterFunction("UpdateVertexHeights", "");
+                    try
+                    {
+                        if (Continents == null)
+                        {
+                            GameLogger.ExitFunction(
+                                "UpdateVertexHeights",
+                                "Skipped - no continents"
+                            );
+                            return 0;
+                        }
+                        UpdateVertexHeights(StrDb!.VoronoiCellVertices, Continents);
+                        GameLogger.ExitFunction(
+                            "UpdateVertexHeights",
+                            $"Updated {StrDb!.VoronoiCellVertices.Count} vertices"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error($"UpdateVertexHeights Error: {e.Message}\n{e.StackTrace}");
+                        GD.PrintErr($"UpdateVertexHeights Error: {e.Message}\n{e.StackTrace}");
+                        return 1;
+                    }
+                }
+            );
+
+            builder.AddStep(
+                "CalculateBoundaryStress",
+                () =>
+                {
+                    GameLogger.EnterFunction(
+                        "CalculateBoundaryStress",
+                        $"StressScale: {StressScale}, ShearScale: {ShearScale}"
+                    );
+                    try
+                    {
+                        if (Continents == null || tectonics == null)
+                        {
+                            GameLogger.ExitFunction(
+                                "CalculateBoundaryStress",
+                                "Skipped - no continents or tectonics"
+                            );
+                            return 0;
+                        }
+                        tectonics!.CalculateBoundaryStress(
+                            StrDb!.Dual.EdgeCells,
+                            StrDb!.VoronoiCellVertices,
+                            Continents
+                        );
+                        GameLogger.ExitFunction(
+                            "CalculateBoundaryStress",
+                            $"Processed {Continents.Count} continents"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"CalculateBoundaryStress Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        GD.PrintErr($"CalculateBoundaryStress Error: {e.Message}\n{e.StackTrace}");
+                        return 1;
+                    }
+                }
+            );
+
+            builder.AddStep(
+                "ApplyStressToTerrain",
+                () =>
+                {
+                    GameLogger.EnterFunction("ApplyStressToTerrain", "");
+                    try
+                    {
+                        if (Continents == null || tectonics == null)
+                        {
+                            GameLogger.ExitFunction(
+                                "ApplyStressToTerrain",
+                                "Skipped - no continents or tectonics"
+                            );
+                            return 0;
+                        }
+                        tectonics!.ApplyStressToTerrain(Continents, StrDb!.VoronoiCells);
+                        GameLogger.ExitFunction(
+                            "ApplyStressToTerrain",
+                            $"Stress applied to {StrDb!.VoronoiCells.Count} cells"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"ApplyStressToTerrain Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        GD.PrintErr($"ApplyStressToTerrain Error: {e.Message}\n{e.StackTrace}");
+                        return 1;
+                    }
+                }
+            );
+
+            builder.AddStep(
+                "FinalizeVertexHeights",
+                () =>
+                {
+                    GameLogger.EnterFunction("FinalizeVertexHeights", "Iterations: 7");
+                    try
+                    {
+                        if (Continents == null)
+                        {
+                            GameLogger.ExitFunction(
+                                "FinalizeVertexHeights",
+                                "Skipped - no continents"
+                            );
+                            return 0;
+                        }
+                        for (int i = 0; i < 7; i++)
+                        {
+                            FinalzeVertexHeights(StrDb!.VoronoiCellVertices, Continents);
+                        }
+                        GameLogger.ExitFunction(
+                            "FinalizeVertexHeights",
+                            $"Finalized {StrDb!.VoronoiCellVertices.Count} vertices"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"FinalizeVertexHeights Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        GD.PrintErr($"FinalizeVertexHeights Error: {e.Message}\n{e.StackTrace}");
+                        return 1;
+                    }
+                }
+            );
+        }
+
+        if (GenerationType == BodyGenerationType.ScalingWithNoise)
+        {
+            builder.AddStep(
+                "ApplySecondPassScaling",
+                () =>
+                {
+                    GameLogger.EnterFunction("ApplySecondPassScaling", $"Scaling: {ScaleFactors}");
+                    try
+                    {
+                        ApplyScalingToVoronoiVertices();
+                        GameLogger.ExitFunction(
+                            "ApplySecondPassNoise",
+                            $"Processed {StrDb!.VoronoiCellVertices.Count} vertices"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"ApplySecondPassScaling Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        return 1;
+                    }
+                }
+            );
+        }
+        if (
+            GenerationType == BodyGenerationType.TectonicsWithNoise
+            || GenerationType == BodyGenerationType.ScalingWithNoise
+            || GenerationType == BodyGenerationType.NoiseOnly
+        )
+        {
+            builder.AddStep(
+                "ApplySecondPassNoise",
+                () =>
+                {
+                    GameLogger.EnterFunction(
+                        "ApplySecondPassNoise",
+                        $"Amplitude: {NoiseAmplitude * 0.5f}"
+                    );
+                    try
+                    {
+                        ApplyNoiseToVoronoiVertices(0.5f);
+                        GameLogger.ExitFunction(
+                            "ApplySecondPassNoise",
+                            $"Processed {StrDb!.VoronoiCellVertices.Count} vertices"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"ApplySecondPassNoise Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        GD.PrintErr($"ApplySecondPassNoise Error: {e.Message}\n{e.StackTrace}");
+                        return 1;
+                    }
+                }
+            );
+        }
+
+        // SH pipeline: apply noise at 50% amplitude while preserving SH shape
+        // (no scaling step - Voronoi inherits shape from base mesh)
+        if (GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise)
+        {
+            builder.AddStep(
+                "ApplySecondPassNoisePreserveSH",
+                () =>
+                {
+                    GameLogger.EnterFunction(
+                        "ApplySecondPassNoisePreserveSH",
+                        $"Amplitude: {NoiseAmplitude * 0.5f}"
+                    );
+                    try
+                    {
+                        ApplyNoiseToVoronoiVerticesPreserveSH(0.5f);
+                        GameLogger.ExitFunction(
+                            "ApplySecondPassNoisePreserveSH",
+                            $"Processed {StrDb!.VoronoiCellVertices.Count} vertices"
+                        );
+                        return 0;
+                    }
+                    catch (Exception e)
+                    {
+                        GameLogger.Error(
+                            $"ApplySecondPassNoisePreserveSH Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        GD.PrintErr(
+                            $"ApplySecondPassNoisePreserveSH Error: {e.Message}\n{e.StackTrace}"
+                        );
+                        return 1;
+                    }
+                }
+            );
+        }
+
+        builder.AddStep(
+            "AssignBiomes",
+            () =>
+            {
+                GameLogger.EnterFunction("AssignBiomes", "");
+                try
+                {
+                    if (Continents == null)
+                    {
+                        GameLogger.ExitFunction("AssignBiomes", "Skipped - no continents");
+                        return 0;
+                    }
+                    maxHeight = StrDb!.VoronoiCellVertices.Max(p => p.Height);
+                    AssignBiomes(Continents, StrDb!.VoronoiCells);
+                    GameLogger.ExitFunction(
+                        "AssignBiomes",
+                        $"MaxHeight: {maxHeight:F4}, Continents: {Continents.Count}"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"AssignBiomes Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"AssignBiomes Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "AssignGeothermalVents",
+            () =>
+            {
+                GameLogger.EnterFunction("AssignGeothermalVents", "");
+                try
+                {
+                    if (
+                        StrDb == null
+                        || StrDb.VoronoiCells == null
+                        || StrDb.VoronoiCells.Count == 0
+                    )
+                    {
+                        GameLogger.ExitFunction("AssignGeothermalVents", "Skipped - no cells");
+                        return 0;
+                    }
+                    GeothermalVentGenerator.Generate(StrDb, rand);
+                    GameLogger.ExitFunction("AssignGeothermalVents", "OK");
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"AssignGeothermalVents Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"AssignGeothermalVents Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "AssignResources",
+            () =>
+            {
+                GameLogger.EnterFunction("AssignResources", "");
+                try
+                {
+                    var resDb = ResourceGenerationConfigDatabase.Instance;
+                    if (
+                        !resDb.IsLoaded
+                        || resDb.PlanetaryResources == null
+                        || resDb.BiomeResources == null
+                    )
+                    {
+                        GD.PrintErr(
+                            "AssignResources: ResourceGenerationConfigDatabase not loaded, skipping"
+                        );
+                        GameLogger.Warning(
+                            "AssignResources: ResourceGenerationConfigDatabase not loaded, skipping"
+                        );
+                        return 1;
+                    }
+
+                    // Determine which resource pipeline to use based on generation type
+                    if (
+                        GenerationType == BodyGenerationType.ScalingWithNoise
+                        || GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise
+                        || GenerationType == BodyGenerationType.NoiseOnly
+                    )
+                    {
+                        // Satellite pipeline - store at body level
+                        _satelliteResources = SatelliteResourceGenerator.GenerateResources(
+                            resDb.PlanetaryResources,
+                            Classification,
+                            rand
+                        );
+                        GameLogger.Info(
+                            $"Assigned satellite resources: {_satelliteResources?.Count ?? 0} deposits"
+                        );
+                        return 0;
+                    }
+                    else
+                    {
+                        // Cell-level pipeline - generates per VoronoiCell based on biome and tags
+                        if (Continents == null || Continents.Count == 0 || Classification == null)
+                            return 1;
+
+                        CellResourceGenerator.GenerateResources(
+                            Continents,
+                            resDb.PlanetaryResources,
+                            resDb.BiomeResources,
+                            Classification,
+                            rand
+                        );
+                        GameLogger.Info(
+                            $"Assigned cell resources across {Continents.Count} continents"
+                        );
+                        return 0;
+                    }
+                }
+                catch (Exception e)
+                {
+                    GD.PrintErr($"AssignResources Error: {e.Message}\n{e.StackTrace}");
+                    GameLogger.Error($"AssignResources Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+
+        builder.AddStep(
+            "GenerateSurfaceMesh",
+            () =>
+            {
+                GameLogger.EnterFunction("GenerateSurfaceMesh", "");
+                try
+                {
+                    if (Continents == null)
+                    {
+                        GameLogger.ExitFunction("GenerateSurfaceMesh", "Skipped - no continents");
+                        return 0;
+                    }
+                    GenerateSurfaceMesh(StrDb!.VoronoiCells, oct);
+                    GameLogger.ExitFunction(
+                        "GenerateSurfaceMesh",
+                        $"Generated mesh with {StrDb!.VoronoiCells.Count} cells"
+                    );
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error($"GenerateSurfaceMesh Error: {e.Message}\n{e.StackTrace}");
+                    GD.PrintErr($"GenerateSurfaceMesh Error: {e.Message}\n{e.StackTrace}");
+                    return 1;
+                }
+            }
+        );
+    }
+
+    private void AddTexturePassSteps(WorkPackageBuilder builder, IOrbitalBody parent)
+    {
+        builder.AddStep(
+            "GenerateBillboardTextures",
+            () =>
+            {
+                GameLogger.EnterFunction("GenerateBillboardTextures", "");
+                try
+                {
+                    var generator = TextureGeneratorFactory.GetGenerator(parent.Classification);
+                    parent.BillboardTextures.GenerateAllTextures(generator, parent);
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    GameLogger.Error(
+                        $"GenerateBillboardTextures Error: {e.Message}\n{e.StackTrace}"
+                    );
+                    return 1;
+                }
+            }
+        );
+    }
+
+    private void OnMeshGenerationComplete(Action<UnifiedCelestialMesh> callback)
+    {
+        GD.Print($"Number of Vertices: {StrDb!.VoronoiVertices.Values.Count}\n");
+        CreateCollisions(_octree!);
+        callback?.Invoke(this);
+    }
+
+    private void OnMeshGenerationFailed(Action<UnifiedCelestialMesh, string> callback, string error)
+    {
+        GD.PrintErr($"Mesh generation failed: {error}");
+        callback?.Invoke(this, error);
     }
 
     /// <summary>
@@ -382,25 +1420,53 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// <param name="meshParams">Dictionary containing mesh generation parameters.</param>
     /// <returns>The detected BodyGenerationType.</returns>
     /// <remarks>
-    /// The detection logic follows these rules:
+    /// The detection logic follows these rules (priority order):
     /// - If "tectonic" key exists: TectonicsOnly or TectonicsWithNoise (depending on noise_settings)
+    /// - If "spherical_harmonics" key exists: SphericalHarmonicsWithNoise
     /// - If "scaling_settings" key exists: ScalingWithNoise (if noise_settings exists) or fallback
     /// - If "noise_settings" key exists without tectonic or scaling: NoiseOnly
     /// - Default: TectonicsOnly
     /// </remarks>
+    /// <summary>
+    /// Reads a single SH band-scale knob from the config dict. Returns the parsed float when
+    /// the key is present and parseable, otherwise <c>-1f</c> — the sentinel that tells
+    /// <see cref="SphericalHarmonicsDeformer.GenerateCoefficients"/> to keep that band on its
+    /// built-in <c>DegreeScaling</c> default.
+    /// </summary>
+    private static float ReadBandScale(Godot.Collections.Dictionary shConfig, string key)
+    {
+        if (!shConfig.ContainsKey(key))
+            return -1f;
+        try
+        {
+            return (float)shConfig[key];
+        }
+        catch
+        {
+            return -1f;
+        }
+    }
+
     private BodyGenerationType DetectGenerationType(Godot.Collections.Dictionary meshParams)
     {
         if (meshParams == null)
             return BodyGenerationType.TectonicsOnly;
 
         bool hasTectonic = meshParams.ContainsKey("tectonic");
+        bool hasSH = meshParams.ContainsKey("spherical_harmonics");
         bool hasScaling = meshParams.ContainsKey("scaling_settings");
         bool hasNoise = meshParams.ContainsKey("noise_settings");
 
-        // Priority order: Tectonics > Scaling > Noise
+        // Priority order: Tectonics > Spherical Harmonics > Scaling > Noise
         if (hasTectonic)
         {
-            return hasNoise ? BodyGenerationType.TectonicsWithNoise : BodyGenerationType.TectonicsOnly;
+            return hasNoise
+                ? BodyGenerationType.TectonicsWithNoise
+                : BodyGenerationType.TectonicsOnly;
+        }
+        else if (hasSH)
+        {
+            return BodyGenerationType.SphericalHarmonicsWithNoise;
         }
         else if (hasScaling)
         {
@@ -431,10 +1497,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// It automatically adjusts array lengths to match subdivision levels and provides
     /// fallback values for missing or invalid parameters.
     /// </remarks>
-    public virtual void ConfigureFrom(StructureDatabase strDb, Godot.Collections.Dictionary meshParams)
+    public virtual void ConfigureFrom(
+        StructureDatabase strDb,
+        Godot.Collections.Dictionary meshParams
+    )
     {
         this.StrDb = strDb;
-        if (meshParams == null) return;
+        if (meshParams == null)
+            return;
         GD.Print($"ConfigureFrom: {meshParams}");
 
         // Detect generation type first
@@ -444,18 +1514,38 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         if (meshParams.ContainsKey("name"))
         {
             String name = "";
-            try { name = meshParams["name"].As<string>(); } catch { }
+            try
+            {
+                name = meshParams["name"].As<string>();
+                _name = name;
+            }
+            catch { }
             this.CallDeferred("set_name", name + "_mesh");
         }
         if (meshParams.ContainsKey("size"))
         {
-            try { size = meshParams["size"].As<float>(); } catch { GD.PrintErr("Couldn't find size in meshParams"); }
+            try
+            {
+                size = meshParams["size"].As<float>();
+            }
+            catch
+            {
+                GD.PrintErr("Couldn't find size in meshParams");
+            }
         }
 
         // Base mesh settings
         if (meshParams.ContainsKey("subdivisions"))
         {
-            try { subdivide = meshParams["subdivisions"].As<int>(); } catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}"); }
+            try
+            {
+                subdivide = meshParams["subdivisions"].As<int>();
+            }
+            catch (Exception e)
+            {
+                GD.PrintErr($"\u001b[2J\u001b[H");
+                GameLogger.Error($"Error in Subdivisions: {e.Message}\n{e.StackTrace}");
+            }
         }
 
         if (meshParams.ContainsKey("vertices_per_edge"))
@@ -471,7 +1561,10 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     assigned = true;
                 }
             }
-            catch (Exception e) { GameLogger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+            catch (Exception e)
+            {
+                GameLogger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}");
+            }
 
             if (!assigned)
             {
@@ -484,7 +1577,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         assigned = true;
                     }
                 }
-                catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}"); }
+                catch (Exception e)
+                {
+                    GD.PrintErr($"\u001b[2J\u001b[H");
+                    GameLogger.Error($"Error in VerticesPerEdge: {e.Message}\n{e.StackTrace}");
+                }
             }
         }
 
@@ -492,17 +1589,28 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         {
             var adjusted = new int[subdivide];
             for (int i = 0; i < subdivide; i++)
-                adjusted[i] = VerticesPerEdge.Length > 0 ? VerticesPerEdge[Math.Min(i, VerticesPerEdge.Length - 1)] : 2;
+                adjusted[i] =
+                    VerticesPerEdge.Length > 0
+                        ? VerticesPerEdge[Math.Min(i, VerticesPerEdge.Length - 1)]
+                        : 2;
             VerticesPerEdge = adjusted;
         }
 
         if (meshParams.ContainsKey("num_abberations"))
         {
-            try { NumAbberations = meshParams["num_abberations"].As<int>(); } catch { }
+            try
+            {
+                NumAbberations = meshParams["num_abberations"].As<int>();
+            }
+            catch { }
         }
         if (meshParams.ContainsKey("num_deformation_cycles"))
         {
-            try { NumDeformationCycles = meshParams["num_deformation_cycles"].As<int>(); } catch { }
+            try
+            {
+                NumDeformationCycles = meshParams["num_deformation_cycles"].As<int>();
+            }
+            catch { }
         }
 
         // Tectonic settings
@@ -513,16 +1621,123 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 var tect = meshParams["tectonic"].As<Godot.Collections.Dictionary>();
                 if (tect != null)
                 {
-                    if (tect.ContainsKey("num_continents")) { try { NumContinents = tect["num_continents"].As<int>(); } catch { } }
-                    if (tect.ContainsKey("stress_scale")) { try { StressScale = tect["stress_scale"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("shear_scale")) { try { ShearScale = tect["shear_scale"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("max_propagation_distance")) { try { MaxPropagationDistance = tect["max_propagation_distance"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("propagation_falloff")) { try { PropagationFalloff = tect["propagation_falloff"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("inactive_stress_threshold")) { try { InactiveStressThreshold = tect["inactive_stress_threshold"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("general_height_scale")) { try { GeneralHeightScale = tect["general_height_scale"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("general_shear_scale")) { try { GeneralShearScale = tect["general_shear_scale"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("general_compression_scale")) { try { GeneralCompressionScale = tect["general_compression_scale"].As<float>(); } catch { } }
-                    if (tect.ContainsKey("general_transform_scale")) { try { GeneralTransformScale = tect["general_transform_scale"].As<float>(); } catch { } }
+                    if (tect.ContainsKey("num_continents"))
+                    {
+                        try
+                        {
+                            NumContinents = tect["num_continents"].As<int>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("stress_scale"))
+                    {
+                        try
+                        {
+                            StressScale = tect["stress_scale"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("shear_scale"))
+                    {
+                        try
+                        {
+                            ShearScale = tect["shear_scale"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("max_propagation_distance"))
+                    {
+                        try
+                        {
+                            MaxPropagationDistance = tect["max_propagation_distance"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("propagation_falloff"))
+                    {
+                        try
+                        {
+                            PropagationFalloff = tect["propagation_falloff"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("inactive_stress_threshold"))
+                    {
+                        try
+                        {
+                            InactiveStressThreshold = tect["inactive_stress_threshold"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("general_height_scale"))
+                    {
+                        try
+                        {
+                            GeneralHeightScale = tect["general_height_scale"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("general_shear_scale"))
+                    {
+                        try
+                        {
+                            GeneralShearScale = tect["general_shear_scale"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("general_compression_scale"))
+                    {
+                        try
+                        {
+                            GeneralCompressionScale = tect["general_compression_scale"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("general_transform_scale"))
+                    {
+                        try
+                        {
+                            GeneralTransformScale = tect["general_transform_scale"].As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("boundary_smoothing_iterations"))
+                    {
+                        try
+                        {
+                            BoundaryStressSmoothingIterations = tect[
+                                "boundary_smoothing_iterations"
+                            ]
+                                .As<int>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("boundary_smoothing_weight"))
+                    {
+                        try
+                        {
+                            BoundaryStressSmoothingWeight = tect["boundary_smoothing_weight"]
+                                .As<float>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("sample_velocity_at_edge_midpoint"))
+                    {
+                        try
+                        {
+                            SampleVelocityAtEdgeMidpoint = tect["sample_velocity_at_edge_midpoint"]
+                                .As<bool>();
+                        }
+                        catch { }
+                    }
+                    if (tect.ContainsKey("max_continent_rotation"))
+                    {
+                        try
+                        {
+                            MaxContinentRotation = tect["max_continent_rotation"].As<float>();
+                        }
+                        catch { }
+                    }
                 }
             }
             catch { }
@@ -532,12 +1747,16 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             var scaling = meshParams["scaling_settings"].As<Godot.Collections.Dictionary>();
             try
             {
-                var xScaleRange = (float)scaling["x_scale_range"];
-                var yScaleRange = (float)scaling["y_scale_range"];
-                var zScaleRange = (float)scaling["z_scale_range"];
+                var xScaleRange = (float)scaling["scaling_range_x"];
+                var yScaleRange = (float)scaling["scaling_range_y"];
+                var zScaleRange = (float)scaling["scaling_range_z"];
                 ScaleFactors = new Vector3(xScaleRange, yScaleRange, zScaleRange);
             }
-            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in Scaling Settings: {e.Message}\n{e.StackTrace}"); }
+            catch (Exception e)
+            {
+                GD.PrintRaw($"\u001b[2J\u001b[H");
+                GameLogger.Error($"Error in Scaling Settings: {e.Message}\n{e.StackTrace}");
+            }
         }
         if (meshParams.ContainsKey("noise_settings"))
         {
@@ -550,755 +1769,147 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
                 NoiseAmplitude = amplitude;
                 NoiseFrequency = scaling;
-                noise.FractalOctaves = octaves;
+                noise!.FractalOctaves = octaves;
 
-            }
-            catch (Exception e) { GD.PrintRaw($"\u001b[2J\u001b[H"); GameLogger.Error($"Error in Noise Settings: {e.Message}\n{e.StackTrace}"); }
-        }
-    }
-
-    /// <summary>
-    /// Main entry point for generating the celestial body mesh.
-    /// This method orchestrates the complete mesh generation process using the detected generation type.
-    /// </summary>
-    /// <remarks>
-    /// This method initializes the mesh generation process by:
-    /// 1. Setting up the mesh structure and random number generator
-    /// 2. Creating the structure database and tectonic generation system (if needed)
-    /// 3. Starting the asynchronous planet generation process using the appropriate pipeline
-    ///
-    /// The generation runs in a separate task to avoid blocking the main thread.
-    /// This allows the game to remain responsive during the computationally expensive
-    /// mesh generation process. The method sets up all necessary components and
-    /// initiates the generation system based on the detected generation type.
-    /// </remarks>
-    public virtual void GenerateMesh(Octree<Point> oct)
-    {
-        this.CallDeferred("set_mesh", new ArrayMesh());
-        percent = new GenericPercent();
-        if (Seed != 0)
-        {
-            rand.Seed = Seed;
-        }
-        GD.Print($"Rand Seed: {rand.Seed}\n");
-
-        // Initialize tectonics only if needed
-        if (GenerationType == BodyGenerationType.TectonicsOnly || GenerationType == BodyGenerationType.TectonicsWithNoise)
-        {
-            tectonics = new TectonicGeneration(
-                StrDb,
-                rand,
-                StressScale,
-                ShearScale,
-                MaxPropagationDistance,
-                PropagationFalloff,
-                InactiveStressThreshold,
-                GeneralHeightScale,
-                GeneralShearScale,
-                GeneralCompressionScale);
-        }
-
-        Task generatePlanet = Task.Factory.StartNew(() => GeneratePlanetAsync(oct));
-        GD.Print($"Number of Vertices: {StrDb.VoronoiVertices.Values.Count}\n");
-    }
-
-    /// <summary>
-    /// Unified asynchronous method that orchestrates the complete planet generation process.
-    /// This method routes to the appropriate generation pipeline based on the detected generation type.
-    /// </summary>
-    /// <remarks>
-    /// This method coordinates the generation process by selecting the appropriate pipeline:
-    /// - TectonicsOnly: Standard tectonic generation without noise
-    /// - TectonicsWithNoise: Tectonic generation with noise-based deformation
-    /// - ScalingWithNoise: Non-uniform scaling with noise-based deformation
-    /// - NoiseOnly: Pure noise-based deformation
-    ///
-    /// Each pipeline implements the appropriate combination of features while maintaining
-    /// compatibility with the existing mesh generation infrastructure.
-    /// </remarks>
-    protected virtual async void GeneratePlanetAsync(Octree<Point> oct)
-    {
-        switch (GenerationType)
-        {
-            case BodyGenerationType.TectonicsOnly:
-                await GenerateTectonicsOnlyPipeline(oct);
-                break;
-            case BodyGenerationType.TectonicsWithNoise:
-                await GenerateTectonicsWithNoisePipeline(oct);
-                break;
-            case BodyGenerationType.ScalingWithNoise:
-                await GenerateScalingWithNoisePipeline(oct);
-                break;
-            case BodyGenerationType.NoiseOnly:
-                await GenerateNoiseOnlyPipeline(oct);
-                break;
-            default:
-                await GenerateTectonicsOnlyPipeline(oct); // Fallback
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Pipeline for generating celestial bodies using only tectonic processes.
-    /// This is the standard planet generation pipeline without additional noise or scaling.
-    /// </summary>
-    private async Task GenerateTectonicsOnlyPipeline(Octree<Point> oct)
-    {
-        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
-        {
-            GD.Print($"Using thread pool for TectonicsOnly mesh generation");
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateFirstPass(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPass: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_firstpass",
-                TaskPriority.High,
-                Name
-            );
-
-            StrDb.IncrementMeshState();
-
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPass(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPass: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_secondpass",
-                TaskPriority.High,
-                Name
-            );
-        }
-        else
-        {
-            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPass());
-            Task.WaitAll(firstPass);
-            StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPass(oct));
-            Task.WaitAll(secondPass);
-        }
-    }
-
-    /// <summary>
-    /// Pipeline for generating celestial bodies using tectonic processes with noise-based deformation.
-    /// This combines realistic tectonic features with procedural noise for enhanced detail.
-    /// </summary>
-    private async Task GenerateTectonicsWithNoisePipeline(Octree<Point> oct)
-    {
-        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
-        {
-            GD.Print($"Using thread pool for TectonicsWithNoise mesh generation");
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateFirstPassWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPassWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_firstpass_noise",
-                TaskPriority.High,
-                Name
-            );
-
-            StrDb.IncrementMeshState();
-
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPassWithNoise(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_secondpass_noise",
-                TaskPriority.High,
-                Name
-            );
-        }
-        else
-        {
-            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassWithNoise());
-            Task.WaitAll(firstPass);
-            StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassWithNoise(oct));
-        }
-    }
-
-    /// <summary>
-    /// Pipeline for generating celestial bodies using non-uniform scaling with noise-based deformation.
-    /// This is suitable for asteroids, moons, and irregular celestial bodies.
-    /// </summary>
-    private async Task GenerateScalingWithNoisePipeline(Octree<Point> oct)
-    {
-        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
-        {
-            GD.Print($"Using thread pool for ScalingWithNoise mesh generation");
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateFirstPassScalingWithNoise(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPassScalingWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_firstpass_scaling",
-                TaskPriority.High,
-                Name
-            );
-
-            StrDb.IncrementMeshState();
-
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPassScalingWithNoise(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassScalingWithNoise: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_secondpass_scaling",
-                TaskPriority.High,
-                Name
-            );
-        }
-        else
-        {
-            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassScalingWithNoise());
-            Task.WaitAll(firstPass);
-            StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassScalingWithNoise(oct));
-        }
-    }
-
-    /// <summary>
-    /// Pipeline for generating celestial bodies using only noise-based deformation.
-    /// This creates purely procedural terrain features without tectonic processes or scaling.
-    /// </summary>
-    private async Task GenerateNoiseOnlyPipeline(Octree<Point> oct)
-    {
-        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
-        {
-            GD.Print($"Using thread pool for NoiseOnly mesh generation");
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateFirstPassNoiseOnly(); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateFirstPassNoiseOnly: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_firstpass_noiseonly",
-                TaskPriority.High,
-                Name
-            );
-
-            StrDb.IncrementMeshState();
-
-            await MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => { try { GenerateSecondPassNoiseOnly(oct); return 0; } catch (Exception e) { GD.PrintErr($"Error in GenerateSecondPassNoiseOnly: {e.Message}\n{e.StackTrace}"); return 1; } },
-                $"{Name}_secondpass_noiseonly",
-                TaskPriority.High,
-                Name
-            );
-        }
-        else
-        {
-            Task firstPass = Task.Factory.StartNew(() => GenerateFirstPassNoiseOnly());
-            Task.WaitAll(firstPass);
-            StrDb.IncrementMeshState();
-            Task secondPass = Task.Factory.StartNew(() => GenerateSecondPassNoiseOnly(oct));
-        }
-    }
-
-    // Include all the existing methods from CelestialBodyMesh and SatelliteBodyMesh
-    // First pass methods
-    protected virtual void GenerateFirstPass()
-    {
-        GenericPercent emptyPercent = new GenericPercent();
-        BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge, this);
-        emptyPercent.PercentTotal = 0;
-        var function = FunctionTimer.TimeFunction<int>(Name.ToString(),
-            "Base Mesh Generation",
-            () =>
-            {
-                try
+                // Parse lacunarity and gain from config if present
+                if (noiseSettings.ContainsKey("lacunarity"))
                 {
-                    baseMesh.PopulateArrays();
-                    baseMesh.GenerateNonDeformedFaces();
-                    baseMesh.GenerateTriangleList();
+                    NoiseLacunarity = (float)noiseSettings["lacunarity"];
                 }
-                catch (Exception e)
+                if (noiseSettings.ContainsKey("gain"))
                 {
-                    FunctionTimer.ResetScrollRegionAndClear();
-                    GameLogger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
-                    GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
-                    GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
+                    NoiseGain = (float)noiseSettings["gain"];
                 }
-                return 0;
-            }, emptyPercent);
-
-        var OptimalArea = (4.0f * Mathf.Pi * size * size) / StrDb.Base.Triangles.Count;
-        float OptimalSideLength = Mathf.Sqrt((OptimalArea * 4.0f) / Mathf.Sqrt(3.0f)) / 3f;
-
-        Task<int> deformationTask = FunctionTimer.TimeFunction<Task<int>>(Name.ToString(), "Deformed Mesh Generation", async () =>
-        {
-            try
-            {
-                await baseMesh.InitiateDeformation(NumDeformationCycles, NumAbberations, OptimalSideLength);
+                noise.FractalLacunarity = NoiseLacunarity;
+                noise.FractalGain = NoiseGain;
             }
             catch (Exception e)
             {
-                FunctionTimer.ResetScrollRegionAndClear();
-                GD.PrintErr($"x1b0;0r\x1b[2J\x1b[H\nDeform Mesh Error:  {e.Message}\n{e.StackTrace}\n");
+                GD.PrintRaw($"\u001b[2J\u001b[H");
+                GameLogger.Error($"Error in Noise Settings: {e.Message}\n{e.StackTrace}");
             }
-            return 0;
-        }, emptyPercent);
-
-        deformationTask.Wait();
-    }
-
-    protected virtual void GenerateFirstPassWithNoise()
-    {
-        // Call base implementation first
-        GenerateFirstPass();
-
-        // Apply noise-based deformation for additional detail
-        foreach (var vertex in StrDb.BaseVertices.Values)
-        {
-            float noiseValue = noise.GetNoise3D(
-                vertex.Position.X * NoiseFrequency,
-                vertex.Position.Y * NoiseFrequency,
-                vertex.Position.Z * NoiseFrequency
-            );
-
-            Vector3 normal = vertex.Position.Normalized();
-            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
-            vertex.Position += displacement;
-            vertex.Height += displacement.Length();
-        }
-    }
-
-    protected virtual void GenerateFirstPassScalingWithNoise()
-    {
-        // Generate base mesh first
-        GenericPercent emptyPercent = new GenericPercent();
-        BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge, this);
-        emptyPercent.PercentTotal = 0;
-        var function = FunctionTimer.TimeFunction<int>(Name.ToString(),
-            "Base Mesh Generation",
-            () =>
-            {
-                try
-                {
-                    baseMesh.PopulateArrays();
-                    baseMesh.GenerateNonDeformedFaces();
-                    baseMesh.GenerateTriangleList();
-                }
-                catch (Exception e)
-                {
-                    FunctionTimer.ResetScrollRegionAndClear();
-                    GameLogger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
-                    GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
-                    GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
-                }
-                return 0;
-            }, emptyPercent);
-
-        // Apply non-uniform scaling to create ellipsoidal base shape
-        foreach (var vertex in StrDb.BaseVertices.Values)
-        {
-            vertex.Position *= ScaleFactors;
         }
 
-        // Apply noise-based deformation for irregularity
-        foreach (var vertex in StrDb.BaseVertices.Values)
-        {
-            float noiseValue = noise.GetNoise3D(
-                vertex.Position.X * NoiseFrequency,
-                vertex.Position.Y * NoiseFrequency,
-                vertex.Position.Z * NoiseFrequency
-            );
-
-            Vector3 normal = vertex.Position.Normalized();
-            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
-            vertex.Position += displacement;
-            vertex.Height += displacement.Length();
-        }
-    }
-
-    protected virtual void GenerateFirstPassNoiseOnly()
-    {
-        // Generate base mesh first
-        GenericPercent emptyPercent = new GenericPercent();
-        BaseMeshGeneration baseMesh = new BaseMeshGeneration(rand, StrDb, subdivide, VerticesPerEdge, this);
-        emptyPercent.PercentTotal = 0;
-        var function = FunctionTimer.TimeFunction<int>(Name.ToString(),
-            "Base Mesh Generation",
-            () =>
-            {
-                try
-                {
-                    baseMesh.PopulateArrays();
-                    baseMesh.GenerateNonDeformedFaces();
-                    baseMesh.GenerateTriangleList();
-                }
-                catch (Exception e)
-                {
-                    FunctionTimer.ResetScrollRegionAndClear();
-                    GameLogger.Error($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}", "Base Mesh Generation Error");
-                    GD.PrintErr($"\x1b0;0r\x1b[2J\x1b[H\n");
-                    GD.PrintErr($"Base Mesh Generation Error:  {e.Message}\n{e.StackTrace}\n");
-                }
-                return 0;
-            }, emptyPercent);
-
-        // Apply only noise-based deformation
-        foreach (var vertex in StrDb.BaseVertices.Values)
-        {
-            float noiseValue = noise.GetNoise3D(
-                vertex.Position.X * NoiseFrequency,
-                vertex.Position.Y * NoiseFrequency,
-                vertex.Position.Z * NoiseFrequency
-            );
-
-            Vector3 normal = vertex.Position.Normalized();
-            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
-            vertex.Position += displacement;
-            vertex.Height += displacement.Length();
-        }
-    }
-
-    // Second pass methods
-    protected virtual async void GenerateSecondPass(Octree<Point> oct)
-    {
-        VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
-        GenericPercent emptyPercent = new GenericPercent();
-        emptyPercent.PercentTotal = 0;
-        percent.PercentTotal = StrDb.BaseVertices.Count;
-        var function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Voronoi Cell Generation", () =>
-            {
-                try
-                {
-                    voronoiCellGeneration.GenerateVoronoiCells(percent, this, oct);
-                    float sizeMultiplier = 2.5f * StrDb.VoronoiCells.Count / 10000f;
-                    if (sizeMultiplier > 1.0f)
-                    {
-                        size *= sizeMultiplier;
-                        oct.Grow(sizeMultiplier);
-                    }
-                }
-                catch (Exception e)
-                {
-                    GD.PrintErr($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
-                    GameLogger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
-                }
-                return 0;
-            }, percent);
-
-        Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Flood Filling", () =>
+        // Parse spherical harmonics settings
+        if (meshParams.ContainsKey("spherical_harmonics"))
         {
             try
             {
-                continents = FloodFillContinentGeneration(StrDb.VoronoiCells);
-            }
-            catch (Exception e) { GD.PrintErr($"\u001b[2J\u001b[H"); GD.PrintErr($"Flood Filling Error: {e.Message}\n{e.StackTrace}"); }
-            return 0;
-        }, emptyPercent);
-        percent.Reset();
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Calculate Voronoi Cells", () =>
-        {
-            try
-            {
-                foreach (VoronoiCell vc in StrDb.VoronoiCells)
+                var shConfig = meshParams["spherical_harmonics"].As<Godot.Collections.Dictionary>();
+                float[]? bandScales = null;
+                if (shConfig != null)
                 {
-                    var cellNeighbors = GetCellNeighbors(vc, StrDb);
-                    float averageHeight = vc.Height;
-                    List<Edge> OutsideEdges = new List<Edge>();
-                    List<int> BoundingContinentIndex = new List<int>();
-                    foreach (VoronoiCell neighbor in cellNeighbors)
+                    if (shConfig.ContainsKey("amplitude"))
                     {
-                        if (neighbor.ContinentIndex != vc.ContinentIndex)
+                        _shAmplitude = (float)shConfig["amplitude"];
+
+                        // Warn if amplitude is outside expected range
+                        if (_shAmplitude < 0.1f || _shAmplitude > 2.0f)
                         {
-                            vc.IsBorderTile = true;
-                            vc.Interiorness = 1;
-                            continents[vc.ContinentIndex].boundaryCells.Add(vc);
-                            continents[vc.ContinentIndex].neighborContinents.Add(neighbor.ContinentIndex);
-                            continents[neighbor.ContinentIndex].neighborContinents.Add(vc.ContinentIndex);
-                            neighbor.IsBorderTile = true;
-                            neighbor.Interiorness = 1;
-                            BoundingContinentIndex.Add(neighbor.ContinentIndex);
-                            foreach (Point p in vc.Points)
-                            {
-                                foreach (Point p2 in neighbor.Points)
-                                {
-                                    if (p.Equals(p2))
-                                    {
-                                        p.isOnContinentBorder = true;
-                                    }
-                                }
-                            }
-                            foreach (Edge e in vc.Edges)
-                            {
-                                foreach (Edge e2 in neighbor.Edges)
-                                {
-                                    if (e.key.Equals(e2.key))
-                                    {
-                                        vc.EdgeBoundaryMap.Add(e, neighbor.ContinentIndex);
-                                        OutsideEdges.Add(e);
-                                        continents[vc.ContinentIndex].boundaryEdges.Add(e);
-                                    }
-                                }
-                            }
-
+                            GameLogger.Warning(
+                                $"SH amplitude {_shAmplitude:F3} is outside expected range [0.1, 2.0]"
+                            );
                         }
                     }
-                    vc.BoundingContinentIndex = BoundingContinentIndex.ToArray();
-                    vc.OutsideEdges = OutsideEdges.ToArray();
-                    percent.PercentCurrent++;
-                }
-                HashSet<VoronoiCell> visited = new HashSet<VoronoiCell>();
-                var continent = continents.First().Value;
-                GD.Print($"Calculating Interiorness for {continent.StartingIndex}");
-                GD.Print($"# Edges: {continent.boundaryEdges.Count}");
-                PriorityQueue<VoronoiCell, int> BreadthSearch = new PriorityQueue<VoronoiCell, int>();
-                foreach (var vc in continent.boundaryCells)
-                {
-                    BreadthSearch.Enqueue(vc, vc.Interiorness);
-                }
-                while (BreadthSearch.Count > 0)
-                {
-                    var current = BreadthSearch.Dequeue();
-                    visited.Add(current);
-                    var neighbors = GetCellNeighbors(current, StrDb).Where(nc => nc.ContinentIndex == current.ContinentIndex).ToList();
-                    if (current.Interiorness != 1)
+
+                    // Optional per-band scale overrides (band_scale_l0..l3). A negative entry
+                    // leaves that band on the deformer's built-in DegreeScaling default.
+                    bandScales = new float[]
                     {
-                        int interiorness = neighbors.Min(e => e.Interiorness) + 1;
-                        current.Interiorness = interiorness;
-                    }
-                    foreach (var neighbor in neighbors)
-                    {
-                        if (!visited.Contains(neighbor))
-                        {
-                            BreadthSearch.Enqueue(neighbor, neighbor.Interiorness);
-                        }
-                    }
+                        ReadBandScale(shConfig, "band_scale_l0"),
+                        ReadBandScale(shConfig, "band_scale_l1"),
+                        ReadBandScale(shConfig, "band_scale_l2"),
+                        ReadBandScale(shConfig, "band_scale_l3"),
+                    };
                 }
+                // Default amplitude is already set to 0.3f in field declaration
+
+                // Initialize SH deformer with random coefficients scaled by amplitude
+                _shDeformer = new SphericalHarmonicsDeformer();
+                _shDeformer.GenerateCoefficients(rand, _shAmplitude, bandScales);
+
+                GameLogger.Info(
+                    $"SH configured: amplitude={_shAmplitude:F3}, coefficients generated"
+                );
             }
             catch (Exception e)
             {
-                GD.PrintErr($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
-                GameLogger.Error($"Error in Calculate Boundary Stress: {e.Message}\n{e.StackTrace}");
+                GD.PrintRaw($"\u001b[2J\u001b[H");
+                GameLogger.Error(
+                    $"Error in Spherical Harmonics Settings: {e.Message}\n{e.StackTrace}"
+                );
             }
-            foreach (Point p in StrDb.VoronoiCellVertices)
-            {
-                var cells = StrDb.CellMap[p];
-                foreach (VoronoiCell vc in cells)
-                {
-                    p.ContinentIndecies.Add(vc.ContinentIndex);
-                }
-            }
-            return 0;
-        }, percent);
-        emptyPercent.Reset();
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Average out Heights", () =>
-        {
-            try
-            {
-                UpdateVertexHeights(StrDb.VoronoiCellVertices, continents);
-            }
-            catch (Exception e)
-            {
-                GD.PrintErr($"\nHeight Average Error:  {e.Message}\n{e.StackTrace}\n");
-            }
-
-            return 0;
-        }, emptyPercent);
-        percent.PercentTotal = continents.Count;
-        percent.Reset();
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Calculate Boundary Stress", () =>
-        {
-            try
-            {
-                tectonics.CalculateBoundaryStress(StrDb.Dual.EdgeCells, StrDb.VoronoiCellVertices, continents, percent);
-            }
-            catch (Exception boundsError)
-            {
-                GD.PrintErr($"\nBoundary Stress Error:  {boundsError.Message}\n{boundsError.StackTrace}\n");
-            }
-            return 0;
-        }, percent);
-        percent.Reset();
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Apply Stress to Terrain", () =>
-        {
-            try
-            {
-                tectonics.ApplyStressToTerrain(continents, StrDb.VoronoiCells);
-                for (int i = 0; i < 7; i++)
-                {
-                    FinalzeVertexHeights(StrDb.VoronoiCellVertices, continents);
-                }
-            }
-            catch (Exception stressError)
-            {
-                GD.PrintErr($"\nStress Error:  {stressError.Message}\n{stressError.StackTrace}\n");
-            }
-            return 0;
-        }, percent);
-        percent.Reset();
-        maxHeight = StrDb.VoronoiCellVertices.Max(p => p.Height);
-        try
-        {
-            await AssignBiomes(continents, StrDb.VoronoiCells);
         }
-        catch (Exception biomeError)
-        {
-            GD.PrintErr($"\nBiome Error:  {biomeError.Message}\n{biomeError.StackTrace}\n");
-        }
-        percent.Reset();
-        percent.PercentTotal = continents.Values.Count;
-        percent.PercentCurrent = 0;
-        function = FunctionTimer.TimeFunction<int>(Name.ToString(), "Generate From Continents", () =>
-        {
-            try
-            {
-                //GenerateFromContinents(continents, oct);
-                GenerateSurfaceMesh(StrDb.VoronoiCells, oct);
-            }
-            catch (Exception genError)
-            {
-                GD.PrintErr($"\nGenerate From Continents Error:  {genError.Message}\n{genError.StackTrace}\n");
-            }
-            return 0;
-        }, percent);
-        GD.Print($"# of Voronoi Cell Vertices: {StrDb.VoronoiCellVertices.Count}");
-        GD.Print($"# of vertices in Octree: {oct.GetPoints().Count}");
-        MeshConvexDecompositionSettings settings = new MeshConvexDecompositionSettings();
-        settings.ConvexHullApproximation = false;
-        settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Tetrahedron;
-        this.CallDeferred("create_multiple_convex_collisions", settings);
-    }
 
-    protected virtual async void GenerateSecondPassWithNoise(Octree<Point> oct)
-    {
-        // Call base implementation first
-        GenerateSecondPass(oct);
-
-        // Apply additional noise to Voronoi cell vertices
-        foreach (Point p in StrDb.VoronoiCellVertices)
+        // If both scaling_settings AND spherical_harmonics exist, prefer spherical_harmonics (log warning)
+        if (
+            meshParams.ContainsKey("scaling_settings")
+            && meshParams.ContainsKey("spherical_harmonics")
+        )
         {
-            float noiseValue = noise.GetNoise3D(
-                p.Position.X * NoiseFrequency,
-                p.Position.Y * NoiseFrequency,
-                p.Position.Z * NoiseFrequency
+            GameLogger.Warning(
+                "Both scaling_settings and spherical_harmonics found in config; using spherical_harmonics"
             );
-
-            Vector3 normal = p.Position.Normalized();
-            Vector3 displacement = normal * noiseValue * NoiseAmplitude * 0.5f; // Reduced amplitude for second pass
-            p.Position += displacement;
-            p.Height += displacement.Length();
         }
+
+        // Resource generation uses group-based configs via ResourceGenerationConfigDatabase
+        // No per-body resource config needed from templates
     }
 
-    protected virtual void GenerateSecondPassScalingWithNoise(Octree<Point> oct)
+    public Continent GetContinent(int index)
     {
-        VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
-        try
-        {
-            GenericPercent emptyPercent = new GenericPercent();
-            GD.Print("Generating Voronoi Cells...");
-            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this, oct);
-
-            // First pass: apply scaling and noise to all points
-            foreach (Point p in StrDb.VoronoiCellVertices)
-            {
-                p.Position *= ScaleFactors;
-
-                float noiseValue = noise.GetNoise3D(
-                    p.Position.X * NoiseFrequency,
-                    p.Position.Y * NoiseFrequency,
-                    p.Position.Z * NoiseFrequency
-                );
-
-                Vector3 normal = p.Position.Normalized();
-                Vector3 displacement = normal * noiseValue * NoiseAmplitude;
-                p.Position += displacement;
-                p.Height += displacement.Length();
-            }
-
-            // Second pass: normalize to size while preserving proportions
-            float maxDistance = StrDb.VoronoiCellVertices.Max(p => p.Position.Length());
-            foreach (Point p in StrDb.VoronoiCellVertices)
-            {
-                float currentDistance = p.Position.Length();
-                float scaleFactor = size * (currentDistance / maxDistance);
-                p.Position = p.Position.Normalized() * scaleFactor;
-            }
-            GenerateSurfaceMesh(StrDb.VoronoiCells, oct);
-        }
-        catch (Exception e)
-        {
-            GD.PrintRaw($"\u001b[2J\u001b[H");
-            GD.PrintErr("Voronoi Cell Generation Error: " + e.Message + "\n" + e.StackTrace);
-            GameLogger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
-        }
-    }
-
-    protected virtual void GenerateSecondPassNoiseOnly(Octree<Point> oct)
-    {
-        VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb);
-        try
-        {
-            GenericPercent emptyPercent = new GenericPercent();
-            GD.Print("Generating Voronoi Cells...");
-            voronoiCellGeneration.GenerateVoronoiCells(emptyPercent, this, oct);
-
-            // Apply noise to all points
-            foreach (Point p in StrDb.VoronoiCellVertices)
-            {
-                float noiseValue = noise.GetNoise3D(
-                    p.Position.X * NoiseFrequency,
-                    p.Position.Y * NoiseFrequency,
-                    p.Position.Z * NoiseFrequency
-                );
-
-                Vector3 normal = p.Position.Normalized();
-                Vector3 displacement = normal * noiseValue * NoiseAmplitude;
-                p.Position += displacement;
-                p.Height += displacement.Length();
-            }
-
-            GenerateSurfaceMesh(StrDb.VoronoiCells, oct);
-        }
-        catch (Exception e)
-        {
-            GD.PrintRaw($"\u001b[2J\u001b[H");
-            GD.PrintErr("Voronoi Cell Generation Error: " + e.Message + "\n" + e.StackTrace);
-            GameLogger.Error($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
-        }
+        return Continents![index];
     }
 
     // Include all the helper methods from the original classes
-    private async Task AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
+    private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
-        if (UseThreadPool && MeshGenerationThreadPool.Instance != null)
-        {
-            var biomeTasks = new List<Task>();
+        // Use subtype-specific biome assigner if classification is set, else fall back to static
+        _biomeAssigner ??=
+            Classification != null
+                ? BiomeAssignerFactory.GetAssigner(Classification)
+                : new DefaultBiomeAssigner();
 
-            foreach (var continent in continents)
-            {
-                var taskId = $"{Name}_biome_{continent.Key}";
-                var task = MeshGenerationThreadPool.Instance.EnqueueTask(
-                    () =>
-                    {
-                        Continent c = continent.Value;
-                        c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
-                        foreach (var cell in c.cells)
-                        {
-                            foreach (Point p in cell.Points)
-                            {
-                                p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
-                            }
-                        }
-                    },
-                    taskId,
-                    TaskPriority.Low,
-                    Name
-                );
-                biomeTasks.Add(task);
-            }
-
-            await Task.WhenAll(biomeTasks);
-        }
-        else
+        foreach (var continent in continents)
         {
-            Task[] BiomeThreader = new Task[continents.Count];
-            int continentCount = 0;
-            foreach (var continent in continents)
+            Continent c = continent.Value;
+            c.averageMoisture = _biomeAssigner.CalculateMoisture(c, rand, 0.5f);
+            foreach (var cell in c.cells)
             {
-                Task biomeThread = Task.Factory.StartNew(() =>
+                foreach (Point p in cell.Points)
                 {
-                    Continent c = continent.Value;
-                    c.averageMoisture = BiomeAssigner.CalculateMoisture(c, rand, 0.5f);
-                    foreach (var cell in c.cells)
-                    {
-                        foreach (Point p in cell.Points)
-                        {
-                            p.Biome = BiomeAssigner.AssignBiome(this, p.Height, c.averageMoisture);
-                        }
-                    }
+                    float latitude = p.Position.Normalized().Y;
+                    p.Biome = _biomeAssigner.AssignBiome(
+                        this,
+                        p.Height,
+                        c.averageMoisture,
+                        latitude
+                    );
                 }
-                );
-                BiomeThreader[continentCount] = biomeThread;
-                continentCount++;
+                cell.CalculateCellBiome();
             }
-            Task.WaitAll(BiomeThreader.ToArray());
         }
+    }
+
+    private void AssignResources(Dictionary<int, Continent> continents)
+    {
+        if (continents == null || continents.Count == 0 || Classification == null)
+            return;
+
+        var resDb = ResourceGenerationConfigDatabase.Instance;
+        if (!resDb.IsLoaded || resDb.PlanetaryResources == null || resDb.BiomeResources == null)
+        {
+            GameLogger.Warning("AssignResources: ResourceGenerationConfigDatabase not loaded");
+            return;
+        }
+
+        CellResourceGenerator.GenerateResources(
+            continents,
+            resDb.PlanetaryResources,
+            resDb.BiomeResources,
+            Classification,
+            rand
+        );
     }
 
     public void UpdateVertexHeights(HashSet<Point> Vertices, Dictionary<int, Continent> Continents)
@@ -1306,7 +1917,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         foreach (Point p in Vertices)
         {
             float height = 0;
-            foreach (int continentIndex in p.ContinentIndecies)
+            foreach (int continentIndex in p.ContinentIndecies!)
             {
                 height += Continents[continentIndex].averageHeight;
             }
@@ -1319,7 +1930,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     {
         foreach (Point p in Vertices)
         {
-            var edges = StrDb.GetIncidentHalfEdges(p);
+            var edges = StrDb!.GetIncidentHalfEdges(p);
             float averagedHeight = p.Height;
             int num = 1;
             foreach (Edge e in edges)
@@ -1331,7 +1942,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
     }
 
-    public static VoronoiCell[] GetCellNeighbors(VoronoiCell origin, StructureDatabase StrDb, bool includeSameContinent = true)
+    public static VoronoiCell[] GetCellNeighbors(
+        VoronoiCell origin,
+        StructureDatabase StrDb,
+        bool includeSameContinent = true
+    )
     {
         HashSet<VoronoiCell> neighbors = new HashSet<VoronoiCell>();
         foreach (Point p in origin.Points)
@@ -1378,30 +1993,44 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         }
         foreach (int startingCellIndex in startingCells)
         {
-            Continent.CRUST_TYPE crustType = rand.RandiRange(0, 100) > 33 ? Continent.CRUST_TYPE.Oceanic : Continent.CRUST_TYPE.Continental;
-            float averageHeight = crustType == Continent.CRUST_TYPE.Oceanic ? rand.RandfRange(-10.0f, -3.0f) : rand.RandfRange(1.2f, 7.0f);
-            float rotation = Mathf.DegToRad(rand.RandiRange(-360, 360));
+            Continent.CRUST_TYPE crustType =
+                rand.RandiRange(0, 100) > 33
+                    ? Continent.CRUST_TYPE.Oceanic
+                    : Continent.CRUST_TYPE.Continental;
+            float averageHeight =
+                crustType == Continent.CRUST_TYPE.Oceanic
+                    ? rand.RandfRange(-10.0f, -3.0f)
+                    : rand.RandfRange(1.2f, 7.0f);
+            float rotationCapDeg = Mathf.Max(0f, MaxContinentRotation);
+            float rotation = Mathf.DegToRad(rand.RandfRange(-rotationCapDeg, rotationCapDeg));
             float velocity = rand.RandfRange(0.3f, 1.7f);
-            var continent = new Continent(startingCellIndex,
-                    new List<VoronoiCell>(),
-                    new HashSet<VoronoiCell>(),
-                    new HashSet<Point>(),
-                    new List<Point>(),
-                    new Vector3(0f, 0f, 0f),
-                    new Vector3(0f, 0f, 0f),
-                    new Vector3(0f, 0f, 0f),
-                    new Vector2(rand.RandfRange(-1f, 1f), rand.RandfRange(-1f, 1f)), velocity, rotation,
-                    crustType, averageHeight, rand.RandfRange(1.0f, 5.0f),
-                    new HashSet<int>(), 0f,
-                    new Dictionary<int, float>(),
-                    new Dictionary<int, Continent.BOUNDARY_TYPE>());
+            var continent = new Continent(
+                startingCellIndex,
+                new List<VoronoiCell>(),
+                new HashSet<VoronoiCell>(),
+                new HashSet<Point>(),
+                new List<Point>(),
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0f, 0f, 0f),
+                new Vector2(rand.RandfRange(-1f, 1f), rand.RandfRange(-1f, 1f)),
+                velocity,
+                rotation,
+                crustType,
+                averageHeight,
+                rand.RandfRange(1.0f, 5.0f),
+                new HashSet<int>(),
+                0f,
+                new Dictionary<int, float>(),
+                new Dictionary<int, Continent.BOUNDARY_TYPE>()
+            );
             neighborChart[startingCellIndex] = startingCellIndex;
             continent.StartingIndex = startingCellIndex;
-            continent.cells.Add(cells[startingCellIndex]);
+            continent.cells!.Add(cells[startingCellIndex]);
             foreach (Point p in cells[startingCellIndex].Points)
             {
-                continent.points.Add(p);
-                p.ContinentIndecies.Add(continent.StartingIndex);
+                continent.points!.Add(p);
+                p.ContinentIndecies!.Add(continent.StartingIndex);
             }
             foreach (Edge e in cells[startingCellIndex].Edges)
             {
@@ -1409,7 +2038,7 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             }
             continents[startingCellIndex] = continent;
 
-            var neighborIndices = GetCellNeighbors(cells[startingCellIndex], StrDb);
+            var neighborIndices = GetCellNeighbors(cells[startingCellIndex], StrDb!);
             continentNeighbors[startingCellIndex] = new List<int>();
             foreach (var nb in neighborIndices)
             {
@@ -1437,10 +2066,12 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                         continue;
                     }
                     else
-                        randomNeighbor = continentNeighbors[index][rand.RandiRange(0, continentNeighbors[index].Count - 1)];
+                        randomNeighbor = continentNeighbors[index][
+                            rand.RandiRange(0, continentNeighbors[index].Count - 1)
+                        ];
                     continentObj.cells.Add(cells[randomNeighbor]);
                     continentNeighbors[index].Remove(randomNeighbor);
-                    var neighborIndices = GetCellNeighbors(cells[randomNeighbor], StrDb);
+                    var neighborIndices = GetCellNeighbors(cells[randomNeighbor], StrDb!);
                     foreach (var nb in neighborIndices)
                     {
                         if (neighborChart[nb.Index] == -1)
@@ -1456,14 +2087,15 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     continentMinSize.Remove(index);
                 }
             }
-            if (continentMinSize.Count == 0) break;
+            if (continentMinSize.Count == 0)
+                break;
         }
         while (poppableCells.Count > 0)
         {
             int poppedIndex = rand.RandiRange(0, (poppableCells.Count - 1));
             int currentVCellIndex = poppableCells[poppedIndex];
             poppableCells.RemoveAt(poppedIndex);
-            var neighborIndices = GetCellNeighbors(cells[currentVCellIndex], StrDb);
+            var neighborIndices = GetCellNeighbors(cells[currentVCellIndex], StrDb!);
             foreach (var nb in neighborIndices)
             {
                 if (neighborChart[nb.Index] == -1)
@@ -1490,10 +2122,30 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 {
                     p.Position = p.Position.Normalized();
                     p.Height = continent.averageHeight;
-                    continent.points.Add(p);
-                    p.ContinentIndecies.Add(continent.StartingIndex);
+                    continent.points!.Add(p);
+                    p.ContinentIndecies!.Add(continent.StartingIndex);
                 }
             }
+        }
+
+        // Normalize cell heights into [0, 1] for placement-constraint comparisons.
+        // Raw Height stays in world units for tectonics; NormalizedHeight is what
+        // YAML min_elevation/max_elevation values match against.
+        float minH = float.MaxValue,
+            maxH = float.MinValue;
+        for (int i = 0; i < neighborChart.Length; i++)
+        {
+            if (neighborChart[i] == -1)
+                continue;
+            minH = Mathf.Min(minH, cells[i].Height);
+            maxH = Mathf.Max(maxH, cells[i].Height);
+        }
+        float range = Mathf.Max(maxH - minH, 0.0001f);
+        for (int i = 0; i < neighborChart.Length; i++)
+        {
+            if (neighborChart[i] == -1)
+                continue;
+            cells[i].NormalizedHeight = (cells[i].Height - minH) / range;
         }
 
         foreach (var keyValuePair in continents)
@@ -1510,8 +2162,26 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
 
             continent.averagedCenter /= continent.points.Count;
             continent.averagedCenter = continent.averagedCenter.Normalized();
-            var v1 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
-            var v2 = (continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized() - continent.points.ElementAt(rand.RandiRange(0, continent.points.Count - 1)).ToVector3().Normalized());
+            var v1 = (
+                continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+                - continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+            );
+            var v2 = (
+                continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+                - continent
+                    .points.ElementAt(rand.RandiRange(0, continent.points.Count - 1))
+                    .ToVector3()
+                    .Normalized()
+            );
             var UnitNorm = v1.Cross(v2);
             if (UnitNorm.Dot(continent.averagedCenter) < 0f)
             {
@@ -1531,14 +2201,37 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 cellAverageCenter /= vc.Points.Length;
                 cellAverageCenter = cellAverageCenter.Normalized();
 
-                float k = (1.0f - UnitNorm.X * cellAverageCenter.X - UnitNorm.Y * cellAverageCenter.Y - UnitNorm.Z * cellAverageCenter.Z) / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
-                Vector3 projectedCenter = new Vector3(cellAverageCenter.X + k * UnitNorm.X, cellAverageCenter.Y + k * UnitNorm.Y, cellAverageCenter.Z + k * UnitNorm.Z);
-                Vector3 projectedCenter2D = new Vector3(uAxis.Dot(projectedCenter), vAxis.Dot(projectedCenter), 0f);
+                float k =
+                    (
+                        1.0f
+                        - UnitNorm.X * cellAverageCenter.X
+                        - UnitNorm.Y * cellAverageCenter.Y
+                        - UnitNorm.Z * cellAverageCenter.Z
+                    )
+                    / (UnitNorm.X * UnitNorm.X + UnitNorm.Y * UnitNorm.Y + UnitNorm.Z * UnitNorm.Z);
+                Vector3 projectedCenter = new Vector3(
+                    cellAverageCenter.X + k * UnitNorm.X,
+                    cellAverageCenter.Y + k * UnitNorm.Y,
+                    cellAverageCenter.Z + k * UnitNorm.Z
+                );
+                Vector3 projectedCenter2D = new Vector3(
+                    uAxis.Dot(projectedCenter),
+                    vAxis.Dot(projectedCenter),
+                    0f
+                );
 
                 float radius = (continent.averagedCenter - cellAverageCenter).Length();
                 Vector3 positionFromCenter = continent.averagedCenter - projectedCenter;
 
-                vc.MovementDirection = new Vector2(continent.movementDirection.X * continent.velocity, continent.movementDirection.Y * continent.velocity) + new Vector2(-continent.rotation * projectedCenter2D.Y, continent.rotation * projectedCenter2D.X);
+                vc.MovementDirection =
+                    new Vector2(
+                        continent.movementDirection.X * continent.velocity,
+                        continent.movementDirection.Y * continent.velocity
+                    )
+                    + new Vector2(
+                        -continent.rotation * projectedCenter2D.Y,
+                        continent.rotation * projectedCenter2D.X
+                    );
                 float vcRadius = 0.0f;
                 foreach (Point p in vc.Points)
                 {
@@ -1551,10 +2244,19 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 vcUnitNorm /= projectionRatio;
                 vcUnitNorm = vcUnitNorm.Normalized();
 
-                var d = UnitNorm.X * (vc.Points[0].Position.X) + UnitNorm.Y * (vc.Points[0].Position.Y) + UnitNorm.Z * (vc.Points[0].Position.Z);
-                var newZ = (d - (UnitNorm.X * vc.Points[0].Position.X) - (UnitNorm.Y * vc.Points[0].Position.Y)) / UnitNorm.Z;
+                var d =
+                    UnitNorm.X * (vc.Points[0].Position.X)
+                    + UnitNorm.Y * (vc.Points[0].Position.Y)
+                    + UnitNorm.Z * (vc.Points[0].Position.Z);
+                var newZ =
+                    (
+                        d
+                        - (UnitNorm.X * vc.Points[0].Position.X)
+                        - (UnitNorm.Y * vc.Points[0].Position.Y)
+                    ) / UnitNorm.Z;
                 var newZ2 = (d / UnitNorm.Z);
-                var directionPoint = uAxis * vc.MovementDirection.X + vAxis * vc.MovementDirection.Y;
+                var directionPoint =
+                    uAxis * vc.MovementDirection.X + vAxis * vc.MovementDirection.Y;
                 directionPoint *= vcRadius;
                 directionPoint += cellAverageCenter;
                 directionPoint = directionPoint.Normalized();
@@ -1570,7 +2272,6 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         {
             GD.Print($"Generating continent {keyValuePair.Key} | {keyValuePair.Value.cells.Count}");
             GenerateSurfaceMesh(keyValuePair.Value.cells, oct);
-            percent.PercentCurrent++;
         }
     }
 
@@ -1586,33 +2287,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         return Color.FromHsv(hue / 360f, saturation, value);
     }
 
-    private Color GetBiomeColor(Biome.BiomeType biome, float height)
+    private Color GetBiomeColor(string biomeId, float height)
     {
-        switch (biome)
-        {
-            case Biome.BiomeType.Tundra:
-                return new Color(0.85f, 0.85f, 0.8f);
-            case Biome.BiomeType.Icecap:
-                return Colors.White;
-            case Biome.BiomeType.Desert:
-                return new Color(0.9f, 0.8f, 0.5f);
-            case Biome.BiomeType.Grassland:
-                return new Color(0.5f, 0.8f, 0.3f);
-            case Biome.BiomeType.Forest:
-                return new Color(0.2f, 0.6f, 0.2f);
-            case Biome.BiomeType.Rainforest:
-                return new Color(0.1f, 0.4f, 0.1f);
-            case Biome.BiomeType.Taiga:
-                return new Color(0.4f, 0.5f, 0.3f);
-            case Biome.BiomeType.Ocean:
-                return new Color(0.1f, 0.3f, 0.7f);
-            case Biome.BiomeType.Coastal:
-                return new Color(0.8f, 0.7f, 0.4f);
-            case Biome.BiomeType.Mountain:
-                return new Color(0.6f, 0.5f, 0.4f);
-            default:
-                return Colors.Gray;
-        }
+        _colorMapper ??=
+            Classification != null
+                ? ColorMapperFactory.GetMapper(Classification)
+                : new DataDrivenColorMapper();
+
+        return _colorMapper.GetBiomeColor(biomeId, height);
     }
 
     public virtual void GenerateSurfaceMesh(List<VoronoiCell> VoronoiList, Octree<Point> oct)
@@ -1620,10 +2302,14 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         var arrMesh = Mesh as ArrayMesh;
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
-        var material = new ShaderMaterial();
-        material.Shader = GD.Load<Shader>("res://Shaders/rocky_planet_shader.gdshader");
-        material.NextPass = GD.Load<ShaderMaterial>("res://Materials/voronoi_outliner_material.tres");
+        st.SetCustomFormat(0, SurfaceTool.CustomFormat.RgbFloat);
+
+        // Create per-surface material instances using pre-loaded shader resources.
+        // Resources are loaded on main thread in constructor; duplicates are safe to
+        // create from any thread since they're not yet in the scene tree.
+        var material = CreateSurfaceMaterials();
         st.SetMaterial(material);
+        int faceIndex = 0;
         foreach (VoronoiCell vor in VoronoiList)
         {
             Color biomeColor = Colors.Pink;
@@ -1655,26 +2341,465 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                     max_u = Mathf.Max(max_u, u);
                     max_v = Mathf.Max(max_v, v);
 
-                    var uv = new Vector2((u - min_u) / (max_u - min_u), (v - min_v) / (max_v - min_v));
+                    var uv = new Vector2(
+                        (u - min_u) / (max_u - min_u),
+                        (v - min_v) / (max_v - min_v)
+                    );
                     st.SetUV(uv);
-                    st.SetUV2(new Vector2(vor.Index, 0));
+                    float borderFlag = ((Point)vor.Points[3 * i + j]).isOnContinentBorder
+                        ? 1.0f
+                        : 0.0f;
                     st.SetNormal(tangent);
+                    st.SetCustom(0, new Color(vor.Index, borderFlag, vor.ContinentIndex));
                     if (ProjectToSphere)
                     {
-                        vor.Points[3 * i + j].Position = vor.Points[3 * i + j].Position.Normalized() * (size + vor.Points[3 * i + j].Height / 10f);
-                        st.SetColor(GetBiomeColor(((Point)vor.Points[3 * i + j]).Biome, ((Point)vor.Points[3 * i + j]).Height));
+                        // Check generation type to determine projection method
+                        if (
+                            GenerationType == BodyGenerationType.SphericalHarmonicsWithNoise
+                            || GenerationType == BodyGenerationType.ScalingWithNoise
+                            || GenerationType == BodyGenerationType.NoiseOnly
+                        )
+                        {
+                            // Non-spherical bodies: preserve actual position, add small height offset
+                            Vector3 direction = vor.Points[3 * i + j].Position.Normalized();
+                            float currentRadius = vor.Points[3 * i + j].Position.Length();
+                            vor.Points[3 * i + j].Position =
+                                direction * (size + vor.Points[3 * i + j].Height);
+                        }
+                        else
+                        {
+                            // Tectonic bodies (planets): existing spherical projection
+                            vor.Points[3 * i + j].Position =
+                                vor.Points[3 * i + j].Position.Normalized()
+                                * (size + vor.Points[3 * i + j].Height / 10f);
+                        }
+                        // Get biome color and apply resource tinting
+                        Color baseBiomeColor;
+                        if (UseCellBiomeForColoring)
+                        {
+                            // Use cell-level biome for consistent coloring across the cell
+                            baseBiomeColor = GetBiomeColor(vor.Biome, vor.Height);
+                        }
+                        else
+                        {
+                            // Use point-level biome for per-point coloring
+                            baseBiomeColor = GetBiomeColor(
+                                ((Point)vor.Points[3 * i + j]).Biome,
+                                ((Point)vor.Points[3 * i + j]).Height
+                            );
+                        }
+                        //Color tintedColor = ResourceVisualizer.ApplyResourceTint(
+                        //    baseBiomeColor,
+                        //    vor.Resources
+                        //);
+                        st.SetColor(baseBiomeColor);
                         st.AddVertex(vor.Points[3 * i + j].Position);
-                        StrDb.AddPointForCellPlanet(vor.Points[3 * i + j], vor);
+                        StrDb!.AddPointForCellPlanet(vor.Points[3 * i + j], vor);
                         oct.Insert(vor.Points[3 * i + j]);
                     }
                     else
                     {
-                        st.AddVertex(new Vector3((vor.Points[3 * i + j]).Components[0], (vor.Points[3 * i + j]).Components[1], (vor.Points[3 * i + j]).Components[2]) * (size + (vor.Points[3 * i + j]).Components[2] / 10f));
+                        st.AddVertex(
+                            new Vector3(
+                                (vor.Points[3 * i + j]).Components[0],
+                                (vor.Points[3 * i + j]).Components[1],
+                                (vor.Points[3 * i + j]).Components[2]
+                            ) * (size + (vor.Points[3 * i + j]).Components[2] / 10f)
+                        );
                     }
                 }
+                StrDb!.AddFaceToCellMap(faceIndex, vor);
+                faceIndex++;
             }
             vor.GenerateBoundingBox();
         }
-        st.CallDeferred("commit", arrMesh);
+        GD.Print($"FaceIndex: {faceIndex}");
+        st.CallDeferred("commit", arrMesh!);
+    }
+
+    /// <summary>
+    /// Rebuilds the renderable ArrayMesh and the runtime selection structures (PlanetMap,
+    /// FaceToCellMap, octree, per-cell bounding boxes) from cells whose vertex positions are
+    /// already in their final (post-generation) state — used by the save/load loader.
+    ///
+    /// Unlike <see cref="GenerateSurfaceMesh"/> this NEVER re-projects vertices: positions are
+    /// emitted verbatim so a loaded body is byte-identical to the saved one. It also always
+    /// populates the StrDb maps and octree (the generation path only does so on the projection
+    /// branch), since runtime cell selection depends on them regardless of body type.
+    /// </summary>
+    public void RebuildSurfaceMeshFromCells(List<VoronoiCell> voronoiList, Octree<Point> oct)
+    {
+        var arrMesh = Mesh as ArrayMesh;
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        st.SetCustomFormat(0, SurfaceTool.CustomFormat.RgbFloat);
+
+        var material = CreateSurfaceMaterials();
+        st.SetMaterial(material);
+        int faceIndex = 0;
+        foreach (VoronoiCell vor in voronoiList)
+        {
+            for (int i = 0; i < vor.Points.Length / 3; i++)
+            {
+                var centroid = Vector3.Zero;
+                centroid += vor.Points[3 * i].Position;
+                centroid += vor.Points[3 * i + 1].Position;
+                centroid += vor.Points[3 * i + 2].Position;
+                centroid /= 3.0f;
+
+                var p0 = vor.Points[3 * i].Position;
+                var p1 = vor.Points[3 * i + 1].Position;
+                var p2 = vor.Points[3 * i + 2].Position;
+                var normal = (p1 - p0).Cross(p2 - p0).Normalized();
+                var tangent = (p0 - centroid).Normalized();
+                var bitangent = normal.Cross(tangent).Normalized();
+                var min_u = Mathf.Inf;
+                var min_v = Mathf.Inf;
+                var max_u = -Mathf.Inf;
+                var max_v = -Mathf.Inf;
+                for (int j = 2; j >= 0; j--)
+                {
+                    Point vp = vor.Points[3 * i + j];
+                    var rel_pos = vp.Position - centroid;
+                    var u = rel_pos.Dot(tangent);
+                    var v = rel_pos.Dot(bitangent);
+                    min_u = Mathf.Min(min_u, u);
+                    min_v = Mathf.Min(min_v, v);
+                    max_u = Mathf.Max(max_u, u);
+                    max_v = Mathf.Max(max_v, v);
+
+                    var uv = new Vector2(
+                        (u - min_u) / (max_u - min_u),
+                        (v - min_v) / (max_v - min_v)
+                    );
+                    st.SetUV(uv);
+                    float borderFlag = vp.isOnContinentBorder ? 1.0f : 0.0f;
+                    st.SetNormal(tangent);
+                    st.SetCustom(0, new Color(vor.Index, borderFlag, vor.ContinentIndex));
+
+                    Color baseBiomeColor = UseCellBiomeForColoring
+                        ? GetBiomeColor(vor.Biome, vor.Height)
+                        : GetBiomeColor(vp.Biome, vp.Height);
+                    st.SetColor(baseBiomeColor);
+
+                    st.AddVertex(vp.Position);
+                    StrDb!.AddPointForCellPlanet(vp, vor);
+                    oct.Insert(vp);
+                }
+                StrDb!.AddFaceToCellMap(faceIndex, vor);
+                faceIndex++;
+            }
+            vor.GenerateBoundingBox();
+        }
+        // Synchronous commit: this runs on the main thread during load. Deferring with a
+        // local SurfaceTool risks GC freeing it before the deferred call fires, silently
+        // dropping the surface and leaving an empty ArrayMesh (flaky missing mesh on load).
+        st.Commit(arrMesh);
+    }
+
+    /// <summary>Public entry point for building trimesh collision after a restore.</summary>
+    public void CreateCollisionsFromOctree(Octree<Point> oct) => CreateCollisions(oct);
+
+    private void GenerateVoronoiCellsInternal(Octree<Point> oct)
+    {
+        VoronoiCellGeneration voronoiCellGeneration = new VoronoiCellGeneration(StrDb!);
+
+        try
+        {
+            voronoiCellGeneration.GenerateVoronoiCells(this, oct);
+            float sizeMultiplier = 2.5f * StrDb!.VoronoiCells.Count / 10000f;
+            if (sizeMultiplier > 1.0f)
+            {
+                size *= sizeMultiplier;
+                oct.Grow(sizeMultiplier);
+            }
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}", "ERROR");
+            GameLogger.Error(
+                $"Voronoi Cell Generation Error: {e.Message}\n{e.StackTrace}",
+                "ERROR"
+            );
+            throw;
+        }
+    }
+
+    private Dictionary<int, Continent> FloodFillContinentsInternal()
+    {
+        Dictionary<int, Continent> continents = new Dictionary<int, Continent>();
+        try
+        {
+            continents = FloodFillContinentGeneration(StrDb!.VoronoiCells);
+            Continents = continents;
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Flood Filling Error: {e.Message}\n{e.StackTrace}");
+            throw;
+        }
+        return continents;
+    }
+
+    private void CalculateBoundaryCellsInternal(Dictionary<int, Continent> continents)
+    {
+        try
+        {
+            foreach (VoronoiCell vc in StrDb!.VoronoiCells)
+            {
+                var cellNeighbors = GetCellNeighbors(vc, StrDb!);
+                float averageHeight = vc.Height;
+                List<Edge> OutsideEdges = new List<Edge>();
+                List<int> BoundingContinentIndex = new List<int>();
+                foreach (VoronoiCell neighbor in cellNeighbors)
+                {
+                    if (neighbor.ContinentIndex != vc.ContinentIndex)
+                    {
+                        vc.IsBorderTile = true;
+                        vc.Interiorness = 1;
+                        continents[vc.ContinentIndex].boundaryCells.Add(vc);
+                        continents[vc.ContinentIndex]
+                            .neighborContinents.Add(neighbor.ContinentIndex);
+                        continents[neighbor.ContinentIndex]
+                            .neighborContinents.Add(vc.ContinentIndex);
+                        neighbor.IsBorderTile = true;
+                        neighbor.Interiorness = 1;
+                        BoundingContinentIndex.Add(neighbor.ContinentIndex);
+                        foreach (Point p in vc.Points)
+                        {
+                            foreach (Point p2 in neighbor.Points)
+                            {
+                                if (p.Equals(p2))
+                                {
+                                    p.isOnContinentBorder = true;
+                                }
+                            }
+                        }
+                        foreach (Edge e in vc.Edges)
+                        {
+                            foreach (Edge e2 in neighbor.Edges)
+                            {
+                                if (e.key.Equals(e2.key))
+                                {
+                                    vc.EdgeBoundaryMap.Add(e, neighbor.ContinentIndex);
+                                    OutsideEdges.Add(e);
+                                    continents[vc.ContinentIndex].boundaryEdges.Add(e);
+                                }
+                            }
+                        }
+                    }
+                }
+                vc.BoundingContinentIndex = BoundingContinentIndex.ToArray();
+                vc.OutsideEdges = OutsideEdges.ToArray();
+            }
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Error in Calculate Boundary Cells: {e.Message}\n{e.StackTrace}");
+            GameLogger.Error($"Error in Calculate Boundary Cells: {e.Message}\n{e.StackTrace}");
+            throw;
+        }
+    }
+
+    private void CalculateInteriornessInternal(Dictionary<int, Continent> continents)
+    {
+        try
+        {
+            HashSet<VoronoiCell> visited = new HashSet<VoronoiCell>();
+            var continent = continents.First().Value;
+            GD.Print($"Calculating Interiorness for {continent.StartingIndex}");
+            GD.Print($"# Edges: {continent.boundaryEdges.Count}");
+            PriorityQueue<VoronoiCell, int> BreadthSearch = new PriorityQueue<VoronoiCell, int>();
+            foreach (var vc in continent.boundaryCells)
+            {
+                BreadthSearch.Enqueue(vc, vc.Interiorness);
+            }
+            while (BreadthSearch.Count > 0)
+            {
+                var current = BreadthSearch.Dequeue();
+                visited.Add(current);
+                var neighbors = GetCellNeighbors(current, StrDb!)
+                    .Where(nc => nc.ContinentIndex == current.ContinentIndex)
+                    .ToList();
+                if (current.Interiorness != 1)
+                {
+                    int interiorness = neighbors.Min(e => e.Interiorness) + 1;
+                    current.Interiorness = interiorness;
+                }
+                foreach (var neighbor in neighbors)
+                {
+                    if (!visited.Contains(neighbor))
+                    {
+                        BreadthSearch.Enqueue(neighbor, neighbor.Interiorness);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Error in Calculate Interiorness: {e.Message}\n{e.StackTrace}");
+            GameLogger.Error($"Error in Calculate Interiorness: {e.Message}\n{e.StackTrace}");
+            throw;
+        }
+
+        foreach (Point p in StrDb!.VoronoiCellVertices)
+        {
+            var cells = StrDb!.CellMap[p];
+            foreach (VoronoiCell vc in cells)
+            {
+                p.ContinentIndecies!.Add(vc.ContinentIndex);
+            }
+        }
+    }
+
+    private void ApplyNoiseToBaseVertices()
+    {
+        foreach (var vertex in StrDb!.BaseVertices.Values)
+        {
+            float noiseValue = noise!.GetNoise3D(
+                vertex.Position.X * NoiseFrequency,
+                vertex.Position.Y * NoiseFrequency,
+                vertex.Position.Z * NoiseFrequency
+            );
+
+            Vector3 normal = vertex.Position.Normalized();
+            Vector3 displacement = normal * noiseValue * NoiseAmplitude;
+            vertex.Position += displacement;
+            //vertex.Height += displacement.Length();
+            vertex.Height += displacement.Dot(vertex.Position.Normalized());
+        }
+    }
+
+    private void ApplyScalingToBaseVertices()
+    {
+        foreach (var vertex in StrDb!.BaseVertices.Values)
+        {
+            vertex.Position *= ScaleFactors;
+        }
+    }
+
+    private void ApplyScalingToVoronoiVertices()
+    {
+        foreach (var vertex in StrDb!.VoronoiCellVertices)
+        {
+            vertex.Position *= ScaleFactors;
+        }
+    }
+
+    /// <summary>
+    /// Applies Spherical Harmonics deformation to base vertices only.
+    /// The Voronoi vertices inherit the shape naturally through circumcenter computation.
+    /// </summary>
+    /// <remarks>
+    /// This method applies SH deformation ONLY to base vertices. Unlike scaling which is
+    /// applied twice (base + Voronoi), SH is applied once because Voronoi vertices are
+    /// circumcenters computed from the deformed base mesh, naturally inheriting the SH shape.
+    ///
+    /// The height is stored as signed displacement (positive = outward bulge, negative = inward depression).
+    /// Radius is clamped to prevent vertices from collapsing past the origin (minimum 30% of base size).
+    /// </remarks>
+    private void ApplySphericalHarmonicsToBaseVertices()
+    {
+        GameLogger.EnterFunction("ApplySphericalHarmonicsToBaseVertices", "");
+        foreach (var vertex in StrDb!.BaseVertices.Values)
+        {
+            Vector3 direction = vertex.Position.Normalized();
+            float displacement = _shDeformer!.Evaluate(direction);
+            float newRadius = displacement;
+            // Floor: prevent radius from going below 30% of size
+            newRadius = Mathf.Clamp(newRadius, size * 0.3f, size * 1.3f);
+            vertex.Position = direction * newRadius;
+            //vertex.Height = displacement; // Signed height — positive=outward, negative=inward
+        }
+        GameLogger.ExitFunction(
+            "ApplySphericalHarmonicsToBaseVertices",
+            $"Vertices: {StrDb.BaseVertices.Count}, Amplitude: {_shAmplitude}"
+        );
+    }
+
+    private void ApplyNoiseToVoronoiVertices(float amplitudeMultiplier = 1.0f)
+    {
+        foreach (Point p in StrDb!.VoronoiCellVertices)
+        {
+            float noiseValue = noise!.GetNoise3D(
+                p.Position.X * NoiseFrequency,
+                p.Position.Y * NoiseFrequency,
+                p.Position.Z * NoiseFrequency
+            );
+
+            Vector3 normal = p.Position.Normalized();
+            Vector3 displacement = normal * noiseValue * NoiseAmplitude * amplitudeMultiplier;
+            p.Position += displacement;
+            //p.Height += displacement.Length();
+            p.Height += displacement.Dot(p.Position.Normalized());
+        }
+
+        float maxDistance = StrDb.VoronoiCellVertices.Max(p => p.Position.Length());
+        foreach (Point p in StrDb.VoronoiCellVertices)
+        {
+            float currentDistance = p.Position.Length();
+            float scaleFactor = size * (currentDistance / maxDistance);
+            p.Position = p.Position.Normalized() * scaleFactor;
+        }
+    }
+
+    /// <summary>
+    /// Applies noise to Voronoi vertices while preserving the Spherical Harmonics shape.
+    /// Unlike ApplyNoiseToVoronoiVertices, this does NOT normalize all vertices back to a sphere.
+    /// Instead, it preserves relative proportions and only clamps extreme outliers.
+    /// </summary>
+    /// <param name="amplitudeMultiplier">Multiplier for noise amplitude (typically 0.5 for second pass).</param>
+    private void ApplyNoiseToVoronoiVerticesPreserveSH(float amplitudeMultiplier = 1.0f)
+    {
+        GameLogger.EnterFunction(
+            "ApplyNoiseToVoronoiVerticesPreserveSH",
+            $"Amplitude: {NoiseAmplitude * amplitudeMultiplier}"
+        );
+
+        foreach (Point p in StrDb!.VoronoiCellVertices)
+        {
+            Vector3 direction = p.Position * size;
+            float displacement = _shDeformer!.Evaluate(direction);
+            // Floor: prevent radius from going below 30% of size
+            p.Height = displacement * rand.RandfRange(0.8f * size, 1.5f * size); // Signed height — positive=outward, negative=inward
+
+            //Vector3 normal = p.Position.Normalized();
+            //Vector3 displacement = normal * noiseValue * NoiseAmplitude * amplitudeMultiplier;
+            //p.Position += displacement;
+            ////p.Height += displacement.Length();
+            //p.Height += displacement.Dot(p.Position.Normalized());
+        }
+
+        // Preserve SH shape: only rescale if distance exceeds 2x average (safety clamp)
+        // This prevents extreme outliers while maintaining the global shape
+        //float avgDistance = StrDb.VoronoiCellVertices.Average(p => p.Position.Length());
+        //foreach (Point p in StrDb.VoronoiCellVertices)
+        //{
+        //    float currentDistance = p.Position.Length();
+        //    if (currentDistance > avgDistance * 2.0f)
+        //    {
+        //        p.Position = p.Position.Normalized() * (avgDistance * 2.0f);
+        //    }
+        //}
+
+        GameLogger.ExitFunction(
+            "ApplyNoiseToVoronoiVerticesPreserveSH",
+            $"Processed {StrDb.VoronoiCellVertices.Count} vertices, AvgDistance: "
+        );
+    }
+
+    private void CreateCollisions(Octree<Point> oct)
+    {
+        GameLogger.Info(
+            $"Creating collision mesh: {StrDb!.VoronoiCellVertices.Count} Voronoi vertices, {oct.GetPoints().Count} octree points"
+        );
+        MeshConvexDecompositionSettings settings = new MeshConvexDecompositionSettings();
+        settings.ConvexHullApproximation = false;
+        settings.NormalizeMesh = false;
+        settings.ConvexHullDownsampling = 16;
+        settings.MaxNumVerticesPerConvexHull = 256;
+        settings.Mode = MeshConvexDecompositionSettings.ModeEnum.Voxel;
+        //this.CallDeferred("create_multiple_convex_collisions", settings);
+        this.CallDeferred("create_trimesh_collision");
     }
 }

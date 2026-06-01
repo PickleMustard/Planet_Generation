@@ -1,0 +1,151 @@
+[gd_scene format=3 uid="uid://d4dhgdrh7torh"]
+
+[ext_resource type="Script" uid="uid://b1gbgrcbt86i2" path="res://DeveloperTools/ShipEditor/ShipEditorModule.cs" id="1_module"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toolbar"]
+bg_color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="ShipEditorModule" type="Control" unique_id=1854360407 node_paths=PackedStringArray("CategoryList", "CategoryHeaderLabel", "DeleteCategoryButton", "ShipListContainer", "SaveButton", "RevertButton", "FeedbackLabel", "Split")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_module")
+CategoryList = NodePath("RootVBox/Split/LeftPanel/LeftVBox/CategoryList")
+CategoryHeaderLabel = NodePath("RootVBox/Split/LeftPanel/LeftVBox/CategoriesHeader")
+DeleteCategoryButton = NodePath("RootVBox/Split/LeftPanel/LeftVBox/DeleteCategoryButton")
+ShipListContainer = NodePath("RootVBox/Split/RightPanel/RightVBox/Scroll/ShipListContainer")
+SaveButton = NodePath("RootVBox/Toolbar/ToolbarHBox/SaveButton")
+RevertButton = NodePath("RootVBox/Toolbar/ToolbarHBox/RevertButton")
+FeedbackLabel = NodePath("RootVBox/Toolbar/ToolbarHBox/FeedbackLabel")
+Split = NodePath("RootVBox/Split")
+
+[node name="RootVBox" type="VBoxContainer" parent="." unique_id=963406063]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Split" type="HSplitContainer" parent="RootVBox" unique_id=1644393392]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LeftPanel" type="PanelContainer" parent="RootVBox/Split" unique_id=486715198]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="LeftVBox" type="VBoxContainer" parent="RootVBox/Split/LeftPanel" unique_id=862614480]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CategoriesHeader" type="Label" parent="RootVBox/Split/LeftPanel/LeftVBox" unique_id=1566321317]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Files"
+horizontal_alignment = 1
+
+[node name="CategoryList" type="ItemList" parent="RootVBox/Split/LeftPanel/LeftVBox" unique_id=640106442]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+allow_reselect = true
+
+[node name="NewCategoryButton" type="Button" parent="RootVBox/Split/LeftPanel/LeftVBox" unique_id=447459034]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+ New File"
+
+[node name="DeleteCategoryButton" type="Button" parent="RootVBox/Split/LeftPanel/LeftVBox" unique_id=587359369]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "✕ Delete File"
+
+[node name="RightPanel" type="PanelContainer" parent="RootVBox/Split" unique_id=343945806]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="RightVBox" type="VBoxContainer" parent="RootVBox/Split/RightPanel" unique_id=587985647]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightHeader" type="HBoxContainer" parent="RootVBox/Split/RightPanel/RightVBox" unique_id=876931432]
+layout_mode = 2
+
+[node name="CategoryHeaderLabel" type="Label" parent="RootVBox/Split/RightPanel/RightVBox/RightHeader" unique_id=1745319571]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Select a file"
+
+[node name="NewShipButton" type="Button" parent="RootVBox/Split/RightPanel/RightVBox/RightHeader" unique_id=1965933322]
+layout_mode = 2
+text = "+ New Ship"
+
+[node name="Scroll" type="ScrollContainer" parent="RootVBox/Split/RightPanel/RightVBox" unique_id=1154561188]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ShipListContainer" type="VBoxContainer" parent="RootVBox/Split/RightPanel/RightVBox/Scroll" unique_id=691395827]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Toolbar" type="PanelContainer" parent="RootVBox" unique_id=913111407]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_toolbar")
+
+[node name="ToolbarHBox" type="HBoxContainer" parent="RootVBox/Toolbar" unique_id=910767847]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Spacer" type="Control" parent="RootVBox/Toolbar/ToolbarHBox" unique_id=2143716878]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RevertButton" type="Button" parent="RootVBox/Toolbar/ToolbarHBox" unique_id=53973932]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Revert"
+
+[node name="SaveButton" type="Button" parent="RootVBox/Toolbar/ToolbarHBox" unique_id=1494985173]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Save"
+
+[node name="FeedbackLabel" type="Label" parent="RootVBox/Toolbar/ToolbarHBox" unique_id=1651332320]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 1, 0.4, 1)
+theme_override_font_sizes/font_size = 12
+
+[connection signal="item_selected" from="RootVBox/Split/LeftPanel/LeftVBox/CategoryList" to="." method="OnCategorySelected"]
+[connection signal="pressed" from="RootVBox/Split/LeftPanel/LeftVBox/NewCategoryButton" to="." method="OnNewCategoryPressed"]
+[connection signal="pressed" from="RootVBox/Split/LeftPanel/LeftVBox/DeleteCategoryButton" to="." method="OnDeleteCategoryPressed"]
+[connection signal="pressed" from="RootVBox/Split/RightPanel/RightVBox/RightHeader/NewShipButton" to="." method="OnNewShipPressed"]
+[connection signal="pressed" from="RootVBox/Toolbar/ToolbarHBox/RevertButton" to="." method="OnRevertPressed"]
+[connection signal="pressed" from="RootVBox/Toolbar/ToolbarHBox/SaveButton" to="." method="OnSavePressed"]

@@ -1,0 +1,37 @@
+stations:
+  - name: Small_Refinery
+    station_type: Refinery
+    construction_time: 45
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "30"
+      - behavior_id: TransferHubBehavior
+        transfer_station:
+          cargo_capacity: "500.0"
+          vehicle_speed: "50.0"
+          max_concurrent_transfers: "2"
+    required_resources:
+      Steel: 800
+      Electronics: 200
+      Machinery: 400
+    icon:
+      base_path: "res://Assets/Icons/Stations/refinery/small_refinery"
+
+  - name: Large_Refinery
+    station_type: Refinery
+    construction_time: 120
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "30"
+      - behavior_id: TransferHubBehavior
+        transfer_station:
+          cargo_capacity: "500.0"
+          vehicle_speed: "50.0"
+          max_concurrent_transfers: "2"
+    required_resources:
+      Steel: 4000
+      Electronics: 1000
+      Machinery: 2000
+      Composites: 300
+    icon:
+      base_path: "res://Assets/Icons/Stations/refinery/large_refinery"

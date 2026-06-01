@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://settings_panel"]
+
+[ext_resource type="Script" uid="uid://settings_script" path="res://DeveloperTools/Settings/SettingsPanel.cs" id="1_settings"]
+
+[node name="SettingsPanel" type="Control" unique_id=1234567890]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_settings")

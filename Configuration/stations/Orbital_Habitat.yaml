@@ -1,0 +1,39 @@
+stations:
+  - name: Small_Habitat
+    station_type: Orbital_Habitat
+    construction_time: 30
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "40"
+    required_resources:
+      Steel: 500
+      Electronics: 100
+    icon:
+      base_path: "res://Assets/Icons/Stations/habitat/small_habitat"
+
+  - name: Medium_Habitat
+    station_type: Orbital_Habitat
+    construction_time: 90
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "40"
+    required_resources:
+      Steel: 2000
+      Electronics: 500
+      Composites: 300
+    icon:
+      base_path: "res://Assets/Icons/Stations/habitat/medium_habitat"
+
+  - name: Large_Habitat
+    station_type: Orbital_Habitat
+    construction_time: 180
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "40"
+    required_resources:
+      Steel: 8000
+      Electronics: 2000
+      Composites: 1500
+      LifeSupport: 500
+    icon:
+      base_path: "res://Assets/Icons/Stations/habitat/large_habitat"

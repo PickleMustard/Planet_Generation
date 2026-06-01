@@ -1,0 +1,9 @@
+categories:
+  - name: Cargo_Freighter
+    description: Large capacity vessels designed for bulk cargo transport across star systems. Prioritize cargo space over speed.
+
+  - name: Fast_Courier
+    description: High-speed vessels optimized for rapid delivery of time-sensitive cargo. Sacrifice capacity for speed.
+
+  - name: Heavy_Transport
+    description: Massive ships designed to carry extremely heavy or oversized cargo loads. Include heavy lifting capabilities.

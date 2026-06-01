@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://tuuk8wun6emi"]
+
+[ext_resource type="Environment" uid="uid://s4wyheed0x8r" path="res://Shaders/stary_background.tres" id="1_env"]
+[ext_resource type="PackedScene" uid="uid://brice0jo72tpo" path="res://Prefabs/player_ship.tscn" id="2_player"]
+[ext_resource type="Script" uid="uid://cu7yruw6jiaib" path="res://Scripts/GameScene.cs" id="3_gamescene"]
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_game"]
+exposure_multiplier = 1.169
+dof_blur_amount = 0.0
+
+[sub_resource type="Compositor" id="Compositor_game"]
+
+[node name="GameScene" type="Node3D" unique_id=877601861]
+script = ExtResource("3_gamescene")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1825904803]
+environment = ExtResource("1_env")
+camera_attributes = SubResource("CameraAttributesPractical_game")
+compositor = SubResource("Compositor_game")
+
+[node name="Crosshair" type="Control" parent="." unique_id=1934431878]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="ColorRect" type="ColorRect" parent="Crosshair" unique_id=2112687509]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -2.0
+offset_top = -2.0
+offset_right = 2.0
+offset_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlayerShip" parent="." unique_id=1991390985 instance=ExtResource("2_player")]
+
+[node name="system_container" type="Node" parent="." unique_id=1688447357]

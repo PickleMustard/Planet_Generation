@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://ysxhc2yx5n72"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_hmuf1"]
+[ext_resource type="Script" uid="uid://cngot6tehml5q" path="res://Scripts/UI/StationWindow/ShipyardSlotCard.cs" id="1_slotcard"]
+
+[node name="ShipyardSlotCard" type="VBoxContainer" unique_id=1788181644 node_paths=PackedStringArray("_shipNameLabel", "_constructionProgressBar", "_resourceList", "_pauseButton")]
+custom_minimum_size = Vector2(180, 0)
+theme = ExtResource("1_hmuf1")
+theme_override_constants/separation = 4
+script = ExtResource("1_slotcard")
+_shipNameLabel = NodePath("ShipNameLabel")
+_constructionProgressBar = NodePath("ConstructionProgressBar")
+_resourceList = NodePath("ResourceList")
+_pauseButton = NodePath("PauseButton")
+
+[node name="ShipNameLabel" type="Label" parent="." unique_id=93032054]
+layout_mode = 2
+theme = ExtResource("1_hmuf1")
+text = "Empty Slot"
+
+[node name="ConstructionProgressBar" type="ProgressBar" parent="." unique_id=445400739]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme = ExtResource("1_hmuf1")
+show_percentage = false
+
+[node name="ResourceList" type="VBoxContainer" parent="." unique_id=469047768]
+layout_mode = 2
+theme = ExtResource("1_hmuf1")
+theme_override_constants/separation = 2
+
+[node name="PauseButton" type="Button" parent="." unique_id=122327389]
+layout_mode = 2
+theme = ExtResource("1_hmuf1")
+text = "Pause"

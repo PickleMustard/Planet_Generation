@@ -1,7 +1,8 @@
 using System;
 using Godot;
-using UtilityLibrary;
 using Structures.Enums;
+using UtilityLibrary.DataLoading;
+using UtilityLibrary.NameGeneration;
 
 namespace UI;
 
@@ -11,89 +12,89 @@ public partial class SatelliteItem : HBoxContainer
     public delegate void ItemUpdateEventHandler();
 
     [Export]
-    public Button Toggle;
+    public Button? Toggle;
 
     [Export]
-    public Button RemoveItem;
+    public Button? RemoveItem;
 
     [Export]
-    public Button DetailsToggle;
+    public Button? DetailsToggle;
 
     [Export]
-    public OptionButton OptionButton;
+    public OptionButton? OptionButton;
 
     [Export]
-    public SpinBox X;
+    public SpinBox? Apogee;
 
     [Export]
-    public SpinBox Y;
+    public SpinBox? Perigee;
 
     [Export]
-    public SpinBox Z;
+    public SpinBox? StartingAngle;
 
     [Export]
-    public SpinBox velX;
+    public SpinBox? VerticalOffset;
 
     [Export]
-    public SpinBox velY;
+    public SpinBox? mass;
 
     [Export]
-    public SpinBox velZ;
+    public SpinBox? size;
 
     [Export]
-    public SpinBox mass;
+    public VBoxContainer? DetailsPanel;
 
-    [Export]
-    public SpinBox size;
+    public Action<SatelliteItem>? OnRemoveRequested;
 
-    [Export]
-    public VBoxContainer DetailsPanel;
-
-    public Action<SatelliteItem> OnRemoveRequested;
-
-    private CelestialBodyType parentType;
+    private PlanetaryBodyType parentType;
     private int NumberInBelt = 25;
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
 
-    private PackedScene _detailPanelScene;
+    private PackedScene? _detailPanelScene;
 
     //Hidden Values
     //Base Mesh
     private int subdivisions;
-    private int[,] verticesPerEdge;
+    private int[,]? verticesPerEdge;
     private int numAbberations;
     private int numDeformationCycles;
 
     //Tectonics
     bool hasTectonics = false;
-    private int[] numContinents;
-    private float[] stressScale;
-    private float[] shearScale;
-    private float[] maxPropagationDistance;
-    private float[] propagationFalloff;
-    private float[] inactiveStressThreshold;
-    private float[] generalHeightScale;
-    private float[] generalShearScale;
-    private float[] generalCompressionScale;
-    private float[] generalTransformScale;
+    private int[]? numContinents;
+    private float[]? stressScale;
+    private float[]? shearScale;
+    private float[]? maxPropagationDistance;
+    private float[]? propagationFalloff;
+    private float[]? inactiveStressThreshold;
+    private float[]? generalHeightScale;
+    private float[]? generalShearScale;
+    private float[]? generalCompressionScale;
+    private float[]? generalTransformScale;
 
-    //Scaling
+    //Scaling (backward compatibility)
     bool hasScaling = false;
-    private float[] xScaleRange;
-    private float[] yScaleRange;
-    private float[] zScaleRange;
+    private float[]? xScaleRange;
+    private float[]? yScaleRange;
+    private float[]? zScaleRange;
+
+    //Spherical Harmonics
+    bool hasSphericalHarmonics = false;
+    private float[]? shAmplitudeRange;
 
     //Noise Settings
     bool hasNoise = false;
-    private float[] amplitudeRange;
-    private float[] scalingRange;
-    private int[] octaveRange;
+    private float[]? amplitudeRange;
+    private float[]? scalingRange;
+    private int[]? octaveRange;
 
-    private String satName;
+    private String? satName;
+    private bool _isNameUserEdited;
+    private LineEdit? _nameEditField;
 
-    public void SetParentType(CelestialBodyType type)
+    public void SetParentType(PlanetaryBodyType type)
     {
         this.parentType = type;
     }
@@ -101,18 +102,81 @@ public partial class SatelliteItem : HBoxContainer
     public override void _EnterTree()
     {
         // Cache field nodes if not set via exported references
-        OptionButton ??= GetNodeOrNull<OptionButton>("MainContent/Content/TypeContent/OptionButton");
-        X ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/X");
-        Y ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Y");
-        Z ??= GetNodeOrNull<SpinBox>("MainContent/Content/PositionContent/Z");
-        velX ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velX");
-        velY ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velY");
-        velZ ??= GetNodeOrNull<SpinBox>("MainContent/Content/VelocityContent/velZ");
+        OptionButton ??= GetNodeOrNull<OptionButton>(
+            "MainContent/Content/TypeContent/OptionButton"
+        );
+        Apogee ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/Apogee");
+        Perigee ??= GetNodeOrNull<SpinBox>("MainContent/Content/OrbitalContent/Perigee");
+        StartingAngle ??= GetNodeOrNull<SpinBox>(
+            "MainContent/Content/OrbitalContent/StartingAngle"
+        );
+        VerticalOffset ??= GetNodeOrNull<SpinBox>(
+            "MainContent/Content/OrbitalContent/VerticalOffset"
+        );
         mass ??= GetNodeOrNull<SpinBox>("MainContent/Content/MassContent/mass");
         size ??= GetNodeOrNull<SpinBox>("MainContent/Content/SizeContent/size");
 
         // Apply input constraints to fields
         ApplyConstraints();
+
+        // Double-click header to edit name
+        var headerBtn = GetNodeOrNull<Button>("MainContent/Header/Toggle");
+        if (headerBtn != null)
+        {
+            headerBtn.GuiInput += (InputEvent @event) =>
+            {
+                if (
+                    @event is InputEventMouseButton mb
+                    && mb.DoubleClick
+                    && mb.ButtonIndex == MouseButton.Left
+                )
+                {
+                    StartNameEdit(headerBtn);
+                }
+            };
+        }
+    }
+
+    private void StartNameEdit(Button headerBtn)
+    {
+        if (_nameEditField != null)
+            return;
+
+        _nameEditField = new LineEdit
+        {
+            Text = satName ?? "",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        headerBtn.Visible = false;
+
+        var header = headerBtn.GetParent();
+        header.AddChild(_nameEditField);
+        header.MoveChild(_nameEditField, headerBtn.GetIndex());
+        _nameEditField.GrabFocus();
+        _nameEditField.SelectAll();
+
+        _nameEditField.TextSubmitted += (_) => FinishNameEdit(headerBtn);
+        _nameEditField.FocusExited += () => FinishNameEdit(headerBtn);
+    }
+
+    private void FinishNameEdit(Button headerBtn)
+    {
+        if (_nameEditField == null)
+            return;
+
+        var newName = _nameEditField.Text.Trim();
+        if (!string.IsNullOrEmpty(newName) && newName != satName)
+        {
+            satName = newName;
+            _isNameUserEdited = true;
+        }
+
+        _nameEditField.QueueFree();
+        _nameEditField = null;
+        headerBtn.Visible = true;
+
+        if (OptionButton != null)
+            UpdateHeaderFromSatType(OptionButton.GetItemText(OptionButton.Selected));
     }
 
     public void SubscribeEvents()
@@ -134,17 +198,7 @@ public partial class SatelliteItem : HBoxContainer
 
         _detailPanelScene = GD.Load<PackedScene>("res://UI/DetailPanel.tscn");
         // Hook up input events for updates
-        var spinBoxes = new[]
-        {
-            X,
-            Y,
-            Z,
-            velX,
-            velY,
-            velZ,
-            mass,
-            size,
-        };
+        var spinBoxes = new[] { Apogee, Perigee, StartingAngle, VerticalOffset, mass, size };
         foreach (var sb in spinBoxes)
         {
             if (sb != null)
@@ -153,16 +207,20 @@ public partial class SatelliteItem : HBoxContainer
             }
         }
 
-        // Populate satellite types and hook selection
+        // Populate satellite types from YAML configuration and hook selection
         if (OptionButton != null)
         {
-            OptionButton.Clear();
-            foreach (var name in System.Enum.GetNames(typeof(SatelliteBodyType)))
-                OptionButton.AddItem(name);
+            PlanetaryTypeLoader.PopulateOptionButton(
+                OptionButton,
+                PlanetaryTypeLoader.GetSatelliteBodyTypes()
+            );
 
             OptionButton.ItemSelected += idx =>
             {
-                var type = (SatelliteBodyType)(int)idx;
+                var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (internalName == null)
+                    return;
+                var type = PlanetaryTypeLoader.ToSatelliteBodyType(internalName);
                 ApplyTemplate(type);
                 UpdateHeaderFromType(OptionButton.GetItemText((int)idx));
                 EmitSignal(SignalName.ItemUpdate);
@@ -173,8 +231,12 @@ public partial class SatelliteItem : HBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                ApplyTemplate((SatelliteBodyType)OptionButton.Selected);
-                UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                var initialName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (initialName != null)
+                {
+                    ApplyTemplate(PlanetaryTypeLoader.ToSatelliteBodyType(initialName));
+                    UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                }
             }
         }
     }
@@ -182,26 +244,30 @@ public partial class SatelliteItem : HBoxContainer
     public void ApplyTemplate(SatelliteBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetSatelliteBodyDefaults(type);
+        var t = TemplateHelpers.GetSatelliteBodyDefaults(type);
         var template = (Godot.Collections.Dictionary)t["template"];
-        satName = PickName((Godot.Collections.Dictionary)t["possible_names"]);
+        satName = NameGenerator.PickName((Godot.Collections.Dictionary)t["possible_names"]);
+        _isNameUserEdited = false;
 
-        // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
-        var position = (Vector3)template["position"];
-        var velocity = (Vector3)template["velocity"];
-        if (X != null)
-            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
-        if (Y != null)
-            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
-        if (Z != null)
-            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+        // Assign orbital parameters to UI (already clamped by GetDefaults, but clamp again defensively)
+        // Default values: apogee=500, perigee=300, starting_angle=0, vertical_offset=0
+        float defaultApogee = template.ContainsKey("apogee") ? (float)template["apogee"] : 500f;
+        float defaultPerigee = template.ContainsKey("perigee") ? (float)template["perigee"] : 300f;
+        float defaultStartingAngle = template.ContainsKey("starting_angle")
+            ? (float)template["starting_angle"]
+            : 0f;
+        float defaultVerticalOffset = template.ContainsKey("vertical_offset")
+            ? (float)template["vertical_offset"]
+            : 0f;
 
-        if (velX != null)
-            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
-        if (velY != null)
-            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
-        if (velZ != null)
-            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+        if (Apogee != null)
+            Apogee.Value = Mathf.Clamp(defaultApogee, 0f, Limit);
+        if (Perigee != null)
+            Perigee.Value = Mathf.Clamp(defaultPerigee, 0f, Limit);
+        if (StartingAngle != null)
+            StartingAngle.Value = Mathf.Clamp(defaultStartingAngle, 0f, 360f);
+        if (VerticalOffset != null)
+            VerticalOffset.Value = Mathf.Clamp(defaultVerticalOffset, -90f, 90f);
 
         if (mass != null)
             mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
@@ -211,7 +277,8 @@ public partial class SatelliteItem : HBoxContainer
         var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
         subdivisions = (int)baseMesh["subdivisions"];
         verticesPerEdge = new int[subdivisions, 2];
-        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray =
+            (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
         for (int i = 0; i < subdivisions; i++)
         {
             verticesPerEdge[i, 0] = (int)vpeArray[i][0];
@@ -220,7 +287,7 @@ public partial class SatelliteItem : HBoxContainer
         numAbberations = (int)baseMesh["num_abberations"];
         numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
 
-        if (t.ContainsKey("tectonic"))
+        if (t.ContainsKey("tectonics"))
         {
             hasTectonics = true;
             var tectonics = (Godot.Collections.Dictionary)t["tectonics"];
@@ -235,13 +302,20 @@ public partial class SatelliteItem : HBoxContainer
             generalCompressionScale = (float[])tectonics["general_compression_scale"];
             generalTransformScale = (float[])tectonics["general_transform_scale"];
         }
-        if (t.ContainsKey("scaling_settings"))
+        // Check for spherical_harmonics_settings first, fall back to scaling_settings
+        if (t.ContainsKey("spherical_harmonics_settings"))
+        {
+            hasSphericalHarmonics = true;
+            var shSettings = (Godot.Collections.Dictionary)t["spherical_harmonics_settings"];
+            shAmplitudeRange = (float[])shSettings["amplitude_range"];
+        }
+        else if (t.ContainsKey("scaling_settings"))
         {
             hasScaling = true;
             var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
-            xScaleRange = (float[])scaling["x_scale_range"];
-            yScaleRange = (float[])scaling["y_scale_range"];
-            zScaleRange = (float[])scaling["z_scale_range"];
+            xScaleRange = (float[])scaling["scaling_range_x"];
+            yScaleRange = (float[])scaling["scaling_range_y"];
+            zScaleRange = (float[])scaling["scaling_range_z"];
         }
 
         if (t.ContainsKey("noise_settings"))
@@ -258,22 +332,63 @@ public partial class SatelliteItem : HBoxContainer
     {
         var template = (Godot.Collections.Dictionary)t["template"];
 
-        // Assign to UI (already clamped by GetDefaults, but clamp again defensively)
-        var position = (Vector3)template["position"];
-        var velocity = (Vector3)template["velocity"];
-        if (X != null)
-            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
-        if (Y != null)
-            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
-        if (Z != null)
-            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+        // Set satellite name: use name from template if provided, otherwise generate random name
+        if (t.ContainsKey("name"))
+        {
+            var nameVariant = t["name"];
+            if (nameVariant.VariantType == Variant.Type.String)
+            {
+                var nameStr = (string)nameVariant;
+                if (!string.IsNullOrEmpty(nameStr))
+                {
+                    // Use the name from the template (user-saved name)
+                    satName = nameStr;
+                    _isNameUserEdited = true;
+                }
+            }
+        }
+        else if (OptionButton != null)
+        {
+            // Generate a random name based on satellite type
+            var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+            if (internalName != null)
+            {
+                var type = PlanetaryTypeLoader.ToSatelliteBodyType(internalName);
+                var defaults = TemplateHelpers.GetSatelliteBodyDefaults(type);
+                if (defaults.ContainsKey("possible_names"))
+                {
+                    satName = NameGenerator.PickName(
+                        (Godot.Collections.Dictionary)defaults["possible_names"]
+                    );
+                    _isNameUserEdited = false;
+                }
+            }
+        }
 
-        if (velX != null)
-            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
-        if (velY != null)
-            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
-        if (velZ != null)
-            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+        // Update header with new name
+        if (OptionButton != null)
+        {
+            UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+        }
+
+        // Assign orbital parameters to UI
+        float apogee = template.ContainsKey("apogee") ? (float)template["apogee"] : 500f;
+        float perigee = template.ContainsKey("perigee") ? (float)template["perigee"] : 300f;
+        float startingAngle = template.ContainsKey("starting_angle")
+            ? (float)template["starting_angle"]
+            : 0f;
+        float verticalOffset = template.ContainsKey("vertical_offset")
+            ? (float)template["vertical_offset"]
+            : 0f;
+
+        if (Apogee != null)
+            Apogee.Value = Mathf.Clamp(apogee, 0f, Limit);
+        if (Perigee != null)
+            Perigee.Value = Mathf.Clamp(perigee, 0f, Limit);
+        if (StartingAngle != null)
+            StartingAngle.Value = Mathf.Clamp(startingAngle, 0f, 360f);
+        if (VerticalOffset != null)
+            VerticalOffset.Value = Mathf.Clamp(verticalOffset, -90f, 90f);
 
         if (mass != null)
             mass.Value = Mathf.Clamp((float)template["mass"], 0f, MassLimit);
@@ -283,7 +398,8 @@ public partial class SatelliteItem : HBoxContainer
         var baseMesh = (Godot.Collections.Dictionary)t["base_mesh"];
         subdivisions = (int)baseMesh["subdivisions"];
         verticesPerEdge = new int[subdivisions, 2];
-        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray =
+            (Godot.Collections.Array<Godot.Collections.Array<int>>)baseMesh["vertices_per_edge"];
         for (int i = 0; i < subdivisions; i++)
         {
             verticesPerEdge[i, 0] = (int)vpeArray[i][0];
@@ -292,7 +408,7 @@ public partial class SatelliteItem : HBoxContainer
         numAbberations = (int)baseMesh["num_abberations"];
         numDeformationCycles = (int)baseMesh["num_deformation_cycles"];
 
-        if (t.ContainsKey("tectonic"))
+        if (t.ContainsKey("tectonics"))
         {
             hasTectonics = true;
             var tectonics = (Godot.Collections.Dictionary)t["tectonics"];
@@ -308,13 +424,20 @@ public partial class SatelliteItem : HBoxContainer
             generalTransformScale = (float[])tectonics["general_transform_scale"];
         }
 
-        if (t.ContainsKey("scaling_settings"))
+        // Check for spherical_harmonics_settings first, fall back to scaling_settings
+        if (t.ContainsKey("spherical_harmonics_settings"))
+        {
+            hasSphericalHarmonics = true;
+            var shSettings = (Godot.Collections.Dictionary)t["spherical_harmonics_settings"];
+            shAmplitudeRange = (float[])shSettings["amplitude_range"];
+        }
+        else if (t.ContainsKey("scaling_settings"))
         {
             hasScaling = true;
             var scaling = (Godot.Collections.Dictionary)t["scaling_settings"];
-            xScaleRange = (float[])scaling["x_scale_range"];
-            yScaleRange = (float[])scaling["y_scale_range"];
-            zScaleRange = (float[])scaling["z_scale_range"];
+            xScaleRange = (float[])scaling["scaling_range_x"];
+            yScaleRange = (float[])scaling["scaling_range_y"];
+            zScaleRange = (float[])scaling["scaling_range_z"];
         }
 
         if (t.ContainsKey("noise_settings"))
@@ -325,39 +448,47 @@ public partial class SatelliteItem : HBoxContainer
             scalingRange = (float[])noiseSettings["scaling_range"];
             octaveRange = (int[])noiseSettings["octave_range"];
         }
-
     }
 
-    public String PickName(Godot.Collections.Dictionary nameDict)
+    public void UpdateHeaderFromSatType(string typeName)
     {
-        if (nameDict == null || nameDict.Count == 0)
-            return "";
-
-        var categories = new Godot.Collections.Array(nameDict.Keys);
-        if (categories.Count == 0)
-            return "";
-
-        var random = UtilityLibrary.Randomizer.rng;
-        var selectedCategory = (string)categories[random.RandiRange(0, categories.Count - 1)];
-
-        var names = (Godot.Collections.Array)nameDict[selectedCategory];
-        if (names == null || names.Count == 0)
-            return "";
-
-        return (string)names[random.RandiRange(0, names.Count - 1)];
+        var headerBtn = GetNodeOrNull<Button>("MainContent/Header/Toggle");
+        if (headerBtn != null)
+        {
+            headerBtn.Text = $"{satName} ({typeName})";
+        }
     }
 
     private void ApplyConstraints()
     {
-        // Positions and velocities: clamp to [-Limit, Limit]
-        foreach (var sb in new[] { X, Y, Z, velX, velY, velZ })
+        // Orbital parameters: apogee/perigee [0, Limit], starting_angle [0, 360], vertical_offset [-90, 90]
+        if (Apogee != null)
         {
-            if (sb == null)
-                continue;
-            sb.MinValue = -Limit;
-            sb.MaxValue = Limit;
-            sb.AllowGreater = false;
-            sb.AllowLesser = false;
+            Apogee.MinValue = 0f;
+            Apogee.MaxValue = Limit;
+            Apogee.AllowGreater = false;
+            Apogee.AllowLesser = false;
+        }
+        if (Perigee != null)
+        {
+            Perigee.MinValue = 0f;
+            Perigee.MaxValue = Limit;
+            Perigee.AllowGreater = false;
+            Perigee.AllowLesser = false;
+        }
+        if (StartingAngle != null)
+        {
+            StartingAngle.MinValue = 0f;
+            StartingAngle.MaxValue = 360f;
+            StartingAngle.AllowGreater = false;
+            StartingAngle.AllowLesser = false;
+        }
+        if (VerticalOffset != null)
+        {
+            VerticalOffset.MinValue = -90f;
+            VerticalOffset.MaxValue = 90f;
+            VerticalOffset.AllowGreater = false;
+            VerticalOffset.AllowLesser = false;
         }
         // Mass: [0, MassLimit]
         if (mass != null)
@@ -386,40 +517,124 @@ public partial class SatelliteItem : HBoxContainer
         }
     }
 
+    public void SetApogee(float value)
+    {
+        if (Apogee != null)
+            Apogee.Value = Mathf.Clamp(value, 0f, Limit);
+    }
+
+    public float GetApogee()
+    {
+        return Mathf.Clamp((float)Apogee!.Value, 0f, Limit);
+    }
+
+    public void SetPerigee(float value)
+    {
+        if (Perigee != null)
+            Perigee.Value = Mathf.Clamp(value, 0f, Limit);
+    }
+
+    public float GetPerigee()
+    {
+        return Mathf.Clamp((float)Perigee!.Value, 0f, Limit);
+    }
+
+    public void SetStartingAngle(float value)
+    {
+        if (StartingAngle != null)
+            StartingAngle.Value = Mathf.Clamp(value, 0f, 360f);
+    }
+
+    public float GetStartingAngle()
+    {
+        return Mathf.Clamp((float)StartingAngle!.Value, 0f, 360f);
+    }
+
+    public void SetVerticalOffset(float value)
+    {
+        if (VerticalOffset != null)
+            VerticalOffset.Value = Mathf.Clamp(value, -90f, 90f);
+    }
+
+    public float GetVerticalOffset()
+    {
+        return Mathf.Clamp((float)VerticalOffset!.Value, -90f, 90f);
+    }
+
+    /// <summary>
+    /// Backwards compatibility method for loading old saves with position/velocity.
+    /// Converts position to approximate apogee/perigee and calculates starting angle.
+    /// </summary>
     public void SetPosition(Vector3 position)
     {
-        if (X != null)
-            X.Value = Mathf.Clamp(position.X, -Limit, Limit);
-        if (Y != null)
-            Y.Value = Mathf.Clamp(position.Y, -Limit, Limit);
-        if (Z != null)
-            Z.Value = Mathf.Clamp(position.Z, -Limit, Limit);
+        // For backwards compatibility: approximate orbital parameters from position
+        // This is a rough conversion - the user should update to new format
+        float distance = position.Length();
+        if (distance > 0)
+        {
+            if (Apogee != null)
+                Apogee.Value = Mathf.Clamp(distance * 1.2f, 0f, Limit); // Approximate apogee as 1.2x distance
+            if (Perigee != null)
+                Perigee.Value = Mathf.Clamp(distance * 0.8f, 0f, Limit); // Approximate perigee as 0.8x distance
+        }
     }
 
-    public new Vector3 GetPosition()
-    {
-        float x = Mathf.Clamp((float)X.Value, -Limit, Limit);
-        float y = Mathf.Clamp((float)Y.Value, -Limit, Limit);
-        float z = Mathf.Clamp((float)Z.Value, -Limit, Limit);
-        return new Vector3(x, y, z);
-    }
-
+    /// <summary>
+    /// Backwards compatibility method - velocity is now calculated automatically.
+    /// </summary>
     public void SetVelocity(Vector3 velocity)
     {
-        if (velX != null)
-            velX.Value = Mathf.Clamp(velocity.X, -Limit, Limit);
-        if (velY != null)
-            velY.Value = Mathf.Clamp(velocity.Y, -Limit, Limit);
-        if (velZ != null)
-            velZ.Value = Mathf.Clamp(velocity.Z, -Limit, Limit);
+        // Velocity is now calculated automatically from orbital parameters
+        // This method exists for backwards compatibility with old saves
     }
 
+    /// <summary>
+    /// Backwards compatibility method for loading old saves.
+    /// </summary>
+    public new Vector3 GetPosition()
+    {
+        // Return the calculated position based on orbital parameters
+        // This is approximate - for display purposes only
+        float apogee = GetApogee();
+        float perigee = GetPerigee();
+        float angle = GetStartingAngle();
+        float inclination = GetVerticalOffset();
+
+        float angleRad = Mathf.DegToRad(angle);
+        float inclinationRad = Mathf.DegToRad(inclination);
+
+        float eccentricity = (apogee - perigee) / (apogee + perigee);
+        float semiMajorAxis = (apogee + perigee) / 2f;
+        float radius =
+            semiMajorAxis
+            * (1 - eccentricity * eccentricity)
+            / (1 + eccentricity * Mathf.Cos(angleRad));
+
+        Vector3 pHat = new Vector3(Mathf.Cos(angleRad), 0, Mathf.Sin(angleRad)).Normalized();
+        Vector3 qHat = new Vector3(
+            -Mathf.Sin(angleRad) * Mathf.Cos(inclinationRad),
+            Mathf.Sin(inclinationRad),
+            Mathf.Cos(angleRad) * Mathf.Cos(inclinationRad)
+        ).Normalized();
+
+        return radius * Mathf.Cos(angleRad) * pHat + radius * Mathf.Sin(angleRad) * qHat;
+    }
+
+    /// <summary>
+    /// Backwards compatibility method - velocity is calculated automatically.
+    /// </summary>
     public Vector3 GetVelocity()
     {
-        float vx = Mathf.Clamp((float)velX.Value, -Limit, Limit);
-        float vy = Mathf.Clamp((float)velY.Value, -Limit, Limit);
-        float vz = Mathf.Clamp((float)velZ.Value, -Limit, Limit);
-        return new Vector3(vx, vy, vz);
+        // Velocity is calculated automatically - return zero as placeholder
+        return Vector3.Zero;
+    }
+
+    /// <summary>
+    /// Backwards compatibility method for loading old saves.
+    /// </summary>
+    public Vector3 GetBodyPosition()
+    {
+        return GetPosition();
     }
 
     public void SetMass(float massValue)
@@ -430,7 +645,7 @@ public partial class SatelliteItem : HBoxContainer
 
     public float GetMass()
     {
-        return Mathf.Clamp((float)mass.Value, 0f, MassLimit);
+        return Mathf.Clamp((float)mass!.Value, 0f, MassLimit);
     }
 
     public void SetSize(float sizeValue)
@@ -441,41 +656,54 @@ public partial class SatelliteItem : HBoxContainer
 
     public new float GetSize()
     {
-        return Mathf.Clamp((float)size.Value, 0f, SizeLimit);
+        return Mathf.Clamp((float)size!.Value, 0f, SizeLimit);
     }
 
     public string GetSatelliteType()
     {
         if (OptionButton != null && OptionButton.Selected >= 0)
         {
-            return OptionButton.GetItemText(OptionButton.Selected);
+            return PlanetaryTypeLoader.GetSelectedInternalName(OptionButton) ?? "Asteroid";
         }
         return "Asteroid";
     }
 
-    public Vector3 GetBodyPosition()
+    /// <summary>
+    /// Gets the orbital parameters as a dictionary with calculated position and velocity.
+    /// The position and velocity are calculated based on apogee, perigee, starting angle, and vertical offset.
+    /// </summary>
+    public Godot.Collections.Dictionary GetOrbitalParameters()
     {
-        return new Vector3(Mathf.Clamp((float)X.Value, -Limit, Limit), Mathf.Clamp((float)Y.Value, -Limit, Limit), Mathf.Clamp((float)Z.Value, -Limit, Limit));
+        return new Godot.Collections.Dictionary()
+        {
+            { "apogee", GetApogee() },
+            { "perigee", GetPerigee() },
+            { "starting_angle", GetStartingAngle() },
+            { "vertical_offset", GetVerticalOffset() },
+        };
     }
 
     public Godot.Collections.Dictionary ToParams()
     {
         Godot.Collections.Dictionary dict = new Godot.Collections.Dictionary();
         dict.Add("type", GetSatelliteType());
-        dict.Add("name", satName);
+        dict.Add("name", satName!);
         Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
-        templateDict.Add("base_position", GetPosition());
-        templateDict.Add("satellite_velocity", GetVelocity());
+        templateDict.Add("apogee", GetApogee());
+        templateDict.Add("perigee", GetPerigee());
+        templateDict.Add("starting_angle", GetStartingAngle());
+        templateDict.Add("vertical_offset", GetVerticalOffset());
         templateDict.Add("size", GetSize());
         templateDict.Add("mass", GetMass());
         dict.Add("template", templateDict);
         Godot.Collections.Dictionary meshDict = new Godot.Collections.Dictionary();
         meshDict.Add("subdivisions", subdivisions);
-        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray = new Godot.Collections.Array<Godot.Collections.Array<int>>();
+        Godot.Collections.Array<Godot.Collections.Array<int>> vpeArray =
+            new Godot.Collections.Array<Godot.Collections.Array<int>>();
         for (int i = 0; i < subdivisions; i++)
         {
             Godot.Collections.Array<int> row = new Godot.Collections.Array<int>();
-            row.Add(verticesPerEdge[i, 0]);
+            row.Add(verticesPerEdge![i, 0]);
             row.Add(verticesPerEdge[i, 1]);
             vpeArray.Add(row);
         }
@@ -486,32 +714,39 @@ public partial class SatelliteItem : HBoxContainer
         if (hasTectonics)
         {
             var tectonics = new Godot.Collections.Dictionary();
-            tectonics.Add("num_continents", numContinents);
-            tectonics.Add("stress_scale", stressScale);
-            tectonics.Add("shear_scale", shearScale);
-            tectonics.Add("max_propagation_distance", maxPropagationDistance);
-            tectonics.Add("propagation_falloff", propagationFalloff);
-            tectonics.Add("inactive_stress_threshold", inactiveStressThreshold);
-            tectonics.Add("general_height_scale", generalHeightScale);
-            tectonics.Add("general_shear_scale", generalShearScale);
-            tectonics.Add("general_compression_scale", generalCompressionScale);
-            tectonics.Add("general_transform_scale", generalTransformScale);
+            tectonics.Add("num_continents", numContinents!);
+            tectonics.Add("stress_scale", stressScale!);
+            tectonics.Add("shear_scale", shearScale!);
+            tectonics.Add("max_propagation_distance", maxPropagationDistance!);
+            tectonics.Add("propagation_falloff", propagationFalloff!);
+            tectonics.Add("inactive_stress_threshold", inactiveStressThreshold!);
+            tectonics.Add("general_height_scale", generalHeightScale!);
+            tectonics.Add("general_shear_scale", generalShearScale!);
+            tectonics.Add("general_compression_scale", generalCompressionScale!);
+            tectonics.Add("general_transform_scale", generalTransformScale!);
             dict.Add("tectonics", tectonics);
         }
-        if (hasScaling)
+        if (hasSphericalHarmonics)
         {
+            Godot.Collections.Dictionary shDict = new Godot.Collections.Dictionary();
+            shDict.Add("amplitude_range", shAmplitudeRange!);
+            dict.Add("spherical_harmonics_settings", shDict);
+        }
+        else if (hasScaling)
+        {
+            // Backward compatibility: output scaling_settings if SH not set
             Godot.Collections.Dictionary scalingDict = new Godot.Collections.Dictionary();
-            scalingDict.Add("x_scale_range", xScaleRange);
-            scalingDict.Add("y_scale_range", yScaleRange);
-            scalingDict.Add("z_scale_range", zScaleRange);
+            scalingDict.Add("scaling_range_x", xScaleRange!);
+            scalingDict.Add("scaling_range_y", yScaleRange!);
+            scalingDict.Add("scaling_range_z", zScaleRange!);
             dict.Add("scaling_settings", scalingDict);
         }
         if (hasNoise)
         {
             Godot.Collections.Dictionary noiseDict = new Godot.Collections.Dictionary();
-            noiseDict.Add("amplitude_range", amplitudeRange);
-            noiseDict.Add("scaling_range", scalingRange);
-            noiseDict.Add("octave_range", octaveRange);
+            noiseDict.Add("amplitude_range", amplitudeRange!);
+            noiseDict.Add("scaling_range", scalingRange!);
+            noiseDict.Add("octave_range", octaveRange!);
             dict.Add("noise_settings", noiseDict);
         }
         return dict;
@@ -519,12 +754,13 @@ public partial class SatelliteItem : HBoxContainer
 
     private void ToggleDetailsPanel()
     {
-        if (DetailsPanel == null) return;
+        if (DetailsPanel == null)
+            return;
 
         if (DetailsPanel.GetChildCount() == 0)
         {
             // Create and setup detail panel
-            var detailPanel = _detailPanelScene.Instantiate<DetailPanel>();
+            var detailPanel = _detailPanelScene!.Instantiate<DetailPanel>();
             DetailsPanel.AddChild(detailPanel);
             detailPanel.SetupForSatelliteItem();
             detailPanel.ValueChanged += OnDetailValueChanged;
@@ -552,19 +788,29 @@ public partial class SatelliteItem : HBoxContainer
             {
                 // Base Mesh values
                 detailPanel.SetSubdivisions(subdivisions);
-                detailPanel.SetVerticesPerEdge(verticesPerEdge);
+                detailPanel.SetVerticesPerEdge(verticesPerEdge!);
                 detailPanel.SetAberrations(numAbberations);
                 detailPanel.SetDeformationCycles(numDeformationCycles);
 
-                // Scaling values
-                detailPanel.SetTectonicsValues("X Scale", xScaleRange);
-                detailPanel.SetTectonicsValues("Y Scale", yScaleRange);
-                detailPanel.SetTectonicsValues("Z Scale", zScaleRange);
+                // Spherical Harmonics values (preferred) or Scaling values (backward compatibility)
+                if (hasSphericalHarmonics)
+                {
+                    detailPanel.SetTectonicsValues("SH Amplitude", shAmplitudeRange!);
+                }
+                else if (hasScaling)
+                {
+                    detailPanel.SetTectonicsValues("X Scale", xScaleRange!);
+                    detailPanel.SetTectonicsValues("Y Scale", yScaleRange!);
+                    detailPanel.SetTectonicsValues("Z Scale", zScaleRange!);
+                }
 
                 // Noise values
-                detailPanel.SetTectonicsValues("Amplitude", amplitudeRange);
-                detailPanel.SetTectonicsValues("Scaling", scalingRange);
-                detailPanel.SetTectonicsValues("Octaves", Array.ConvertAll(octaveRange, x => (float)x));
+                detailPanel.SetTectonicsValues("Amplitude", amplitudeRange!);
+                detailPanel.SetTectonicsValues("Scaling", scalingRange!);
+                detailPanel.SetTectonicsValues(
+                    "Octaves",
+                    Array.ConvertAll(octaveRange!, x => (float)x)
+                );
             }
         }
     }
@@ -582,10 +828,17 @@ public partial class SatelliteItem : HBoxContainer
                 numAbberations = detailPanel.GetAberrations();
                 numDeformationCycles = detailPanel.GetDeformationCycles();
 
-                // Scaling values
-                xScaleRange = detailPanel.GetTectonicsValues("X Scale");
-                yScaleRange = detailPanel.GetTectonicsValues("Y Scale");
-                zScaleRange = detailPanel.GetTectonicsValues("Z Scale");
+                // Spherical Harmonics values (preferred) or Scaling values (backward compatibility)
+                if (hasSphericalHarmonics)
+                {
+                    shAmplitudeRange = detailPanel.GetTectonicsValues("SH Amplitude");
+                }
+                else if (hasScaling)
+                {
+                    xScaleRange = detailPanel.GetTectonicsValues("X Scale");
+                    yScaleRange = detailPanel.GetTectonicsValues("Y Scale");
+                    zScaleRange = detailPanel.GetTectonicsValues("Z Scale");
+                }
 
                 // Noise values
                 amplitudeRange = detailPanel.GetTectonicsValues("Amplitude");

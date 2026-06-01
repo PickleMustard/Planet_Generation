@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Constructables;
 using Godot;
 using Structures.MeshGeneration;
 
@@ -15,11 +16,11 @@ public partial class Continent : Resource
 
     public enum BOUNDARY_TYPE
     {
-        Divergent,    // Pulling apart - rift valleys, mid-ocean ridges
-        Convergent,   // Pushing together - mountains, trenches
-        Transform     // Sliding past - earthquakes
+        Divergent,
+        Convergent,
+        Transform
     }
-    // VoronoiCell fields
+
     public int StartingIndex;
     public List<VoronoiCell> cells;
     public HashSet<VoronoiCell> boundaryCells;
@@ -30,7 +31,6 @@ public partial class Continent : Resource
     public Vector3 uAxis;
     public Vector3 vAxis;
 
-    // Tectonic Plate fields
     public Vector2 movementDirection;
     public float velocity;
     public float rotation;
@@ -39,11 +39,58 @@ public partial class Continent : Resource
     public float averageHeight;
     public float averageMoisture;
 
-    // Stress accumulation fields
     public HashSet<int> neighborContinents;
-    public float stressAccumulation;          // Total stress buildup
-    public Dictionary<int, float> neighborStress; // Stress per neighboring continent
-    public Dictionary<int, BOUNDARY_TYPE> boundaryTypes; // Type of boundary with neighbors
+    public float stressAccumulation;
+    public Dictionary<int, float> neighborStress;
+    public Dictionary<int, BOUNDARY_TYPE> boundaryTypes;
+
+    /// <summary>
+    /// Available resource types on this continent with their weights.
+    /// Key is the resource ID, value is the selection weight.
+    /// </summary>
+    public Dictionary<string, float> ContinentalResources { get; set; } = new();
+
+    /// <summary>
+    /// Total resource abundance values for each resource type.
+    /// Key is the resource ID, value is the total abundance.
+    /// </summary>
+    public Dictionary<string, float> ResourceAbundance { get; set; } = new();
+
+    /// <summary>
+    /// Aggregates resource data from all cells in this continent into
+    /// ContinentalResources and ResourceAbundance for backward compatibility.
+    /// </summary>
+    public void AggregateResourcesFromCells()
+    {
+        ContinentalResources.Clear();
+        ResourceAbundance.Clear();
+
+        if (cells == null || cells.Count == 0)
+            return;
+
+        var resourceSums = new Dictionary<string, float>();
+        var resourceCounts = new Dictionary<string, int>();
+
+        foreach (var cell in cells)
+        {
+            foreach (var kvp in cell.Resources)
+            {
+                if (!resourceSums.ContainsKey(kvp.Key))
+                {
+                    resourceSums[kvp.Key] = 0f;
+                    resourceCounts[kvp.Key] = 0;
+                }
+                resourceSums[kvp.Key] += kvp.Value;
+                resourceCounts[kvp.Key]++;
+            }
+        }
+
+        foreach (var kvp in resourceSums)
+        {
+            ContinentalResources[kvp.Key] = kvp.Value / resourceCounts[kvp.Key];
+            ResourceAbundance[kvp.Key] = kvp.Value;
+        }
+    }
 
     public Continent(int StartingIndex, List<VoronoiCell> cells, HashSet<VoronoiCell> boundaryCells,
             HashSet<Point> points, List<Point> ConvexHull, Vector3 averagedCenter,
@@ -76,7 +123,7 @@ public partial class Continent : Resource
         return $"StartingIndex: {StartingIndex} | Elevation: {elevation} | Average Height: {averageHeight} | Average Moisture: {averageMoisture} | Stress Accumulation: {stressAccumulation} | Neighbor Stress: {printDictionary(neighborStress)} | Boundary Types: {printDictionary(boundaryTypes)}";
     }
 
-    private string printDictionary<T, U>(Dictionary<T, U> dictionary)
+    private string printDictionary<T, U>(Dictionary<T, U> dictionary) where T : notnull
     {
         string output = "";
         foreach (var pair in dictionary)

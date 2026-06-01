@@ -1,4 +1,4 @@
-[gd_resource type="Environment" load_steps=4 format=3 uid="uid://s4wyheed0x8r"]
+[gd_resource type="Environment" format=3 uid="uid://s4wyheed0x8r"]
 
 [ext_resource type="Shader" uid="uid://dr001fqq1ikuy" path="res://Shaders/space_sky_shader.gdshader" id="1_bin3o"]
 
@@ -36,10 +36,7 @@ ambient_light_color = Color(1, 1, 1, 1)
 ambient_light_sky_contribution = 0.1
 tonemap_mode = 1
 sdfgi_energy = 11.33
-fog_enabled = true
-fog_mode = 1
 fog_light_color = Color(0, 0, 0, 1)
-fog_density = 1.0
 fog_sky_affect = 0.02
 fog_depth_curve = 0.594605
 fog_depth_end = 2481.7

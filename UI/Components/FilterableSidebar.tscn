@@ -1,0 +1,64 @@
+[gd_scene format=3 uid="uid://u2h5jpagw5gp"]
+
+[ext_resource type="Script" uid="uid://by6w3h5kqo4jw" path="res://Scripts/UI/Components/FilterableSidebar.cs" id="1_sidebar"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="2_theme"]
+
+[node name="FilterableSidebar" type="PanelContainer" unique_id=1193007207 node_paths=PackedStringArray("_titleLabel", "_searchEdit", "_closeButton", "_itemList")]
+custom_minimum_size = Vector2(300, 0)
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 300.0
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("2_theme")
+script = ExtResource("1_sidebar")
+_titleLabel = NodePath("VBox/HeaderRow/TitleLabel")
+_searchEdit = NodePath("VBox/SearchRow/SearchEdit")
+_closeButton = NodePath("VBox/HeaderRow/CloseButton")
+_itemList = NodePath("VBox/Scroll/ItemList")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=2106306817]
+layout_mode = 2
+theme = ExtResource("2_theme")
+theme_override_constants/separation = 8
+
+[node name="HeaderRow" type="HBoxContainer" parent="VBox" unique_id=1937746060]
+layout_mode = 2
+theme = ExtResource("2_theme")
+
+[node name="TitleLabel" type="Label" parent="VBox/HeaderRow" unique_id=117609287]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_theme")
+text = "Sidebar"
+
+[node name="CloseButton" type="Button" parent="VBox/HeaderRow" unique_id=542726418]
+layout_mode = 2
+theme = ExtResource("2_theme")
+text = "Close"
+
+[node name="SearchRow" type="HBoxContainer" parent="VBox" unique_id=459052014]
+layout_mode = 2
+theme = ExtResource("2_theme")
+
+[node name="SearchEdit" type="LineEdit" parent="VBox/SearchRow" unique_id=2069437635]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_theme")
+placeholder_text = "Search..."
+
+[node name="HSeparator" type="HSeparator" parent="VBox" unique_id=1179937642]
+layout_mode = 2
+theme = ExtResource("2_theme")
+
+[node name="Scroll" type="ScrollContainer" parent="VBox" unique_id=1386668461]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("2_theme")
+
+[node name="ItemList" type="VBoxContainer" parent="VBox/Scroll" unique_id=1429431049]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_theme")
+theme_override_constants/separation = 4

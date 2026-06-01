@@ -1,0 +1,32 @@
+stations:
+  - name: Small_Shipyard
+    station_type: Shipyard
+    construction_time: 60
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "20"
+      - behavior_id: ShipyardBehavior
+        max_parallel_ship_builds: "1"
+        work_per_tick: "1"
+    required_resources:
+      iron: 5
+      aluminum: 5
+    icon:
+      base_path: "res://Assets/Icons/Stations/shipyard/small_shipyard"
+
+  - name: Large_Shipyard
+    station_type: Shipyard
+    construction_time: 150
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "20"
+      - behavior_id: ShipyardBehavior
+        max_parallel_ship_builds: "3"
+        work_per_tick: "1"
+    required_resources:
+      Steel: 5000
+      Electronics: 1500
+      Machinery: 1000
+      Composites: 500
+    icon:
+      base_path: "res://Assets/Icons/Stations/shipyard/large_shipyard"

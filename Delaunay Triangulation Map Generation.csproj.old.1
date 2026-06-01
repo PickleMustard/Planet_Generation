@@ -3,8 +3,19 @@
     <TargetFramework>net8.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>DelaunayTriangulationMapGeneration</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Tommy" Version="3.1.2"/>
+    <PackageReference Include="YamlDotNet" Version="16.3.0"/>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0"/>
+    <PackageReference Include="gdUnit4.api" Version="5.1.0-rc1"/>
+    <PackageReference Include="gdUnit4.test.adapter" Version="3.0.0"/>
+    <PackageReference Include="gdUnit4.analyzers" Version="1.0.0">
+      <PrivateAssets>none</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>

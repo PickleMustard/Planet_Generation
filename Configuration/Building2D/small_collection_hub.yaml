@@ -1,0 +1,12 @@
+id: small_collection_hub
+display_name: Small Collection Hub
+vertices:
+  - [0.866, -0.5]
+  - [0.866, 0.5]
+  - [0, 1]
+  - [-0.866, 0.5]
+sides:
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: export, state: solid }] }
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: import, state: solid }, { kind: import, state: solid }] }

@@ -1,0 +1,62 @@
+recipes:
+  - recipe_id: "crop_rotation"
+    display_name: "Crop Rotation"
+    description: Cycles through different crops each season to maintain soil fertility and produce food.
+    category: agriculture
+    work_required: 30
+    input_resources:
+      - water: 5
+    output_resources:
+      - vegetable: 2
+    conditional_outputs:
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 1
+        resource: vegetable
+        amount: 8
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 2
+        resource: grain
+        amount: 8
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 3
+        resource: protein
+        amount: 5
+      - condition:
+        - var: specifier
+          op: "=="
+          value: 4
+        resource: wood
+        amount: 6
+  - recipe_id: "pesticides"
+    display_name: "Pesticide Spraying"
+    description: Liberal application of pesticides helps to stem losses from local fauna
+    category: agriculture
+    work_required: 30
+    input_resources:
+      - water: 5
+      - pesticide: 3
+    output_resources:
+      - adult: 20
+  - recipe_id: "aquaponics"
+    display_name: "Aquaponics"
+    description: Combined fish and plant cultivation using a symbiotic nutrient cycle.
+    category: agriculture
+    work_required: 35
+    input_resources:
+      - water: 15
+      - power: 4
+    output_resources:
+      - protein: 8
+      - vegetable: 6
+  - recipe_id: "trawl_fishing"
+    display_name: "Trawl Fishing"
+    category: agriculture
+    work_required: 20
+    output_resources:
+      - fish: 20

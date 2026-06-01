@@ -1,0 +1,25 @@
+categories:
+  potential:
+    - mythology
+    - scientists
+    - explorers
+    - adjectives
+
+celestial:
+  template:
+    starting_angle: 0
+    vertical_offset: 0
+    mass: 750000
+    size: 30
+
+  # Phase 8: type-level safe-default midpoints. Per-subtype ranges live in
+  # Configuration/Subtypes/neutron_star_subtypes.yaml.
+  mesh:
+    base_mesh:
+      subdivisions: 1
+      vertices_per_edge: [[10, 10]]
+      num_abberations: 0
+      num_deformation_cycles: 0
+
+    spherical_harmonics:
+      amplitude_range: [0.1, 0.1]

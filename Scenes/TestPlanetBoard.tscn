@@ -1,0 +1,170 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://cuwwiv2077qyh" path="res://Scripts/UI/TestScenes/TestPlanetBoardScene.cs" id="1_scene"]
+[ext_resource type="Script" uid="uid://cf27m54pv1hef" path="res://Scripts/Scenes/SceneNavigator.cs" id="2_nav"]
+[ext_resource type="PackedScene" uid="uid://cnbr6iwjql7yi" path="res://UI/PlanetBoard/PlanetBoard.tscn" id="3_board"]
+
+[node name="TestPlanetBoard" type="Control" node_paths=PackedStringArray("_board")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_scene")
+_board = NodePath("MainSplit/BoardWrapper/Board")
+
+[node name="SceneNavigator" type="CanvasLayer" parent="."]
+script = ExtResource("2_nav")
+
+[node name="MainSplit" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SidePanel" type="PanelContainer" parent="MainSplit"]
+layout_mode = 2
+custom_minimum_size = Vector2(260, 0)
+size_flags_vertical = 3
+
+[node name="SideMargin" type="MarginContainer" parent="MainSplit/SidePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="SideCol" type="VBoxContainer" parent="MainSplit/SidePanel/SideMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="SpawnLabel" type="Label" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.85, 0.85, 0.95, 1)
+text = "Spawn Building"
+
+[node name="SpawnTriangleBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Spawn Triangle"
+
+[node name="SpawnSquareBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Spawn Square"
+
+[node name="SpawnRectangleBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Spawn Rectangle"
+
+[node name="SpawnPentagonBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Spawn Pentagon"
+
+[node name="SpawnHexagonBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Spawn Hexagon"
+
+[node name="Sep1" type="HSeparator" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 6)
+
+[node name="SpecialLabel" type="Label" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.85, 0.85, 0.95, 1)
+text = "Spawn Special"
+
+[node name="SpawnTransferStationBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Transfer Station"
+
+[node name="Sep2" type="HSeparator" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 6)
+
+[node name="ModesLabel" type="Label" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.85, 0.85, 0.95, 1)
+text = "Modes"
+
+[node name="ResourceLinksBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Resource Links"
+
+[node name="TransferRoutesBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Transfer Routes"
+
+[node name="OverviewBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Overview"
+
+[node name="Sep3" type="HSeparator" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 6)
+
+[node name="CameraPinLabel" type="Label" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.85, 0.85, 0.95, 1)
+text = "Camera / Pin"
+
+[node name="ResetCameraBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Reset Camera"
+
+[node name="PinAllBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Pin All Buildings"
+
+[node name="UnpinAllBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Unpin All Buildings"
+
+[node name="Sep4" type="HSeparator" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 6)
+
+[node name="ClearLabel" type="Label" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.85, 0.85, 0.95, 1)
+text = "Clear"
+
+[node name="ClearBoardBtn" type="Button" parent="MainSplit/SidePanel/SideMargin/SideCol"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Clear Board"
+
+[node name="BoardWrapper" type="MarginContainer" parent="MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="Board" parent="MainSplit/BoardWrapper" instance=ExtResource("3_board")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+anchors_preset = 0
+custom_minimum_size = Vector2(0, 0)

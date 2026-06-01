@@ -1,0 +1,28 @@
+buildings:
+  - id_name: geothermal_plant
+    display_name: Geothermal Power Plant
+    description: Demonstrates custom placement behavior for geothermal vents.
+    category: power
+    max_resource_tier: 5
+    work_required: 100
+    placement_requirements:
+      biomes: [biome_ash_plain, biome_obsidian_field, biome_volcanic_peak, biome_volcanic_plain]
+      min_elevation: 0.4
+      max_elevation: 1
+      max_slope: 15
+      cell_count: 2
+      configurable_behavior: "GeothermalVentPlacementBehavior"
+    required_resources:
+      steel: 300
+      titanium: 200
+      copper: 150
+      ceramics: 100
+      water: 400
+    behaviors:
+      - behavior_id: PowerProducerBehavior
+        grid_radius: 4
+        is_renewable: false
+        default_recipe: "geothermal_drilling"
+        production_speed: 3
+    visual:
+      scale: 1.4

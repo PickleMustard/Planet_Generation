@@ -1,0 +1,142 @@
+[gd_scene load_steps=5 format=3 uid="uid://resource_editor_module"]
+
+[ext_resource type="Script" path="res://DeveloperTools/ResourceEditor/ResourceEditorModule.cs" id="1_module"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_left"]
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_right"]
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toolbar"]
+bg_color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="ResourceEditorModule" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_module")
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HSplitContainer" type="HSplitContainer" parent="RootVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LeftPanel" type="PanelContainer" parent="RootVBox/HSplitContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_left")
+
+[node name="LeftVBox" type="VBoxContainer" parent="RootVBox/HSplitContainer/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CategoriesHeader" type="Label" parent="RootVBox/HSplitContainer/LeftPanel/LeftVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Categories"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+
+[node name="CategoryList" type="ItemList" parent="RootVBox/HSplitContainer/LeftPanel/LeftVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_horizontal = 3
+allow_reselect = true
+
+[node name="NewCategoryButton" type="Button" parent="RootVBox/HSplitContainer/LeftPanel/LeftVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+ New Category"
+
+[node name="DeleteCategoryButton" type="Button" parent="RootVBox/HSplitContainer/LeftPanel/LeftVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "✕ Delete Category"
+
+[node name="RightPanel" type="PanelContainer" parent="RootVBox/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_right")
+
+[node name="RightVBox" type="VBoxContainer" parent="RootVBox/HSplitContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_horizontal = 3
+
+[node name="RightHeader" type="HBoxContainer" parent="RootVBox/HSplitContainer/RightPanel/RightVBox"]
+layout_mode = 2
+
+[node name="CategoryHeaderLabel" type="Label" parent="RootVBox/HSplitContainer/RightPanel/RightVBox/RightHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Select a category"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.8, 0.8, 0.4, 1)
+
+[node name="NewResourceButton" type="Button" parent="RootVBox/HSplitContainer/RightPanel/RightVBox/RightHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+ New Resource"
+
+[node name="ResourceScroll" type="ScrollContainer" parent="RootVBox/HSplitContainer/RightPanel/RightVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_horizontal = 3
+horizontal_scroll_mode = 3
+
+[node name="ResourceListContainer" type="VBoxContainer" parent="RootVBox/HSplitContainer/RightPanel/RightVBox/ResourceScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Toolbar" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_toolbar")
+
+[node name="ToolbarHBox" type="HBoxContainer" parent="RootVBox/Toolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Spacer" type="Control" parent="RootVBox/Toolbar/ToolbarHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RevertButton" type="Button" parent="RootVBox/Toolbar/ToolbarHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Revert"
+
+[node name="SaveButton" type="Button" parent="RootVBox/Toolbar/ToolbarHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Save"
+
+[node name="FeedbackLabel" type="Label" parent="RootVBox/Toolbar/ToolbarHBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 1, 0.4, 1)
+theme_override_font_sizes/font_size = 12

@@ -1,0 +1,12 @@
+satellite_group:
+  template:
+    number_asteroids: [6, 15]
+    grouping: Balanced
+    apogee: 8000
+    perigee: 250
+    ring_velocity: [0, 1, 0]
+    size_range: [5, 20]
+    mass_range: [10, 30]
+    possible_subtypes:
+      - DwarfPlanet
+      - Asteroid

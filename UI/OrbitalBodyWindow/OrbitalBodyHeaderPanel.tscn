@@ -1,0 +1,109 @@
+[gd_scene load_steps=3 format=3 uid="uid://cw17748doqih4"]
+
+[ext_resource type="Script" uid="uid://clmujj41q7tcy" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyHeaderPanel.cs" id="1_header"]
+[ext_resource type="Script" path="res://Scripts/UI/Components/ChamferedPanel.cs" id="2_chamfered"]
+
+[node name="OrbitalBodyHeaderPanel" type="Control" node_paths=PackedStringArray("_namePlate", "_atlasBannerLabel", "_bodyNameLabel", "_aliasLabel", "_designationLabel", "_statsBlock", "_statsGrid")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 380.0
+offset_bottom = 360.0
+mouse_filter = 2
+script = ExtResource("1_header")
+_namePlate = NodePath("VBoxContainer/NamePlate")
+_atlasBannerLabel = NodePath("VBoxContainer/NamePlate/Margin/VBox/AtlasBanner")
+_bodyNameLabel = NodePath("VBoxContainer/NamePlate/Margin/VBox/BodyName")
+_aliasLabel = NodePath("VBoxContainer/NamePlate/Margin/VBox/Alias")
+_designationLabel = NodePath("VBoxContainer/NamePlate/Margin/VBox/Designation")
+_statsBlock = NodePath("VBoxContainer/StatsBlock")
+_statsGrid = NodePath("VBoxContainer/StatsBlock/Margin/VBox/StatsGrid")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 6
+mouse_filter = 2
+
+[node name="NamePlate" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(360, 150)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_chamfered")
+ChamferCorner = 2
+ChamferPx = 18
+
+[node name="Margin" type="MarginContainer" parent="VBoxContainer/NamePlate"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 14
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="VBoxContainer/NamePlate/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 2
+mouse_filter = 2
+
+[node name="AtlasBanner" type="Label" parent="VBoxContainer/NamePlate/Margin/VBox"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "~ ATLAS OF SETTLED WORLDS · 2386 ~"
+
+[node name="BodyName" type="Label" parent="VBoxContainer/NamePlate/Margin/VBox"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 48
+text = "Body"
+
+[node name="Alias" type="Label" parent="VBoxContainer/NamePlate/Margin/VBox"]
+layout_mode = 2
+theme_type_variation = &"LabelSub"
+text = ""
+
+[node name="Designation" type="Label" parent="VBoxContainer/NamePlate/Margin/VBox"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+horizontal_alignment = 1
+text = "BY THE SURVEYOR GENERAL"
+
+[node name="StatsBlock" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(320, 170)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_chamfered")
+ChamferCorner = 2
+ChamferPx = 14
+
+[node name="Margin" type="MarginContainer" parent="VBoxContainer/StatsBlock"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 10
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="VBoxContainer/StatsBlock/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+mouse_filter = 2
+
+[node name="StatsHeader" type="Label" parent="VBoxContainer/StatsBlock/Margin/VBox"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "BODY DATA · §/REG"
+
+[node name="StatsGrid" type="GridContainer" parent="VBoxContainer/StatsBlock/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 2
+columns = 4
+mouse_filter = 2

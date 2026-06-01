@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Godot;
 using Structures.Enums;
 using Structures.MeshGeneration;
 using UtilityLibrary;
-using PlanetGeneration;
 
 namespace ProceduralGeneration.MeshGeneration;
 
@@ -41,7 +39,7 @@ public class BaseMeshGeneration
     /// <summary>
     /// Array specifying the number of vertices to generate per edge at each subdivision level.
     /// </summary>
-    private int[] VerticesPerEdge;
+    private int[]? VerticesPerEdge;
 
     /// <summary>
     /// Reference to the configurable subdivider for mesh subdivision operations.
@@ -51,7 +49,9 @@ public class BaseMeshGeneration
     /// <summary>
     /// Current vertex index counter for mesh generation.
     /// </summary>
+#pragma warning disable CS0414
     private int VertexIndex = 0;
+#pragma warning restore CS0414
 
     /// <summary>
     /// List of vertex normals for the generated mesh.
@@ -140,7 +140,7 @@ public class BaseMeshGeneration
             var rp = StrDb.GetOrCreatePoint(p.Index, pos);
             cartesionPoints[i] = rp;
             normals.Add(new Vector3(rp.Position.X, rp.Position.Y, rp.Position.Z));
-            GameLogger.Point($"Point: {rp}");
+            // GameLogger.Point($"Point: {rp}");  // Removed to reduce console noise
         }
         faces = new List<Face>();
         indices = new List<int> {
@@ -194,7 +194,7 @@ public class BaseMeshGeneration
         List<Face> tempFaces = new List<Face>();
         for (int level = 0; level < subdivide; level++)
         {
-            var verticesToGenerate = level < VerticesPerEdge.Length ? VerticesPerEdge[level] : VerticesPerEdge[VerticesPerEdge.Length - 1];
+            var verticesToGenerate = level < VerticesPerEdge!.Length ? VerticesPerEdge[level] : VerticesPerEdge[VerticesPerEdge.Length - 1];
             GameLogger.Info($"Subdivide level {level + 1}/{subdivide}: verticesToGenerate={verticesToGenerate}");
             foreach (Face face in faces)
             {
@@ -252,25 +252,15 @@ public class BaseMeshGeneration
     /// This process helps create more evenly distributed triangles and reduces mesh artifacts.
     /// The method uses the thread pool for controlled parallel processing to prevent system overload.
     /// </remarks>
-    public async Task InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
+    public void InitiateDeformation(int numDeformationCycles, int numAbberations, float optimalSideLength)
     {
         GameLogger.EnterFunction("InitiateDeformation", $"cycles={numDeformationCycles}, abberations={numAbberations}, optimalSideLength={optimalSideLength}");
 
-        var tasks = new List<Task>();
-
         for (int i = 0; i < numDeformationCycles; i++)
         {
-            var taskId = $"{mesh.Name}_deform_{i}";
-            var task = MeshGenerationThreadPool.Instance.EnqueueTask(
-                () => DeformMesh(numAbberations, optimalSideLength),
-                taskId,
-                TaskPriority.Medium,
-                mesh.Name
-            );
-            tasks.Add(task);
+            DeformMesh(numAbberations, optimalSideLength);
         }
 
-        await Task.WhenAll(tasks);
         GameLogger.ExitFunction("InitiateDeformation");
     }
 

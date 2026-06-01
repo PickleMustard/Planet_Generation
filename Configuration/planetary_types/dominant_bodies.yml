@@ -1,0 +1,7 @@
+potential_types:
+  - name: Star
+    display_name: Star
+  - name: NeutronStar
+    display_name: Neutron Star
+  - name: BlackHole
+    display_name: Black Hole

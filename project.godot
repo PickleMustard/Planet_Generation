@@ -15,28 +15,60 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Delaunay Triangulation Map Generation"
-run/main_scene="uid://dt8sw4jlumdml"
+run/main_scene="res://Scenes/DataLoading.tscn"
 config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
-MeshGenerationThreadPool="*res://Scripts/UtilityLibrary/MeshGenerationThreadPool.cs"
+RuntimeSettings="*res://Scripts/UtilityLibrary/Settings/RuntimeSettings.cs"
+SignalBus="*res://Scripts/UtilityLibrary/SignalBus.cs"
+ThreadPooler="*uid://db2n014kjjmur"
+TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
+DebugMenu="*res://Debug/DebugMenu.tscn"
+CellSelectionManager="*res://Scripts/PlayerInteraction/CellSelection/CellSelectionManager.cs"
+ConstructionManager="*res://Scripts/Constructables/ConstructionManager.cs"
+
+[display]
+
+window/size/mode=2
 
 [dotnet]
 
 project/assembly_name="Delaunay Triangulation Map Generation"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/renderdoc_launcher/plugin.cfg")
+
 [filesystem]
 
 import/blender/enabled=false
 
+[gdunit4]
+
+settings/test/test_lookup_folder="Tests"
+settings/test/test_discovery=true
+ui/toolbar/run_overall=true
+report/godot/push_error=true
+
 [gui]
 
-theme/custom="uid://cdh68r2entt7h"
+theme/custom="uid://cxflqpudaju80"
+
+[importer_defaults]
+
+texture={
+&"mipmaps/generate": true
+}
+
+[logging]
+
+level="INFO"
 
 [rendering]
 
+anti_aliasing/quality/msaa_2d=1
+anti_aliasing/quality/msaa_3d=1
 environment/glow/upscale_mode=0
 mesh_lod/lod_change/threshold_pixels=43.2
-vrs/mode=1

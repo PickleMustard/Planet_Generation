@@ -1,0 +1,37 @@
+recipes:
+  - recipe_id: "fusion_reaction"
+    display_name: "Fusion Reaction"
+    description: Sustained nuclear fusion generating massive amounts of power from hydrogen isotopes.
+    category: power
+    work_required: 10
+    input_resources:
+      - tritium: 2
+      - water: 5
+    output_resources:
+      - power: 1500
+  - recipe_id: "fission_reaction"
+    display_name: "Fission Reaction"
+    description: Pressurized water reactor splits uranium for steady high-output power.
+    category: power
+    work_required: 12
+    input_resources:
+      - uranium: 1
+      - water: 8
+    output_resources:
+      - power: 1200
+  - recipe_id: "antimatter_reaction"
+    display_name: "Antimatter Reaction"
+    description: Antimatter-matter annihilation releases massive quantities of energy.
+    category: power
+    work_required: 15
+    input_resources:
+      - antimatter: 1
+      - water: 5
+    output_resources:
+      - power: 3000
+  - recipe_id: "wind_harvesting"
+    display_name: "Wind Harvesting"
+    category: power
+    work_required: 1
+    output_resources:
+      - power: 10

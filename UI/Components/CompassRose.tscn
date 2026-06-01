@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://compassrose_cmp"]
+
+[ext_resource type="Script" path="res://Scripts/UI/Components/CompassRose.cs" id="1_compass"]
+[ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="2_elite"]
+
+[node name="CompassRose" type="Control"]
+custom_minimum_size = Vector2(92, 92)
+mouse_filter = 2
+script = ExtResource("1_compass")
+CardinalFont = ExtResource("2_elite")

@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://k2qqseamo5qf"]
+
+[node name="DatabaseProgressItem" type="Control" unique_id=467471051]
+layout_mode = 3
+anchors_preset = 0
+custom_minimum_size = Vector2(0, 40)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=14853186]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 5.0
+offset_right = -10.0
+offset_bottom = -5.0
+
+[node name="NameLabel" type="Label" parent="HBoxContainer" unique_id=589848691]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Database Name"
+
+[node name="ProgressBar" type="ProgressBar" parent="HBoxContainer" unique_id=1984469927]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="StatusLabel" type="Label" parent="HBoxContainer" unique_id=1923464015]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Waiting..."

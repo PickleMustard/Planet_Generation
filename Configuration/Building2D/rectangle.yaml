@@ -1,0 +1,12 @@
+id: rectangle
+display_name: Rectangle
+vertices:
+  - [-1.5, -1]
+  - [1.5, -1]
+  - [1.5, 1]
+  - [-1.5, 1]
+sides:
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: export, state: solid }] }

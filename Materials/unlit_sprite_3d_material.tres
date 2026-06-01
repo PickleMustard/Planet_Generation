@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://0kd2b67sbwkj"]
+
+[ext_resource type="Shader" uid="uid://0hhouveu0cu6" path="res://Shaders/unlit_sprite_3d.gdshader" id="1_unlit"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_unlit")
+shader_parameter/brightness = 1.0
+shader_parameter/scale = 1.0

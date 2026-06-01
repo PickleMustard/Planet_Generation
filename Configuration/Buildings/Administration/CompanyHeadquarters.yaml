@@ -1,0 +1,48 @@
+buildings:
+  - id_name: company_headquarters
+    display_name: Company Headquarters
+    description: The nerve center of your interstellar enterprise. Provides storage, and basic manufacturing capabilities.
+    category: administration
+    building_limit: 1
+    max_resource_tier: 5
+    work_required: 0
+    demolishable: false
+    allowed_recipe_category: headquarters
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 90
+      cell_count: 4
+      requires_adjacent: true
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: 30
+        slot_filters: 
+          any: 12
+          category:ore: 3
+          category:raw_material: 3
+          category:fuel: 3
+          category:food: 3
+          category:construction: 3
+          category:industrial: 3
+      - behavior_id: TransferStationBehavior
+        cargo_capacity: 500
+        vehicle_speed: 50
+        max_concurrent_transfers: 2
+      - behavior_id: TransportHubBehavior
+      - behavior_id: InitialStockpileBehavior
+        stockpiles: 
+          concrete: 100
+          iron: 50
+          copper: 30
+          water: 200
+          grain: 50
+      - behavior_id: ManufacturingBehavior
+        default_recipe: "hq_all_in_one_operation"
+        alternative_recipes: ["hq_power_focus", "hq_extraction_focus", "hq_fabrication_focus"]
+        production_speed: 1
+      - behavior_id: GameStartBehavior
+    visual:
+      model_path: "res://Mesh/external/building-skyscraper-e.glb"
+      scale: 2.06

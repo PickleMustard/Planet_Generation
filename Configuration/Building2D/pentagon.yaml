@@ -1,0 +1,14 @@
+id: pentagon
+display_name: Pentagon
+vertices:
+  - [0, -1]
+  - [0.951, -0.309]
+  - [0.588, 0.809]
+  - [-0.588, 0.809]
+  - [-0.951, -0.309]
+sides:
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: flex, state: solid }] }
+  - { slots: [{ kind: export, state: solid }] }
+  - { slots: [{ kind: export, state: solid }] }

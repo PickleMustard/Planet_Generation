@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://bn60vp4qos372"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_2l642"]
+[ext_resource type="Script" uid="uid://dd1t1t7hyvsl" path="res://Scripts/UI/BuildingInfo/RecipeDisplay.cs" id="1_recipe"]
+
+[node name="RecipeDisplay" type="HBoxContainer" unique_id=1066702536]
+mouse_filter = 0
+theme = ExtResource("1_2l642")
+theme_override_constants/separation = 8
+script = ExtResource("1_recipe")
+
+[node name="RecipeIcon" type="TextureRect" parent="." unique_id=2136303594]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+theme = ExtResource("1_2l642")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RecipeNameLabel" type="Label" parent="." unique_id=1763203241]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_2l642")
+text = "Recipe Name"
+vertical_alignment = 1

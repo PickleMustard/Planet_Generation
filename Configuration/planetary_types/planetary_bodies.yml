@@ -1,0 +1,9 @@
+potential_types:
+  - name: RockyPlanet
+    display_name: Rocky Planet
+  - name: DwarfPlanet
+    display_name: Dwarf Planet
+  - name: GasGiant
+    display_name: Gas Giant
+  - name: IceGiant
+    display_name: Ice Giant

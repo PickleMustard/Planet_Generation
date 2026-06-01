@@ -1,0 +1,15 @@
+link_profiles:
+  - id_name: conveyor_belt
+    tier: 0
+    transport_speed: 0.02
+    package_size: 10
+    bundle_time: 5
+    slot_capacity: 3
+    state_of_matter: solid
+  - id_name: pipe
+    tier: 1
+    transport_speed: 0.05
+    package_size: 50
+    bundle_time: 0
+    slot_capacity: 5
+    state_of_matter: fluid

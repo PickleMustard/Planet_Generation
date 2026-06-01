@@ -1,0 +1,140 @@
+[gd_scene format=3 uid="uid://b3q8gfkqfva6o"]
+
+[ext_resource type="Script" uid="uid://cla76yo7off8g" path="res://Scripts/UI/Generation/TextureViewerPanel.cs" id="1_l2edc"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[node name="TextureViewerPanel" type="Control" unique_id=1423766318 node_paths=PackedStringArray("TabContainer", "DistantTextureRect", "FarTextureRect", "CloseTextureRect", "DistantDetailsPanel", "FarDetailsPanel", "CloseDetailsPanel", "StatusLabel", "HeaderLabel")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_l2edc")
+TabContainer = NodePath("MainContainer/TabContainer")
+DistantTextureRect = NodePath("MainContainer/TabContainer/DistantTab/TexturePanel/DistantTexture")
+FarTextureRect = NodePath("MainContainer/TabContainer/FarTab/TexturePanel/FarTexture")
+CloseTextureRect = NodePath("MainContainer/TabContainer/CloseTab/TexturePanel/CloseTexture")
+DistantDetailsPanel = NodePath("MainContainer/TabContainer/DistantTab/DetailsSection/DistantDetails")
+FarDetailsPanel = NodePath("MainContainer/TabContainer/FarTab/DetailsSection/FarDetails")
+CloseDetailsPanel = NodePath("MainContainer/TabContainer/CloseTab/DetailsSection/CloseDetails")
+StatusLabel = NodePath("MainContainer/StatusLabel")
+HeaderLabel = NodePath("MainContainer/HeaderLabel")
+
+[node name="MainContainer" type="VBoxContainer" parent="." unique_id=213733248]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HeaderLabel" type="Label" parent="MainContainer" unique_id=985992471]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "Generated Textures"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="MainContainer" unique_id=552405241]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+text = "Generate a planet to view textures"
+horizontal_alignment = 1
+
+[node name="TabContainer" type="TabContainer" parent="MainContainer" unique_id=510875745]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="DistantTab" type="VBoxContainer" parent="MainContainer/TabContainer" unique_id=1983604771]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="TexturePanel" type="PanelContainer" parent="MainContainer/TabContainer/DistantTab" unique_id=1651298262]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DistantTexture" type="TextureRect" parent="MainContainer/TabContainer/DistantTab/TexturePanel" unique_id=304012594]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+expand_mode = 3
+stretch_mode = 5
+
+[node name="DetailsSection" type="PanelContainer" parent="MainContainer/TabContainer/DistantTab" unique_id=92225610]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1")
+
+[node name="DistantDetails" type="VBoxContainer" parent="MainContainer/TabContainer/DistantTab/DetailsSection" unique_id=868419763]
+layout_mode = 2
+
+[node name="FarTab" type="VBoxContainer" parent="MainContainer/TabContainer" unique_id=1719337044]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="TexturePanel" type="PanelContainer" parent="MainContainer/TabContainer/FarTab" unique_id=1026715451]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FarTexture" type="TextureRect" parent="MainContainer/TabContainer/FarTab/TexturePanel" unique_id=571142749]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+expand_mode = 3
+stretch_mode = 5
+
+[node name="DetailsSection" type="PanelContainer" parent="MainContainer/TabContainer/FarTab" unique_id=1948999429]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_2")
+
+[node name="FarDetails" type="VBoxContainer" parent="MainContainer/TabContainer/FarTab/DetailsSection" unique_id=730755428]
+layout_mode = 2
+
+[node name="CloseTab" type="VBoxContainer" parent="MainContainer/TabContainer" unique_id=921464722]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="TexturePanel" type="PanelContainer" parent="MainContainer/TabContainer/CloseTab" unique_id=971088279]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CloseTexture" type="TextureRect" parent="MainContainer/TabContainer/CloseTab/TexturePanel" unique_id=1407165217]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+expand_mode = 3
+stretch_mode = 5
+
+[node name="DetailsSection" type="PanelContainer" parent="MainContainer/TabContainer/CloseTab" unique_id=1146574320]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_3")
+
+[node name="CloseDetails" type="VBoxContainer" parent="MainContainer/TabContainer/CloseTab/DetailsSection" unique_id=1102046883]
+layout_mode = 2

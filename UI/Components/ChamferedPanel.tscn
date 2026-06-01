@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://daut5m8r6t28a"]
+
+[ext_resource type="Script" uid="uid://bjwdbafhjh8os" path="res://Scripts/UI/Components/ChamferedPanel.cs" id="1_chamfered"]
+
+[node name="ChamferedPanel" type="Control" unique_id=1758985598]
+custom_minimum_size = Vector2(160, 60)
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 1
+script = ExtResource("1_chamfered")

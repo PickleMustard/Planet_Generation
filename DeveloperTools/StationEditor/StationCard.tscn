@@ -1,0 +1,115 @@
+[gd_scene load_steps=2 format=3 uid="uid://bstation_card_scene"]
+
+[ext_resource type="Script" path="res://DeveloperTools/StationEditor/StationCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.16, 0.16, 0.19, 1)
+border_color = Color(0.3, 0.3, 0.35, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+
+[node name="StationCard" type="PanelContainer"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("1_card")
+
+[node name="CardRoot" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="CardRoot"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NameEdit" type="LineEdit" parent="CardRoot/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "name"
+unique_name_in_owner = true
+
+[node name="Actions" type="VBoxContainer" parent="CardRoot/Header"]
+layout_mode = 2
+
+[node name="MoveUpButton" type="Button" parent="CardRoot/Header/Actions"]
+layout_mode = 2
+text = "▲"
+tooltip_text = "Move up"
+unique_name_in_owner = true
+
+[node name="MoveDownButton" type="Button" parent="CardRoot/Header/Actions"]
+layout_mode = 2
+text = "▼"
+tooltip_text = "Move down"
+unique_name_in_owner = true
+
+[node name="DeleteButton" type="Button" parent="CardRoot/Header/Actions"]
+layout_mode = 2
+text = "✕"
+tooltip_text = "Delete station"
+unique_name_in_owner = true
+
+[node name="ScalarGrid" type="GridContainer" parent="CardRoot"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+unique_name_in_owner = true
+
+[node name="StationTypeLabel" type="Label" parent="CardRoot/ScalarGrid"]
+layout_mode = 2
+text = "Station Type"
+
+[node name="TypeOption" type="OptionButton" parent="CardRoot/ScalarGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+unique_name_in_owner = true
+
+[node name="ConstructionTimeLabel" type="Label" parent="CardRoot/ScalarGrid"]
+layout_mode = 2
+text = "Construction Time"
+
+[node name="ConstructionTimeSpin" type="SpinBox" parent="CardRoot/ScalarGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 10000000.0
+step = 0.5
+allow_greater = true
+unique_name_in_owner = true
+
+[node name="BehaviorsHeader" type="HBoxContainer" parent="CardRoot"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BehaviorsLabel" type="Label" parent="CardRoot/BehaviorsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Behaviors"
+theme_override_colors/font_color = Color(1, 0.7, 0.9, 1)
+
+[node name="AddBehaviorButton" type="Button" parent="CardRoot/BehaviorsHeader"]
+layout_mode = 2
+text = "+ Behavior"
+
+[node name="BehaviorsContainer" type="VBoxContainer" parent="CardRoot"]
+layout_mode = 2
+size_flags_horizontal = 3
+unique_name_in_owner = true
+
+[node name="RequiredResourcesContainer" type="VBoxContainer" parent="CardRoot"]
+layout_mode = 2
+size_flags_horizontal = 3
+unique_name_in_owner = true
+
+[connection signal="pressed" from="CardRoot/Header/Actions/MoveUpButton" to="." method="OnMoveUp"]
+[connection signal="pressed" from="CardRoot/Header/Actions/MoveDownButton" to="." method="OnMoveDown"]
+[connection signal="pressed" from="CardRoot/Header/Actions/DeleteButton" to="." method="OnDelete"]
+[connection signal="pressed" from="CardRoot/BehaviorsHeader/AddBehaviorButton" to="." method="OnAddBehavior"]

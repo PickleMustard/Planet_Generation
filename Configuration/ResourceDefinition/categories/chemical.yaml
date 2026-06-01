@@ -1,0 +1,15 @@
+resources:
+  - id_name: fertilizer
+    resource_tier: 2
+    base_price: 3000
+    state_of_matter: solid
+    max_stack_size: 100
+    icon:
+      base_path: "res://Materials/Icons/fertilizer"
+  - id_name: pesticide
+    resource_tier: 2
+    base_price: 3000
+    state_of_matter: solid
+    max_stack_size: 100
+    icon:
+      base_path: "res://Materials/Icons/fertilizer"

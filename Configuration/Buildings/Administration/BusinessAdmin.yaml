@@ -1,0 +1,19 @@
+buildings:
+  - id_name: labor_resources
+    display_name: Labor Resources
+    description: Department for managing your workforce
+    category: Administration
+    building_limit: 1
+    max_resource_tier: 5
+    work_required: 500
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 180
+      cell_count: 1
+    required_resources:
+      concrete: 500
+      steel: 200
+      adult: 100
+      workstation: 50

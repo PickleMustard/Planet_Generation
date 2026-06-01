@@ -1,0 +1,195 @@
+[gd_scene format=3 uid="uid://ctjj5jxd4hdaf"]
+
+[ext_resource type="Script" uid="uid://daohq6tds6vkn" path="res://UI/PlanetaryBodyItem.cs" id="1_n52bl"]
+[ext_resource type="Script" uid="uid://cl0fnsihfju2q" path="res://UI/ToggleSection.cs" id="2_q7k4c"]
+
+[node name="BodyItem" type="HBoxContainer" unique_id=1656568985]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_n52bl")
+
+[node name="MainContent" type="VBoxContainer" parent="." unique_id=2140943967]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="MainContent" unique_id=1824473967]
+layout_mode = 2
+
+[node name="Toggle" type="Button" parent="MainContent/Header" unique_id=562910609]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Star"
+script = ExtResource("2_q7k4c")
+content_path = NodePath("../../Content")
+
+[node name="RemoveItem" type="Button" parent="MainContent/Header" unique_id=898161639]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "-"
+
+[node name="DetailsToggle" type="Button" parent="MainContent/Header" unique_id=1675418645]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "⚙"
+
+[node name="AutoCalculateToggle" type="CheckButton" parent="MainContent/Header" unique_id=738467261]
+layout_mode = 2
+button_pressed = true
+
+[node name="Content" type="VBoxContainer" parent="MainContent" unique_id=1272361545]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="OrbitalCenterContent" type="GridContainer" parent="MainContent/Content" unique_id=1360904614]
+layout_mode = 2
+columns = 2
+
+[node name="LabelOrbitalCenter" type="Label" parent="MainContent/Content/OrbitalCenterContent" unique_id=1873879636]
+layout_mode = 2
+text = "Orbital
+Center"
+
+[node name="OptionButton" type="OptionButton" parent="MainContent/Content/OrbitalCenterContent" unique_id=184418997]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ApogeeContent" type="GridContainer" parent="MainContent/Content" unique_id=265404297]
+layout_mode = 2
+columns = 2
+
+[node name="LabelApogee" type="Label" parent="MainContent/Content/ApogeeContent" unique_id=494830112]
+layout_mode = 2
+text = "Apogee"
+
+[node name="apogee" type="SpinBox" parent="MainContent/Content/ApogeeContent" unique_id=575432525]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -10000.0
+max_value = 10000.0
+step = 0.1
+
+[node name="PerigeeContent" type="GridContainer" parent="MainContent/Content" unique_id=1638821724]
+layout_mode = 2
+columns = 2
+
+[node name="LabelPerigee" type="Label" parent="MainContent/Content/PerigeeContent" unique_id=35631565]
+layout_mode = 2
+text = "Perigee"
+
+[node name="perigee" type="SpinBox" parent="MainContent/Content/PerigeeContent" unique_id=1404318762]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -10000.0
+max_value = 10000.0
+step = 0.0
+
+[node name="StartAngleContent" type="GridContainer" parent="MainContent/Content" unique_id=1863325899]
+layout_mode = 2
+columns = 2
+
+[node name="LabelStartAngle" type="Label" parent="MainContent/Content/StartAngleContent" unique_id=1200170104]
+layout_mode = 2
+text = "Start Angle"
+
+[node name="startAngle" type="SpinBox" parent="MainContent/Content/StartAngleContent" unique_id=1132419747]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -10000.0
+max_value = 10000.0
+step = 0.0
+
+[node name="VerticalOffsetContent" type="GridContainer" parent="MainContent/Content" unique_id=992907851]
+layout_mode = 2
+columns = 2
+
+[node name="LabelVertOffset" type="Label" parent="MainContent/Content/VerticalOffsetContent" unique_id=1709061402]
+layout_mode = 2
+text = "Vertical
+Offset"
+
+[node name="vertOffset" type="SpinBox" parent="MainContent/Content/VerticalOffsetContent" unique_id=1937094701]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -10000.0
+max_value = 10000.0
+step = 0.0
+
+[node name="BodyTypeContent" type="HBoxContainer" parent="MainContent/Content" unique_id=212172464]
+layout_mode = 2
+
+[node name="BodyTypeLabel" type="Label" parent="MainContent/Content/BodyTypeContent" unique_id=1787146135]
+layout_mode = 2
+text = "BodyType"
+
+[node name="OptionButton" type="OptionButton" parent="MainContent/Content/BodyTypeContent" unique_id=498983656]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MassContent" type="HBoxContainer" parent="MainContent/Content" unique_id=803415815]
+layout_mode = 2
+
+[node name="MassLabel" type="Label" parent="MainContent/Content/MassContent" unique_id=1908347515]
+layout_mode = 2
+text = "Mass"
+
+[node name="mass" type="SpinBox" parent="MainContent/Content/MassContent" unique_id=1045660556]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1
+
+[node name="SizeContent" type="HBoxContainer" parent="MainContent/Content" unique_id=2067755011]
+layout_mode = 2
+
+[node name="SizeLabel" type="Label" parent="MainContent/Content/SizeContent" unique_id=170655612]
+layout_mode = 2
+text = "Size"
+
+[node name="size" type="SpinBox" parent="MainContent/Content/SizeContent" unique_id=1189276827]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1
+
+[node name="SatellitesContent" type="VBoxContainer" parent="MainContent/Content" unique_id=1443235638]
+layout_mode = 2
+
+[node name="SatellitesHeader" type="HBoxContainer" parent="MainContent/Content/SatellitesContent" unique_id=251319242]
+layout_mode = 2
+
+[node name="SatellitesLabel" type="Label" parent="MainContent/Content/SatellitesContent/SatellitesHeader" unique_id=75635869]
+layout_mode = 2
+text = "Satellites"
+
+[node name="AddSatellite" type="Button" parent="MainContent/Content/SatellitesContent/SatellitesHeader" unique_id=786578394]
+layout_mode = 2
+text = "+"
+
+[node name="RemoveSatellite" type="Button" parent="MainContent/Content/SatellitesContent/SatellitesHeader" unique_id=878711861]
+layout_mode = 2
+text = "-"
+
+[node name="SatellitesCountLabel" type="Label" parent="MainContent/Content/SatellitesContent/SatellitesHeader" unique_id=269879991]
+layout_mode = 2
+text = "0 satellites"
+
+[node name="SatellitesScroll" type="ScrollContainer" parent="MainContent/Content/SatellitesContent" unique_id=973177833]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+focus_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="SatellitesList" type="VBoxContainer" parent="MainContent/Content/SatellitesContent/SatellitesScroll" unique_id=1860855425]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="DetailsPanel" type="VBoxContainer" parent="." unique_id=1119612075]
+visible = false
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3

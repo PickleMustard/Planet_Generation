@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://donut_chart_component"]
+
+[ext_resource type="Script" path="res://Scripts/UI/Components/DonutChart.cs" id="1_donut"]
+
+[node name="DonutChart" type="Control"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_donut")

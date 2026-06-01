@@ -1,0 +1,14 @@
+recipes:
+  - recipe_id: "surface_mine"
+    display_name: "Surface Mining"
+    category: extraction
+    work_required: 10
+    output_resources:
+      - tag:ore: 1
+  - recipe_id: "clear_cutting"
+    display_name: "Clear Cutting"
+    description: Chop down a forest. What comes next is someone else's problem.
+    category: extraction
+    work_required: 5
+    output_resources:
+      - wood: 2

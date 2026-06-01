@@ -1,7 +1,7 @@
 using System;
 using Godot;
 using Structures.Enums;
-using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 
 namespace UI;
 
@@ -11,16 +11,20 @@ public partial class SatelliteBeltItem : VBoxContainer
     public delegate void ItemUpdateEventHandler();
 
     [Export]
-    public Button Toggle;
+    public Button? Toggle;
 
     [Export]
-    public Button RemoveItem;
+    public Button? RemoveItem;
 
     [Export]
-    public OptionButton OptionButton;
+    public OptionButton? OptionButton;
 
-    [Export] public SpinBox Apogee;
-    [Export] public SpinBox Perigee;
+    [Export]
+    public SpinBox? Apogee;
+
+    [Export]
+    public SpinBox? Perigee;
+
     //[Export]
     //public SpinBox RingDistanceX;
 
@@ -31,40 +35,42 @@ public partial class SatelliteBeltItem : VBoxContainer
     //public SpinBox RingDistanceZ;
 
     [Export]
-    public SpinBox RingVelocityX;
+    public SpinBox? RingVelocityX;
 
     [Export]
-    public SpinBox RingVelocityY;
+    public SpinBox? RingVelocityY;
 
     [Export]
-    public SpinBox RingVelocityZ;
+    public SpinBox? RingVelocityZ;
 
     [Export]
-    public SpinBox MinMass,
+    public SpinBox? MinMass,
         MaxMass;
 
     [Export]
-    public SpinBox MinSize,
+    public SpinBox? MinSize,
         MaxSize;
 
     [Export]
-    public SpinBox NumInBeltLower,
+    public SpinBox? NumInBeltLower,
         NumInBeltUpper;
 
     [Export]
-    public OptionButton BeltGrouping;
+    public OptionButton? BeltGrouping;
 
-    private HBoxContainer BeltNumContainer;
+    private HBoxContainer? BeltNumContainer;
     private Godot.Collections.Dictionary templateDict = new Godot.Collections.Dictionary();
 
-    public Action<SatelliteBeltItem> OnRemoveRequested;
+    public Action<SatelliteBeltItem>? OnRemoveRequested;
 
-    private CelestialBodyType parentType;
+    private DominantBodyType parentType;
+    private int _orbitalCenterIndex = -1; // -1 = barycenter, 0+ = dominant body index
+    private OptionButton? OrbitalCenterDropdown;
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
 
-    public void SetParentType(CelestialBodyType type)
+    public void SetParentType(DominantBodyType type)
     {
         this.parentType = type;
     }
@@ -122,16 +128,20 @@ public partial class SatelliteBeltItem : VBoxContainer
             }
         }
 
-        // Populate satellite types and hook selection
+        // Populate satellite belt types from YAML configuration and hook selection
         if (OptionButton != null)
         {
-            OptionButton.Clear();
-            foreach (var name in System.Enum.GetNames(typeof(SatelliteGroupTypes)))
-                OptionButton.AddItem(name);
+            PlanetaryTypeLoader.PopulateOptionButton(
+                OptionButton,
+                PlanetaryTypeLoader.GetSatelliteBeltTypes()
+            );
 
             OptionButton.ItemSelected += idx =>
             {
-                var type = (SatelliteGroupTypes)(int)idx;
+                var internalName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (internalName == null)
+                    return;
+                var type = PlanetaryTypeLoader.ToSatelliteGroupType(internalName);
                 ApplyTemplate(type);
                 UpdateHeaderFromType(OptionButton.GetItemText((int)idx));
                 EmitSignal(SignalName.ItemUpdate);
@@ -142,8 +152,12 @@ public partial class SatelliteBeltItem : VBoxContainer
             {
                 if (OptionButton.Selected < 0)
                     OptionButton.Select(0);
-                ApplyTemplate((SatelliteGroupTypes)OptionButton.Selected);
-                UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                var initialName = PlanetaryTypeLoader.GetSelectedInternalName(OptionButton);
+                if (initialName != null)
+                {
+                    ApplyTemplate(PlanetaryTypeLoader.ToSatelliteGroupType(initialName));
+                    UpdateHeaderFromType(OptionButton.GetItemText(OptionButton.Selected));
+                }
             }
         }
 
@@ -158,7 +172,7 @@ public partial class SatelliteBeltItem : VBoxContainer
     public void ApplyTemplate(SatelliteGroupTypes type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
-        var t = SystemGenTemplates.GetSatelliteGroupDefaults(type);
+        var t = TemplateHelpers.GetSatelliteGroupDefaults(type);
         t = (Godot.Collections.Dictionary)t["template"];
         GD.Print($"Template: {t}");
 
@@ -211,48 +225,52 @@ public partial class SatelliteBeltItem : VBoxContainer
             BeltGrouping.Clear();
             foreach (var name in System.Enum.GetNames(typeof(GroupingCategories)))
                 BeltGrouping.AddItem(name);
+            // Select the grouping value from the template
+            if (System.Enum.TryParse<GroupingCategories>(grouping, true, out var group))
+                BeltGrouping.Select((int)group);
         }
         templateDict = t;
     }
 
     public void SetTemplate(Godot.Collections.Dictionary t)
     {
-        var template = (Godot.Collections.Dictionary)t["template"];
-        var apogee = (float)template["ring_apogee"];
-        var perigee = (float)template["ring_perigee"];
-        var velocity = (Vector3)template["ring_velocity"];
-        var lowerRange = (int)template["lower_range"];
-        var upperRange = (int)template["upper_range"];
-        var grouping = (String)template["grouping"];
+        // Accept flat format matching SatelliteBeltItem.ToParams() output.
+        // Keys like ring_apogee, ring_perigee, etc. are at the top level of t.
+        var apogee = t.ContainsKey("ring_apogee") ? (float)t["ring_apogee"] : 0f;
+        var perigee = t.ContainsKey("ring_perigee") ? (float)t["ring_perigee"] : 0f;
+        var velocity = t.ContainsKey("ring_velocity") ? (Vector3)t["ring_velocity"] : Vector3.Zero;
+        var lowerRange = t.ContainsKey("lower_range") ? (int)t["lower_range"] : 1;
+        var upperRange = t.ContainsKey("upper_range") ? (int)t["upper_range"] : 4;
+        var grouping = t.ContainsKey("grouping") ? (String)t["grouping"] : "Balanced";
 
         if (Apogee != null)
         {
-            Apogee.Value = Mathf.Clamp((float)apogee, 0f, Limit);
+            Apogee.Value = Mathf.Clamp(apogee, 0f, Limit);
         }
         if (Perigee != null)
         {
-            Perigee.Value = Mathf.Clamp((float)perigee, 0f, Limit);
+            Perigee.Value = Mathf.Clamp(perigee, 0f, Limit);
         }
         if (RingVelocityX != null)
         {
-            RingVelocityX.Value = Mathf.Clamp((float)velocity.X, 0f, Limit);
+            RingVelocityX.Value = Mathf.Clamp(velocity.X, 0f, Limit);
         }
         if (RingVelocityY != null)
         {
-            RingVelocityY.Value = Mathf.Clamp((float)velocity.Y, 0f, Limit);
+            RingVelocityY.Value = Mathf.Clamp(velocity.Y, 0f, Limit);
         }
         if (RingVelocityZ != null)
         {
-            RingVelocityZ.Value = Mathf.Clamp((float)velocity.Z, 0f, Limit);
+            RingVelocityZ.Value = Mathf.Clamp(velocity.Z, 0f, Limit);
         }
-        if (MinMass != null)
-            MinMass.Value = Mathf.Clamp((float)template["mass_min"], 0f, MassLimit);
-        if (MaxMass != null)
-            MaxMass.Value = Mathf.Clamp((float)template["mass_max"], 0f, MassLimit);
-        if (MinSize != null)
-            MinSize.Value = Mathf.Clamp((float)template["size_min"], 0f, SizeLimit);
-        if (MaxSize != null)
-            MaxSize.Value = Mathf.Clamp((float)template["size_max"], 0f, SizeLimit);
+        if (MinMass != null && t.ContainsKey("mass_min"))
+            MinMass.Value = Mathf.Clamp((float)t["mass_min"], 0f, MassLimit);
+        if (MaxMass != null && t.ContainsKey("mass_max"))
+            MaxMass.Value = Mathf.Clamp((float)t["mass_max"], 0f, MassLimit);
+        if (MinSize != null && t.ContainsKey("size_min"))
+            MinSize.Value = Mathf.Clamp((float)t["size_min"], 0f, SizeLimit);
+        if (MaxSize != null && t.ContainsKey("size_max"))
+            MaxSize.Value = Mathf.Clamp((float)t["size_max"], 0f, SizeLimit);
         if (NumInBeltLower != null)
         {
             NumInBeltLower.Value = lowerRange;
@@ -261,27 +279,42 @@ public partial class SatelliteBeltItem : VBoxContainer
         {
             NumInBeltUpper.Value = upperRange;
         }
+
+        // Select the belt type in OptionButton from the dict's "type" field
+        if (OptionButton != null && t.ContainsKey("type"))
+        {
+            var typeStr = (string)t["type"];
+            if (PlanetaryTypeLoader.SelectByInternalName(OptionButton, typeStr))
+            {
+                var displayName = OptionButton.GetItemText(OptionButton.Selected);
+                UpdateHeaderFromType(displayName);
+            }
+        }
+
+        // Select the grouping category in BeltGrouping dropdown
         if (BeltGrouping != null)
         {
-            if (System.Enum.TryParse<GroupingCategories>(grouping, false, out var group))
+            // Ensure grouping dropdown is populated
+            if (BeltGrouping.ItemCount == 0)
+            {
+                foreach (var name in System.Enum.GetNames(typeof(GroupingCategories)))
+                    BeltGrouping.AddItem(name);
+            }
+            if (System.Enum.TryParse<GroupingCategories>(grouping, true, out var group))
                 BeltGrouping.Select((int)group);
         }
 
+        // Set orbital center index if present
+        if (t.ContainsKey("orbital_center_index"))
+            _orbitalCenterIndex = (int)t["orbital_center_index"];
+
+        templateDict = t;
     }
 
     private void ApplyConstraints()
     {
         // Positions and velocities: clamp to [-Limit, Limit]
-        foreach (
-            var sb in new[]
-            {
-                Apogee,
-                Perigee,
-                RingVelocityX,
-                RingVelocityY,
-                RingVelocityZ,
-            }
-        )
+        foreach (var sb in new[] { Apogee, Perigee, RingVelocityX, RingVelocityY, RingVelocityZ })
         {
             if (sb == null)
                 continue;
@@ -323,49 +356,49 @@ public partial class SatelliteBeltItem : VBoxContainer
 
     public float GetRingApogee()
     {
-        return Mathf.Clamp((float)Apogee.Value, -Limit, Limit);
+        return Mathf.Clamp((float)Apogee!.Value, -Limit, Limit);
     }
 
     public float GetRingPerigee()
     {
-        return Mathf.Clamp((float)Perigee.Value, -Limit, Limit);
+        return Mathf.Clamp((float)Perigee!.Value, -Limit, Limit);
     }
 
     public Vector3 GetRingVelocity()
     {
-        float vx = Mathf.Clamp((float)RingVelocityX.Value, -Limit, Limit);
-        float vy = Mathf.Clamp((float)RingVelocityY.Value, -Limit, Limit);
-        float vz = Mathf.Clamp((float)RingVelocityZ.Value, -Limit, Limit);
+        float vx = Mathf.Clamp((float)RingVelocityX!.Value, -Limit, Limit);
+        float vy = Mathf.Clamp((float)RingVelocityY!.Value, -Limit, Limit);
+        float vz = Mathf.Clamp((float)RingVelocityZ!.Value, -Limit, Limit);
         return new Vector3(vx, vy, vz);
     }
 
     public float GetMassMin()
     {
-        return Mathf.Clamp((float)MinMass.Value, 0f, MassLimit);
+        return Mathf.Clamp((float)MinMass!.Value, 0f, MassLimit);
     }
 
     public float GetMassMax()
     {
-        return Mathf.Clamp((float)MaxMass.Value, 0f, MassLimit);
+        return Mathf.Clamp((float)MaxMass!.Value, 0f, MassLimit);
     }
 
     public float GetSizeMin()
     {
-        return Mathf.Clamp((float)MinSize.Value, 0f, SizeLimit);
+        return Mathf.Clamp((float)MinSize!.Value, 0f, SizeLimit);
     }
 
     public float GetSizeMax()
     {
-        return Mathf.Clamp((float)MaxSize.Value, 0f, SizeLimit);
+        return Mathf.Clamp((float)MaxSize!.Value, 0f, SizeLimit);
     }
 
     public string GetSatelliteType()
     {
         if (OptionButton != null && OptionButton.Selected >= 0)
         {
-            return OptionButton.GetItemText(OptionButton.Selected);
+            return PlanetaryTypeLoader.GetSelectedInternalName(OptionButton) ?? "AsteroidBelt";
         }
-        return "Asteroid";
+        return "AsteroidBelt";
     }
 
     public (int, int) GetNumberInBelt()
@@ -403,6 +436,68 @@ public partial class SatelliteBeltItem : VBoxContainer
         dict.Add("lower_range", numRange.Item1);
         dict.Add("upper_range", numRange.Item2);
         dict.Add("grouping", GetBeltGrouping());
+        dict.Add("orbital_center_index", _orbitalCenterIndex);
         return dict;
     }
+
+    public void UpdateOrbitalCenterOptions(Godot.Collections.Array<string> options)
+    {
+        // Find or create orbital center dropdown
+        if (OrbitalCenterDropdown == null)
+        {
+            OrbitalCenterDropdown = GetNodeOrNull<OptionButton>(
+                "Content/OrbitalCenterContent/OrbitalCenterDropdown"
+            );
+
+            if (OrbitalCenterDropdown == null)
+            {
+                // Create the container and dropdown if they don't exist
+                var content = GetNodeOrNull<VBoxContainer>("Content");
+                if (content == null)
+                    return;
+
+                var orbitalCenterContainer = new VBoxContainer();
+                orbitalCenterContainer.Name = "OrbitalCenterContent";
+                content.AddChild(orbitalCenterContainer);
+
+                var label = new Label();
+                label.Text = "Orbital Center:";
+                orbitalCenterContainer.AddChild(label);
+
+                OrbitalCenterDropdown = new OptionButton();
+                OrbitalCenterDropdown.Name = "OrbitalCenterDropdown";
+                OrbitalCenterDropdown.Connect(
+                    OptionButton.SignalName.ItemSelected,
+                    Callable.From(
+                        (int index) =>
+                        {
+                            _orbitalCenterIndex = index - 1; // -1 because "Barycenter" is at index 0
+                            EmitSignal(SignalName.ItemUpdate);
+                        }
+                    )
+                );
+                orbitalCenterContainer.AddChild(OrbitalCenterDropdown);
+            }
+        }
+
+        if (OrbitalCenterDropdown != null)
+        {
+            OrbitalCenterDropdown.Clear();
+            foreach (var option in options)
+            {
+                OrbitalCenterDropdown.AddItem(option);
+            }
+
+            // Clamp index to valid range: _orbitalCenterIndex is 0-based dominant body index
+            // (-1 = Barycenter), and options includes "Barycenter" at index 0, so the max
+            // valid _orbitalCenterIndex is options.Count - 2 (the last dominant body).
+            int maxDominantIndex = options.Count - 2;
+            if (_orbitalCenterIndex > maxDominantIndex || _orbitalCenterIndex < -1)
+                _orbitalCenterIndex = -1;
+
+            OrbitalCenterDropdown.Select(_orbitalCenterIndex + 1); // +1 because "Barycenter" is at index 0
+        }
+    }
+
+    public int GetOrbitalCenterIndex() => _orbitalCenterIndex;
 }

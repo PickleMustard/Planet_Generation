@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://w3e42pyb3sb6"]
+
+[ext_resource type="Script" uid="uid://dhvo8ux0by1sw" path="res://Scripts/UI/StationWindow/StationShipyardPanel.cs" id="1_shipyard"]
+[ext_resource type="PackedScene" uid="uid://cdjolvymko7hj" path="res://UI/StationWindow/ShipyardPanel.tscn" id="2_inner"]
+
+[node name="StationShipyardPanel" type="Control" node_paths=PackedStringArray("_inner")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_shipyard")
+_inner = NodePath("ShipyardPanel")
+
+[node name="ShipyardPanel" parent="." instance=ExtResource("2_inner")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

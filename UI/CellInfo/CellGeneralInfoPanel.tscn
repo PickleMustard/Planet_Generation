@@ -1,0 +1,87 @@
+[gd_scene format=3 uid="uid://5342p6hctm3t"]
+
+[ext_resource type="Script" uid="uid://epadmynnij1n" path="res://Scripts/UI/CellInfo/CellGeneralInfoPanel.cs" id="1_cellinfo"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_m8ix6"]
+
+[node name="CellGeneralInfoPanel" type="Control" unique_id=1188486062]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_m8ix6")
+script = ExtResource("1_cellinfo")
+_biomeValuePath = NodePath("MarginContainer/VBoxContainer/BiomeRow/BiomeValue")
+_elevationValuePath = NodePath("MarginContainer/VBoxContainer/ElevationRow/ElevationValue")
+_slopeValuePath = NodePath("MarginContainer/VBoxContainer/SlopeRow/SlopeValue")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=357550346]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_m8ix6")
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=1814672744]
+layout_mode = 2
+theme = ExtResource("1_m8ix6")
+theme_override_constants/separation = 4
+
+[node name="BiomeRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=1756667103]
+layout_mode = 2
+theme = ExtResource("1_m8ix6")
+
+[node name="BiomeLabel" type="Label" parent="MarginContainer/VBoxContainer/BiomeRow" unique_id=1656069678]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme = ExtResource("1_m8ix6")
+text = "Biome"
+
+[node name="BiomeValue" type="Label" parent="MarginContainer/VBoxContainer/BiomeRow" unique_id=95760292]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_m8ix6")
+text = "-"
+horizontal_alignment = 2
+
+[node name="ElevationRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=1900596935]
+layout_mode = 2
+theme = ExtResource("1_m8ix6")
+
+[node name="ElevationLabel" type="Label" parent="MarginContainer/VBoxContainer/ElevationRow" unique_id=1994437643]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme = ExtResource("1_m8ix6")
+text = "Elevation"
+
+[node name="ElevationValue" type="Label" parent="MarginContainer/VBoxContainer/ElevationRow" unique_id=1484477055]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_m8ix6")
+text = "-"
+horizontal_alignment = 2
+
+[node name="SlopeRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=1629252494]
+layout_mode = 2
+theme = ExtResource("1_m8ix6")
+
+[node name="SlopeLabel" type="Label" parent="MarginContainer/VBoxContainer/SlopeRow" unique_id=1911719085]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme = ExtResource("1_m8ix6")
+text = "Slope"
+
+[node name="SlopeValue" type="Label" parent="MarginContainer/VBoxContainer/SlopeRow" unique_id=1819981279]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_m8ix6")
+text = "-"
+horizontal_alignment = 2

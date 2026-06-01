@@ -1,0 +1,162 @@
+# Biome Tag Probabilities Configuration
+# Defines tags for each biome and probability adjustments for planetary type tags
+# Tags are descriptive keywords that describe the biome's characteristics
+# Probability modifiers adjust the likelihood of planetary type tags appearing in this biome
+
+biomes:
+  # Tundra - Cold, treeless plains with permafrost
+  - biome: Tundra
+    modifiers:
+      - frozen: 1.2
+      - high_metal: 0.0
+      - water: 1.0
+
+  - biome: Icecap
+    modifiers:
+      - frozen: 1.8
+      - high_metal: 0.0
+      - water: 1.5
+
+  - biome: Desert
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 0.8
+      - water: 0.2
+
+  - biome: Grassland
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 0.0
+      - water: 1.0
+
+  - biome: Forest
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 0.0
+      - water: 1.2
+
+  - biome: Rainforest
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 0.0
+      - water: 1.5
+
+  - biome: Taiga
+    modifiers:
+      - frozen: 0.8
+      - high_metal: 0.5
+      - water: 0.8
+
+  - biome: Ocean
+    modifiers:
+      - frozen: 0.2
+      - high_metal: 0.0
+      - water: 2.0
+
+  - biome: Coastal
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 0.3
+      - water: 1.5
+
+  - biome: Mountain
+    modifiers:
+      - frozen: 0.3
+      - high_metal: 1.5
+      - water: 0.3
+
+  - biome: SandDesert
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 0.5
+      - water: 0.1
+
+  - biome: StoneDesert
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.2
+      - water: 0.1
+
+  - biome: Swamp
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 0.0
+      - water: 1.3
+
+  - biome: Glacier
+    modifiers:
+      - frozen: 2.0
+      - high_metal: 0.0
+      - water: 1.8
+
+  - biome: FrozenPlain
+    modifiers:
+      - frozen: 1.5
+      - high_metal: 0.3
+      - water: 1.2
+
+  - biome: RustedPlain
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.5
+      - water: 0.3
+
+  - biome: RustedMountain
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 2.0
+      - water: 0.2
+
+  - biome: RustedDesert
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.3
+      - water: 0.1
+
+  - biome: ScouredPlain
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.0
+      - water: 0.3
+
+  - biome: LavaOcean
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.5
+      - water: 0.0
+
+  - biome: VolcanicPeak
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 2.0
+      - water: 0.0
+
+  - biome: AshPlain
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.0
+      - water: 0.0
+
+  - biome: ObsidianField
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.2
+      - water: 0.0
+
+  - biome: VolcanicPlain
+    modifiers:
+      - frozen: 0.0
+      - high_metal: 1.3
+      - water: 0.0
+
+  - biome: ShallowOcean
+    modifiers:
+      - frozen: 0.1
+      - high_metal: 0.0
+      - water: 1.8
+
+  - biome: DeepOcean
+    modifiers:
+      - frozen: 0.1
+      - high_metal: 0.2
+      - water: 2.5

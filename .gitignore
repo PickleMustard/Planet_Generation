@@ -3,3 +3,16 @@
 /android/
 /logs/
 /UI/Theme
+/addons/
+/reports/
+
+# CI/CD generated files
+/test-reports/
+/.godot-ci/
+*.zip
+
+# Temporary directory
+/temp/
+
+# External resources (not committed)
+**/external/

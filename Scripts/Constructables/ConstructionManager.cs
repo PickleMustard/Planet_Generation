@@ -1,0 +1,711 @@
+using System;
+using System.Collections.Generic;
+using Constructables.Tick;
+using Godot;
+using Godot.Collections;
+using ProceduralGeneration.PlanetGeneration;
+using Structures.GameState;
+using Structures.Logistics;
+using Structures.Resources;
+using UtilityLibrary;
+using UtilityLibrary.NameGeneration;
+
+/* Construction Manager is responsible for managing the communication of construction requests and events
+ * between the user and various systems
+ *
+ * Construction for units is distinct for different types
+ * Artificial Satellites and Stations can be constructed in any available band around a body
+ *  or can be constructed in a defined orbit around a dominant body / barycenter
+ *
+ * Ship construction is handled by ShipyardBehavior on the owning station —
+ * ShipyardPanel calls ShipyardBehavior.CreateAndEnqueueShip directly, bypassing
+ * ConstructionManager entirely. See ShipyardBehavior for the full ship lifecycle.
+ *
+ * To coordinate between the various endpoints and the GUI, the construction manager will respond to requests from the user,
+ *  reflect state of construction that is managed by the various systems, own and generate signals for state changes, and parse
+ *  data from the GUI and route it to the appropriate systems
+ */
+namespace Constructables;
+
+public partial class ConstructionManager : Node
+{
+    [Signal]
+    public delegate void StationConstructionInitializedEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void StationConstructionCompletedEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void StationConstructionCancelledEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void BuildingConstructionInitializedEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void BuildingConstructionCompletedEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void BuildingConstructionCancelledEventHandler(Dictionary details);
+
+    [Signal]
+    public delegate void ConstructionProgressUpdatedEventHandler(
+        string entityName,
+        float progress,
+        string status
+    );
+
+    private static ConstructionManager _instance;
+    public static ConstructionManager Instance => _instance;
+
+    [Export]
+    public Array<StationSatellite> _stationsUnderConstruction;
+
+    [Export]
+    public Array<Building> _buildingsUnderConstruction;
+
+    private ConstructionManager()
+    {
+        _stationsUnderConstruction = new Array<StationSatellite>();
+        _buildingsUnderConstruction = new Array<Building>();
+        _instance = this;
+    }
+
+    //Ensure singleton instance & signals are connected to correct methods
+    public override void _EnterTree()
+    {
+        if (_instance != null && _instance != this)
+        {
+            QueueFree();
+            return;
+        }
+
+        _instance = this;
+
+        StationConstructionInitialized += OnStationConstructionInitialized;
+        StationConstructionCompleted += OnStationConstructionCompleted;
+        StationConstructionCancelled += OnStationConstructionCancelled;
+        BuildingConstructionInitialized += OnBuildingConstructionInitialized;
+        BuildingConstructionCompleted += OnBuildingConstructionCompleted;
+        BuildingConstructionCancelled += OnBuildingConstructionCancelled;
+
+        GD.Print($"[ConstructionManager] Initialized");
+    }
+
+    /// <summary>
+    /// Called by constructable entities when construction completes.
+    /// Handles finalization, registry removal, and signal emission. Mutates SceneTree
+    /// state (Visible, ProcessMode, RemoveChild) and emits signals, so any call from
+    /// <c>ManufactureTickEngine</c> is marshaled onto the main thread.
+    /// </summary>
+    public void NotifyConstructionComplete(IConstructable entity)
+    {
+        if (!SignalMarshal.IsOnMainThread)
+        {
+            Callable.From(() => NotifyConstructionComplete(entity)).CallDeferred();
+            return;
+        }
+
+        if (entity is StationSatellite station)
+        {
+            _stationsUnderConstruction.Remove(station);
+            FinalizeStation(station, new Dictionary());
+            EmitSignal(
+                SignalName.StationConstructionCompleted,
+                new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
+            );
+        }
+        else if (entity is Building building)
+        {
+            _buildingsUnderConstruction.Remove(building);
+            FinalizeBuilding(building, new Dictionary());
+            EmitSignal(
+                SignalName.BuildingConstructionCompleted,
+                new Dictionary { { "building", building }, { "name", building.Name.ToString() } }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Called by constructable entities when construction is cancelled.
+    /// Handles cleanup, registry removal, and signal emission. SceneTree-mutating, so
+    /// off-main calls are marshaled to the main thread.
+    /// </summary>
+    public void NotifyConstructionCancelled(IConstructable entity)
+    {
+        if (!SignalMarshal.IsOnMainThread)
+        {
+            Callable.From(() => NotifyConstructionCancelled(entity)).CallDeferred();
+            return;
+        }
+
+        if (entity is StationSatellite station)
+        {
+            _stationsUnderConstruction.Remove(station);
+            CancelStation(station, new Dictionary());
+            EmitSignal(
+                SignalName.StationConstructionCancelled,
+                new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
+            );
+        }
+        else if (entity is Building building)
+        {
+            _buildingsUnderConstruction.Remove(building);
+            CancelBuilding(building, new Dictionary());
+            EmitSignal(
+                SignalName.BuildingConstructionCancelled,
+                new Dictionary { { "building", building }, { "name", building.Name.ToString() } }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Called by constructable entities to emit periodic progress updates. Reached every
+    /// tick from <see cref="OrbitalConstructorBehavior"/>; defers off-main automatically.
+    /// </summary>
+    public void NotifyProgressUpdate(string entityName, float progress, string status)
+    {
+        if (SignalMarshal.IsOnMainThread)
+            EmitSignal(SignalName.ConstructionProgressUpdated, entityName, progress, status);
+        else
+            CallDeferred(MethodName.NotifyProgressUpdate, entityName, progress, status);
+    }
+
+    public void EmitStationConstruct(StationSatellite inConstruction, Dictionary details)
+    {
+        _stationsUnderConstruction!.Add(inConstruction);
+        EmitSignal(SignalName.StationConstructionInitialized, details);
+    }
+
+    public void EmitStationCancel(StationSatellite cancelled, Dictionary details)
+    {
+        _stationsUnderConstruction!.Remove(cancelled);
+        EmitSignal(SignalName.StationConstructionCancelled, details);
+    }
+
+    public void EmitStationComplete(StationSatellite completed, Dictionary details)
+    {
+        _stationsUnderConstruction!.Remove(completed);
+        EmitSignal(SignalName.StationConstructionCompleted, details);
+    }
+
+    public void EmitBuildingConstruct(Building inConstruction, Dictionary details)
+    {
+        _buildingsUnderConstruction!.Add(inConstruction);
+        EmitSignal(SignalName.BuildingConstructionInitialized, details);
+    }
+
+    public void EmitBuildingCancel(Building cancelled, Dictionary details)
+    {
+        _buildingsUnderConstruction!.Remove(cancelled);
+        EmitSignal(SignalName.BuildingConstructionCancelled, details);
+    }
+
+    public void EmitBuildingComplete(Building completed, Dictionary details)
+    {
+        _buildingsUnderConstruction!.Remove(completed);
+        EmitSignal(SignalName.BuildingConstructionCompleted, details);
+    }
+
+    //Given a filter, return a list of all stations under construction
+    public Array<StationSatellite> GetStationsUnderConstruction(
+        String orbitalFilter = "",
+        String typeFilter = ""
+    )
+    {
+        if (string.IsNullOrEmpty(orbitalFilter) && string.IsNullOrEmpty(typeFilter))
+            return _stationsUnderConstruction!;
+
+        var filtered = new Array<StationSatellite>();
+        foreach (var station in _stationsUnderConstruction!)
+        {
+            if (
+                !string.IsNullOrEmpty(orbitalFilter)
+                && station.BandIndex.ToString() != orbitalFilter
+            )
+                continue;
+
+            if (
+                !string.IsNullOrEmpty(typeFilter)
+                && !station.Name.ToString().Contains(typeFilter, StringComparison.OrdinalIgnoreCase)
+            )
+                continue;
+
+            filtered.Add(station);
+        }
+
+        return filtered;
+    }
+
+    //Will be given an empty StationSatellite object and a dictionary containing configuration details
+    //Should configure variables from position and band index, should place in SceneTree
+    //Should disable any interaction variables until finished or cancelled
+    private void InitializeStation(StationSatellite inConstruction, Dictionary details)
+    {
+        var parentBody = details["parent_body"].As<Node3D>();
+        int bandIndex = details["band_index"].AsInt32();
+
+        inConstruction.IsActive = false;
+        inConstruction.Visible = false;
+
+        inConstruction.Initialize(parentBody, bandIndex);
+
+        GameLogger.Info(
+            $"[ConstructionManager] Station construction initialized: {inConstruction.Name} in band {bandIndex}"
+        );
+    }
+
+    //Will be given a StationSatellite object and a dictionary containing configuration details
+    //Should enable any interaction variables and ensure the object and mesh children are visible
+    private void FinalizeStation(StationSatellite completed, Dictionary details)
+    {
+        completed.IsActive = true;
+        completed.Visible = true;
+        completed.ProcessMode = ProcessModeEnum.Inherit;
+
+        SetChildrenVisible(completed, true);
+
+        GameLogger.Info($"[ConstructionManager] Station construction completed: {completed.Name}");
+    }
+
+    //Will be given a StationSatellite object and a dictionary containing configuration details
+    //Should remove object and children from SceneTree and ensure complete cleanup
+    private void CancelStation(StationSatellite cancelled, Dictionary details)
+    {
+        GameLogger.Info($"[ConstructionManager] Station construction cancelled: {cancelled.Name}");
+
+        cancelled.CancelConstruction();
+
+        if (cancelled.GetParent() is Node parent)
+            parent.RemoveChild(cancelled);
+
+        cancelled.QueueFree();
+    }
+
+private void OnStationConstructionInitialized(Dictionary details)
+    {
+        var station = details["station"].As<StationSatellite>();
+        InitializeStation(station, details);
+    }
+
+    private void OnStationConstructionCompleted(Dictionary details)
+    {
+        var station = details["station"].As<StationSatellite>();
+        FinalizeStation(station, details);
+    }
+
+    private void OnStationConstructionCancelled(Dictionary details)
+    {
+        var station = details["station"].As<StationSatellite>();
+        CancelStation(station, details);
+    }
+
+    private void OnBuildingConstructionInitialized(Dictionary details)
+    {
+        var building = details["building"].As<Building>();
+        GameLogger.Info(
+            $"[ConstructionManager] Building construction initialized: {building.Name}"
+        );
+    }
+
+    private void OnBuildingConstructionCompleted(Dictionary details)
+    {
+        var building = details["building"].As<Building>();
+        FinalizeBuilding(building, details);
+    }
+
+    private void OnBuildingConstructionCancelled(Dictionary details)
+    {
+        var building = details["building"].As<Building>();
+        CancelBuilding(building, details);
+    }
+
+    private void FinalizeBuilding(Building completed, Dictionary details)
+    {
+        if (completed.VisualNode != null)
+        {
+            completed.VisualNode.Visible = true;
+            completed.VisualNode.ProcessMode = ProcessModeEnum.Inherit;
+            SetChildrenVisible(completed.VisualNode, true);
+        }
+
+        // Register building reference on all occupied cells
+        foreach (var cell in completed.OccupiedCells)
+            cell.Building = completed;
+
+        // Register with continent economy for production
+        RegisterBuildingWithEconomy(completed);
+
+        GameLogger.Info($"[ConstructionManager] Building construction completed: {completed.Name}");
+    }
+
+    private void RegisterBuildingWithEconomy(Building building)
+    {
+        var parentBody = building.VisualNode?.GetParent() as CelestialBody;
+        if (parentBody == null || building.PrimaryCell == null)
+            return;
+
+        // Grid notification fires unconditionally — ocean / edge cells without a continent
+        // still need the producer to come online and refresh brownout state on their grid.
+        // Transfer-station endpoints register themselves via TransferStationBehavior.OnRegister.
+        parentBody.PowerGridMgr?.OnBuildingCompleted(building);
+
+        if (parentBody.Mesh?.Continents == null)
+            return;
+
+        int continentIdx = building.PrimaryCell.ContinentIndex;
+        if (continentIdx < 0)
+            return;
+
+        if (!parentBody.Mesh.Continents.TryGetValue(continentIdx, out var _))
+            return;
+
+        SignalBus.Instance?.EmitBuildingConstructed(continentIdx);
+    }
+
+    private void UnregisterBuildingFromEconomy(Building building)
+    {
+        // Free up building limit slot
+        if (building.Definition?.BuildingLimit > 0)
+            BuildingDatabase.Instance?.DecrementGlobalPlacement(building.Definition.IdName!);
+
+        // Clear building reference from all occupied cells
+        foreach (var cell in building.OccupiedCells)
+            cell.Building = null;
+
+        var parentBody = building.VisualNode?.GetParent() as CelestialBody;
+        if (parentBody?.Mesh?.Continents == null || building.PrimaryCell == null)
+            return;
+
+        int continentIdx = building.PrimaryCell.ContinentIndex;
+        if (continentIdx < 0)
+            return;
+
+        // Transfer-station endpoints unregister themselves via TransferStationBehavior.OnUnregister.
+        parentBody?.PowerGridMgr?.OnBuildingRemoved(building);
+
+        SignalBus.Instance?.EmitBuildingRemoved(continentIdx);
+    }
+
+    private void CancelBuilding(Building cancelled, Dictionary details)
+    {
+        GameLogger.Info($"[ConstructionManager] Building construction cancelled: {cancelled.Name}");
+
+        // Free up building limit slot
+        if (cancelled.Definition?.BuildingLimit > 0)
+            BuildingDatabase.Instance?.DecrementGlobalPlacement(cancelled.Definition.IdName!);
+
+        // Unregister from economy if it was already registered
+        UnregisterBuildingFromEconomy(cancelled);
+
+        cancelled.CancelConstruction();
+
+        if (cancelled.VisualNode != null)
+        {
+            if (cancelled.VisualNode.GetParent() is Node parent)
+                parent.RemoveChild(cancelled.VisualNode);
+            cancelled.VisualNode.QueueFree();
+        }
+    }
+
+    /// <summary>
+    /// Creates a building on the surface of a celestial body at the specified Voronoi cell.
+    /// When an architectStation is provided, the building is registered with the station's work budget.
+    /// </summary>
+    public Building CreateBuilding(
+        VoronoiCell primaryCell,
+        Node3D parentBody,
+        BuildingDefinition definition,
+        List<VoronoiCell>? additionalCells = null,
+        StationSatellite? architectStation = null,
+        int? specifier = null
+    )
+    {
+        if (primaryCell == null)
+            throw new ArgumentNullException(nameof(primaryCell));
+        if (parentBody == null)
+            throw new ArgumentNullException(nameof(parentBody));
+        if (definition == null)
+            throw new ArgumentNullException(nameof(definition));
+
+        // Get body radius for scaling (works with both CelestialBody and SatelliteBody)
+        float bodyRadius = 1.0f;
+        if (parentBody is IOrbitalBody orbitalBody)
+        {
+            bodyRadius = orbitalBody.Radius;
+        }
+        else if (parentBody is CelestialBody parentCelestialBody)
+        {
+            bodyRadius = parentCelestialBody.Radius;
+        }
+
+        var building = definition.Instantiate();
+        if (specifier.HasValue)
+        {
+            // Reject specifiers that aren't in the definition's allowed set so a
+            // stale UI value can't smuggle in a meaningless number; fall through
+            // to the YAML default that Instantiate already applied.
+            var cfg = definition.Specifier;
+            if (cfg == null || cfg.Values.Count == 0 || cfg.Values.Contains(specifier.Value))
+                building.Specifier = specifier.Value;
+            else
+                GameLogger.Warning(
+                    $"ConstructionManager: specifier {specifier.Value} not allowed for '{definition.IdName}'; using default {building.Specifier}.");
+        }
+        building.SetPlacement(primaryCell, additionalCells);
+
+        var visual = new BuildingNode { Name = definition.DisplayName ?? definition.IdName ?? "Building" };
+        parentBody.AddChild(visual);
+        visual.Bind(building, parentBody, bodyRadius);
+
+        foreach (var cell in building.OccupiedCells)
+            cell.Building = building;
+
+        building.Register();
+
+        building.StartConstruction(new Dictionary());
+        visual.ApplyConstructionMaterial();
+        visual.Visible = true;
+
+        // Create / join / merge the power grid at placement so the coverage halo exists
+        // during construction. Output stays at 0 because PowerProducerBehavior.IsProducing
+        // gates on IsUnderConstruction; capacity comes online when FinalizeBuilding fires
+        // OnBuildingCompleted.
+        if (parentBody is CelestialBody celestialBodyForGrid)
+            celestialBodyForGrid.PowerGridMgr?.OnBuildingPlaced(building);
+
+        // Emit signal to notify other systems
+        EmitBuildingConstruct(
+            building,
+            new Dictionary { { "building", building }, { "name", building.Name.ToString() } }
+        );
+
+        // Track against building limit at construction start
+        if (definition.BuildingLimit > 0)
+            BuildingDatabase.Instance?.MarkGloballyPlaced(definition.IdName!);
+
+        // Register with the body's centralized BuildingConstructionManager
+        if (
+            parentBody is CelestialBody celestialBody
+            && celestialBody.BuildingConstructionMgr != null
+        )
+        {
+            celestialBody.BuildingConstructionMgr.RegisterBuilding(building);
+            GameLogger.Debug(
+                $"Started construction of building '{definition.DisplayName ?? definition.IdName}' on cell {primaryCell.Index} ({definition.WorkRequired} work)"
+            );
+
+            // Buildings with no work requirement (e.g. the headquarters) bypass the
+            // architect-gated work pool — without this they sit in _pendingBuildings
+            // forever and never reach the OnCompletion → ManufactureTickEngine.Register
+            // hand-off in Building.UpdateProgress.
+            if (definition.WorkRequired <= 0f)
+            {
+                building.UpdateProgress(0f);
+                celestialBody.BuildingConstructionMgr.UnregisterBuilding(building);
+            }
+        }
+        else
+        {
+            GameLogger.Warning(
+                $"No BuildingConstructionManager on body '{parentBody.Name}' — building '{definition.DisplayName ?? definition.IdName}' will not tick"
+            );
+        }
+
+        return building;
+    }
+
+    private static void SetChildrenVisible(Node node, bool visible)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            if (child is Node3D child3D)
+                child3D.Visible = visible;
+
+            SetChildrenVisible(child, visible);
+        }
+    }
+
+    /// <summary>
+    /// Delivers resources to a constructable entity (station or building) that is under construction.
+    /// </summary>
+    public void DeliverResourcesToConstruction(IConstructable target, string resourceId, int amount)
+    {
+        if (target is StationSatellite station)
+        {
+            station.DeliverResources(resourceId, amount);
+        }
+        else if (target is Building building)
+        {
+            building.DeliverResources(resourceId, amount);
+        }
+    }
+
+    /// <summary>
+    /// Creates a station satellite in orbit around the specified body.
+    /// When a StationDefinition is provided, creates the station in construction mode (inactive, tracked).
+    /// When null, creates instantly (preserves current debug/test behavior).
+    /// </summary>
+    public StationSatellite CreateStation(
+        IOrbitalBody targetBody,
+        int bandIndex,
+        string? name = null,
+        StationDefinition? stationDefinition = null
+    )
+    {
+        if (targetBody == null)
+        {
+            throw new ArgumentNullException(nameof(targetBody), "Target body cannot be null");
+        }
+
+        if (bandIndex < 0 || bandIndex >= targetBody.GetBandCount())
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(bandIndex),
+                $"Band index {bandIndex} out of range. Available bands: {targetBody.GetBandCount()}"
+            );
+        }
+
+        if (!targetBody.CanAddToBand(bandIndex))
+        {
+            int currentCount = targetBody.GetBandSatelliteCount(bandIndex);
+            throw new InvalidOperationException(
+                $"Cannot add station to band {bandIndex}: band is at capacity ({currentCount})"
+            );
+        }
+
+        // Generate name if not provided
+        name ??= stationDefinition?.Name ?? NameGenerator.GenerateStationName();
+
+        // Create the appropriate station subclass based on definition
+        var station = CreateStationInstance(name, stationDefinition);
+
+        // Add to body's satellites container
+        targetBody.SatellitesContainer.AddChild(station);
+
+        // Initialize with orbital parameters - this sets up position/velocity based on band
+        station.Initialize((Node3D)targetBody, bandIndex);
+
+        // Increment band count
+        targetBody.IncrementBandCount(bandIndex);
+
+        // If a definition is provided, enter construction mode
+        if (stationDefinition != null)
+        {
+            station.SetStationDefinition(stationDefinition);
+            Dictionary stationDetails = new Dictionary();
+            if (targetBody.GetType() == typeof(CelestialBody))
+            {
+                stationDetails.Add("parent_body", (CelestialBody)targetBody);
+                stationDetails.Add("parent_type", "CelestialBody");
+                stationDetails.Add("band_index", bandIndex);
+            }
+            else if (targetBody.GetType() == typeof(SatelliteBody))
+            {
+                stationDetails.Add("parent_body", (SatelliteBody)targetBody);
+                stationDetails.Add("parent_type", "SatelliteBody");
+                stationDetails.Add("band_index", bandIndex);
+            }
+            station.StartConstruction(stationDetails);
+
+            // Make visible but translucent during construction
+            station.Visible = true;
+            stationDetails.Add("station", station);
+            stationDetails.Add("name", station.Name.ToString());
+
+            // Emit signal to notify other systems
+            EmitStationConstruct(station, stationDetails);
+            SignalBus.Instance?.SafeEmitStationConstructionStarted(station);
+
+            GameLogger.Debug(
+                $"Started construction of station '{name}' in band {bandIndex} ({stationDefinition.ConstructionTime}s)"
+            );
+        }
+        else
+        {
+            GameLogger.Debug($"Created station '{name}' in band {bandIndex} around {targetBody}");
+        }
+
+        return station;
+    }
+
+    /// <summary>
+    /// Creates a station satellite at a specific orbital radius (continuous placement).
+    /// Used for bodies that don't use discrete orbit bands (stars, black holes, neutron stars).
+    /// </summary>
+    public StationSatellite CreateStationAtRadius(
+        IOrbitalBody targetBody,
+        float radius,
+        string? name = null,
+        StationDefinition? stationDefinition = null
+    )
+    {
+        if (targetBody == null)
+        {
+            throw new ArgumentNullException(nameof(targetBody), "Target body cannot be null");
+        }
+
+        if (radius <= targetBody.Radius)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(radius),
+                $"Radius {radius} must be greater than body radius {targetBody.Radius}"
+            );
+        }
+
+        name ??= stationDefinition?.Name ?? NameGenerator.GenerateStationName();
+
+        var station = CreateStationInstance(name, stationDefinition);
+
+        targetBody.SatellitesContainer.AddChild(station);
+
+        station.InitializeOrbitAtRadius(targetBody, radius);
+
+        if (stationDefinition != null)
+        {
+            station.SetStationDefinition(stationDefinition);
+            Dictionary locationDetails = new Dictionary();
+            if (targetBody.GetType() == typeof(CelestialBody))
+            {
+                locationDetails.Add("parent_body", (CelestialBody)targetBody);
+                locationDetails.Add("parent_type", "CelestialBody");
+            }
+            else if (targetBody.GetType() == typeof(SatelliteBody))
+            {
+                locationDetails.Add("parent_body", (SatelliteBody)targetBody);
+                locationDetails.Add("parent_type", "SatelliteBody");
+            }
+            station.StartConstruction(locationDetails);
+            station.Visible = true;
+
+            // Emit signal to notify other systems
+            EmitStationConstruct(
+                station,
+                new Dictionary { { "station", station }, { "name", station.Name.ToString() } }
+            );
+
+            GameLogger.Debug(
+                $"Started construction of station '{name}' at radius {radius} ({stationDefinition.ConstructionTime}s)"
+            );
+        }
+        else
+        {
+            GameLogger.Debug($"Created station '{name}' at radius {radius} around {targetBody}");
+        }
+
+        return station;
+    }
+
+    /// <summary>
+    /// Creates a StationSatellite instance. Behavior composition replaces the former
+    /// subclass dispatch — all station types are now StationSatellite with behaviors
+    /// wired from the definition's BehaviorRefs.
+    /// </summary>
+    private static StationSatellite CreateStationInstance(
+        string name,
+        StationDefinition? definition
+    )
+    {
+        return new StationSatellite { Name = name };
+    }
+
+}

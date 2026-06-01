@@ -1,0 +1,126 @@
+[gd_scene format=3 uid="uid://b8cmdlayer01a"]
+
+[ext_resource type="Script" uid="uid://djg5in6prq1yb" path="res://Scripts/UI/CommandLayer/CommandLayerController.cs" id="1_clc"]
+[ext_resource type="PackedScene" uid="uid://daut5m8r6t28a" path="res://UI/Components/ChamferedPanel.tscn" id="2_chmf"]
+[ext_resource type="PackedScene" uid="uid://b8cnstmenu01a" path="res://UI/Construction/ConstructionMenu.tscn" id="3_menu"]
+[ext_resource type="PackedScene" uid="uid://b8plcovly01a" path="res://UI/Construction/PlacementOverlay.tscn" id="4_ovly"]
+
+[node name="CommandLayer" type="Control" unique_id=900100001 node_paths=PackedStringArray("_constructButton", "_menu", "_overlay")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_clc")
+_constructButton = NodePath("CommandPanel/MarginContainer/CommandContainer/ConstructionCommandsContainer/ConstructButton")
+_menu = NodePath("ConstructionMenu")
+_overlay = NodePath("PlacementOverlay")
+
+[node name="CommandPanel" parent="." unique_id=1438371074 instance=ExtResource("2_chmf")]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.01
+anchor_top = 0.78
+anchor_right = 0.19
+anchor_bottom = 0.99
+grow_vertical = 0
+mouse_filter = 0
+ChamferCorner = 1
+ChamferPx = 60
+
+[node name="MarginContainer" type="MarginContainer" parent="CommandPanel" unique_id=1552453705]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="CommandContainer" type="VBoxContainer" parent="CommandPanel/MarginContainer" unique_id=858235728]
+layout_mode = 2
+
+[node name="CommandDetails" type="HBoxContainer" parent="CommandPanel/MarginContainer/CommandContainer" unique_id=1066974358]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.3
+
+[node name="CommandActionsLabel" type="RichTextLabel" parent="CommandPanel/MarginContainer/CommandContainer/CommandDetails" unique_id=1356600632]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/normal_font_size = 10
+text = "Command Actions"
+fit_content = true
+scroll_active = false
+
+[node name="VSeparator" type="VSeparator" parent="CommandPanel/MarginContainer/CommandContainer/CommandDetails" unique_id=293029248]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AccessoryDetailsLabel" type="RichTextLabel" parent="CommandPanel/MarginContainer/CommandContainer/CommandDetails" unique_id=607761037]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/normal_font_size = 10
+text = "Reg 04:A60C"
+fit_content = true
+scroll_active = false
+horizontal_alignment = 2
+
+[node name="Container" type="Container" parent="CommandPanel/MarginContainer/CommandContainer/CommandDetails" unique_id=1365643973]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ConstructionCommandsContainer" type="HBoxContainer" parent="CommandPanel/MarginContainer/CommandContainer" unique_id=742282956]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ConstructButton" type="Button" parent="CommandPanel/MarginContainer/CommandContainer/ConstructionCommandsContainer" unique_id=688348369]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 4.0
+text = "Construct"
+
+[node name="DemolishButton" type="Button" parent="CommandPanel/MarginContainer/CommandContainer/ConstructionCommandsContainer" unique_id=1111089482]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Demolish"
+
+[node name="VSeparator" type="VSeparator" parent="CommandPanel/MarginContainer/CommandContainer/ConstructionCommandsContainer" unique_id=2048449498]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.5
+
+[node name="ResearchLawContainer" type="HBoxContainer" parent="CommandPanel/MarginContainer/CommandContainer" unique_id=1664476946]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ResearchButton" type="Button" parent="CommandPanel/MarginContainer/CommandContainer/ResearchLawContainer" unique_id=104031285]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Research"
+
+[node name="LawButton" type="Button" parent="CommandPanel/MarginContainer/CommandContainer/ResearchLawContainer" unique_id=346874274]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Law"
+
+[node name="LaborPRContainer" type="HBoxContainer" parent="CommandPanel/MarginContainer/CommandContainer" unique_id=505569697]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LaborButton" type="Button" parent="CommandPanel/MarginContainer/CommandContainer/LaborPRContainer" unique_id=1586552826]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Labor"
+
+[node name="PRButton" type="Button" parent="CommandPanel/MarginContainer/CommandContainer/LaborPRContainer" unique_id=758484248]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "PR"
+
+[node name="ConstructionMenu" parent="." instance=ExtResource("3_menu")]
+
+[node name="PlacementOverlay" parent="." instance=ExtResource("4_ovly")]

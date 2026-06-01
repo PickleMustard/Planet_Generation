@@ -1,0 +1,37 @@
+# Tooltip strings for subtype gen-range UI controls.
+# Keyed as "<block>.<knob>". Loaded by Scripts/UtilityLibrary/UI/GenSettingTooltips.cs
+# and surfaced by the SubtypeEditor tabs + IndividualPlanetGenerator SpinBoxes.
+# Keep entries to one sentence; suffix a "(units / hint)" fragment when useful.
+
+tooltips:
+  # --- Body-level (IndividualPlanetGenerator inline controls) ---
+  body.mass: "Body mass in arbitrary game units. Drives gravity and orbital coupling."
+  body.size: "Body radius in mesh units. Scales the generated sphere."
+
+  # --- Mesh block (Phase 1 keys) ---
+  mesh.subdivisions: "Icosahedron subdivision count. Higher = denser base mesh (geometric growth, 1-5)."
+  mesh.num_abberations: "Random vertex perturbations applied per deformation cycle. 0 = pristine icosahedral grid."
+  mesh.num_deformation_cycles: "Number of mesh deformation passes. More = smoother continents, slower generation."
+
+  # --- Tectonic block (Phase 1 keys) ---
+  tectonics.num_continents: "Number of tectonic plates to spawn. More plates = more boundaries, more relief."
+  tectonics.stress_scale: "Multiplier on plate-boundary stress. Higher = sharper mountain belts."
+  tectonics.shear_scale: "Multiplier on transform-fault shear. Higher = pronounced strike-slip relief."
+  tectonics.max_propagation_distance: "Limit on how far boundary stress diffuses inland (sphere-radius fraction)."
+  tectonics.propagation_falloff: "Falloff curve sharpness for diffused boundary stress. Higher = tighter coastal bands."
+  tectonics.inactive_stress_threshold: "Stress below this is treated as no-op. Raise to flatten low-stress regions."
+  tectonics.general_height_scale: "Master multiplier on terrain height. Affects every uplift contribution."
+  tectonics.general_shear_scale: "Master multiplier on shear deformation across the surface."
+  tectonics.general_compression_scale: "Master multiplier on compression uplift at convergent boundaries."
+  tectonics.general_transform_scale: "Master multiplier on transform-fault offset displacement."
+  tectonics.boundary_smoothing_iterations: "Laplacian smoothing passes over per-edge boundary stress. 0 = raw stress field."
+  tectonics.boundary_smoothing_weight: "Blend weight (0-1) toward neighbor mean per smoothing pass. Higher = stronger smoothing."
+  tectonics.sample_velocity_at_edge_midpoint: "When true, sample plate velocity at edge midpoint to eliminate ω×r discontinuity across boundaries."
+  tectonics.max_continent_rotation: "Cap on rotational ω×r contribution to plate movement (degrees). Limits extreme outliers."
+
+  # --- Spherical harmonics block (Phase 3 keys) ---
+  spherical_harmonics.amplitude: "Overall magnitude of the harmonic displacement layer (rad-unit-fraction)."
+  spherical_harmonics.band_scale_l0: "Scale of the constant (l=0) band. Lifts/lowers the whole surface uniformly."
+  spherical_harmonics.band_scale_l1: "Scale of the dipole (l=1) band. Creates hemispherical bias."
+  spherical_harmonics.band_scale_l2: "Scale of the quadrupole (l=2) band. Creates oblateness / four-lobe relief."
+  spherical_harmonics.band_scale_l3: "Scale of the octupole (l=3) band. Adds fine-grained six-lobe detail."

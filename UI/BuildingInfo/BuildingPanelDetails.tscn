@@ -1,0 +1,340 @@
+[gd_scene format=3 uid="uid://cwq8swb4wvw66"]
+
+[ext_resource type="Script" uid="uid://ctvs8aixytycq" path="res://Scripts/UI/BuildingInfo/BuildingPanelDetails.cs" id="1_buildingpanel"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_r40mj"]
+[ext_resource type="PackedScene" uid="uid://bn60vp4qos372" path="res://UI/BuildingInfo/RecipeDisplay.tscn" id="2_recipe"]
+
+[node name="BuildingPanelDetails" type="Control" unique_id=863400286]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_r40mj")
+script = ExtResource("1_buildingpanel")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=727004377]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 12
+
+[node name="TopStrip" type="HBoxContainer" parent="Layout" unique_id=268273434]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.55
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 12
+
+[node name="RenderTile" type="PanelContainer" parent="Layout/TopStrip" unique_id=1966130558]
+custom_minimum_size = Vector2(220, 220)
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"PaperPanel"
+
+[node name="RenderIcon" type="TextureRect" parent="Layout/TopStrip/RenderTile" unique_id=1668259658]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RightVBox" type="VBoxContainer" parent="Layout/TopStrip" unique_id=1865155429]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Layout/TopStrip/RightVBox" unique_id=592231622]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 8
+
+[node name="StateTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header" unique_id=1757087129]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.4
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"PaperPanel"
+
+[node name="Row" type="HBoxContainer" parent="Layout/TopStrip/RightVBox/Header/StateTile" unique_id=2083726548]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 6
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row" unique_id=2071853563]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "WORK · STATE"
+
+[node name="WorkLabel" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row" unique_id=1943432125]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "0%"
+
+[node name="StateDot" type="ColorRect" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row" unique_id=1833597714]
+custom_minimum_size = Vector2(10, 10)
+layout_mode = 2
+size_flags_vertical = 4
+theme = ExtResource("1_r40mj")
+color = Color(0.353, 0.314, 0.282, 1)
+
+[node name="StateLabel" type="Label" parent="Layout/TopStrip/RightVBox/Header/StateTile/Row" unique_id=1640963142]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+text = "Idle"
+
+[node name="CycleTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header" unique_id=176867115]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/CycleTile" unique_id=1584437467]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/CycleTile/VBox" unique_id=449123873]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "CYCLE"
+
+[node name="CycleValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/CycleTile/VBox" unique_id=683606286]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "—"
+
+[node name="EfficiencyTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header" unique_id=1839736349]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/EfficiencyTile" unique_id=57337451]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/EfficiencyTile/VBox" unique_id=254488862]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "EFFICIENCY"
+
+[node name="EfficiencyValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/EfficiencyTile/VBox" unique_id=1255752527]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "—"
+
+[node name="PowerTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header" unique_id=1979553166]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/PowerTile" unique_id=565902531]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/PowerTile/VBox" unique_id=1652977089]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "POWER"
+
+[node name="PowerValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/PowerTile/VBox" unique_id=2009894667]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "—"
+
+[node name="GridTile" type="PanelContainer" parent="Layout/TopStrip/RightVBox/Header" unique_id=917300011]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"PaperPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/Header/GridTile" unique_id=917300012]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+
+[node name="Caption" type="Label" parent="Layout/TopStrip/RightVBox/Header/GridTile/VBox" unique_id=917300013]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "GRID"
+
+[node name="GridValue" type="Label" parent="Layout/TopStrip/RightVBox/Header/GridTile/VBox" unique_id=917300014]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "—"
+
+[node name="GridStatus" type="Label" parent="Layout/TopStrip/RightVBox/Header/GridTile/VBox" unique_id=917300015]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "no grid"
+
+[node name="OpenBtn" type="Button" parent="Layout/TopStrip/RightVBox/Header/GridTile/VBox" unique_id=917300016]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "Open Grid"
+
+[node name="AssemblyLine" type="HBoxContainer" parent="Layout/TopStrip/RightVBox" unique_id=929329746]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 8
+
+[node name="InputLabel" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine" unique_id=1985155705]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "In"
+
+[node name="InputSlotsGrid" type="GridContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine" unique_id=1428694924]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="FeedArrow" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine" unique_id=657675159]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "▶"
+
+[node name="ProgressBox" type="VBoxContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine" unique_id=733297310]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 4
+
+[node name="WorkProgressBar" type="ProgressBar" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox" unique_id=155857438]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+max_value = 1.0
+
+[node name="WorkLabels" type="HBoxContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox" unique_id=1013484001]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+
+[node name="WorkNum" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox/WorkLabels" unique_id=70502177]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+text = "work · 0"
+
+[node name="WorkDenom" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine/ProgressBox/WorkLabels" unique_id=1105625876]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+text = "req · 0"
+horizontal_alignment = 2
+
+[node name="OutArrow" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine" unique_id=1854277565]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+text = "▶"
+
+[node name="OutputLabel" type="Label" parent="Layout/TopStrip/RightVBox/AssemblyLine" unique_id=783258320]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "Out"
+
+[node name="OutputSlotsGrid" type="GridContainer" parent="Layout/TopStrip/RightVBox/AssemblyLine" unique_id=1462063426]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="Bottom" type="HSplitContainer" parent="Layout" unique_id=22769606]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.45
+theme = ExtResource("1_r40mj")
+
+[node name="RecipePane" type="VBoxContainer" parent="Layout/Bottom" unique_id=847381802]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 6
+
+[node name="RecipeHeader" type="Label" parent="Layout/Bottom/RecipePane" unique_id=219554638]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "RECIPE"
+
+[node name="RecipeDisplay" parent="Layout/Bottom/RecipePane" unique_id=249723483 instance=ExtResource("2_recipe")]
+layout_mode = 2
+
+[node name="Bus" type="HBoxContainer" parent="Layout/Bottom/RecipePane" unique_id=1389426943]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 0
+
+[node name="InputsScroll" type="ScrollContainer" parent="Layout/Bottom/RecipePane/Bus" unique_id=541557924]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+horizontal_scroll_mode = 0
+
+[node name="InputsList" type="VBoxContainer" parent="Layout/Bottom/RecipePane/Bus/InputsScroll" unique_id=866825891]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 4
+
+[node name="BusLine" type="ColorRect" parent="Layout/Bottom/RecipePane/Bus" unique_id=121853659]
+custom_minimum_size = Vector2(4, 0)
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+color = Color(0.165, 0.145, 0.125, 1)
+
+[node name="OutputsScroll" type="ScrollContainer" parent="Layout/Bottom/RecipePane/Bus" unique_id=2109554807]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+horizontal_scroll_mode = 0
+
+[node name="OutputsList" type="VBoxContainer" parent="Layout/Bottom/RecipePane/Bus/OutputsScroll" unique_id=642922920]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 4
+
+[node name="NodesPane" type="VBoxContainer" parent="Layout/Bottom" unique_id=2144352702]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 6
+
+[node name="NodesHeader" type="Label" parent="Layout/Bottom/NodesPane" unique_id=1630155640]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "RESOURCE NODES & LINKS"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Bottom/NodesPane" unique_id=283108837]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_r40mj")
+
+[node name="NodesList" type="VBoxContainer" parent="Layout/Bottom/NodesPane/Scroll" unique_id=2073609735]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 6

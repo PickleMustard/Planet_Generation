@@ -1,0 +1,12 @@
+categories:
+  - name: Chemical
+    description: Conventional rocket engines that use chemical reactions for propulsion. Provides high thrust suitable for launch and orbital maneuvers.
+
+  - name: Electric
+    description: Electric propulsion systems that use electrical power to accelerate propellant. Offers high specific impulse but typically low thrust.
+
+  - name: Nuclear
+    description: Propulsion systems that use nuclear reactions (fission) to heat propellant. Provides higher specific impulse than chemical rockets with moderate thrust.
+
+  - name: Fusion
+    description: Advanced theoretical propulsion systems using nuclear fusion. Represents cutting-edge technology with exceptional performance potential.

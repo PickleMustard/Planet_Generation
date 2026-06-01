@@ -1,0 +1,50 @@
+ships:
+  - name: Light_Courier
+    dry_mass: 100
+    cargo_capacity: 50
+    fuel_capacity: 100
+    engine_category: Electric
+    work_required: 10
+    required_resources:
+      Steel: 50
+      Electronics: 30
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/light_courier"
+
+  - name: Swift_Courier
+    dry_mass: 250
+    cargo_capacity: 150
+    fuel_capacity: 200
+    engine_category: Chemical
+    work_required: 15
+    required_resources:
+      Steel: 100
+      Electronics: 60
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/swift_courier"
+
+  - name: Express_Courier
+    dry_mass: 500
+    cargo_capacity: 300
+    fuel_capacity: 500
+    engine_category: Chemical
+    work_required: 20
+    required_resources:
+      Steel: 200
+      Electronics: 100
+      Composites: 50
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/express_courier"
+
+  - name: Hyper_Courier
+    dry_mass: 1000
+    cargo_capacity: 500
+    fuel_capacity: 1500
+    engine_category: Nuclear
+    work_required: 40
+    required_resources:
+      Steel: 400
+      Electronics: 200
+      Composites: 100
+    icon:
+      base_path: "res://Assets/Icons/Ships/courier/hyper_courier"

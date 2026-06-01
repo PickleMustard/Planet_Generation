@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://c2i5cd20gno0n"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_dogff"]
+[ext_resource type="Script" uid="uid://b3afm8lovf8op" path="res://Scripts/UI/BuildingInfo/ResourceRateItem.cs" id="1_rate"]
+
+[node name="ResourceRateItem" type="HBoxContainer" unique_id=95536726]
+theme = ExtResource("1_dogff")
+theme_override_constants/separation = 8
+script = ExtResource("1_rate")
+
+[node name="ResourceIcon" type="TextureRect" parent="." unique_id=399070135]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+theme = ExtResource("1_dogff")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ResourceNameLabel" type="Label" parent="." unique_id=1277680570]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_dogff")
+text = "Resource Name"
+vertical_alignment = 1
+
+[node name="RateLabel" type="Label" parent="." unique_id=1962794629]
+layout_mode = 2
+theme = ExtResource("1_dogff")
+theme_type_variation = &"LabelMono"
+text = "+0.0/s"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="TagBadge" type="Label" parent="." unique_id=884261037]
+visible = false
+layout_mode = 2
+theme = ExtResource("1_dogff")
+theme_type_variation = &"LabelMono"
+text = "tag"
+horizontal_alignment = 2
+vertical_alignment = 1

@@ -1,0 +1,134 @@
+[gd_scene format=3 uid="uid://b86337raoxhv2"]
+
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitWindow.cs" id="1_window"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitOrbitCamera.cs" id="2_orbitcam"]
+[ext_resource type="PackedScene" path="res://UI/LogisticsUnitWindow/LogisticsUnitCartouchePanel.tscn" id="3_cartouche"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitTabbedPanel.cs" id="4_tabbed"]
+[ext_resource type="Script" path="res://Scripts/UI/LogisticsUnitWindow/LogisticsUnitInfoPanel.cs" id="5_info"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="6_theme"]
+[ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="7_elite"]
+
+[node name="LogisticsUnitWindow" type="Control" node_paths=PackedStringArray("_closeButton", "_backButton", "_cartouchePanel", "_tabbedPanel", "_infoPanel", "_orbitCamera")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("6_theme")
+script = ExtResource("1_window")
+_closeButton = NodePath("CloseButton")
+_backButton = NodePath("BackButton")
+_cartouchePanel = NodePath("LogisticsUnitCartouchePanel")
+_tabbedPanel = NodePath("TabbedPanel")
+_infoPanel = NodePath("InfoPanel")
+_orbitCamera = NodePath("LogisticsUnitOrbitCamera")
+
+[node name="LogisticsUnitOrbitCamera" type="Node" parent="."]
+script = ExtResource("2_orbitcam")
+
+[node name="LogisticsUnitCartouchePanel" parent="." instance=ExtResource("3_cartouche")]
+layout_mode = 1
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 396.0
+offset_bottom = 392.0
+grow_horizontal = 1
+grow_vertical = 1
+
+[node name="TabbedPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -456.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 148.0
+grow_horizontal = 0
+mouse_filter = 1
+theme = ExtResource("6_theme")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("4_tabbed")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabbedPanel"]
+layout_mode = 2
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 8
+
+[node name="TabBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer"]
+layout_mode = 2
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 4
+
+[node name="SubButtonBar" type="HBoxContainer" parent="TabbedPanel/VBoxContainer"]
+layout_mode = 2
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 4
+
+[node name="InfoPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -240.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 1
+theme = ExtResource("6_theme")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("5_info")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="InfoPanel"]
+layout_mode = 2
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="InfoPanel/VBoxContainer"]
+layout_mode = 2
+theme = ExtResource("6_theme")
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 22
+text = "Details"
+
+[node name="Columns" type="HBoxContainer" parent="InfoPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("6_theme")
+theme_override_constants/separation = 24
+
+[node name="CloseButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -64.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 56.0
+grow_horizontal = 0
+theme_type_variation = &"ButtonDanger"
+theme_override_fonts/font = ExtResource("7_elite")
+theme_override_font_sizes/font_size = 20
+text = "✕"
+
+[node name="BackButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -148.0
+offset_top = 16.0
+offset_right = -72.0
+offset_bottom = 56.0
+grow_horizontal = 0
+tooltip_text = "Back one panel"
+text = "← Back"

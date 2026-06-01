@@ -1,0 +1,10 @@
+id: small_merge
+display_name: Small Merge
+vertices:
+  - [0.69, 0.01]
+  - [0, 1]
+  - [-0.72, 0.01]
+sides:
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: import, state: solid }] }
+  - { slots: [{ kind: export, state: solid }] }

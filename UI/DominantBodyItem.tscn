@@ -1,0 +1,100 @@
+[gd_scene format=3 uid="uid://bgkumw0vnb85j"]
+
+[ext_resource type="Script" uid="uid://1t8lgwlhuhuv" path="res://UI/DominantBodyItem.cs" id="1_abamx"]
+[ext_resource type="Script" uid="uid://cl0fnsihfju2q" path="res://UI/ToggleSection.cs" id="2_62hv4"]
+
+[node name="BodyItem" type="HBoxContainer" unique_id=1656568985]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_abamx")
+
+[node name="MainContent" type="VBoxContainer" parent="." unique_id=2140943967]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="MainContent" unique_id=1824473967]
+layout_mode = 2
+
+[node name="Toggle" type="Button" parent="MainContent/Header" unique_id=562910609]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Star"
+script = ExtResource("2_62hv4")
+content_path = NodePath("../../Content")
+
+[node name="RemoveItem" type="Button" parent="MainContent/Header" unique_id=898161639]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.1
+text = "-"
+
+[node name="Content" type="VBoxContainer" parent="MainContent" unique_id=1272361545]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StartAngleContent" type="GridContainer" parent="MainContent/Content" unique_id=1863325899]
+layout_mode = 2
+columns = 2
+
+[node name="LabelStartAngle" type="Label" parent="MainContent/Content/StartAngleContent" unique_id=1200170104]
+layout_mode = 2
+text = "Start Angle"
+
+[node name="startAngle" type="SpinBox" parent="MainContent/Content/StartAngleContent" unique_id=1132419747]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -10000.0
+max_value = 10000.0
+step = 0.0
+
+[node name="InclinationContent" type="GridContainer" parent="MainContent/Content" unique_id=992907851]
+layout_mode = 2
+columns = 2
+
+[node name="LabelVertOffset" type="Label" parent="MainContent/Content/InclinationContent" unique_id=1709061402]
+layout_mode = 2
+text = "Inclination"
+
+[node name="inclination" type="SpinBox" parent="MainContent/Content/InclinationContent" unique_id=1937094701]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -10000.0
+max_value = 10000.0
+step = 0.0
+
+[node name="BodyTypeContent" type="HBoxContainer" parent="MainContent/Content" unique_id=212172464]
+layout_mode = 2
+
+[node name="BodyTypeLabel" type="Label" parent="MainContent/Content/BodyTypeContent" unique_id=1787146135]
+layout_mode = 2
+text = "Body Type"
+
+[node name="OptionButton" type="OptionButton" parent="MainContent/Content/BodyTypeContent" unique_id=498983656]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MassContent" type="HBoxContainer" parent="MainContent/Content" unique_id=803415815]
+layout_mode = 2
+
+[node name="MassLabel" type="Label" parent="MainContent/Content/MassContent" unique_id=1908347515]
+layout_mode = 2
+text = "Mass"
+
+[node name="mass" type="SpinBox" parent="MainContent/Content/MassContent" unique_id=1045660556]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1
+
+[node name="SizeContent" type="HBoxContainer" parent="MainContent/Content" unique_id=2067755011]
+layout_mode = 2
+
+[node name="SizeLabel" type="Label" parent="MainContent/Content/SizeContent" unique_id=170655612]
+layout_mode = 2
+text = "Size"
+
+[node name="size" type="SpinBox" parent="MainContent/Content/SizeContent" unique_id=1189276827]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10000.0
+step = 0.1

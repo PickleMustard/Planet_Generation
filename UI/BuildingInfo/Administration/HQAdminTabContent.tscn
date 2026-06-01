@@ -1,0 +1,142 @@
+[gd_scene format=3 uid="uid://cucubvlcw4nob"]
+
+[ext_resource type="Script" uid="uid://bmjkt7mj052b7" path="res://Scripts/UI/BuildingInfo/Administration/HQAdminTabContent.cs" id="1_hqcontent"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_s0m0a"]
+
+[node name="HQAdminTabContent" type="Control" unique_id=813178095 node_paths=PackedStringArray("BuildingNameValue", "TreasuryValue", "TreasuryDelta", "WorkforceValue", "ReputationValue", "ReputationScore", "ContractsList", "HeadlinesList")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_s0m0a")
+script = ExtResource("1_hqcontent")
+BuildingNameValue = NodePath("RootHBox/LeftCol/BuildingNameValue")
+TreasuryValue = NodePath("RootHBox/LeftCol/TreasuryValue")
+TreasuryDelta = NodePath("RootHBox/LeftCol/TreasuryDelta")
+WorkforceValue = NodePath("RootHBox/LeftCol/WorkforceValue")
+ReputationValue = NodePath("RootHBox/RightCol/ReputationValue")
+ReputationScore = NodePath("RootHBox/RightCol/ReputationScore")
+ContractsList = NodePath("RootHBox/MiddleCol/ContractsList")
+HeadlinesList = NodePath("RootHBox/RightCol/HeadlinesList")
+
+[node name="RootHBox" type="HBoxContainer" parent="." unique_id=430912156]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_s0m0a")
+theme_override_constants/separation = 12
+
+[node name="LeftCol" type="VBoxContainer" parent="RootHBox" unique_id=1661894771]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_s0m0a")
+theme_override_constants/separation = 6
+
+[node name="BuildingNameLabel" type="Label" parent="RootHBox/LeftCol" unique_id=1982070083]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+theme_type_variation = &"LabelMono"
+text = "BUILDING"
+
+[node name="BuildingNameValue" type="Label" parent="RootHBox/LeftCol" unique_id=1434414236]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+text = "Company Headquarters"
+
+[node name="HSep1" type="HSeparator" parent="RootHBox/LeftCol" unique_id=603625128]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+
+[node name="TreasuryLabel" type="Label" parent="RootHBox/LeftCol" unique_id=840923609]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+theme_type_variation = &"LabelMono"
+text = "TREASURY"
+
+[node name="TreasuryValue" type="Label" parent="RootHBox/LeftCol" unique_id=243773695]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+text = "§ 482,300"
+
+[node name="TreasuryDelta" type="Label" parent="RootHBox/LeftCol" unique_id=1425614401]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.29, 0.478, 0.227, 1)
+text = "+12.4k/min · runway 14h 22m"
+
+[node name="HSep2" type="HSeparator" parent="RootHBox/LeftCol" unique_id=746080477]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+
+[node name="WorkforceLabel" type="Label" parent="RootHBox/LeftCol" unique_id=879387134]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+theme_type_variation = &"LabelMono"
+text = "WORKFORCE"
+
+[node name="WorkforceValue" type="Label" parent="RootHBox/LeftCol" unique_id=1573116594]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+text = "142 / 180 · morale fair"
+
+[node name="MiddleCol" type="VBoxContainer" parent="RootHBox" unique_id=370247161]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_s0m0a")
+theme_override_constants/separation = 6
+
+[node name="ContractsHeader" type="Label" parent="RootHBox/MiddleCol" unique_id=1951418260]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+theme_type_variation = &"LabelMono"
+text = "CONTRACTS · LEDGER"
+
+[node name="ContractsList" type="VBoxContainer" parent="RootHBox/MiddleCol" unique_id=206539966]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_s0m0a")
+theme_override_constants/separation = 4
+
+[node name="RightCol" type="VBoxContainer" parent="RootHBox" unique_id=2147253743]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_s0m0a")
+theme_override_constants/separation = 6
+
+[node name="ReputationLabel" type="Label" parent="RootHBox/RightCol" unique_id=228768860]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+theme_type_variation = &"LabelMono"
+text = "REPUTATION"
+
+[node name="ReputationValue" type="Label" parent="RootHBox/RightCol" unique_id=1044342914]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+text = "B+"
+
+[node name="ReputationScore" type="Label" parent="RootHBox/RightCol" unique_id=96162603]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+text = "6,420 pts · +38 today"
+
+[node name="HSep3" type="HSeparator" parent="RootHBox/RightCol" unique_id=964312578]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+
+[node name="HeadlinesLabel" type="Label" parent="RootHBox/RightCol" unique_id=705578083]
+layout_mode = 2
+theme = ExtResource("1_s0m0a")
+theme_type_variation = &"LabelMono"
+text = "HEADLINES"
+
+[node name="HeadlinesList" type="VBoxContainer" parent="RootHBox/RightCol" unique_id=1386847402]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_s0m0a")
+theme_override_constants/separation = 4
