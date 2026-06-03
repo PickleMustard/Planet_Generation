@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Godot.Collections;
+using ProceduralGeneration.ColorSystem;
 using ProceduralGeneration.Data;
 using Structures;
 using Structures.Enums;
@@ -48,11 +49,16 @@ public class AUProbabilityManager
     }
 
     /// <summary>
-    /// Selects a BodyClassification for a CelestialBodyType based on AU distance.
+    /// Selects a <see cref="BodyClassification"/> for any <see cref="OrbitalBodyType"/> from one 1D
+    /// AU range table keyed on <paramref name="effectiveAU"/> (the body's cumulative distance from
+    /// the system center). When the body is a satellite, <paramref name="immediateParentSubtypeId"/>
+    /// (its parent's subtype id) selects an optional per-parent-subtype weight modifier set that
+    /// scales the matched range's base weights.
     /// </summary>
     public BodyClassification SelectClassification(
-        CelestialBodyType bodyType,
-        float distanceAU,
+        OrbitalBodyType bodyType,
+        float effectiveAU,
+        string? immediateParentSubtypeId = null,
         BodyClassification? manualOverride = null
     )
     {
@@ -66,38 +72,25 @@ public class AUProbabilityManager
         {
             GD.PrintErr($"No subtype found for {bodyType}");
             var defaultSubtype = config.DefaultSubtype ?? AUProbabilityLoader.GetDefaultSubtype(bodyType);
-            return BodyClassification.FromLegacy(bodyType, defaultSubtype);
+            return BodyClassification.FromType(bodyType, defaultSubtype);
         }
 
-        var subtype = SelectSubtypeFromConfig(config, distanceAU);
-        return BodyClassification.FromLegacy(bodyType, subtype);
-    }
-
-    public object? SelectSatelliteSubtype(
-        SatelliteBodyType satType,
-        CelestialBodyType parentType,
-        float distanceFromParentAU,
-        object? manualOverride = null
-    )
-    {
-        if (manualOverride != null)
+        var range = FindMatchingRange(config, effectiveAU);
+        if (range == null || range.SubtypeDistribution.Count == 0)
         {
-            return manualOverride;
+            var defaultSubtype = config.DefaultSubtype ?? AUProbabilityLoader.GetDefaultSubtype(bodyType);
+            return BodyClassification.FromType(bodyType, defaultSubtype);
         }
 
-        var config = AUProbabilityLoader.LoadSatelliteConfig();
-
-        if (config.ParentBodyInfluence.TryGetValue(parentType, out var parentConfig))
+        IReadOnlyDictionary<string, float>? modifiers = null;
+        if (!string.IsNullOrEmpty(immediateParentSubtypeId))
         {
-            return SelectSubtypeFromConfig(parentConfig, distanceFromParentAU);
+            config.ParentSubtypeModifiers.TryGetValue(immediateParentSubtypeId, out var m);
+            modifiers = m;
         }
 
-        if (config.DefaultConfig != null)
-        {
-            return SelectSubtypeFromConfig(config.DefaultConfig, distanceFromParentAU);
-        }
-
-        return SatelliteSubtype.RockyMoon;
+        var subtype = WeightedRandomSelection(range.SubtypeDistribution, modifiers);
+        return BodyClassification.FromType(bodyType, subtype);
     }
 
     public object? SelectBeltSubtype(
@@ -130,9 +123,14 @@ public class AUProbabilityManager
     private static AUProbabilityRange? FindMatchingRange(
         AUProbabilityConfig config,
         float distanceAU
+    ) => FindMatchingRange(config.AURanges, distanceAU);
+
+    private static AUProbabilityRange? FindMatchingRange(
+        Array<AUProbabilityRange> ranges,
+        float distanceAU
     )
     {
-        foreach (var range in config.AURanges)
+        foreach (var range in ranges)
         {
             bool inRange =
                 distanceAU >= range.MinAU
@@ -146,15 +144,40 @@ public class AUProbabilityManager
         return null;
     }
 
-    private object WeightedRandomSelection(Array<SubtypeProbability> probabilities)
+    private object WeightedRandomSelection(Array<SubtypeProbability> probabilities) =>
+        WeightedRandomSelection(probabilities, null);
+
+    /// <summary>
+    /// Weighted random pick where each candidate's weight is scaled by an optional multiplier keyed
+    /// on the candidate's stable subtype id string (used for parent-subtype bias, e.g. an ice giant
+    /// parent favoring volcanic moons). Unlisted ids default to a 1.0 multiplier.
+    /// </summary>
+    private object WeightedRandomSelection(
+        Array<SubtypeProbability> probabilities,
+        IReadOnlyDictionary<string, float>? modifiers
+    )
     {
-        float total = probabilities.Sum(p => p.Weight);
+        float EffectiveWeight(SubtypeProbability p)
+        {
+            float multiplier = 1.0f;
+            if (modifiers != null)
+            {
+                string? id = BiomeIdMapper.SubtypeObjectToId(p.Subtype);
+                if (id != null && modifiers.TryGetValue(id, out var m))
+                {
+                    multiplier = m;
+                }
+            }
+            return p.Weight * multiplier;
+        }
+
+        float total = probabilities.Sum(EffectiveWeight);
         float random = _rng.Randf() * total;
 
         float cumulative = 0;
         foreach (var prob in probabilities)
         {
-            cumulative += prob.Weight;
+            cumulative += EffectiveWeight(prob);
             if (random <= cumulative)
             {
                 return prob.Subtype;

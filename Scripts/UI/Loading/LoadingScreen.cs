@@ -31,6 +31,15 @@ namespace UI.Loading
         private Label? _totalBodiesLabel;
 
         [Export]
+        private Label? _dominantBodiesLabel;
+
+        [Export]
+        private Label? _planetaryBodiesLabel;
+
+        [Export]
+        private Label? _satelliteBodiesLabel;
+
+        [Export]
         private Label? _timeElapsedLabel;
 
         [Export]
@@ -46,6 +55,11 @@ namespace UI.Loading
         private string? _selectedTemplate;
         private int _totalBodies = 0;
         private int _completedBodies = 0;
+
+        // Per-category totals, derived from the body statuses once they are created.
+        private int _dominantTotal = 0;
+        private int _planetaryTotal = 0;
+        private int _satelliteTotal = 0;
         private float _startTime = 0f;
         private float _lastUpdateTime = 0f;
         private readonly Dictionary<string, LoadingBodyItem> _bodyItems = new();
@@ -142,7 +156,16 @@ namespace UI.Loading
                 _templateLabel.Text = "None";
 
             if (_totalBodiesLabel != null)
-                _totalBodiesLabel.Text = "0";
+                _totalBodiesLabel.Text = "0/0";
+
+            if (_dominantBodiesLabel != null)
+                _dominantBodiesLabel.Text = "0/0";
+
+            if (_planetaryBodiesLabel != null)
+                _planetaryBodiesLabel.Text = "0/0";
+
+            if (_satelliteBodiesLabel != null)
+                _satelliteBodiesLabel.Text = "0/0";
 
             if (_timeElapsedLabel != null)
                 _timeElapsedLabel.Text = "0.0s";
@@ -270,25 +293,8 @@ namespace UI.Loading
                         _totalBodies += (int)belt["belt_number"];
                 }
 
-                // Count planetary satellites
-                foreach (var body in templateData.Planetary)
-                {
-                    if (
-                        body.ContainsKey("satellites")
-                        && body["satellites"].Obj
-                            is Godot.Collections.Array<Godot.Collections.Dictionary> sats
-                    )
-                    {
-                        _totalBodies += sats.Count;
-                    }
-                    else if (
-                        body.ContainsKey("satellites")
-                        && body["satellites"].Obj is Godot.Collections.Array satArray
-                    )
-                    {
-                        _totalBodies += satArray.Count;
-                    }
-                }
+                // Count flattened satellites
+                _totalBodies += templateData.Satellites.Count;
 
                 // Update UI with template info
                 UpdateTemplateInfo();
@@ -370,10 +376,7 @@ namespace UI.Loading
             if (_templateLabel != null)
                 _templateLabel.Text = _selectedTemplate ?? "Unknown";
 
-            if (_totalBodiesLabel != null)
-                _totalBodiesLabel.Text = _totalBodies.ToString();
-
-            UpdateBodiesHeader();
+            UpdateCounters();
         }
 
         /// <summary>
@@ -442,35 +445,73 @@ namespace UI.Loading
                 };
                 _bodyStatuses[name] = status;
                 CreateBodyItem(status);
+            }
 
-                // Add satellites indented under their parent
-                if (
-                    body.ContainsKey("satellites")
-                    && body["satellites"].Obj is Godot.Collections.Array satellites
-                )
+            // Add flattened satellites (indented). Each declares its parent by name; the flat
+            // list is already authored parent-before-child, matching SystemGenerator's order.
+            foreach (var sat in templateData.Satellites)
+            {
+                var satName = sat
+                    .GetValueOrDefault("name", Variant.From(string.Empty))
+                    .AsString();
+                if (string.IsNullOrEmpty(satName))
+                    continue;
+
+                var satStatus = new BodyStatus
                 {
-                    foreach (Godot.Collections.Dictionary sat in satellites)
-                    {
-                        var satName = sat
-                            .GetValueOrDefault("name", Variant.From(string.Empty))
-                            .AsString();
-                        if (string.IsNullOrEmpty(satName))
-                            continue;
+                    Name = satName,
+                    BodyType = "Satellite",
+                    Stage = "Waiting",
+                    StartTime = (float)Time.GetTicksMsec() / 1000f,
+                    IndentLevel = 1,
+                };
+                _bodyStatuses[satName] = satStatus;
+                CreateBodyItem(satStatus);
+            }
 
-                        var satStatus = new BodyStatus
-                        {
-                            Name = satName,
-                            BodyType = "Satellite",
-                            Stage = "Waiting",
-                            StartTime = (float)Time.GetTicksMsec() / 1000f,
-                            IndentLevel = 1,
-                        };
-                        _bodyStatuses[satName] = satStatus;
-                        CreateBodyItem(satStatus);
-                    }
+            // Derive per-category totals from the created statuses so the split counter and the
+            // overall total are guaranteed consistent with the right-side list.
+            _dominantTotal = 0;
+            _planetaryTotal = 0;
+            _satelliteTotal = 0;
+            foreach (var status in _bodyStatuses.Values)
+            {
+                switch (CategoryOf(status.BodyType))
+                {
+                    case BodyCategory.Dominant:
+                        _dominantTotal++;
+                        break;
+                    case BodyCategory.Planetary:
+                        _planetaryTotal++;
+                        break;
+                    default:
+                        _satelliteTotal++;
+                        break;
                 }
             }
+            _totalBodies = _dominantTotal + _planetaryTotal + _satelliteTotal;
+
+            UpdateCounters();
         }
+
+        private enum BodyCategory
+        {
+            Dominant,
+            Planetary,
+            Satellite,
+        }
+
+        /// <summary>
+        /// Maps a BodyStatus.BodyType string to one of the three counter categories.
+        /// "Satellite" and "Belt Satellite" both fold into Satellite.
+        /// </summary>
+        private static BodyCategory CategoryOf(string bodyType) =>
+            bodyType switch
+            {
+                "Dominant" => BodyCategory.Dominant,
+                "Planetary" => BodyCategory.Planetary,
+                _ => BodyCategory.Satellite,
+            };
 
         /// <summary>
         /// Creates a UI item for a body and adds it to the list.
@@ -515,19 +556,55 @@ namespace UI.Loading
             if (_timeElapsedLabel != null)
                 _timeElapsedLabel.Text = $"{elapsedSeconds:F1}s";
 
-            UpdateBodiesHeader();
+            UpdateCounters();
         }
 
         /// <summary>
-        /// Updates the bodies header with completion count and time.
+        /// Recomputes per-category completion from the body statuses and refreshes the split
+        /// counter: the left-panel value labels and the two-line right-panel header.
         /// </summary>
-        private void UpdateBodiesHeader()
+        private void UpdateCounters()
         {
+            int dominantDone = 0,
+                planetaryDone = 0,
+                satelliteDone = 0;
+            foreach (var status in _bodyStatuses.Values)
+            {
+                if (!status.IsComplete)
+                    continue;
+                switch (CategoryOf(status.BodyType))
+                {
+                    case BodyCategory.Dominant:
+                        dominantDone++;
+                        break;
+                    case BodyCategory.Planetary:
+                        planetaryDone++;
+                        break;
+                    default:
+                        satelliteDone++;
+                        break;
+                }
+            }
+
+            _completedBodies = dominantDone + planetaryDone + satelliteDone;
+
+            if (_totalBodiesLabel != null)
+                _totalBodiesLabel.Text = $"{_completedBodies}/{_totalBodies}";
+            if (_dominantBodiesLabel != null)
+                _dominantBodiesLabel.Text = $"{dominantDone}/{_dominantTotal}";
+            if (_planetaryBodiesLabel != null)
+                _planetaryBodiesLabel.Text = $"{planetaryDone}/{_planetaryTotal}";
+            if (_satelliteBodiesLabel != null)
+                _satelliteBodiesLabel.Text = $"{satelliteDone}/{_satelliteTotal}";
+
             if (_bodiesHeaderLabel != null)
             {
                 float elapsed = (float)Time.GetTicksMsec() / 1000f - _startTime;
                 _bodiesHeaderLabel.Text =
-                    $"Orbital Bodies ({_completedBodies}/{_totalBodies}) {elapsed:F1}s";
+                    $"Orbital Bodies ({_completedBodies}/{_totalBodies})  {elapsed:F1}s\n"
+                    + $"Dominant {dominantDone}/{_dominantTotal} · "
+                    + $"Planetary {planetaryDone}/{_planetaryTotal} · "
+                    + $"Sats {satelliteDone}/{_satelliteTotal}";
             }
         }
 
@@ -579,8 +656,7 @@ namespace UI.Loading
 
                 if (isComplete)
                 {
-                    _completedBodies++;
-                    UpdateBodiesHeader();
+                    UpdateCounters();
 
                     // Update overall progress
                     if (_totalBodies > 0)
@@ -642,6 +718,7 @@ namespace UI.Loading
                     templateData.Dominant,
                     templateData.Belts,
                     templateData.Planetary,
+                    templateData.Satellites,
                     barycenter
                 );
                 GameLogger.Info("System generation triggered");

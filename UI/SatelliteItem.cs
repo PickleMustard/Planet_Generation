@@ -46,7 +46,7 @@ public partial class SatelliteItem : HBoxContainer
 
     public Action<SatelliteItem>? OnRemoveRequested;
 
-    private PlanetaryBodyType parentType;
+    private OrbitalBodyType parentType;
     private int NumberInBelt = 25;
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
@@ -94,7 +94,7 @@ public partial class SatelliteItem : HBoxContainer
     private bool _isNameUserEdited;
     private LineEdit? _nameEditField;
 
-    public void SetParentType(PlanetaryBodyType type)
+    public void SetParentType(OrbitalBodyType type)
     {
         this.parentType = type;
     }
@@ -241,7 +241,7 @@ public partial class SatelliteItem : HBoxContainer
         }
     }
 
-    public void ApplyTemplate(SatelliteBodyType type)
+    public void ApplyTemplate(OrbitalBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = TemplateHelpers.GetSatelliteBodyDefaults(type);

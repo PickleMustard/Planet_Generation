@@ -1,77 +1,98 @@
 dominant:
-- type: Star
-  name: sol
-  template:
-    mass: 500000
-    size: 500
-    position:
-    - 0
-    - 0
-    - 0
-    velocity:
-    - 0
-    - 0
-    - 0
-  central_parameters:
-    inclination: 0
-    starting_angle: 0
-  subtype_weights:
-    subtype_star_binary_primary: 0.125
-    subtype_star_blue_supergiant: 0.125
-    subtype_star_main_sequence: 0.125
-    subtype_star_red_dwarf: 0.125
-    subtype_star_red_giant: 0.125
-    subtype_star_variable_star: 0.125
-    subtype_star_white_dwarf: 0.125
-    subtype_star_yellow_dwarf: 0.125
+  - type: Star
+    name: sol
+    template:
+      mass: 500000
+      size: 500
+      position:
+        - 0
+        - 0
+        - 0
+      velocity:
+        - 0
+        - 0
+        - 0
+    central_parameters:
+      inclination: 0
+      starting_angle: 0
+    subtype_weights:
+      subtype_star_binary_primary: 0.125
+      subtype_star_blue_supergiant: 0.125
+      subtype_star_main_sequence: 0.125
+      subtype_star_red_dwarf: 0.125
+      subtype_star_red_giant: 0.125
+      subtype_star_variable_star: 0.125
+      subtype_star_white_dwarf: 0.125
+      subtype_star_yellow_dwarf: 0.125
 belts:
-- type: AsteroidBelt
-  ring_apogee: 8000
-  ring_perigee: 250
-  ring_velocity:
-  - 0
-  - 1
-  - 0
-  size_min: 5
-  size_max: 20
-  mass_min: 10
-  mass_max: 30
-  lower_range: 10
-  upper_range: 15
-  grouping: Balanced
-  orbital_center_index: 0
-  subtype_weights:
-    subtype_belt_asteroid_belt: 0.1667
-    subtype_belt_debris_disk: 0.1667
-    subtype_belt_dust_ring: 0.1667
-    subtype_belt_ice_belt: 0.1667
-    subtype_belt_resonant_belt: 0.1667
-    subtype_belt_shepherd_belt: 0.1667
-planetary:
-- type: RockyPlanet
-  name: terra
-  template:
-    mass: 1000
-    size: 150
-  orbital_parameters:
-    apogee: 800
-    perigee: 400
-    starting_angle: 0
-    vertical_offset: 0
+  - type: AsteroidBelt
+    ring_apogee: 8000
+    ring_perigee: 250
+    ring_velocity:
+      - 0
+      - 1
+      - 0
+    size_min: 5
+    size_max: 20
+    mass_min: 10
+    mass_max: 30
+    lower_range: 10
+    upper_range: 15
+    grouping: Balanced
     orbital_center_index: 0
-    parent_body: sol
-  subtype_weights:
-    subtype_rocky_cool: 0.1111
-    subtype_rocky_desert: 0.1111
-    subtype_rocky_ice: 0.1111
-    subtype_rocky_ocean: 0.1111
-    subtype_rocky_rusted: 0.1111
-    subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
-    subtype_rocky_volcanic: 0.1111
-  satellites:
+    subtype_weights:
+      subtype_belt_asteroid_belt: 0.1667
+      subtype_belt_debris_disk: 0.1667
+      subtype_belt_dust_ring: 0.1667
+      subtype_belt_ice_belt: 0.1667
+      subtype_belt_resonant_belt: 0.1667
+      subtype_belt_shepherd_belt: 0.1667
+planetary:
+  - type: RockyPlanet
+    name: terra
+    template:
+      mass: 1000
+      size: 150
+    orbital_parameters:
+      apogee: 800
+      perigee: 400
+      starting_angle: 0
+      vertical_offset: 0
+      orbital_center_index: 0
+      parent_body: sol
+    subtype_weights:
+      subtype_rocky_cool: 0.1111
+      subtype_rocky_desert: 0.1111
+      subtype_rocky_ice: 0.1111
+      subtype_rocky_ocean: 0.1111
+      subtype_rocky_rusted: 0.1111
+      subtype_rocky_scoured: 0.1111
+      subtype_rocky_temperate: 0.1111
+      subtype_rocky_tropical: 0.1111
+      subtype_rocky_volcanic: 0.1111
+  - type: GasGiant
+    name: jupiter
+    template:
+      mass: 17000
+      size: 350
+    orbital_parameters:
+      apogee: 1400
+      perigee: 700
+      starting_angle: 90
+      vertical_offset: 0
+      orbital_center_index: 0
+      parent_body: sol
+    subtype_weights:
+      subtype_gas_giant_cold_jupiter: 0.1429
+      subtype_gas_giant_failed_star: 0.1429
+      subtype_gas_giant_hot_jupiter: 0.1429
+      subtype_gas_giant_puffy_giant: 0.1429
+      subtype_gas_giant_ringed_giant: 0.1429
+      subtype_gas_giant_standard_jupiter: 0.1429
+      subtype_gas_giant_stormy_giant: 0.1429
+satellites:
   - type: Moon
+    parent: terra
     name: luna
     template:
       apogee: 200
@@ -96,15 +117,16 @@ planetary:
       subtype_satellite_volcanic_moon: 0.0769
     noise_settings:
       amplitude_range:
-      - 0.5
-      - 1.2
+        - 0.5
+        - 1.2
       scaling_range:
-      - 0.2
-      - 1.7
+        - 0.2
+        - 1.7
       octave_range:
-      - 2
-      - 4
+        - 2
+        - 4
   - type: Moon
+    parent: terra
     name: selene
     template:
       apogee: 200
@@ -129,31 +151,11 @@ planetary:
       subtype_satellite_volcanic_moon: 0.0769
     noise_settings:
       amplitude_range:
-      - 0.5
-      - 1.2
+        - 0.5
+        - 1.2
       scaling_range:
-      - 0.2
-      - 1.7
+        - 0.2
+        - 1.7
       octave_range:
-      - 2
-      - 4
-- type: GasGiant
-  name: jupiter
-  template:
-    mass: 17000
-    size: 350
-  orbital_parameters:
-    apogee: 1400
-    perigee: 700
-    starting_angle: 90
-    vertical_offset: 0
-    orbital_center_index: 0
-    parent_body: sol
-  subtype_weights:
-    subtype_gas_giant_cold_jupiter: 0.1429
-    subtype_gas_giant_failed_star: 0.1429
-    subtype_gas_giant_hot_jupiter: 0.1429
-    subtype_gas_giant_puffy_giant: 0.1429
-    subtype_gas_giant_ringed_giant: 0.1429
-    subtype_gas_giant_standard_jupiter: 0.1429
-    subtype_gas_giant_stormy_giant: 0.1429
+        - 2
+        - 4

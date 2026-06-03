@@ -24,7 +24,7 @@ public static class ModificationCommands
         }
 
         var typeStr = args[0];
-        if (!Enum.TryParse<CelestialBodyType>(typeStr, true, out var bodyType))
+        if (!Enum.TryParse<OrbitalBodyType>(typeStr, true, out var bodyType))
         {
             ctx.WriteError($"Unknown celestial body type: {typeStr}");
             ctx.WriteLine("Available types: Star, RockyPlanet, GasGiant, Moon, Asteroid, Comet, BlackHole");
@@ -62,7 +62,7 @@ public static class ModificationCommands
         {
             var mesh = new UnifiedCelestialMesh();
             var builder = new CelestialBody.Builder();
-            builder.WithClassification(BodyClassification.FromLegacy(bodyType, null));
+            builder.WithClassification(BodyClassification.FromType(bodyType, null));
             builder.WithMesh(mesh);
 
             var celestialBody = builder.Build();

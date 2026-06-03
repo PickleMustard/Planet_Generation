@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Constructables;
 using Godot;
 using ProceduralGeneration.PlanetGeneration;
@@ -52,7 +53,73 @@ public static class LogisticsMapper
         if (mc != null && mc.IsTransferring && mc.ActiveTrajectory != null)
             dto.Transit = TransitToDto(mc);
 
+        var schedule = unit.ScheduleExecutor?.ActiveSchedule;
+        if (schedule != null && schedule.Legs.Count > 0)
+            dto.Schedule = ScheduleToDto(schedule);
+
         return dto;
+    }
+
+    // ---------- Schedule save ----------
+
+    private static OrbitalScheduleDto ScheduleToDto(OrbitalTransferSchedule s)
+    {
+        var dto = new OrbitalScheduleDto
+        {
+            ScheduleId = s.ScheduleId,
+            WaitPeriodBetweenLegs = s.WaitPeriodBetweenLegs,
+            RetryPeriod = s.RetryPeriod,
+            MaxRetries = s.MaxRetries,
+            IsRepeating = s.IsRepeating,
+            State = s.State.ToString(),
+            CurrentLegIndex = s.CurrentLegIndex,
+        };
+        foreach (var leg in s.Legs)
+            dto.Legs.Add(LegToDto(leg));
+        return dto;
+    }
+
+    private static LegDto LegToDto(Leg leg) => new()
+    {
+        LegId = leg.LegId,
+        Origin = EndpointToDto(leg.Origin),
+        Destination = EndpointToDto(leg.Destination),
+        PickupOrder = ManifestToDict(leg.PickupOrder),
+        DropoffOrder = ManifestToDict(leg.DropoffOrder),
+        DepartureConstraints = new DepartureConstraintsDto
+        {
+            BudgetMode = leg.DepartureConstraints.BudgetMode.ToString(),
+            MinBudget = leg.DepartureConstraints.MinBudget,
+            MaxBudget = leg.DepartureConstraints.MaxBudget,
+            NumOptions = leg.DepartureConstraints.NumOptions,
+            RankingCriteria = leg.DepartureConstraints.RankingCriteria.ToString(),
+        },
+        RefuelInstructions = new RefuelInstructionsDto
+        {
+            Policy = leg.RefuelInstructions.Policy.ToString(),
+            FuelResourceId = leg.RefuelInstructions.FuelResourceId,
+            Amount = leg.RefuelInstructions.Amount,
+        },
+        MaxWaitSeconds = leg.MaxWaitSeconds,
+        IsClosingLeg = leg.IsClosingLeg,
+        State = leg.State.ToString(),
+    };
+
+    private static LegEndpointDto EndpointToDto(LegEndpoint? e) => new()
+    {
+        BodyName = (e?.Body as Node)?.Name,
+        StationId = e?.Station?.Id,
+        BandIndex = e?.BandIndex ?? -1,
+    };
+
+    private static Dictionary<string, int>? ManifestToDict(CargoManifest? m)
+    {
+        if (m == null || m.ResourceCount == 0)
+            return null;
+        var d = new Dictionary<string, int>();
+        foreach (var kv in m.Resources)
+            d[kv.Key] = kv.Value;
+        return d;
     }
 
     private static EngineDto EngineToDto(EngineDefinition engine)
@@ -319,4 +386,120 @@ public static class LogisticsMapper
         Enum.TryParse<LogisticsMovementController.SimulationMode>(s, out var v)
             ? v
             : LogisticsMovementController.SimulationMode.FullKepler;
+
+    // ---------- Schedule restore ----------
+
+    /// <summary>
+    /// Rebuilds an <see cref="OrbitalTransferSchedule"/> from its DTO. Endpoints are
+    /// resolved by body node name and station id (callers supply resolvers populated
+    /// after bodies and stations have been restored — loader pass 7). A Running
+    /// schedule is downgraded to Stopped by the caller's executor restore so it never
+    /// auto-departs on load. Returns null if a leg endpoint cannot be resolved.
+    /// </summary>
+    public static OrbitalTransferSchedule? RestoreSchedule(
+        OrbitalScheduleDto dto,
+        Func<string, IOrbitalBody?> resolveBody,
+        Func<string, StationSatellite?> resolveStation)
+    {
+        if (dto == null || dto.Legs.Count == 0)
+            return null;
+
+        var schedule = new OrbitalTransferSchedule
+        {
+            ScheduleId = string.IsNullOrEmpty(dto.ScheduleId) ? Guid.NewGuid().ToString() : dto.ScheduleId,
+            WaitPeriodBetweenLegs = dto.WaitPeriodBetweenLegs,
+            RetryPeriod = dto.RetryPeriod,
+            MaxRetries = dto.MaxRetries,
+            IsRepeating = dto.IsRepeating,
+            State = ParseScheduleState(dto.State),
+            CurrentLegIndex = dto.CurrentLegIndex,
+        };
+
+        foreach (var legDto in dto.Legs)
+        {
+            var origin = RestoreEndpoint(legDto.Origin, resolveBody, resolveStation);
+            var dest = RestoreEndpoint(legDto.Destination, resolveBody, resolveStation);
+            if (origin == null || dest == null)
+            {
+                GameLogger.Warning(
+                    $"[LogisticsMapper] Schedule {schedule.ScheduleId}: leg '{legDto.LegId}' has an unresolved endpoint; skipping schedule restore.");
+                return null;
+            }
+
+            schedule.Legs.Add(new Leg
+            {
+                LegId = string.IsNullOrEmpty(legDto.LegId) ? Guid.NewGuid().ToString() : legDto.LegId,
+                Origin = origin,
+                Destination = dest,
+                PickupOrder = DictToManifest(legDto.PickupOrder),
+                DropoffOrder = DictToManifest(legDto.DropoffOrder),
+                MaxWaitSeconds = legDto.MaxWaitSeconds,
+                IsClosingLeg = legDto.IsClosingLeg,
+                State = ParseLegState(legDto.State),
+                DepartureConstraints = new DepartureConstraints
+                {
+                    BudgetMode = ParseBudgetMode(legDto.DepartureConstraints.BudgetMode),
+                    MinBudget = legDto.DepartureConstraints.MinBudget,
+                    MaxBudget = legDto.DepartureConstraints.MaxBudget,
+                    NumOptions = legDto.DepartureConstraints.NumOptions,
+                    RankingCriteria = ParseRanking(legDto.DepartureConstraints.RankingCriteria),
+                },
+                RefuelInstructions = new RefuelInstructions
+                {
+                    Policy = ParseRefuelPolicy(legDto.RefuelInstructions.Policy),
+                    FuelResourceId = legDto.RefuelInstructions.FuelResourceId,
+                    Amount = legDto.RefuelInstructions.Amount,
+                },
+            });
+        }
+
+        return schedule.Legs.Count > 0 ? schedule : null;
+    }
+
+    private static LegEndpoint? RestoreEndpoint(
+        LegEndpointDto dto,
+        Func<string, IOrbitalBody?> resolveBody,
+        Func<string, StationSatellite?> resolveStation)
+    {
+        if (dto == null || string.IsNullOrEmpty(dto.BodyName))
+            return null;
+        var body = resolveBody(dto.BodyName!);
+        if (body == null)
+            return null;
+
+        if (!string.IsNullOrEmpty(dto.StationId))
+        {
+            var station = resolveStation(dto.StationId!);
+            if (station != null)
+                return LegEndpoint.ForStation(station, body, dto.BandIndex);
+        }
+        return LegEndpoint.ForBody(body, dto.BandIndex);
+    }
+
+    private static CargoManifest? DictToManifest(Dictionary<string, int>? d)
+    {
+        if (d == null || d.Count == 0)
+            return null;
+        var m = new CargoManifest();
+        foreach (var kv in d)
+            m.LoadResource(kv.Key, kv.Value);
+        return m;
+    }
+
+    private static OrbitalScheduleState ParseScheduleState(string s) =>
+        Enum.TryParse<OrbitalScheduleState>(s, out var v) ? v : OrbitalScheduleState.Idle;
+
+    private static LegState ParseLegState(string s) =>
+        Enum.TryParse<LegState>(s, out var v) ? v : LegState.Pending;
+
+    private static ExpenditureBudgetMode ParseBudgetMode(string s) =>
+        Enum.TryParse<ExpenditureBudgetMode>(s, out var v) ? v : ExpenditureBudgetMode.TimeOfFlight;
+
+    private static RefuelPolicy ParseRefuelPolicy(string s) =>
+        Enum.TryParse<RefuelPolicy>(s, out var v) ? v : RefuelPolicy.None;
+
+    private static TrajectorySolution.RankingCriteria ParseRanking(string s) =>
+        Enum.TryParse<TrajectorySolution.RankingCriteria>(s, out var v)
+            ? v
+            : TrajectorySolution.RankingCriteria.MostEfficient;
 }

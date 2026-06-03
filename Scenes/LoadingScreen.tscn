@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://dgkax1o3g4v1a" path="res://UI/Loading/LoadingBodyItem.tscn" id="2_8m2n4"]
 [ext_resource type="Script" uid="uid://dfye2idk3ec77" path="res://Scripts/ProceduralGeneration/SystemGenerator.cs" id="3_m6rkq"]
 
-[node name="LoadingScreen" type="Control" unique_id=1304215343 node_paths=PackedStringArray("_loadingLabel", "_progressBar", "_progressText", "_templateLabel", "_totalBodiesLabel", "_timeElapsedLabel", "_bodiesHeaderLabel", "_bodyListContainer")]
+[node name="LoadingScreen" type="Control" unique_id=1304215343 node_paths=PackedStringArray("_loadingLabel", "_progressBar", "_progressText", "_templateLabel", "_totalBodiesLabel", "_dominantBodiesLabel", "_planetaryBodiesLabel", "_satelliteBodiesLabel", "_timeElapsedLabel", "_bodiesHeaderLabel", "_bodyListContainer")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -17,6 +17,9 @@ _progressBar = NodePath("CenterContainer/VBoxContainer/ProgressBar")
 _progressText = NodePath("CenterContainer/VBoxContainer/ProgressText")
 _templateLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TemplateContainer/TemplateValue")
 _totalBodiesLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TotalBodiesContainer/TotalBodiesValue")
+_dominantBodiesLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/DominantBodiesContainer/DominantBodiesValue")
+_planetaryBodiesLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/PlanetaryBodiesContainer/PlanetaryBodiesValue")
+_satelliteBodiesLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/SatelliteBodiesContainer/SatelliteBodiesValue")
 _timeElapsedLabel = NodePath("CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TimeElapsedContainer/TimeElapsedValue")
 _bodiesHeaderLabel = NodePath("FoldableContainer/RightPanel/HeaderContainer/BodiesHeader")
 _bodyListContainer = NodePath("FoldableContainer/RightPanel/ScrollContainer/BodyListContainer")
@@ -104,12 +107,54 @@ size_flags_horizontal = 3
 [node name="TotalBodiesLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TotalBodiesContainer" unique_id=1304215358]
 layout_mode = 2
 size_flags_horizontal = 0
-text = "Total Bodies:"
+text = "Orbital Bodies:"
 
 [node name="TotalBodiesValue" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/TotalBodiesContainer" unique_id=1304215359]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "0"
+text = "0/0"
+
+[node name="DominantBodiesContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215370]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DominantBodiesLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/DominantBodiesContainer" unique_id=1304215371]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "  Dominant:"
+
+[node name="DominantBodiesValue" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/DominantBodiesContainer" unique_id=1304215372]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0/0"
+
+[node name="PlanetaryBodiesContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215373]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlanetaryBodiesLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/PlanetaryBodiesContainer" unique_id=1304215374]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "  Planetary:"
+
+[node name="PlanetaryBodiesValue" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/PlanetaryBodiesContainer" unique_id=1304215375]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0/0"
+
+[node name="SatelliteBodiesContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215376]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SatelliteBodiesLabel" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/SatelliteBodiesContainer" unique_id=1304215377]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "  Satellites:"
+
+[node name="SatelliteBodiesValue" type="Label" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer/SatelliteBodiesContainer" unique_id=1304215378]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0/0"
 
 [node name="TimeElapsedContainer" type="HBoxContainer" parent="CenterContainer/VBoxContainer/HSplitContainer/LeftPanel/DetailsContainer" unique_id=1304215360]
 layout_mode = 2
@@ -151,6 +196,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Orbital Bodies (0/0) 0.0s"
 horizontal_alignment = 1
+autowrap_mode = 2
 
 [node name="ScrollContainer" type="ScrollContainer" parent="FoldableContainer/RightPanel" unique_id=1304215366]
 layout_mode = 2

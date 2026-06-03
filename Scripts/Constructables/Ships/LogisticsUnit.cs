@@ -133,6 +133,34 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     }
 
     /// <summary>
+    /// Schedule queued by the save loader to be assigned once the schedule executor
+    /// exists. The executor (created via deferred add_child) consumes this in its
+    /// _Ready; if the executor is already present, it is applied immediately.
+    /// </summary>
+    private OrbitalTransferSchedule? _pendingScheduleRestore;
+
+    /// <summary>Queues a restored schedule to assign to the executor when it is ready.</summary>
+    public void SetPendingScheduleRestore(OrbitalTransferSchedule schedule)
+    {
+        _pendingScheduleRestore = schedule;
+        if (_scheduleExecutor != null)
+        {
+            _scheduleExecutor.RestoreSchedule(schedule);
+            _pendingScheduleRestore = null;
+        }
+    }
+
+    /// <summary>Invoked by the schedule executor in its _Ready to apply any queued restore.</summary>
+    public void ApplyPendingScheduleRestore(OrbitalScheduleExecutor executor)
+    {
+        if (_pendingScheduleRestore != null)
+        {
+            executor.RestoreSchedule(_pendingScheduleRestore);
+            _pendingScheduleRestore = null;
+        }
+    }
+
+    /// <summary>
     /// Initializes the logistics unit's orbit using the host body's orbital parameters.
     /// Uses band-based or continuous placement based on the host body's configuration.
     /// </summary>

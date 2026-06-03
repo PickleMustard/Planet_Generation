@@ -63,14 +63,14 @@ public partial class SatelliteBeltItem : VBoxContainer
 
     public Action<SatelliteBeltItem>? OnRemoveRequested;
 
-    private DominantBodyType parentType;
+    private OrbitalBodyType parentType;
     private int _orbitalCenterIndex = -1; // -1 = barycenter, 0+ = dominant body index
     private OptionButton? OrbitalCenterDropdown;
     private const float Limit = 10000f; // constrain within ±10,000 units
     private const float MassLimit = 10000f; // constrain mass 0..10,000
     private const float SizeLimit = 10000f; // constrain size 0..10,000
 
-    public void SetParentType(DominantBodyType type)
+    public void SetParentType(OrbitalBodyType type)
     {
         this.parentType = type;
     }

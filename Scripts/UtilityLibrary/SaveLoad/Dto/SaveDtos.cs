@@ -139,7 +139,7 @@ public sealed class BodyDto
     /// <summary>Node name — the cross-reference key used to resolve OrbitalParent on load.</summary>
     public string Name { get; set; } = "";
 
-    /// <summary>Body-type name (round-tripped via BodyClassification.FromLegacy / FromSatelliteType).</summary>
+    /// <summary>Body-type name (round-tripped via BodyClassification.FromType / FromSatelliteType).</summary>
     public string Classification { get; set; } = "";
 
     public float Mass { get; set; }

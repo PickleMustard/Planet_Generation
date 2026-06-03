@@ -1,54 +1,99 @@
 dominant:
-- type: Star
-  name: sol
-  template:
-    mass: 500000.0
-    size: 500
-    position:
-    - 0.0
-    - 0.0
-    - 0.0
-    velocity:
-    - 0.0
-    - 0.0
-    - 0.0
-  central_parameters:
-    inclination: 0
-    starting_angle: 0
-  subtype_weights:
-    subtype_star_binary_primary: 0.125
-    subtype_star_blue_supergiant: 0.125
-    subtype_star_main_sequence: 0.125
-    subtype_star_red_dwarf: 0.125
-    subtype_star_red_giant: 0.125
-    subtype_star_variable_star: 0.125
-    subtype_star_white_dwarf: 0.125
-    subtype_star_yellow_dwarf: 0.125
+  - type: Star
+    name: sol
+    template:
+      mass: 500000.0
+      size: 500
+      position:
+        - 0.0
+        - 0.0
+        - 0.0
+      velocity:
+        - 0.0
+        - 0.0
+        - 0.0
+    central_parameters:
+      inclination: 0
+      starting_angle: 0
+    subtype_weights:
+      subtype_star_binary_primary: 0.125
+      subtype_star_blue_supergiant: 0.125
+      subtype_star_main_sequence: 0.125
+      subtype_star_red_dwarf: 0.125
+      subtype_star_red_giant: 0.125
+      subtype_star_variable_star: 0.125
+      subtype_star_white_dwarf: 0.125
+      subtype_star_yellow_dwarf: 0.125
 planetary:
-- type: RockyPlanet
-  name: proxima
-  template:
-    mass: 1000.0
-    size: 150
-  orbital_parameters:
-    apogee: 2500
-    perigee: 2000
-    starting_angle: 0
-    vertical_offset: 0
-    orbital_center_index: 0
-    parent_body: sol
-  subtype_weights:
-    subtype_rocky_cool: 0.1111
-    subtype_rocky_desert: 0.1111
-    subtype_rocky_ice: 0.1111
-    subtype_rocky_ocean: 0.1111
-    subtype_rocky_rusted: 0.1111
-    subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
-    subtype_rocky_volcanic: 0.1111
-  satellites:
+  - type: RockyPlanet
+    name: proxima
+    template:
+      mass: 1000.0
+      size: 150
+    orbital_parameters:
+      apogee: 2500
+      perigee: 2000
+      starting_angle: 0
+      vertical_offset: 0
+      orbital_center_index: 0
+      parent_body: sol
+    subtype_weights:
+      subtype_rocky_cool: 0.1111
+      subtype_rocky_desert: 0.1111
+      subtype_rocky_ice: 0.1111
+      subtype_rocky_ocean: 0.1111
+      subtype_rocky_rusted: 0.1111
+      subtype_rocky_scoured: 0.1111
+      subtype_rocky_temperate: 0.1111
+      subtype_rocky_tropical: 0.1111
+      subtype_rocky_volcanic: 0.1111
+  - type: RockyPlanet
+    name: median
+    template:
+      mass: 1000.0
+      size: 150
+    orbital_parameters:
+      apogee: 3500
+      perigee: 2500
+      starting_angle: 120
+      vertical_offset: 3
+      orbital_center_index: 0
+      parent_body: sol
+    subtype_weights:
+      subtype_rocky_cool: 0.1111
+      subtype_rocky_desert: 0.1111
+      subtype_rocky_ice: 0.1111
+      subtype_rocky_ocean: 0.1111
+      subtype_rocky_rusted: 0.1111
+      subtype_rocky_scoured: 0.1111
+      subtype_rocky_temperate: 0.1111
+      subtype_rocky_tropical: 0.1111
+      subtype_rocky_volcanic: 0.1111
+  - type: RockyPlanet
+    name: distal
+    template:
+      mass: 1000.0
+      size: 150
+    orbital_parameters:
+      apogee: 7000
+      perigee: 6000
+      starting_angle: 240
+      vertical_offset: -1
+      orbital_center_index: 0
+      parent_body: sol
+    subtype_weights:
+      subtype_rocky_cool: 0.1111
+      subtype_rocky_desert: 0.1111
+      subtype_rocky_ice: 0.1111
+      subtype_rocky_ocean: 0.1111
+      subtype_rocky_rusted: 0.1111
+      subtype_rocky_scoured: 0.1111
+      subtype_rocky_temperate: 0.1111
+      subtype_rocky_tropical: 0.1111
+      subtype_rocky_volcanic: 0.1111
+satellites:
   - type: Moon
+    parent: proxima
     name: luna
     template:
       apogee: 600
@@ -73,55 +118,11 @@ planetary:
       subtype_satellite_volcanic_moon: 0.0769
     noise_settings:
       amplitude_range:
-      - 0.5
-      - 1.2
+        - 0.5
+        - 1.2
       scaling_range:
-      - 0.2
-      - 1.7
+        - 0.2
+        - 1.7
       octave_range:
-      - 2
-      - 4
-- type: RockyPlanet
-  name: median
-  template:
-    mass: 1000.0
-    size: 150
-  orbital_parameters:
-    apogee: 3500
-    perigee: 2500
-    starting_angle: 120
-    vertical_offset: 3
-    orbital_center_index: 0
-    parent_body: sol
-  subtype_weights:
-    subtype_rocky_cool: 0.1111
-    subtype_rocky_desert: 0.1111
-    subtype_rocky_ice: 0.1111
-    subtype_rocky_ocean: 0.1111
-    subtype_rocky_rusted: 0.1111
-    subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
-    subtype_rocky_volcanic: 0.1111
-- type: RockyPlanet
-  name: distal
-  template:
-    mass: 1000.0
-    size: 150
-  orbital_parameters:
-    apogee: 7000
-    perigee: 6000
-    starting_angle: 240
-    vertical_offset: -1
-    orbital_center_index: 0
-    parent_body: sol
-  subtype_weights:
-    subtype_rocky_cool: 0.1111
-    subtype_rocky_desert: 0.1111
-    subtype_rocky_ice: 0.1111
-    subtype_rocky_ocean: 0.1111
-    subtype_rocky_rusted: 0.1111
-    subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
-    subtype_rocky_volcanic: 0.1111
+        - 2
+        - 4

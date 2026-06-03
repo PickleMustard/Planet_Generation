@@ -48,6 +48,20 @@ public class Leg
     /// </summary>
     public RefuelInstructions RefuelInstructions { get; set; } = new();
 
+    /// <summary>
+    /// Maximum seconds the unit may wait at the origin before it must depart on
+    /// this leg. Null means no forced-departure deadline.
+    /// </summary>
+    public float? MaxWaitSeconds { get; set; }
+
+    /// <summary>
+    /// True when this leg is the auto-generated closing leg that returns the unit
+    /// from the final destination back to the schedule's starting origin so a
+    /// repeating schedule can loop. Closing legs are managed by
+    /// <see cref="OrbitalScheduleEditor"/> and are not directly editable.
+    /// </summary>
+    public bool IsClosingLeg { get; set; }
+
     // --- Runtime state (managed by OrbitalScheduleExecutor) ---
 
     /// <summary>

@@ -211,11 +211,9 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
 
         if (LocationDetails.TryGetValue("parent_body", out var parentBody))
         {
-            LocationDetails.TryGetValue("parent_type", out var parentType);
-            if ((String)parentType == "CelestialBody")
-                _parentBody = (CelestialBody)parentBody;
-            else if ((String)parentBody == "SatelliteBody")
-                _parentBody = (SatelliteBody)parentBody;
+            // Satellites are now unified CelestialBody instances; the parent_type tag no longer
+            // selects a distinct runtime type.
+            _parentBody = (CelestialBody)parentBody;
         }
 
         _isUnderConstruction = true;

@@ -103,15 +103,18 @@ public class SystemTemplateValidatorTest
     [TestCase]
     public void Validator_RejectsLegacyKeysInSatellites()
     {
+        // Satellites now live in a flattened top-level section and name their parent by name.
         var result = Validate(@"planetary:
   - type: RockyPlanet
+    name: terra
     template: { mass: 1000, size: 150 }
     orbital_parameters: { apogee: 3000, perigee: 3000 }
-    satellites:
-      - type: Moon
-        template: { apogee: 200, perigee: 200, mass: 50, size: 10 }
-        base_mesh:
-          subdivisions: 2
+satellites:
+  - type: Moon
+    parent: terra
+    template: { apogee: 200, perigee: 200, mass: 50, size: 10 }
+    base_mesh:
+      subdivisions: 2
 ");
         AssertThat(result.IsValid).IsFalse();
         AssertThat(result.Errors.Exists(e => e.Contains("satellites[0]") && e.Contains("base_mesh"))).IsTrue();

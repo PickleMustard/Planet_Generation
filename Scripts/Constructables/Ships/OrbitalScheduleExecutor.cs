@@ -23,6 +23,13 @@ public partial class OrbitalScheduleExecutor : Node
     private float _retryTimer;
 
     /// <summary>
+    /// When true, the executor runs exactly one leg from the current position and
+    /// then stops instead of advancing into the next leg. Set by
+    /// <see cref="StepOnceFromCurrent"/> and consumed on leg completion.
+    /// </summary>
+    private bool _stepOnce;
+
+    /// <summary>
     /// The currently assigned and potentially running schedule.
     /// </summary>
     public OrbitalTransferSchedule? ActiveSchedule => _activeSchedule;
@@ -31,6 +38,22 @@ public partial class OrbitalScheduleExecutor : Node
     {
         _unit = GetParent<LogisticsUnit>();
         _movementController = _unit?.MovementController;
+        _unit?.ApplyPendingScheduleRestore(this);
+    }
+
+    /// <summary>
+    /// Assigns a schedule restored from a save without resetting its progress, and
+    /// downgrades a Running/WaitingBetweenLegs schedule to Stopped so it never
+    /// auto-departs on load (the player resumes it explicitly).
+    /// </summary>
+    public void RestoreSchedule(OrbitalTransferSchedule schedule)
+    {
+        _activeSchedule = schedule;
+        if (schedule.State == OrbitalScheduleState.Running
+            || schedule.State == OrbitalScheduleState.WaitingBetweenLegs)
+        {
+            schedule.State = OrbitalScheduleState.Stopped;
+        }
     }
 
     public override void _PhysicsProcess(double delta)
@@ -132,6 +155,30 @@ public partial class OrbitalScheduleExecutor : Node
         TransitionScheduleState(OrbitalScheduleState.Running);
         GameLogger.Info($"OrbitalScheduleExecutor [{_unit.Name}]: Schedule started");
         return true;
+    }
+
+    /// <summary>
+    /// Runs exactly one leg from the current position, then stops (Stopped state).
+    /// Resuming with <see cref="StartSchedule"/> continues from the following leg.
+    /// Requires the schedule to be Idle or Stopped (not already running).
+    /// </summary>
+    public bool StepOnceFromCurrent()
+    {
+        if (_unit == null || _activeSchedule == null)
+        {
+            GameLogger.Warning("OrbitalScheduleExecutor: Cannot step — no schedule assigned");
+            return false;
+        }
+
+        if (_activeSchedule.State != OrbitalScheduleState.Idle
+            && _activeSchedule.State != OrbitalScheduleState.Stopped)
+        {
+            GameLogger.Warning($"OrbitalScheduleExecutor [{_unit.Name}]: Cannot step schedule in state {_activeSchedule.State}");
+            return false;
+        }
+
+        _stepOnce = true;
+        return StartSchedule();
     }
 
     /// <summary>
@@ -506,6 +553,19 @@ public partial class OrbitalScheduleExecutor : Node
             _unit.TransitionTo(LogisticsUnitState.Idle);
         }
         // else stays Running, will begin next leg next frame
+
+        // Step-once mode: a single leg just finished — hold here until resumed.
+        if (_stepOnce)
+        {
+            _stepOnce = false;
+            if (_activeSchedule.State == OrbitalScheduleState.Running
+                || _activeSchedule.State == OrbitalScheduleState.WaitingBetweenLegs)
+            {
+                TransitionScheduleState(OrbitalScheduleState.Stopped);
+                if (_unit.State != LogisticsUnitState.InTransit)
+                    _unit.TransitionTo(LogisticsUnitState.Idle);
+            }
+        }
     }
 
     // =========================================================================

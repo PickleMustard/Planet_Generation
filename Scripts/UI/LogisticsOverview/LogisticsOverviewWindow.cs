@@ -40,6 +40,9 @@ public partial class LogisticsOverviewWindow : Control
     private readonly Dictionary<string, LogisticsUnit> _unitsById = new();
     private LogisticsUnit? _selectedUnit;
 
+    // System Overview map overlay + its entry button (built in code so no .tscn edit).
+    private UI.SystemBoard.SystemOverviewWindow? _systemOverviewWindow;
+
     public bool IsOpen { get; private set; }
 
     [Signal]
@@ -59,6 +62,17 @@ public partial class LogisticsOverviewWindow : Control
 
         if (_viewInDepthButton != null)
             _viewInDepthButton.Pressed += OnViewInDepthPressed;
+
+        // System Overview map: a code-built overlay + a sibling button next to
+        // "View In-Depth" so no scene edits are needed.
+        _systemOverviewWindow = new UI.SystemBoard.SystemOverviewWindow();
+        AddChild(_systemOverviewWindow);
+        if (_viewInDepthButton?.GetParent() is Node btnParent)
+        {
+            var systemMapButton = new Button { Text = "System Map" };
+            systemMapButton.Pressed += () => _systemOverviewWindow?.ShowWindow();
+            btnParent.AddChild(systemMapButton);
+        }
 
         if (_sortOption != null)
         {

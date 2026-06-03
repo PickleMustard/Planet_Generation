@@ -593,16 +593,10 @@ private void OnStationConstructionInitialized(Dictionary details)
         {
             station.SetStationDefinition(stationDefinition);
             Dictionary stationDetails = new Dictionary();
-            if (targetBody.GetType() == typeof(CelestialBody))
+            if (targetBody is CelestialBody celestialTarget)
             {
-                stationDetails.Add("parent_body", (CelestialBody)targetBody);
+                stationDetails.Add("parent_body", celestialTarget);
                 stationDetails.Add("parent_type", "CelestialBody");
-                stationDetails.Add("band_index", bandIndex);
-            }
-            else if (targetBody.GetType() == typeof(SatelliteBody))
-            {
-                stationDetails.Add("parent_body", (SatelliteBody)targetBody);
-                stationDetails.Add("parent_type", "SatelliteBody");
                 stationDetails.Add("band_index", bandIndex);
             }
             station.StartConstruction(stationDetails);
@@ -664,15 +658,10 @@ private void OnStationConstructionInitialized(Dictionary details)
         {
             station.SetStationDefinition(stationDefinition);
             Dictionary locationDetails = new Dictionary();
-            if (targetBody.GetType() == typeof(CelestialBody))
+            if (targetBody is CelestialBody celestialTarget)
             {
-                locationDetails.Add("parent_body", (CelestialBody)targetBody);
+                locationDetails.Add("parent_body", celestialTarget);
                 locationDetails.Add("parent_type", "CelestialBody");
-            }
-            else if (targetBody.GetType() == typeof(SatelliteBody))
-            {
-                locationDetails.Add("parent_body", (SatelliteBody)targetBody);
-                locationDetails.Add("parent_type", "SatelliteBody");
             }
             station.StartConstruction(locationDetails);
             station.Visible = true;

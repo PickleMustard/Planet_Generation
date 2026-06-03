@@ -1,29 +1,24 @@
 namespace Structures.Enums;
 
-public enum CelestialBodyType
+/// <summary>
+/// Flat, merged taxonomy of every orbital body type. Generation is routed by the
+/// config dictionary, not the class type, so dominant bodies, planets, and satellites
+/// share one enum. Moon/Asteroid/Comet are first-class members; a mapping layer
+/// (<c>OrbitalBodyTypeExtensions.ToFamily</c>) collapses them to <c>BodyFamily.Satellite</c>
+/// for the biome/subtype pipeline.
+/// </summary>
+public enum OrbitalBodyType
 {
-    BlackHole,
     Star,
-    NeutronStar,
     RockyPlanet,
     GasGiant,
     IceGiant,
     DwarfPlanet,
-}
-
-public enum DominantBodyType
-{
-    Star,
-    NeutronStar,
     BlackHole,
-}
-
-public enum PlanetaryBodyType
-{
-    RockyPlanet,
-    DwarfPlanet,
-    GasGiant,
-    IceGiant,
+    NeutronStar,
+    Moon,
+    Asteroid,
+    Comet,
 }
 
 public enum GroupingCategories
@@ -33,16 +28,6 @@ public enum GroupingCategories
     DualGrouping,
     Random,
     HalfAndHalf,
-}
-
-public enum SatelliteBodyType
-{
-    Asteroid,
-    Comet,
-    Moon,
-    DwarfPlanet,
-    Satellite,
-    Rings,
 }
 
 public enum SatelliteGroupTypes

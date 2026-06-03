@@ -25,6 +25,7 @@ public static class SaveMigrator
     {
         new V1ToV2Migration(),
         new V2ToV3Migration(),
+        new V3ToV4Migration(),
     };
 
     /// <summary>
@@ -78,6 +79,18 @@ public sealed class V1ToV2Migration : ISaveMigration
 public sealed class V2ToV3Migration : ISaveMigration
 {
     public int From => 2;
+
+    public SaveFileDto Apply(SaveFileDto dto) => dto;
+}
+
+/// <summary>
+/// v3 → v4: introduces orbital-schedule persistence. v3 saves predate schedule
+/// serialization, so the absent <see cref="LogisticsUnitDto.Schedule"/> simply stays
+/// null and the loader restores no schedules.
+/// </summary>
+public sealed class V3ToV4Migration : ISaveMigration
+{
+    public int From => 3;
 
     public SaveFileDto Apply(SaveFileDto dto) => dto;
 }

@@ -1,0 +1,40 @@
+schema_version: 1.0
+body_type: Moon
+description: "1D moon subtype distribution keyed on cumulative distance from system center (parent distance + moon distance from parent), with per-parent-subtype weight modifiers."
+max_considered_au: 100.0
+range_overlap_policy: "use_first"
+default_subtype: RockyMoon
+
+au_ranges:
+  - range: { min_au: 0.0, max_au: 3.0, exclusive_max: true }   # inner system
+    name: inner_system
+    subtype_distribution:
+      - { subtype: RockyMoon, weight: 0.45 }
+      - { subtype: VolcanicMoon, weight: 0.2 }
+      - { subtype: IronMoon, weight: 0.15 }
+      - { subtype: DesertMoon, weight: 0.1 }
+      - { subtype: TidallyLocked, weight: 0.1 }
+  - range: { min_au: 3.0, max_au: 100.0 }                      # outer system
+    name: outer_system
+    subtype_distribution:
+      - { subtype: IcyMoon, weight: 0.4 }
+      - { subtype: CapturedAsteroid, weight: 0.2 }
+      - { subtype: CarbonMoon, weight: 0.15 }
+      - { subtype: SulfurMoon, weight: 0.15 }
+      - { subtype: TidallyLocked, weight: 0.1 }
+
+# Per-parent-subtype multipliers scale the matched range's base weights. Keyed by the immediate
+# parent's subtype id (BiomeIdMapper ids); target keys are satellite subtype ids. Unlisted
+# entries default to 1.0. Gameplay: icy/volcanic parents favor volcanic moons.
+parent_subtype_modifiers:
+  subtype_ice_giant_standard_neptune:
+    subtype_satellite_volcanic_moon: 2.0
+    subtype_satellite_icy_moon: 1.5
+    subtype_satellite_desert_moon: 0.5
+  subtype_ice_giant_cryovolcanic:
+    subtype_satellite_volcanic_moon: 2.5
+    subtype_satellite_icy_moon: 1.5
+  subtype_gas_giant_standard_jupiter:
+    subtype_satellite_volcanic_moon: 1.8
+    subtype_satellite_sulfur_moon: 1.5
+    subtype_satellite_icy_moon: 1.2

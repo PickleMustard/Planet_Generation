@@ -15,7 +15,7 @@ public class NameLoadingTest
     public void TestLoadRockyPlanetNames()
     {
         var defaults = TemplateHelpers.GetCelestialBodyDefaults(
-            CelestialBodyType.RockyPlanet
+            OrbitalBodyType.RockyPlanet
         );
 
         AssertThat(defaults).IsNotNull();
@@ -44,7 +44,7 @@ public class NameLoadingTest
     public void TestLoadStarNames()
     {
         var defaults = TemplateHelpers.GetCelestialBodyDefaults(
-            CelestialBodyType.Star
+            OrbitalBodyType.Star
         );
 
         AssertThat(defaults).IsNotNull();
@@ -71,7 +71,7 @@ public class NameLoadingTest
     public void TestLoadMoonNames()
     {
         var defaults = TemplateHelpers.GetSatelliteBodyDefaults(
-            SatelliteBodyType.Moon
+            OrbitalBodyType.Moon
         );
 
         AssertThat(defaults).IsNotNull();

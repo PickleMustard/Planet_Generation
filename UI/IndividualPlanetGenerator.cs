@@ -353,7 +353,7 @@ public partial class IndividualPlanetGenerator : Control
         ApplyDefaults(type);
     }
 
-    private void ApplyDefaults(CelestialBodyType type)
+    private void ApplyDefaults(OrbitalBodyType type)
     {
         var defaults = TemplateHelpers.GetCelestialBodyDefaults(type);
 
@@ -485,7 +485,7 @@ public partial class IndividualPlanetGenerator : Control
         var templateDict = (Dictionary)bodyParams["template"];
         float mass = (float)templateDict["mass"];
         string typeStr = (string)bodyParams["type"];
-        var bodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), typeStr);
+        var bodyType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), typeStr);
         string name = (string)bodyParams["name"];
 
         // Select subtype

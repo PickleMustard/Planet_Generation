@@ -86,6 +86,10 @@ public enum SatelliteSubtype
     VolcanicMoon,
     TidallyLocked,
     CapturedAsteroid,
+    DesertMoon,
+    IronMoon,
+    CarbonMoon,
+    SulfurMoon,
 
     // Asteroid subtypes
     Carbonaceous,

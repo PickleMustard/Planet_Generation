@@ -120,6 +120,31 @@ public static class BiomeIdMapper
         };
     }
 
+    /// <summary>
+    /// Maps any boxed per-family subtype enum value to its stable subtype id string. Returns null
+    /// for unrecognized objects. Lets callers that hold an <c>object</c> subtype (e.g.
+    /// <c>SubtypeProbability.Subtype</c>) resolve an id without a per-family switch.
+    /// </summary>
+    public static string? SubtypeObjectToId(object? subtype) => subtype switch
+    {
+        RockyPlanetSubtype s => RockyPlanetSubtypeToId(s),
+        GasGiantSubtype s => GasGiantSubtypeToId(s),
+        IceGiantSubtype s => IceGiantSubtypeToId(s),
+        DwarfPlanetSubtype s => DwarfPlanetSubtypeToId(s),
+        StarSubtype s => StarSubtypeToId(s),
+        NeutronStarSubtype s => NeutronStarSubtypeToId(s),
+        BlackHoleSubtype s => BlackHoleSubtypeToId(s),
+        SatelliteSubtype s => SatelliteSubtypeToId(s),
+        BeltSubtype s => BeltSubtypeToId(s),
+        _ => null,
+    };
+
+    /// <summary>
+    /// Subtype id for a classification's current subtype, or null when it carries none.
+    /// </summary>
+    public static string? ClassificationToSubtypeId(BodyClassification classification) =>
+        SubtypeObjectToId(classification?.SubtypeAsObject);
+
     private static T? TryParseSuffix<T>(string id, string prefix) where T : struct, Enum
     {
         if (string.IsNullOrEmpty(id) || !id.StartsWith(prefix)) return null;

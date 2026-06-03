@@ -1,5 +1,6 @@
 using Constructables;
 using Godot;
+using UI.OrbitalScheduling;
 using UtilityLibrary;
 
 namespace UI.LogisticsUnitWindow;
@@ -36,6 +37,10 @@ public partial class LogisticsUnitWindow : Control
     private LogisticsUnit? _currentUnit;
     private Camera3D? _playerCamera;
 
+    // Orbital-schedule editor overlay (created lazily, child of this window).
+    private OrbitalScheduleWindow? _scheduleWindow;
+    private Button? _editScheduleButton;
+
     // Right column holds the tab strip; the bottom strip holds the info panel.
     // Used to push the ship into the open center-left negative space.
     private const float TAB_PANEL_WIDTH = 440f;
@@ -63,6 +68,22 @@ public partial class LogisticsUnitWindow : Control
 
         if (_tabbedPanel != null && _infoPanel != null)
             _tabbedPanel.SectionSelected += OnSectionSelected;
+
+        // Orbital-schedule editor overlay + its entry button (built in code so no
+        // .tscn changes are required).
+        _scheduleWindow = new OrbitalScheduleWindow();
+        AddChild(_scheduleWindow);
+
+        _editScheduleButton = new Button
+        {
+            Text = "✎ Edit Orbital Schedule",
+            ThemeTypeVariation = "ButtonPrimary",
+            Visible = false,
+        };
+        _editScheduleButton.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterTop, LayoutPresetMode.KeepSize);
+        _editScheduleButton.Position += new Vector2(0, 24);
+        _editScheduleButton.Pressed += OnEditSchedulePressed;
+        AddChild(_editScheduleButton);
     }
 
     public override void _ExitTree()
@@ -102,6 +123,9 @@ public partial class LogisticsUnitWindow : Control
         _infoPanel?.Initialize(unit);
         _tabbedPanel?.Initialize(unit); // emits SectionSelected → info panel populates
 
+        if (_editScheduleButton != null)
+            _editScheduleButton.Visible = true;
+
         if (unit is Node unitNode)
             unitNode.TreeExiting += OnUnitExiting;
 
@@ -114,6 +138,11 @@ public partial class LogisticsUnitWindow : Control
             return;
 
         IsOpen = false;
+
+        if (_scheduleWindow != null && _scheduleWindow.Visible)
+            _scheduleWindow.HideWindow();
+        if (_editScheduleButton != null)
+            _editScheduleButton.Visible = false;
 
         _orbitCamera?.EndOrbit();
         _cartouchePanel?.Clear();
@@ -149,6 +178,12 @@ public partial class LogisticsUnitWindow : Control
     // ───────── Callbacks ─────────
 
     private void OnSectionSelected(string sectionKey) => _infoPanel?.ShowSection(sectionKey);
+
+    private void OnEditSchedulePressed()
+    {
+        if (_currentUnit != null)
+            _scheduleWindow?.ShowWindow(_currentUnit);
+    }
 
     private void OnUnitExiting()
     {

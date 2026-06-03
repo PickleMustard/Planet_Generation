@@ -18,6 +18,25 @@ public static class OrbitalDistanceCalculator
         return OrbitalMath.CalculateDistanceFromParentAU(parentPos, childPos);
     }
 
+    /// <summary>
+    /// Cumulative distance from the system center in AU, summed along the orbital chain. Walks
+    /// <see cref="IOrbitalBody.OrbitalParent"/> adding each link's own distance-from-its-parent. Used
+    /// as the load/restore fallback when <c>CelestialBody.EffectiveAU</c> was not pre-set at
+    /// generation time.
+    /// </summary>
+    public static float ComputeEffectiveAU(IOrbitalBody body)
+    {
+        float sum = 0f;
+        IOrbitalBody? current = body;
+        while (current != null)
+        {
+            if (current is PlanetGeneration.CelestialBody cb)
+                sum += cb.GetDistanceFromCenterAU();
+            current = current.OrbitalParent;
+        }
+        return sum;
+    }
+
     public static float CalculateBeltDistanceAU(Godot.Collections.Dictionary belt)
     {
         float ringApogee = 1000f;

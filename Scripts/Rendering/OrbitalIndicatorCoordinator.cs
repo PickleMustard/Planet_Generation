@@ -258,15 +258,13 @@ public partial class OrbitalIndicatorCoordinator : Node
 
     private static Vector3 GetFallbackColor(BodyClassification classification)
     {
-        // Use the classification's CelestialBodyType name for lookup, falling back to TypeName
-        string key =
-            classification.AsCelestialBodyType?.ToString()
-            ?? classification switch
-            {
-                BodyClassification.Satellite => "Satellite",
-                BodyClassification.Belt => "Belt",
-                _ => "",
-            };
+        // Satellites/belts share one fallback color key; everything else keys off its OrbitalBodyType.
+        string key = classification switch
+        {
+            BodyClassification.Satellite => "Satellite",
+            BodyClassification.Belt => "Belt",
+            _ => classification.Type.ToString(),
+        };
 
         return FallbackColors.TryGetValue(key, out var color)
             ? color

@@ -25,6 +25,15 @@ public static class OrbitalBodyConverter
     /// <returns>A Dictionary containing the body and its type identifier.</returns>
     /// <exception cref="ArgumentNullException">Thrown when body is null.</exception>
     /// <exception cref="ArgumentException">Thrown when body is not CelestialBody or SatelliteBody.</exception>
+    /// <summary>
+    /// True when a (now unified) CelestialBody is satellite-classified (moon/asteroid/comet/belt).
+    /// After the SatelliteBody merge, the runtime type is always CelestialBody; the satellite vs.
+    /// celestial distinction lives in <see cref="Structures.BodyClassification"/>.
+    /// </summary>
+    private static bool IsSatelliteClassified(CelestialBody body) =>
+        body.Classification is Structures.BodyClassification.Satellite
+            or Structures.BodyClassification.Belt;
+
     public static Godot.Collections.Dictionary ToDictionary(IOrbitalBody body)
     {
         ArgumentNullException.ThrowIfNull(body);
@@ -34,12 +43,9 @@ public static class OrbitalBodyConverter
             CelestialBody celestialBody => new Godot.Collections.Dictionary
             {
                 [BodyKey] = celestialBody,
-                [BodyTypeKey] = CelestialBodyTypeKey
-            },
-            SatelliteBody satelliteBody => new Godot.Collections.Dictionary
-            {
-                [BodyKey] = satelliteBody,
-                [BodyTypeKey] = SatelliteBodyTypeKey
+                [BodyTypeKey] = IsSatelliteClassified(celestialBody)
+                    ? SatelliteBodyTypeKey
+                    : CelestialBodyTypeKey
             },
             _ => throw new ArgumentException(
                 $"Unsupported IOrbitalBody type: {body.GetType().Name}. " +
@@ -59,7 +65,7 @@ public static class OrbitalBodyConverter
     public static void FromDictionary(
         Godot.Collections.Dictionary dict,
         Action<CelestialBody> onCelestialBody,
-        Action<SatelliteBody> onSatelliteBody)
+        Action<CelestialBody> onSatelliteBody)
     {
         ArgumentNullException.ThrowIfNull(dict);
         ArgumentNullException.ThrowIfNull(onCelestialBody);
@@ -82,34 +88,25 @@ public static class OrbitalBodyConverter
         Variant bodyVariant = dict[BodyKey];
         string typeKey = dict[BodyTypeKey].AsString();
 
-        switch (typeKey)
+        if (typeKey != CelestialBodyTypeKey && typeKey != SatelliteBodyTypeKey)
         {
-            case CelestialBodyTypeKey:
-                if (bodyVariant.Obj is not CelestialBody celestialBody)
-                {
-                    throw new ArgumentException(
-                        $"Dictionary claims type {CelestialBodyTypeKey} but body is {bodyVariant.Obj?.GetType().Name ?? "null"}",
-                        nameof(dict));
-                }
-                onCelestialBody(celestialBody);
-                break;
-
-            case SatelliteBodyTypeKey:
-                if (bodyVariant.Obj is not SatelliteBody satelliteBody)
-                {
-                    throw new ArgumentException(
-                        $"Dictionary claims type {SatelliteBodyTypeKey} but body is {bodyVariant.Obj?.GetType().Name ?? "null"}",
-                        nameof(dict));
-                }
-                onSatelliteBody(satelliteBody);
-                break;
-
-            default:
-                throw new ArgumentException(
-                    $"Unknown body type key: {typeKey}. " +
-                    $"Expected {CelestialBodyTypeKey} or {SatelliteBodyTypeKey}.",
-                    nameof(dict));
+            throw new ArgumentException(
+                $"Unknown body type key: {typeKey}. " +
+                $"Expected {CelestialBodyTypeKey} or {SatelliteBodyTypeKey}.",
+                nameof(dict));
         }
+
+        if (bodyVariant.Obj is not CelestialBody body)
+        {
+            throw new ArgumentException(
+                $"Dictionary claims type {typeKey} but body is {bodyVariant.Obj?.GetType().Name ?? "null"}",
+                nameof(dict));
+        }
+
+        if (typeKey == SatelliteBodyTypeKey)
+            onSatelliteBody(body);
+        else
+            onCelestialBody(body);
     }
 
     /// <summary>
@@ -125,7 +122,7 @@ public static class OrbitalBodyConverter
     public static TResult FromDictionary<TResult>(
         Godot.Collections.Dictionary dict,
         Func<CelestialBody, TResult> onCelestialBody,
-        Func<SatelliteBody, TResult> onSatelliteBody)
+        Func<CelestialBody, TResult> onSatelliteBody)
     {
         ArgumentNullException.ThrowIfNull(dict);
         ArgumentNullException.ThrowIfNull(onCelestialBody);
@@ -148,25 +145,22 @@ public static class OrbitalBodyConverter
         Variant bodyVariant = dict[BodyKey];
         string typeKey = dict[BodyTypeKey].AsString();
 
-        return typeKey switch
+        if (typeKey != CelestialBodyTypeKey && typeKey != SatelliteBodyTypeKey)
         {
-            CelestialBodyTypeKey => bodyVariant.Obj is CelestialBody celestialBody
-                ? onCelestialBody(celestialBody)
-                : throw new ArgumentException(
-                    $"Dictionary claims type {CelestialBodyTypeKey} but body is {bodyVariant.Obj?.GetType().Name ?? "null"}",
-                    nameof(dict)),
-
-            SatelliteBodyTypeKey => bodyVariant.Obj is SatelliteBody satelliteBody
-                ? onSatelliteBody(satelliteBody)
-                : throw new ArgumentException(
-                    $"Dictionary claims type {SatelliteBodyTypeKey} but body is {bodyVariant.Obj?.GetType().Name ?? "null"}",
-                    nameof(dict)),
-
-            _ => throw new ArgumentException(
+            throw new ArgumentException(
                 $"Unknown body type key: {typeKey}. " +
                 $"Expected {CelestialBodyTypeKey} or {SatelliteBodyTypeKey}.",
-                nameof(dict))
-        };
+                nameof(dict));
+        }
+
+        if (bodyVariant.Obj is not CelestialBody body)
+        {
+            throw new ArgumentException(
+                $"Dictionary claims type {typeKey} but body is {bodyVariant.Obj?.GetType().Name ?? "null"}",
+                nameof(dict));
+        }
+
+        return typeKey == SatelliteBodyTypeKey ? onSatelliteBody(body) : onCelestialBody(body);
     }
 
     /// <summary>
@@ -181,7 +175,7 @@ public static class OrbitalBodyConverter
     public static void Match(
         IOrbitalBody body,
         Action<CelestialBody> onCelestialBody,
-        Action<SatelliteBody> onSatelliteBody)
+        Action<CelestialBody> onSatelliteBody)
     {
         ArgumentNullException.ThrowIfNull(body);
         ArgumentNullException.ThrowIfNull(onCelestialBody);
@@ -189,12 +183,12 @@ public static class OrbitalBodyConverter
 
         switch (body)
         {
-            case CelestialBody celestialBody:
-                onCelestialBody(celestialBody);
+            case CelestialBody cb when IsSatelliteClassified(cb):
+                onSatelliteBody(cb);
                 break;
 
-            case SatelliteBody satelliteBody:
-                onSatelliteBody(satelliteBody);
+            case CelestialBody celestialBody:
+                onCelestialBody(celestialBody);
                 break;
 
             default:
@@ -218,7 +212,7 @@ public static class OrbitalBodyConverter
     public static TResult Match<TResult>(
         IOrbitalBody body,
         Func<CelestialBody, TResult> onCelestialBody,
-        Func<SatelliteBody, TResult> onSatelliteBody)
+        Func<CelestialBody, TResult> onSatelliteBody)
     {
         ArgumentNullException.ThrowIfNull(body);
         ArgumentNullException.ThrowIfNull(onCelestialBody);
@@ -226,8 +220,8 @@ public static class OrbitalBodyConverter
 
         return body switch
         {
+            CelestialBody cb when IsSatelliteClassified(cb) => onSatelliteBody(cb),
             CelestialBody celestialBody => onCelestialBody(celestialBody),
-            SatelliteBody satelliteBody => onSatelliteBody(satelliteBody),
             _ => throw new ArgumentException(
                 $"Unsupported IOrbitalBody type: {body.GetType().Name}. " +
                 $"Only {CelestialBodyTypeKey} and {SatelliteBodyTypeKey} are supported.",
@@ -267,7 +261,7 @@ public static class OrbitalBodyConverter
         Blackboard blackboard,
         string key,
         Action<CelestialBody> onCelestialBody,
-        Action<SatelliteBody> onSatelliteBody)
+        Action<CelestialBody> onSatelliteBody)
     {
         ArgumentNullException.ThrowIfNull(blackboard);
         ArgumentNullException.ThrowIfNull(key);
@@ -302,7 +296,7 @@ public static class OrbitalBodyConverter
         Blackboard blackboard,
         string key,
         Func<CelestialBody, TResult> onCelestialBody,
-        Func<SatelliteBody, TResult> onSatelliteBody)
+        Func<CelestialBody, TResult> onSatelliteBody)
     {
         ArgumentNullException.ThrowIfNull(blackboard);
         ArgumentNullException.ThrowIfNull(key);
@@ -334,8 +328,7 @@ public static class OrbitalBodyConverter
 
         return body switch
         {
-            CelestialBody => CelestialBodyTypeKey,
-            SatelliteBody => SatelliteBodyTypeKey,
+            CelestialBody cb => IsSatelliteClassified(cb) ? SatelliteBodyTypeKey : CelestialBodyTypeKey,
             _ => throw new ArgumentException(
                 $"Unsupported IOrbitalBody type: {body.GetType().Name}. " +
                 $"Only {CelestialBodyTypeKey} and {SatelliteBodyTypeKey} are supported.",

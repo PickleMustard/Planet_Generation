@@ -19,7 +19,7 @@ public static class ResourceConfigLoader
     /// 3. Returns null to allow caller to use existing template resources
     /// </summary>
     public static Godot.Collections.Dictionary? LoadForSubtype(
-        CelestialBodyType bodyType,
+        OrbitalBodyType bodyType,
         object? subtype
     )
     {

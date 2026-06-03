@@ -97,7 +97,7 @@ public static class NameGenerator
     /// <summary>
     /// Generates a name appropriate for a dominant body (star, neutron star, black hole).
     /// </summary>
-    public static string GenerateDominantBodyName(CelestialBodyType type = CelestialBodyType.Star)
+    public static string GenerateDominantBodyName(OrbitalBodyType type = OrbitalBodyType.Star)
     {
         var nameFile = GetNameFileForCelestialBodyType(type);
         return PickNameFromFile(nameFile, format: NameFormat.NoSpacesLowerCase);
@@ -106,7 +106,7 @@ public static class NameGenerator
     /// <summary>
     /// Generates a name appropriate for a planetary body (rocky planet, gas giant, etc.).
     /// </summary>
-    public static string GeneratePlanetaryBodyName(CelestialBodyType type)
+    public static string GeneratePlanetaryBodyName(OrbitalBodyType type)
     {
         var nameFile = GetNameFileForCelestialBodyType(type);
         return PickNameFromFile(nameFile);
@@ -115,7 +115,7 @@ public static class NameGenerator
     /// <summary>
     /// Generates a name appropriate for a satellite body (moon, asteroid, comet, etc.).
     /// </summary>
-    public static string GenerateSatelliteName(SatelliteBodyType type)
+    public static string GenerateSatelliteName(OrbitalBodyType type)
     {
         var nameFile = GetNameFileForSatelliteBodyType(type);
         return PickNameFromFile(nameFile);
@@ -125,11 +125,11 @@ public static class NameGenerator
     /// Dispatcher that generates an appropriate name for any celestial body type.
     /// Routes to dominant or planetary naming based on the type.
     /// </summary>
-    public static string GenerateCelestialBodyName(CelestialBodyType type)
+    public static string GenerateCelestialBodyName(OrbitalBodyType type)
     {
         return type switch
         {
-            CelestialBodyType.Star or CelestialBodyType.NeutronStar or CelestialBodyType.BlackHole
+            OrbitalBodyType.Star or OrbitalBodyType.NeutronStar or OrbitalBodyType.BlackHole
                 => GenerateDominantBodyName(type),
             _ => GeneratePlanetaryBodyName(type),
         };
@@ -279,28 +279,28 @@ public static class NameGenerator
 
     #region Private Methods
 
-    private static string GetNameFileForCelestialBodyType(CelestialBodyType type)
+    private static string GetNameFileForCelestialBodyType(OrbitalBodyType type)
     {
         return type switch
         {
-            CelestialBodyType.RockyPlanet => "rockyplanets",
-            CelestialBodyType.DwarfPlanet => "rockyplanets",
-            CelestialBodyType.GasGiant => "nonrocky",
-            CelestialBodyType.IceGiant => "nonrocky",
-            CelestialBodyType.Star => "centralbodies",
-            CelestialBodyType.NeutronStar => "centralbodies",
-            CelestialBodyType.BlackHole => "centralbodies",
+            OrbitalBodyType.RockyPlanet => "rockyplanets",
+            OrbitalBodyType.DwarfPlanet => "rockyplanets",
+            OrbitalBodyType.GasGiant => "nonrocky",
+            OrbitalBodyType.IceGiant => "nonrocky",
+            OrbitalBodyType.Star => "centralbodies",
+            OrbitalBodyType.NeutronStar => "centralbodies",
+            OrbitalBodyType.BlackHole => "centralbodies",
             _ => "rockyplanets",
         };
     }
 
-    private static string GetNameFileForSatelliteBodyType(SatelliteBodyType type)
+    private static string GetNameFileForSatelliteBodyType(OrbitalBodyType type)
     {
         return type switch
         {
-            SatelliteBodyType.Moon => "satellites",
-            SatelliteBodyType.Asteroid => "satellites",
-            SatelliteBodyType.DwarfPlanet => "rockyplanets",
+            OrbitalBodyType.Moon => "satellites",
+            OrbitalBodyType.Asteroid => "satellites",
+            OrbitalBodyType.DwarfPlanet => "rockyplanets",
             _ => "satellites",
         };
     }

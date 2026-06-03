@@ -139,19 +139,22 @@ public static class SaveManager
         return null;
     }
 
-    private static System.Collections.Generic.List<SatelliteBody> FindSatellites(Node root)
+    private static System.Collections.Generic.List<CelestialBody> FindSatellites(Node root)
     {
-        var result = new System.Collections.Generic.List<SatelliteBody>();
+        var result = new System.Collections.Generic.List<CelestialBody>();
         CollectSatellites(root, result);
         return result;
     }
 
-    private static void CollectSatellites(Node node, System.Collections.Generic.List<SatelliteBody> acc)
+    private static void CollectSatellites(Node node, System.Collections.Generic.List<CelestialBody> acc)
     {
         foreach (var child in node.GetChildren())
         {
-            if (child is SatelliteBody sat)
-                acc.Add(sat);
+            // Satellites are now CelestialBody instances distinguished by classification.
+            if (child is CelestialBody cb
+                && cb.Classification is Structures.BodyClassification.Satellite
+                    or Structures.BodyClassification.Belt)
+                acc.Add(cb);
             // Recurse (satellites may sit under a container child of the body).
             CollectSatellites(child, acc);
         }

@@ -249,7 +249,7 @@ public static class SystemTemplateMigrator
         if (!body.TryGetValue("type", out var typeObj) || typeObj is not string typeStr)
             return false;
 
-        // CelestialBodyType / SatelliteBodyType / SatelliteGroupTypes all overlap by name in YAML.
+        // OrbitalBodyType / OrbitalBodyType / SatelliteGroupTypes all overlap by name in YAML.
         // We map by string match to BodyFamily so the migrator does not depend on which enum the
         // template authored.
         return typeStr switch

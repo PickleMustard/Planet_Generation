@@ -33,7 +33,7 @@ public class IOrbitalBodyRegistryTest
         private readonly Dictionary<string, Building> _buildings = new();
         private readonly Dictionary<string, GodotObject> _owners = new();
 
-        public BodyClassification Classification => BodyClassification.FromLegacy(CelestialBodyType.RockyPlanet, null);
+        public BodyClassification Classification => BodyClassification.FromType(OrbitalBodyType.RockyPlanet, null);
         public BodyBillboardTextures BillboardTextures => null!;
         public float Radius { get; set; }
         public float Mass { get; set; }

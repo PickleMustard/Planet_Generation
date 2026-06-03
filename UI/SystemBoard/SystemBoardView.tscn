@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/SystemBoard/SystemBoardView.cs" id="1_view"]
+[ext_resource type="Script" path="res://Scripts/UI/PlanetBoard/BoardCameraController.cs" id="2_camera"]
+[ext_resource type="Script" path="res://Scripts/UI/SystemBoard/SystemBoardWorld.cs" id="3_world"]
+
+[node name="SystemBoardView" type="Control" node_paths=PackedStringArray("_viewport", "_cameraController", "_world")]
+script = ExtResource("1_view")
+_viewport = NodePath("BoardSubViewportContainer/BoardSubViewport")
+_cameraController = NodePath("BoardSubViewportContainer/BoardSubViewport/BoardCamera2D")
+_world = NodePath("BoardSubViewportContainer/BoardSubViewport/SystemBoardWorld")
+
+[node name="BoardSubViewportContainer" type="SubViewportContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+
+[node name="BoardSubViewport" type="SubViewport" parent="BoardSubViewportContainer"]
+handle_input_locally = true
+render_target_update_mode = 4
+size = Vector2(800, 600)
+
+[node name="BoardCamera2D" type="Camera2D" parent="BoardSubViewportContainer/BoardSubViewport"]
+anchor_mode = 1
+process_callback = 0
+script = ExtResource("2_camera")
+
+[node name="SystemBoardWorld" type="Node2D" parent="BoardSubViewportContainer/BoardSubViewport"]
+script = ExtResource("3_world")

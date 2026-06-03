@@ -218,7 +218,7 @@ public partial class DominantBodyItem : HBoxContainer
         }
     }
 
-    public void ApplyTemplate(CelestialBodyType type)
+    public void ApplyTemplate(OrbitalBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = TemplateHelpers.GetCelestialBodyDefaults(type);

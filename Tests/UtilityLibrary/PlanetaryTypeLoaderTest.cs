@@ -140,20 +140,20 @@ public class PlanetaryTypeLoaderTest
     [RequireGodotRuntime]
     public void ToCelestialBodyType_ConvertsCorrectly()
     {
-        AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("Star")).IsEqual(CelestialBodyType.Star);
+        AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("Star")).IsEqual(OrbitalBodyType.Star);
         AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("RockyPlanet"))
-            .IsEqual(CelestialBodyType.RockyPlanet);
+            .IsEqual(OrbitalBodyType.RockyPlanet);
         AssertThat(PlanetaryTypeLoader.ToCelestialBodyType("BlackHole"))
-            .IsEqual(CelestialBodyType.BlackHole);
+            .IsEqual(OrbitalBodyType.BlackHole);
     }
 
     [TestCase]
     [RequireGodotRuntime]
     public void ToSatelliteBodyType_ConvertsCorrectly()
     {
-        AssertThat(PlanetaryTypeLoader.ToSatelliteBodyType("Moon")).IsEqual(SatelliteBodyType.Moon);
+        AssertThat(PlanetaryTypeLoader.ToSatelliteBodyType("Moon")).IsEqual(OrbitalBodyType.Moon);
         AssertThat(PlanetaryTypeLoader.ToSatelliteBodyType("Asteroid"))
-            .IsEqual(SatelliteBodyType.Asteroid);
+            .IsEqual(OrbitalBodyType.Asteroid);
     }
 
     [TestCase]
@@ -172,11 +172,11 @@ public class PlanetaryTypeLoaderTest
     [RequireGodotRuntime]
     public void ToDominantBodyType_ConvertsCorrectly()
     {
-        AssertThat(PlanetaryTypeLoader.ToDominantBodyType("Star")).IsEqual(DominantBodyType.Star);
+        AssertThat(PlanetaryTypeLoader.ToDominantBodyType("Star")).IsEqual(OrbitalBodyType.Star);
         AssertThat(PlanetaryTypeLoader.ToDominantBodyType("NeutronStar"))
-            .IsEqual(DominantBodyType.NeutronStar);
+            .IsEqual(OrbitalBodyType.NeutronStar);
         AssertThat(PlanetaryTypeLoader.ToDominantBodyType("BlackHole"))
-            .IsEqual(DominantBodyType.BlackHole);
+            .IsEqual(OrbitalBodyType.BlackHole);
     }
 
     [TestCase]
@@ -184,9 +184,9 @@ public class PlanetaryTypeLoaderTest
     public void ToPlanetaryBodyType_ConvertsCorrectly()
     {
         AssertThat(PlanetaryTypeLoader.ToPlanetaryBodyType("RockyPlanet"))
-            .IsEqual(PlanetaryBodyType.RockyPlanet);
+            .IsEqual(OrbitalBodyType.RockyPlanet);
         AssertThat(PlanetaryTypeLoader.ToPlanetaryBodyType("GasGiant"))
-            .IsEqual(PlanetaryBodyType.GasGiant);
+            .IsEqual(OrbitalBodyType.GasGiant);
     }
 
     [TestCase]

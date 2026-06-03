@@ -185,7 +185,10 @@ public partial class TrajectoryPreviewManager : Node
                 // Also propagate satellite children
                 foreach (var child in body.GetChildren())
                 {
-                    if (child is SatelliteBody satellite && satellite.Mass > 0)
+                    if (child is CelestialBody satellite
+                        && satellite.Classification is Structures.BodyClassification.Satellite
+                            or Structures.BodyClassification.Belt
+                        && satellite.Mass > 0)
                     {
                         float satelliteMu = OrbitalMath.GRAVITATIONAL_CONSTANT * body.Mass;
                         Vector3 satPos = satellite.GlobalPosition;

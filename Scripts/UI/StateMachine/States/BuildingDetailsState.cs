@@ -129,8 +129,6 @@ public partial class BuildingDetailsState : LimboState
                 var body = bodyVariant.As<Node3D>();
                 if (body is ProceduralGeneration.PlanetGeneration.CelestialBody cb)
                     bb.SetVar("SelectedContinent", cb.Mesh?.GetContinent(continentIndex) ?? default(Variant));
-                else if (body is ProceduralGeneration.PlanetGeneration.SatelliteBody sb)
-                    bb.SetVar("SelectedContinent", sb.Mesh?.GetContinent(continentIndex) ?? default(Variant));
             }
         }
 

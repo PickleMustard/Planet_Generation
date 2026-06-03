@@ -366,14 +366,39 @@ public static class YamlValidator
         bool hasAnySection =
             root.Children.ContainsKey("dominant")
             || root.Children.ContainsKey("belts")
-            || root.Children.ContainsKey("planetary");
+            || root.Children.ContainsKey("planetary")
+            || root.Children.ContainsKey("satellites");
 
         if (!hasAnySection)
         {
             result.AddError(
-                "System template must have at least one of: 'dominant', 'belts', 'planetary'"
+                "System template must have at least one of: 'dominant', 'belts', 'planetary', 'satellites'"
             );
             return;
+        }
+
+        // Collect known body names (dominant + planetary + satellites) so the satellites section
+        // can verify each entry's `parent` references a real body (or the system barycenter).
+        var knownBodyNames = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal)
+        {
+            "barycenter",
+        };
+        foreach (var section in new[] { "dominant", "planetary", "satellites" })
+        {
+            if (root.Children.TryGetValue(section, out var secNode)
+                && secNode is YamlSequenceNode secSeq)
+            {
+                foreach (var entry in secSeq.Children)
+                {
+                    if (entry is YamlMappingNode map
+                        && map.Children.TryGetValue("name", out var nameNode)
+                        && nameNode is YamlScalarNode scalar
+                        && !string.IsNullOrEmpty(scalar.Value))
+                    {
+                        knownBodyNames.Add(scalar.Value);
+                    }
+                }
+            }
         }
 
         // Validate dominant section
@@ -466,25 +491,50 @@ public static class YamlValidator
                             );
                         RejectLegacyGenRangeKeys(body, $"planetary[{idx}]", result);
                         ValidateSubtypeSlot(body, $"planetary[{idx}]", result);
+                    }
+                    idx++;
+                }
+            }
+        }
 
-                        // Satellites embedded in planetary bodies share the same legacy keys.
-                        if (body.Children.TryGetValue("satellites", out var satsNode)
-                            && satsNode is YamlSequenceNode satsSeq)
+        // Validate flattened satellites section
+        if (root.Children.ContainsKey("satellites"))
+        {
+            var satellites = root.Children["satellites"] as YamlSequenceNode;
+            if (satellites == null)
+            {
+                result.AddError("'satellites' must be a sequence");
+            }
+            else
+            {
+                int idx = 0;
+                foreach (var satNode in satellites.Children)
+                {
+                    var sat = satNode as YamlMappingNode;
+                    if (sat == null)
+                    {
+                        result.AddError($"Satellite at index {idx} must be a mapping");
+                    }
+                    else
+                    {
+                        if (!sat.Children.ContainsKey("type"))
+                            result.AddWarning($"Satellite at index {idx} missing 'type' field");
+
+                        if (!sat.Children.TryGetValue("parent", out var parentNode)
+                            || parentNode is not YamlScalarNode parentScalar
+                            || string.IsNullOrEmpty(parentScalar.Value))
                         {
-                            int satIdx = 0;
-                            foreach (var satNode in satsSeq.Children)
-                            {
-                                if (satNode is YamlMappingNode satMap)
-                                {
-                                    RejectLegacyGenRangeKeys(
-                                        satMap,
-                                        $"planetary[{idx}].satellites[{satIdx}]",
-                                        result
-                                    );
-                                }
-                                satIdx++;
-                            }
+                            result.AddError($"Satellite at index {idx} missing required 'parent' field");
                         }
+                        else if (!knownBodyNames.Contains(parentScalar.Value))
+                        {
+                            result.AddError(
+                                $"Satellite at index {idx} references unknown parent '{parentScalar.Value}'"
+                            );
+                        }
+
+                        RejectLegacyGenRangeKeys(sat, $"satellites[{idx}]", result);
+                        ValidateSubtypeSlot(sat, $"satellites[{idx}]", result);
                     }
                     idx++;
                 }

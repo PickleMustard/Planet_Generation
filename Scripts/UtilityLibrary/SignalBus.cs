@@ -50,6 +50,7 @@ namespace UtilityLibrary
             Array<Dictionary> dominantBodies,
             Array<Dictionary> satelliteBelts,
             Array<Dictionary> planetaryBodies,
+            Array<Dictionary> satelliteBodies,
             Barycenter barycenter
         );
 
@@ -57,6 +58,7 @@ namespace UtilityLibrary
             Array<Dictionary> dominantBodies,
             Array<Dictionary> satelliteBelts,
             Array<Dictionary> planetaryBodies,
+            Array<Dictionary> satelliteBodies,
             Barycenter barycenter
         )
         {
@@ -65,6 +67,7 @@ namespace UtilityLibrary
                 dominantBodies,
                 satelliteBelts,
                 planetaryBodies,
+                satelliteBodies,
                 barycenter
             );
         }

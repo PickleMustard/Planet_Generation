@@ -238,11 +238,13 @@ public static class SimulationCommands
             //ctx.WriteLine($"  {body.Name}: pos({newPos.X:F1}, {newPos.Y:F1}, {newPos.Z:F1})");
             celestialCount++;
 
-            // Also update any SatelliteBody children
+            // Also update any satellite-classified children (now unified CelestialBody instances)
             var children = body.GetChildren();
             foreach (var child in children)
             {
-                if (child is SatelliteBody satellite)
+                if (child is CelestialBody satellite
+                    && satellite.Classification is Structures.BodyClassification.Satellite
+                        or Structures.BodyClassification.Belt)
                 {
                     if (satellite.Mass <= 0)
                         continue;

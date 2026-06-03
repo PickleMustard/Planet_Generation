@@ -102,7 +102,7 @@ public class SatelliteBeltBody
         }
 
         public Builder FromBodyDict(
-            DominantBodyType parentType,
+            OrbitalBodyType parentType,
             Godot.Collections.Dictionary bodyDict
         )
         {
@@ -142,7 +142,7 @@ public class SatelliteBeltBody
         }
 
         public static SatelliteBeltBody BuildFromBodyDict(
-            DominantBodyType parentType,
+            OrbitalBodyType parentType,
             Godot.Collections.Dictionary bodyDict
         )
         {
@@ -164,10 +164,10 @@ public class SatelliteBeltBody
         SatelliteNames = builder._satelliteNames;
     }
 
-    public Godot.Collections.Array<SatelliteBody> GenerateSatelliteBelt(CelestialBody parent)
+    public Godot.Collections.Array<CelestialBody> GenerateSatelliteBelt(CelestialBody parent)
     {
-        Godot.Collections.Array<SatelliteBody> satellites =
-            new Godot.Collections.Array<SatelliteBody>();
+        Godot.Collections.Array<CelestialBody> satellites =
+            new Godot.Collections.Array<CelestialBody>();
         try
         {
             var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
@@ -205,10 +205,28 @@ public class SatelliteBeltBody
         return satellites;
     }
 
-    private SatelliteBody CreateSatellite(CelestialBody parent, Vector3 pHat, Vector3 baseQHat, int index)
+    private CelestialBody CreateSatellite(CelestialBody parent, Vector3 pHat, Vector3 baseQHat, int index)
     {
         var satelliteType = DetermineSatelliteType(GroupType);
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+
+        // Mirror the celestial path: roll a concrete subtype from AU-weighted config so the
+        // belt satellite carries a non-null subtype for resource and mesh-param lookups.
+        float effectiveAU =
+            parent.GetDistanceFromCenterAU()
+            + OrbitalMath.ConvertUnitsToAU((RingApogee + RingPerigee) / 2f);
+        string? parentSubtypeId =
+            ProceduralGeneration.ColorSystem.BiomeIdMapper.ClassificationToSubtypeId(
+                parent.Classification
+            );
+        var subtype =
+            (
+                new AUProbabilityManager(rng).SelectClassification(
+                    satelliteType,
+                    effectiveAU,
+                    parentSubtypeId
+                ) as Structures.BodyClassification.Satellite
+            )?.Subtype;
 
         var size = rng.RandfRange(SizeMin, SizeMax);
         var mass = rng.RandfRange(MassMin, MassMax);
@@ -306,26 +324,32 @@ public class SatelliteBeltBody
         }
 
         var mesh = new UnifiedCelestialMesh();
-        var satellite = new SatelliteBody.Builder()
-            .WithSatelliteType(satelliteType)
+        var satellite = new CelestialBody.Builder()
+            .WithSatelliteType(satelliteType, subtype)
             .WithSize(size)
             .WithMass(mass)
             .WithVelocity(calculatedVelocity)
             .WithBodyDict(bodyDict)
+            .WithDepth(parent.Depth + 1)
+            .WithForceAnalyticalOrbit(true)
             .WithMesh(mesh)
             .Build();
+        satellite.EffectiveAU =
+            parent.EffectiveAU + OrbitalMath.ConvertUnitsToAU((RingApogee + RingPerigee) / 2f);
+        // Place the belt member at its computed orbital position (local; retained after parenting).
+        satellite.Position = position;
 
         return satellite;
     }
 
-    private SatelliteBodyType DetermineSatelliteType(SatelliteGroupTypes beltType)
+    private OrbitalBodyType DetermineSatelliteType(SatelliteGroupTypes beltType)
     {
         return beltType switch
         {
-            SatelliteGroupTypes.AsteroidBelt => SatelliteBodyType.Asteroid,
-            SatelliteGroupTypes.Comet => SatelliteBodyType.Comet,
-            SatelliteGroupTypes.IceBelt => SatelliteBodyType.Comet,
-            _ => SatelliteBodyType.Asteroid,
+            SatelliteGroupTypes.AsteroidBelt => OrbitalBodyType.Asteroid,
+            SatelliteGroupTypes.Comet => OrbitalBodyType.Comet,
+            SatelliteGroupTypes.IceBelt => OrbitalBodyType.Comet,
+            _ => OrbitalBodyType.Asteroid,
         };
     }
 }

@@ -98,7 +98,7 @@ public static class SaveLoader
         {
             if (dto.Kind != "Satellite")
                 continue;
-            var node = (SatelliteBody)BodyMapper.Restore(dto);
+            var node = (CelestialBody)BodyMapper.Restore(dto);
 
             CelestialBody? parent = null;
             if (!string.IsNullOrEmpty(dto.OrbitalParentName))
@@ -134,20 +134,14 @@ public static class SaveLoader
         // Pass 4: orbit system init + band-count restore.
         foreach (var (node, dto) in bodyNodes)
         {
-            switch (node)
-            {
-                case CelestialBody cb:
-                    cb.InitializeOrbitSystem();
-                    break;
-                case SatelliteBody sb:
-                    sb.InitializeOrbitSystem();
-                    break;
-            }
+            if (node is CelestialBody cb)
+                cb.InitializeOrbitSystem();
             BodyMapper.ApplyPostInit(node, dto);
         }
 
         // Pass 5: logistics units (save_version ≥ 2). Each orbits a host body (under its
         // SatellitesContainer) or is adrift in the container when in transit / stranded.
+        var restoredUnits = new List<(LogisticsUnitDto Dto, Constructables.LogisticsUnit Unit)>();
         if (save.LogisticsUnits != null)
         {
             IOrbitalBody? ResolveBody(string name) =>
@@ -156,6 +150,7 @@ public static class SaveLoader
             foreach (var unitDto in save.LogisticsUnits)
             {
                 var unit = LogisticsMapper.Restore(unitDto, ResolveBody);
+                restoredUnits.Add((unitDto, unit));
 
                 Node parent = container;
                 if (!string.IsNullOrEmpty(unitDto.HostBodyName)
@@ -228,6 +223,48 @@ public static class SaveLoader
 
             GameLogger.Info(
                 $"[SaveLoader] Restored {_pendingTickables.Count} structures (buildings + stations) from save.");
+        }
+
+        // Pass 7: orbital schedules (save_version ≥ 4). Restored last because leg endpoints
+        // reference stations (pass 6) and bodies by name/id; assigned to each unit's executor
+        // via the deferred pending-restore hook.
+        if (restoredUnits.Count > 0)
+        {
+            var bodiesByName = new Dictionary<string, IOrbitalBody>();
+            foreach (var (node, d) in bodyNodes)
+                if (node is IOrbitalBody ob)
+                    bodiesByName[d.Name] = ob;
+
+            var stationsById = new Dictionary<string, Constructables.StationSatellite>();
+            foreach (var ob in bodiesByName.Values)
+            {
+                var satContainer = ob.SatellitesContainer;
+                if (satContainer == null) continue;
+                foreach (var child in satContainer.GetChildren())
+                    if (child is Constructables.StationSatellite station && !string.IsNullOrEmpty(station.Id))
+                        stationsById[station.Id] = station;
+            }
+
+            IOrbitalBody? ResolveScheduleBody(string name) =>
+                bodiesByName.TryGetValue(name, out var b) ? b : null;
+            Constructables.StationSatellite? ResolveStation(string id) =>
+                stationsById.TryGetValue(id, out var s) ? s : null;
+
+            int restored = 0;
+            foreach (var (unitDto, unit) in restoredUnits)
+            {
+                if (unitDto.Schedule == null) continue;
+                var schedule = LogisticsMapper.RestoreSchedule(
+                    unitDto.Schedule, ResolveScheduleBody, ResolveStation);
+                if (schedule != null)
+                {
+                    unit.SetPendingScheduleRestore(schedule);
+                    restored++;
+                }
+            }
+
+            if (restored > 0)
+                GameLogger.Info($"[SaveLoader] Restored {restored} orbital schedule(s) from save.");
         }
 
         // Coordinator drives synchronized N-body integration (and re-asserts CoordinatorActive).

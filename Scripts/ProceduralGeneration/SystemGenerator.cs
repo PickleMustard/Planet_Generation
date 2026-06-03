@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Godot;
 using ProceduralGeneration.ColorSystem;
 using ProceduralGeneration.MeshGeneration;
@@ -35,9 +36,27 @@ public partial class SystemGenerator : Node
     [Export]
     public bool ShowProgressUI = true;
 
-    // Progress tracking
-    private int totalBodiesToGenerate = 0;
-    private int bodiesCompleted = 0;
+    // Progress tracking, split by orbital-body category.
+    // Totals are set on the main thread during GenerateMesh before any completion can fire.
+    private int _dominantTotal = 0;
+    private int _planetaryTotal = 0;
+
+    // Satellite total is not known up front (belt sizes resolve at generation time); it is
+    // incremented via Interlocked as each satellite's mesh generation is queued.
+    private int _satelliteTotal = 0;
+
+    // Completed counts (success + failure) are mutated from worker threads — use Interlocked.
+    private int _dominantDone = 0;
+    private int _planetaryDone = 0;
+    private int _satelliteDone = 0;
+
+    // Set true once GenerateMesh has finished queueing every body, so a fast body finishing
+    // mid-queue cannot fire completion before later bodies' satellites are queued.
+    private volatile bool _queueingComplete = false;
+
+    // Emit-once guard for SystemGenerationComplete (CompareExchange from worker threads).
+    private int _completionEmitted = 0;
+
     private float _totalMass = 0f;
     private Dictionary<String, CelestialBody> _parentBodies = new();
     private NBodyCoordinator? _coordinator;
@@ -80,6 +99,7 @@ public partial class SystemGenerator : Node
         Godot.Collections.Array<Godot.Collections.Dictionary> dominantBodies,
         Godot.Collections.Array<Godot.Collections.Dictionary> satelliteBelts,
         Godot.Collections.Array<Godot.Collections.Dictionary> planetaryBodies,
+        Godot.Collections.Array<Godot.Collections.Dictionary> satelliteBodies,
         Barycenter barycenter
     )
     {
@@ -105,12 +125,18 @@ public partial class SystemGenerator : Node
         effectiveContainer.AddChild(barycenter);
 
         // Reset all tracking state for a fresh generation
-        int totalBodies = dominantBodies.Count + satelliteBelts.Count + planetaryBodies.Count;
-        totalBodiesToGenerate = totalBodies;
-        bodiesCompleted = 0;
+        _dominantTotal = dominantBodies.Count;
+        _planetaryTotal = planetaryBodies.Count;
+        _satelliteTotal = 0;
+        _dominantDone = 0;
+        _planetaryDone = 0;
+        _satelliteDone = 0;
+        _queueingComplete = false;
+        _completionEmitted = 0;
         _totalMass = 0f;
         _parentBodies.Clear();
 
+        int totalBodies = dominantBodies.Count + satelliteBelts.Count + planetaryBodies.Count;
         GD.Print($"Generating System: {totalBodies} bodies");
         GD.Print(
             $"Dominant: {dominantBodies.Count}, Belts: {satelliteBelts.Count}, Planets: {planetaryBodies.Count}"
@@ -129,17 +155,27 @@ public partial class SystemGenerator : Node
             CreateAndQueueSatelliteBelt(belt, barycenter);
         }
 
-        // Finally, create planetary bodies with orbital calculations
+        // Then, create planetary bodies with orbital calculations
         foreach (Godot.Collections.Dictionary body in planetaryBodies)
         {
             CreateAndQueuePlanetaryBody(body, barycenter);
         }
 
+        // Finally, create flattened satellites in topological (parent-before-child) order so a
+        // moon-of-a-moon resolves its parent. Each built satellite registers into _parentBodies.
+        ProcessFlattenedSatellites(satelliteBodies);
+
         // Create the N-body physics coordinator for synchronized integration
         _coordinator = new NBodyCoordinator();
         GetEffectiveContainer().AddChild(_coordinator);
 
-        GD.Print($"System generation started: {totalBodiesToGenerate} bodies queued");
+        // All bodies (including satellites) are now queued. Open the completion gate and
+        // check once, in case every body finished synchronously during queueing.
+        _queueingComplete = true;
+        GD.Print(
+            $"System generation started: {_dominantTotal + _planetaryTotal + Volatile.Read(ref _satelliteTotal)} bodies queued"
+        );
+        CheckSystemComplete();
     }
 
     private void CreateAndQueuePlanetaryBody(
@@ -230,15 +266,19 @@ public partial class SystemGenerator : Node
 
         // Calculate AU distance and select subtype
         float distanceAU = OrbitalDistanceCalculator.CalculateDistanceFromStarAU(body);
-        var bodyType = (CelestialBodyType)
-            Enum.Parse(typeof(CelestialBodyType), (String)body["type"]);
+        var bodyType = (OrbitalBodyType)
+            Enum.Parse(typeof(OrbitalBodyType), (String)body["type"]);
 
         String name = (String)body["name"];
 
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var auManager = new AUProbabilityManager(rng);
         BodyClassification? manualClassification = ResolveSubtypeOverride(body, bodyType, auManager);
-        BodyClassification classification = auManager.SelectClassification(bodyType, distanceAU, manualClassification);
+        BodyClassification classification = auManager.SelectClassification(
+            bodyType,
+            distanceAU,
+            manualOverride: manualClassification
+        );
 
         var mesh = new UnifiedCelestialMesh();
         var celBodyBuilder = new CelestialBody.Builder();
@@ -250,6 +290,9 @@ public partial class SystemGenerator : Node
             .WithClassification(classification)
             .WithName(name);
         CelestialBody celBody = celBodyBuilder.Build();
+        // Planetary body: depth 1, cumulative AU is its own distance from the system center.
+        celBody.Depth = 1;
+        celBody.EffectiveAU = distanceAU;
 
         GetEffectiveContainer().AddChild(celBody);
         celBody.Position = position;
@@ -263,9 +306,14 @@ public partial class SystemGenerator : Node
         _totalMass += celBody.Mass;
 
         celBody.StartMeshGeneration(
-            onCompleted: (completedBody) => OnBodyGenerationComplete(completedBody, celBody, body),
-            onFailed: (failedBody, error) => OnBodyGenerationFailed(failedBody, error, celBody)
+            onCompleted: (completedBody) =>
+                OnBodyGenerationComplete(completedBody, celBody, isDominant: false),
+            onFailed: (failedBody, error) =>
+                OnBodyGenerationFailed(failedBody, error, celBody, isDominant: false)
         );
+
+        // Satellites are generated separately from the flattened top-level section
+        // (see ProcessFlattenedSatellites), after every planetary body is registered.
     }
 
     private void CreateAndQueueSatelliteBelt(
@@ -339,14 +387,18 @@ public partial class SystemGenerator : Node
             GD.PrintErr($"Body {body["name"]} has invalid velocity: {velocity}");
             velocity = Vector3.Zero;
         }
-        var bodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
+        var bodyType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), type);
         String name = (String)body["name"];
 
         // Select subtype for dominant body (stars, black holes, neutron stars)
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
         var auManager = new AUProbabilityManager(rng);
         BodyClassification? manualClassification = ResolveSubtypeOverride(body, bodyType, auManager);
-        BodyClassification classification = auManager.SelectClassification(bodyType, 0f, manualClassification);
+        BodyClassification classification = auManager.SelectClassification(
+            bodyType,
+            0f,
+            manualOverride: manualClassification
+        );
 
         var mesh = new UnifiedCelestialMesh();
         CelestialBody.Builder celBodyBuilder = new CelestialBody.Builder();
@@ -359,6 +411,9 @@ public partial class SystemGenerator : Node
             .WithName(name);
 
         var celBody = celBodyBuilder.Build();
+        // Dominant body: root of the orbital hierarchy.
+        celBody.Depth = 0;
+        celBody.EffectiveAU = 0f;
 
         GetEffectiveContainer().AddChild(celBody);
         celBody.Position = position;
@@ -368,8 +423,10 @@ public partial class SystemGenerator : Node
         _totalMass += celBody.Mass;
 
         celBody.StartMeshGeneration(
-            onCompleted: (completedBody) => OnBodyGenerationComplete(completedBody, celBody, body),
-            onFailed: (failedBody, error) => OnBodyGenerationFailed(failedBody, error, celBody)
+            onCompleted: (completedBody) =>
+                OnBodyGenerationComplete(completedBody, celBody, isDominant: true),
+            onFailed: (failedBody, error) =>
+                OnBodyGenerationFailed(failedBody, error, celBody, isDominant: true)
         );
     }
 
@@ -381,7 +438,7 @@ public partial class SystemGenerator : Node
     /// </summary>
     private static BodyClassification? ResolveSubtypeOverride(
         Godot.Collections.Dictionary body,
-        CelestialBodyType bodyType,
+        OrbitalBodyType bodyType,
         AUProbabilityManager auManager)
     {
         if (body.ContainsKey("subtype"))
@@ -423,22 +480,22 @@ public partial class SystemGenerator : Node
         return null;
     }
 
-    private static BodyFamily FamilyFor(CelestialBodyType bodyType) => bodyType switch
+    private static BodyFamily FamilyFor(OrbitalBodyType bodyType) => bodyType switch
     {
-        CelestialBodyType.RockyPlanet => BodyFamily.RockyPlanet,
-        CelestialBodyType.GasGiant => BodyFamily.GasGiant,
-        CelestialBodyType.IceGiant => BodyFamily.IceGiant,
-        CelestialBodyType.DwarfPlanet => BodyFamily.DwarfPlanet,
-        CelestialBodyType.Star => BodyFamily.Star,
-        CelestialBodyType.NeutronStar => BodyFamily.NeutronStar,
-        CelestialBodyType.BlackHole => BodyFamily.BlackHole,
+        OrbitalBodyType.RockyPlanet => BodyFamily.RockyPlanet,
+        OrbitalBodyType.GasGiant => BodyFamily.GasGiant,
+        OrbitalBodyType.IceGiant => BodyFamily.IceGiant,
+        OrbitalBodyType.DwarfPlanet => BodyFamily.DwarfPlanet,
+        OrbitalBodyType.Star => BodyFamily.Star,
+        OrbitalBodyType.NeutronStar => BodyFamily.NeutronStar,
+        OrbitalBodyType.BlackHole => BodyFamily.BlackHole,
         _ => BodyFamily.RockyPlanet,
     };
 
     private void OnBodyGenerationComplete(
         CelestialBody completedBody,
         CelestialBody celBody,
-        Godot.Collections.Dictionary bodyDict
+        bool isDominant
     )
     {
         // Register the body with the debug system after mesh generation completes
@@ -449,70 +506,94 @@ public partial class SystemGenerator : Node
 #endif
 
         completedBody.InitializeOrbitSystem();
-        bodiesCompleted++;
-        if (ShowProgressUI)
-        {
-            GD.Print(
-                $"Generated {bodiesCompleted}/{totalBodiesToGenerate} bodies ({(float)bodiesCompleted / totalBodiesToGenerate * 100:F1}%)"
-            );
-        }
+        if (isDominant)
+            Interlocked.Increment(ref _dominantDone);
+        else
+            Interlocked.Increment(ref _planetaryDone);
 
-        // Handle satellites if present
-        if (
-            bodyDict.ContainsKey("satellites")
-            && bodyDict["satellites"].Obj is Godot.Collections.Array satellites
-        )
-        {
-            QueueSatelliteGeneration(celBody, satellites);
-        }
-
-        // Check if all bodies are complete
-        if (bodiesCompleted >= totalBodiesToGenerate)
-        {
-            GD.Print(
-                $"System generation complete: {bodiesCompleted}/{totalBodiesToGenerate} bodies generated"
-            );
-            CallDeferred(nameof(EmitSystemGenerationCompleteViaSignalBus));
-        }
+        CheckSystemComplete();
     }
 
     private void OnBodyGenerationFailed(
         CelestialBody failedBody,
         string error,
-        CelestialBody celBody
+        CelestialBody celBody,
+        bool isDominant
     )
     {
         GD.PrintErr($"Body generation failed: {celBody.Name}, error: {error}");
         celBody.QueueFree();
 
-        bodiesCompleted++;
-        if (bodiesCompleted >= totalBodiesToGenerate)
+        // Count failures toward the gate so generation cannot hang on a failed body.
+        if (isDominant)
+            Interlocked.Increment(ref _dominantDone);
+        else
+            Interlocked.Increment(ref _planetaryDone);
+
+        CheckSystemComplete();
+    }
+
+    /// <summary>
+    /// Fires SystemGenerationComplete exactly once, when every orbital body (dominant,
+    /// planetary, and satellite) has finished generating. Safe to call from worker threads;
+    /// the _queueingComplete gate prevents an early fire while bodies are still being queued.
+    /// </summary>
+    private void CheckSystemComplete()
+    {
+        if (!_queueingComplete)
+            return;
+
+        int done =
+            Volatile.Read(ref _dominantDone)
+            + Volatile.Read(ref _planetaryDone)
+            + Volatile.Read(ref _satelliteDone);
+        int total = _dominantTotal + _planetaryTotal + Volatile.Read(ref _satelliteTotal);
+
+        if (done >= total && Interlocked.CompareExchange(ref _completionEmitted, 1, 0) == 0)
         {
+            GD.Print($"System generation complete: {done}/{total} bodies generated");
             CallDeferred(nameof(EmitSystemGenerationCompleteViaSignalBus));
         }
     }
 
-    private void QueueSatelliteGeneration(
-        CelestialBody parentBody,
-        Godot.Collections.Array satellites
+    /// <summary>
+    /// Generates the flattened top-level satellites in topological (parent-before-child) order.
+    /// Each entry names its parent via <c>parent</c>; a satellite is generated only once its parent
+    /// is registered in <c>_parentBodies</c>, and is itself registered afterward so moon-of-a-moon
+    /// chains resolve. Entries whose parent never appears are skipped with a warning.
+    /// </summary>
+    private void ProcessFlattenedSatellites(
+        Godot.Collections.Array<Godot.Collections.Dictionary> satellites
     )
     {
-        if (
-            parentBody.Classification is BodyClassification.Star
-            or BodyClassification.BlackHole
-        )
+        var pending = new List<Godot.Collections.Dictionary>(satellites);
+
+        bool progress = true;
+        while (pending.Count > 0 && progress)
         {
-            foreach (Godot.Collections.Dictionary satBelt in satellites)
+            progress = false;
+            for (int i = pending.Count - 1; i >= 0; i--)
             {
-                GenerateSatelliteBelt(satBelt, parentBody);
+                var sat = pending[i];
+                string parentName = sat.ContainsKey("parent") ? (string)sat["parent"] : "";
+                if (string.IsNullOrEmpty(parentName) || !_parentBodies.TryGetValue(parentName, out var parentBody))
+                    continue;
+
+                CelestialBody satBody = GenerateSingleSatellite(sat, parentBody);
+                if (satBody != null && !string.IsNullOrEmpty(satBody.Name) && !_parentBodies.ContainsKey(satBody.Name))
+                    _parentBodies.Add(satBody.Name, satBody);
+
+                pending.RemoveAt(i);
+                progress = true;
             }
         }
-        else
+
+        foreach (var sat in pending)
         {
-            foreach (Godot.Collections.Dictionary sat in satellites)
-            {
-                GenerateSingleSatellite(sat, parentBody);
-            }
+            string parentName = sat.ContainsKey("parent") ? (string)sat["parent"] : "";
+            GD.PrintErr(
+                $"Satellite '{(sat.ContainsKey("name") ? sat["name"] : sat["type"])}' references unknown parent '{parentName}' — skipping"
+            );
         }
     }
 
@@ -615,7 +696,7 @@ public partial class SystemGenerator : Node
         return true; // No collisions detected
     }
 
-    private void GenerateSingleSatellite(Godot.Collections.Dictionary sat, CelestialBody parentBody)
+    private CelestialBody GenerateSingleSatellite(Godot.Collections.Dictionary sat, CelestialBody parentBody)
     {
         var templateDict = (Godot.Collections.Dictionary)sat["template"];
 
@@ -630,7 +711,7 @@ public partial class SystemGenerator : Node
             : 0f;
 
         // Calculate position and velocity from orbital parameters
-        var (position, velocity) = SatelliteBody.CalculateOrbitalState(
+        var (position, velocity) = CelestialBody.CalculateOrbitalState(
             apogee,
             perigee,
             startingAngle,
@@ -639,13 +720,29 @@ public partial class SystemGenerator : Node
         );
 
         var mesh = new UnifiedCelestialMesh();
-        var parentPlanetaryType = (PlanetaryBodyType)
-            Enum.Parse(typeof(PlanetaryBodyType), parentBody.Type.ToString());
-        SatelliteBody satBody = SatelliteBody.Builder.BuildFromBodyDict(
-            parentPlanetaryType,
-            sat,
-            mesh
-        );
+
+        // Mirror the celestial path: roll a concrete subtype from AU-weighted config so the
+        // satellite carries a non-null subtype for resource and mesh-param lookups.
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var auManager = new AUProbabilityManager(rng);
+        var satType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), (string)sat["type"]);
+        // Cumulative distance (decision #1): parent's cumulative AU plus this satellite's own
+        // distance from its parent (its apogee/perigee average). The immediate parent's subtype id
+        // selects optional per-parent-subtype weight modifiers.
+        float effectiveAU =
+            parentBody.EffectiveAU
+            + OrbitalMath.ConvertUnitsToAU((apogee + perigee) / 2f);
+        string? parentSubtypeId = BiomeIdMapper.ClassificationToSubtypeId(parentBody.Classification);
+        var subtype =
+            (auManager.SelectClassification(satType, effectiveAU, parentSubtypeId)
+                as BodyClassification.Satellite)?.Subtype;
+
+        CelestialBody satBody = new CelestialBody.Builder()
+            .FromBodyDict(sat, mesh)
+            .WithClassification(BodyClassification.FromSatelliteType(satType, subtype))
+            .WithDepth(parentBody.Depth + 1)
+            .Build();
+        satBody.EffectiveAU = effectiveAU;
 
         parentBody.CallDeferred("add_child", satBody);
 
@@ -655,17 +752,24 @@ public partial class SystemGenerator : Node
         satBody.Velocity = velocity;
         satBody.OrbitalParent = parentBody;
 
+        Interlocked.Increment(ref _satelliteTotal);
         satBody.StartMeshGeneration(
             onCompleted: (completedSat) =>
             {
                 GD.Print($"Generated {completedSat.Name}");
+                Interlocked.Increment(ref _satelliteDone);
+                CheckSystemComplete();
             },
             onFailed: (failedSat, error) =>
             {
                 GD.PrintErr($"Satellite generation failed: {failedSat.Name}, error: {error}");
                 failedSat.QueueFree();
+                Interlocked.Increment(ref _satelliteDone);
+                CheckSystemComplete();
             }
         );
+
+        return satBody;
     }
 
     private void GenerateSatelliteBelt(
@@ -673,26 +777,29 @@ public partial class SystemGenerator : Node
         CelestialBody parentBody
     )
     {
-        var parentDominantType = (DominantBodyType)
-            Enum.Parse(typeof(DominantBodyType), parentBody.Type.ToString());
+        var parentDominantType = (OrbitalBodyType)
+            Enum.Parse(typeof(OrbitalBodyType), parentBody.Type.ToString());
         SatelliteBeltBody beltBody = SatelliteBeltBody.Builder.BuildFromBodyDict(
             parentDominantType,
             satBelt
         );
         var sats = beltBody.GenerateSatelliteBelt(parentBody);
 
-        foreach (SatelliteBody sat in sats)
+        foreach (CelestialBody sat in sats)
         {
             parentBody.CallDeferred("add_child", sat);
             sat.OrbitalParent = parentBody;
-            var templateDict = (Godot.Collections.Dictionary)sat.bodyDict!["template"];
-            sat.Position = (Vector3)templateDict["base_position"];
+            // Position was set on the body in SatelliteBeltBody.CreateSatellite (local, retained
+            // after parenting).
             GD.Print($"Generating {sat.Name}, Position: {sat.Position}");
 
+            Interlocked.Increment(ref _satelliteTotal);
             sat.StartMeshGeneration(
                 onCompleted: (completedSat) =>
                 {
                     GD.Print($"Generated satellite belt body: {completedSat.Name}");
+                    Interlocked.Increment(ref _satelliteDone);
+                    CheckSystemComplete();
                 },
                 onFailed: (failedSat, error) =>
                 {
@@ -700,6 +807,8 @@ public partial class SystemGenerator : Node
                         $"Satellite belt body generation failed: {failedSat.Name}, error: {error}"
                     );
                     failedSat.QueueFree();
+                    Interlocked.Increment(ref _satelliteDone);
+                    CheckSystemComplete();
                 }
             );
         }
@@ -769,8 +878,8 @@ public partial class SystemGenerator : Node
             foreach (var kvp in _parentBodies)
             {
                 if (
-                    kvp.Value.Type == CelestialBodyType.Star
-                    || kvp.Value.Type == CelestialBodyType.BlackHole
+                    kvp.Value.Type == OrbitalBodyType.Star
+                    || kvp.Value.Type == OrbitalBodyType.BlackHole
                 )
                 {
                     totalDominantMass += kvp.Value.Mass;
@@ -787,8 +896,8 @@ public partial class SystemGenerator : Node
             CelestialBody dominantBody = kvp.Value;
             // Only consider dominant bodies (Stars, BlackHoles) for the effective mass
             if (
-                dominantBody.Type != CelestialBodyType.Star
-                && dominantBody.Type != CelestialBodyType.BlackHole
+                dominantBody.Type != OrbitalBodyType.Star
+                && dominantBody.Type != OrbitalBodyType.BlackHole
             )
             {
                 continue;
@@ -833,7 +942,7 @@ public partial class SystemGenerator : Node
         foreach (var kvp in _parentBodies)
         {
             CelestialBody body = kvp.Value;
-            if (body.Type != CelestialBodyType.Star && body.Type != CelestialBodyType.BlackHole)
+            if (body.Type != OrbitalBodyType.Star && body.Type != OrbitalBodyType.BlackHole)
                 continue;
 
             float distSq = (body.GlobalPosition - position).LengthSquared();
@@ -850,11 +959,12 @@ public partial class SystemGenerator : Node
     private void EmitSystemGenerationCompleteViaSignalBus()
     {
         string batchId = "system_" + GetInstanceId();
-        SignalBus.Instance?.EmitSystemGenerationComplete(
-            batchId,
-            totalBodiesToGenerate,
-            bodiesCompleted
-        );
+        int total = _dominantTotal + _planetaryTotal + Volatile.Read(ref _satelliteTotal);
+        int done =
+            Volatile.Read(ref _dominantDone)
+            + Volatile.Read(ref _planetaryDone)
+            + Volatile.Read(ref _satelliteDone);
+        SignalBus.Instance?.EmitSystemGenerationComplete(batchId, total, done);
     }
 
     private class BodyState

@@ -24,7 +24,7 @@ public sealed partial class MockOrbitalBody : Node, IOrbitalBody
         AddChild(_mgr);
     }
 
-    public BodyClassification Classification => BodyClassification.FromLegacy(CelestialBodyType.RockyPlanet, null);
+    public BodyClassification Classification => BodyClassification.FromType(OrbitalBodyType.RockyPlanet, null);
     public BodyBillboardTextures BillboardTextures => null!;
     public float Radius { get; set; } = 1000f;
     public float Mass { get; set; } = 1f;

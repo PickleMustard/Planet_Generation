@@ -334,7 +334,7 @@ public partial class PlanetaryBodyItem : HBoxContainer
         }
     }
 
-    public void PropogateChangeDown(CelestialBodyType type)
+    public void PropogateChangeDown(OrbitalBodyType type)
     {
         foreach (var si in SatellitesList!.GetChildren())
         {
@@ -351,7 +351,7 @@ public partial class PlanetaryBodyItem : HBoxContainer
         UpdateSatellitesCountLabel();
     }
 
-    public void ApplyTemplate(CelestialBodyType type)
+    public void ApplyTemplate(OrbitalBodyType type)
     {
         // Read defaults from TOML in Configuration/SystemGen with safe fallbacks
         var t = TemplateHelpers.GetCelestialBodyDefaults(type);

@@ -17,18 +17,26 @@ public abstract record BodyClassification
     public abstract bool UsesBandPlacement { get; }
 
     /// <summary>
-    /// Backward-compat: returns the CelestialBodyType if this is a celestial body classification.
+    /// Returns the flat <see cref="OrbitalBodyType"/> for this classification.
     /// </summary>
-    public CelestialBodyType? AsCelestialBodyType => this switch
+    public OrbitalBodyType Type => this switch
     {
-        Star => CelestialBodyType.Star,
-        BlackHole => CelestialBodyType.BlackHole,
-        NeutronStar => CelestialBodyType.NeutronStar,
-        RockyPlanet => CelestialBodyType.RockyPlanet,
-        GasGiant => CelestialBodyType.GasGiant,
-        IceGiant => CelestialBodyType.IceGiant,
-        DwarfPlanet => CelestialBodyType.DwarfPlanet,
-        _ => null,
+        Star => OrbitalBodyType.Star,
+        BlackHole => OrbitalBodyType.BlackHole,
+        NeutronStar => OrbitalBodyType.NeutronStar,
+        RockyPlanet => OrbitalBodyType.RockyPlanet,
+        GasGiant => OrbitalBodyType.GasGiant,
+        IceGiant => OrbitalBodyType.IceGiant,
+        DwarfPlanet => OrbitalBodyType.DwarfPlanet,
+        Satellite sat => sat.SatType,
+        Belt b => b.GroupType switch
+        {
+            SatelliteGroupTypes.AsteroidBelt => OrbitalBodyType.Asteroid,
+            SatelliteGroupTypes.IceBelt => OrbitalBodyType.Comet,
+            SatelliteGroupTypes.Comet => OrbitalBodyType.Comet,
+            _ => OrbitalBodyType.Asteroid,
+        },
+        _ => throw new InvalidOperationException($"Unknown classification: {GetType().Name}"),
     };
 
     /// <summary>
@@ -50,31 +58,47 @@ public abstract record BodyClassification
     };
 
     /// <summary>
-    /// Constructs a BodyClassification from a CelestialBodyType and a boxed subtype enum.
-    /// Used for migration from the old (CelestialBodyType, object?) pair.
+    /// Constructs a BodyClassification from an OrbitalBodyType and a boxed subtype enum.
+    /// Moon/Asteroid/Comet collapse onto the Satellite variant.
     /// </summary>
-    public static BodyClassification FromLegacy(CelestialBodyType type, object? subtype)
+    public static BodyClassification FromType(OrbitalBodyType type, object? subtype)
     {
         return type switch
         {
-            CelestialBodyType.Star => new Star(subtype as StarSubtype? ?? StarSubtype.MainSequence),
-            CelestialBodyType.BlackHole => new BlackHole(subtype as BlackHoleSubtype? ?? BlackHoleSubtype.StellarMass),
-            CelestialBodyType.NeutronStar => new NeutronStar(subtype as NeutronStarSubtype? ?? NeutronStarSubtype.Pulsar),
-            CelestialBodyType.RockyPlanet => new RockyPlanet(subtype as RockyPlanetSubtype? ?? RockyPlanetSubtype.Temperate),
-            CelestialBodyType.GasGiant => new GasGiant(subtype as GasGiantSubtype? ?? GasGiantSubtype.StandardJupiter),
-            CelestialBodyType.IceGiant => new IceGiant(subtype as IceGiantSubtype? ?? IceGiantSubtype.StandardNeptune),
-            CelestialBodyType.DwarfPlanet => new DwarfPlanet(subtype as DwarfPlanetSubtype? ?? DwarfPlanetSubtype.IcyKuiper),
-            _ => throw new ArgumentOutOfRangeException(nameof(type), type, $"Unknown CelestialBodyType: {type}"),
+            OrbitalBodyType.Star => new Star(subtype as StarSubtype? ?? StarSubtype.MainSequence),
+            OrbitalBodyType.BlackHole => new BlackHole(subtype as BlackHoleSubtype? ?? BlackHoleSubtype.StellarMass),
+            OrbitalBodyType.NeutronStar => new NeutronStar(subtype as NeutronStarSubtype? ?? NeutronStarSubtype.Pulsar),
+            OrbitalBodyType.RockyPlanet => new RockyPlanet(subtype as RockyPlanetSubtype? ?? RockyPlanetSubtype.Temperate),
+            OrbitalBodyType.GasGiant => new GasGiant(subtype as GasGiantSubtype? ?? GasGiantSubtype.StandardJupiter),
+            OrbitalBodyType.IceGiant => new IceGiant(subtype as IceGiantSubtype? ?? IceGiantSubtype.StandardNeptune),
+            OrbitalBodyType.DwarfPlanet => new DwarfPlanet(subtype as DwarfPlanetSubtype? ?? DwarfPlanetSubtype.IcyKuiper),
+            OrbitalBodyType.Moon or OrbitalBodyType.Asteroid or OrbitalBodyType.Comet =>
+                new Satellite(type, subtype as SatelliteSubtype? ?? DefaultSatelliteSubtype(type)),
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, $"Unknown OrbitalBodyType: {type}"),
         };
     }
 
     /// <summary>
-    /// Constructs a Satellite classification from a SatelliteBodyType and optional subtype.
+    /// Constructs a Satellite classification from an OrbitalBodyType (Moon/Asteroid/Comet) and
+    /// optional subtype. When no subtype is supplied, falls back to a sane per-type default so the
+    /// classification never carries a null subtype (resource/mesh-param lookups key off it).
     /// </summary>
-    public static BodyClassification FromSatelliteType(SatelliteBodyType satType, SatelliteSubtype? subtype = null)
+    public static BodyClassification FromSatelliteType(OrbitalBodyType satType, SatelliteSubtype? subtype = null)
     {
-        return new Satellite(satType, subtype);
+        return new Satellite(satType, subtype ?? DefaultSatelliteSubtype(satType));
     }
+
+    /// <summary>
+    /// Maps a satellite body type to a reasonable default subtype, used as a safety net
+    /// for construction paths that don't perform AU-weighted subtype selection.
+    /// </summary>
+    public static SatelliteSubtype DefaultSatelliteSubtype(OrbitalBodyType satType) => satType switch
+    {
+        OrbitalBodyType.Moon => SatelliteSubtype.RockyMoon,
+        OrbitalBodyType.Asteroid => SatelliteSubtype.Carbonaceous,
+        OrbitalBodyType.Comet => SatelliteSubtype.ShortPeriod,
+        _ => SatelliteSubtype.RockyMoon,
+    };
 
     /// <summary>
     /// Constructs a Belt classification from a SatelliteGroupTypes and optional subtype.
@@ -88,7 +112,7 @@ public abstract record BodyClassification
 
     public sealed record Star(StarSubtype Subtype) : BodyClassification
     {
-        public override string TypeName => nameof(CelestialBodyType.Star);
+        public override string TypeName => nameof(OrbitalBodyType.Star);
         public override string OrbitalType => "CelestialBody";
         public override bool IsDominant => true;
         public override bool UsesBandPlacement => false;
@@ -96,7 +120,7 @@ public abstract record BodyClassification
 
     public sealed record BlackHole(BlackHoleSubtype Subtype) : BodyClassification
     {
-        public override string TypeName => nameof(CelestialBodyType.BlackHole);
+        public override string TypeName => nameof(OrbitalBodyType.BlackHole);
         public override string OrbitalType => "CelestialBody";
         public override bool IsDominant => true;
         public override bool UsesBandPlacement => false;
@@ -104,7 +128,7 @@ public abstract record BodyClassification
 
     public sealed record NeutronStar(NeutronStarSubtype Subtype) : BodyClassification
     {
-        public override string TypeName => nameof(CelestialBodyType.NeutronStar);
+        public override string TypeName => nameof(OrbitalBodyType.NeutronStar);
         public override string OrbitalType => "CelestialBody";
         public override bool IsDominant => true;
         public override bool UsesBandPlacement => false;
@@ -112,7 +136,7 @@ public abstract record BodyClassification
 
     public sealed record RockyPlanet(RockyPlanetSubtype Subtype) : BodyClassification
     {
-        public override string TypeName => nameof(CelestialBodyType.RockyPlanet);
+        public override string TypeName => nameof(OrbitalBodyType.RockyPlanet);
         public override string OrbitalType => "CelestialBody";
         public override bool IsDominant => false;
         public override bool UsesBandPlacement => true;
@@ -120,7 +144,7 @@ public abstract record BodyClassification
 
     public sealed record GasGiant(GasGiantSubtype Subtype) : BodyClassification
     {
-        public override string TypeName => nameof(CelestialBodyType.GasGiant);
+        public override string TypeName => nameof(OrbitalBodyType.GasGiant);
         public override string OrbitalType => "CelestialBody";
         public override bool IsDominant => false;
         public override bool UsesBandPlacement => true;
@@ -128,7 +152,7 @@ public abstract record BodyClassification
 
     public sealed record IceGiant(IceGiantSubtype Subtype) : BodyClassification
     {
-        public override string TypeName => nameof(CelestialBodyType.IceGiant);
+        public override string TypeName => nameof(OrbitalBodyType.IceGiant);
         public override string OrbitalType => "CelestialBody";
         public override bool IsDominant => false;
         public override bool UsesBandPlacement => true;
@@ -136,13 +160,13 @@ public abstract record BodyClassification
 
     public sealed record DwarfPlanet(DwarfPlanetSubtype Subtype) : BodyClassification
     {
-        public override string TypeName => nameof(CelestialBodyType.DwarfPlanet);
+        public override string TypeName => nameof(OrbitalBodyType.DwarfPlanet);
         public override string OrbitalType => "CelestialBody";
         public override bool IsDominant => false;
         public override bool UsesBandPlacement => true;
     }
 
-    public sealed record Satellite(SatelliteBodyType SatType, SatelliteSubtype? Subtype = null) : BodyClassification
+    public sealed record Satellite(OrbitalBodyType SatType, SatelliteSubtype? Subtype = null) : BodyClassification
     {
         public override string TypeName => SatType.ToString();
         public override string OrbitalType => "SatelliteBody";

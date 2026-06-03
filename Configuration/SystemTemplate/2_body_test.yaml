@@ -1,28 +1,51 @@
 planetary:
-- type: RockyPlanet
-  name: alpha
-  template:
-    mass: 1000
-    size: 150
-  orbital_parameters:
-    apogee: 500
-    perigee: 200
-    starting_angle: 0
-    vertical_offset: 0
-    orbital_center_index: -1
-    parent_body: barycenter
-  subtype_weights:
-    subtype_rocky_cool: 0.1111
-    subtype_rocky_desert: 0.1111
-    subtype_rocky_ice: 0.1111
-    subtype_rocky_ocean: 0.1111
-    subtype_rocky_rusted: 0.1111
-    subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
-    subtype_rocky_volcanic: 0.1111
-  satellites:
+  - type: RockyPlanet
+    name: alpha
+    template:
+      mass: 1000
+      size: 150
+    orbital_parameters:
+      apogee: 500
+      perigee: 200
+      starting_angle: 0
+      vertical_offset: 0
+      orbital_center_index: -1
+      parent_body: barycenter
+    subtype_weights:
+      subtype_rocky_cool: 0.1111
+      subtype_rocky_desert: 0.1111
+      subtype_rocky_ice: 0.1111
+      subtype_rocky_ocean: 0.1111
+      subtype_rocky_rusted: 0.1111
+      subtype_rocky_scoured: 0.1111
+      subtype_rocky_temperate: 0.1111
+      subtype_rocky_tropical: 0.1111
+      subtype_rocky_volcanic: 0.1111
+  - type: RockyPlanet
+    name: beta
+    template:
+      mass: 1000
+      size: 150
+    orbital_parameters:
+      apogee: 3000
+      perigee: 2000
+      starting_angle: 180
+      vertical_offset: 0
+      orbital_center_index: -1
+      parent_body: barycenter
+    subtype_weights:
+      subtype_rocky_cool: 0.1111
+      subtype_rocky_desert: 0.1111
+      subtype_rocky_ice: 0.1111
+      subtype_rocky_ocean: 0.1111
+      subtype_rocky_rusted: 0.1111
+      subtype_rocky_scoured: 0.1111
+      subtype_rocky_temperate: 0.1111
+      subtype_rocky_tropical: 0.1111
+      subtype_rocky_volcanic: 0.1111
+satellites:
   - type: Moon
+    parent: alpha
     name: companion
     template:
       apogee: 300
@@ -47,33 +70,11 @@ planetary:
       subtype_satellite_volcanic_moon: 0.0769
     noise_settings:
       amplitude_range:
-      - 0.5
-      - 1.2
+        - 0.5
+        - 1.2
       scaling_range:
-      - 0.2
-      - 1.7
+        - 0.2
+        - 1.7
       octave_range:
-      - 2
-      - 4
-- type: RockyPlanet
-  name: beta
-  template:
-    mass: 1000
-    size: 150
-  orbital_parameters:
-    apogee: 3000
-    perigee: 2000
-    starting_angle: 180
-    vertical_offset: 0
-    orbital_center_index: -1
-    parent_body: barycenter
-  subtype_weights:
-    subtype_rocky_cool: 0.1111
-    subtype_rocky_desert: 0.1111
-    subtype_rocky_ice: 0.1111
-    subtype_rocky_ocean: 0.1111
-    subtype_rocky_rusted: 0.1111
-    subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
-    subtype_rocky_volcanic: 0.1111
+        - 2
+        - 4

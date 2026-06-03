@@ -370,6 +370,35 @@ satelliteSubtypes:
   addResources: []
   removeResources: []
   baseResourceWeight: 0.4
+- subtype: DesertMoon
+  resourceGroups:
+  - commonOres
+  addResources:
+  - silicon
+  removeResources: []
+  baseResourceWeight: 0.5
+- subtype: IronMoon
+  resourceGroups:
+  - commonOres
+  - preciousOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.7
+- subtype: CarbonMoon
+  resourceGroups:
+  - industrialMaterials
+  - commonOres
+  addResources: []
+  removeResources: []
+  baseResourceWeight: 0.45
+- subtype: SulfurMoon
+  resourceGroups:
+  - commonOres
+  - radioactiveOres
+  addResources:
+  - silicon
+  removeResources: []
+  baseResourceWeight: 0.55
 - subtype: Carbonaceous
   resourceGroups:
   - industrialMaterials

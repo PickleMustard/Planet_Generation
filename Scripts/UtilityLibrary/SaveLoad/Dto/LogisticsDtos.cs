@@ -53,6 +53,78 @@ public sealed class LogisticsUnitDto
 
     /// <summary>Null unless the unit is mid-transfer (movement controller actively transferring).</summary>
     public TransitStateDto? Transit { get; set; }
+
+    /// <summary>The unit's orbital transfer schedule (save_version ≥ 4). Null when none assigned.
+    /// Restored after bodies and stations exist (loader pass 7).</summary>
+    public OrbitalScheduleDto? Schedule { get; set; }
+}
+
+/// <summary>
+/// Serialized <c>OrbitalTransferSchedule</c> (save_version 4). Leg endpoints reference
+/// their orbital body by node name and their station by id (resolved on load once
+/// bodies and stations are built). Runtime state is preserved but a Running schedule
+/// is restored Stopped so it never auto-departs on load.
+/// </summary>
+public sealed class OrbitalScheduleDto
+{
+    public string ScheduleId { get; set; } = "";
+    public List<LegDto> Legs { get; set; } = new();
+    public float WaitPeriodBetweenLegs { get; set; }
+    public float RetryPeriod { get; set; } = 60f;
+    public int MaxRetries { get; set; } = 10;
+    public bool IsRepeating { get; set; }
+
+    /// <summary>OrbitalScheduleState enum name.</summary>
+    public string State { get; set; } = "Idle";
+    public int CurrentLegIndex { get; set; }
+}
+
+public sealed class LegDto
+{
+    public string LegId { get; set; } = "";
+    public LegEndpointDto Origin { get; set; } = new();
+    public LegEndpointDto Destination { get; set; } = new();
+
+    /// <summary>Resources to load at the origin (resource id → whole units); null if none.</summary>
+    public Dictionary<string, int>? PickupOrder { get; set; }
+
+    /// <summary>Resources to unload at the destination (resource id → whole units); null if none.</summary>
+    public Dictionary<string, int>? DropoffOrder { get; set; }
+
+    public DepartureConstraintsDto DepartureConstraints { get; set; } = new();
+    public RefuelInstructionsDto RefuelInstructions { get; set; } = new();
+    public float? MaxWaitSeconds { get; set; }
+    public bool IsClosingLeg { get; set; }
+
+    /// <summary>LegState enum name.</summary>
+    public string State { get; set; } = "Pending";
+}
+
+public sealed class LegEndpointDto
+{
+    public string? BodyName { get; set; }
+    public string? StationId { get; set; }
+    public int BandIndex { get; set; } = -1;
+}
+
+public sealed class DepartureConstraintsDto
+{
+    /// <summary>ExpenditureBudgetMode enum name.</summary>
+    public string BudgetMode { get; set; } = "TimeOfFlight";
+    public float? MinBudget { get; set; }
+    public float? MaxBudget { get; set; }
+    public int NumOptions { get; set; } = 10;
+
+    /// <summary>TrajectorySolution.RankingCriteria enum name.</summary>
+    public string RankingCriteria { get; set; } = "MostEfficient";
+}
+
+public sealed class RefuelInstructionsDto
+{
+    /// <summary>RefuelPolicy enum name.</summary>
+    public string Policy { get; set; } = "None";
+    public string FuelResourceId { get; set; } = "Fuel";
+    public float Amount { get; set; } = float.MaxValue;
 }
 
 public sealed class EngineDto

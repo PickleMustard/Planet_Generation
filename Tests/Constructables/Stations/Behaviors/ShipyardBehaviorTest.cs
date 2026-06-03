@@ -639,7 +639,7 @@ public partial class ShipyardBehaviorTest
 
         // IOrbitalBody
         public BodyClassification Classification =>
-            BodyClassification.FromLegacy(CelestialBodyType.RockyPlanet, null);
+            BodyClassification.FromType(OrbitalBodyType.RockyPlanet, null);
         public BodyBillboardTextures BillboardTextures => null!;
         public float Radius { get; set; } = 100f;
         public float Mass { get; set; } = 1e12f;

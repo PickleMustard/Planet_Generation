@@ -108,21 +108,21 @@ public static class PlanetaryTypeLoader
     }
 
     /// <summary>
-    /// Converts an internal name string to CelestialBodyType enum.
+    /// Converts an internal name string to OrbitalBodyType enum.
     /// Used for mapping dominant/planetary body dropdown selections to the
     /// existing generation pipeline enum.
     /// </summary>
-    public static CelestialBodyType ToCelestialBodyType(string name)
+    public static OrbitalBodyType ToCelestialBodyType(string name)
     {
-        return (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), name, ignoreCase: true);
+        return (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), name, ignoreCase: true);
     }
 
     /// <summary>
-    /// Converts an internal name string to SatelliteBodyType enum.
+    /// Converts an internal name string to OrbitalBodyType enum.
     /// </summary>
-    public static SatelliteBodyType ToSatelliteBodyType(string name)
+    public static OrbitalBodyType ToSatelliteBodyType(string name)
     {
-        return (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), name, ignoreCase: true);
+        return (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), name, ignoreCase: true);
     }
 
     /// <summary>
@@ -134,19 +134,19 @@ public static class PlanetaryTypeLoader
     }
 
     /// <summary>
-    /// Converts an internal name string to DominantBodyType enum.
+    /// Converts an internal name string to OrbitalBodyType enum.
     /// </summary>
-    public static DominantBodyType ToDominantBodyType(string name)
+    public static OrbitalBodyType ToDominantBodyType(string name)
     {
-        return (DominantBodyType)Enum.Parse(typeof(DominantBodyType), name, ignoreCase: true);
+        return (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), name, ignoreCase: true);
     }
 
     /// <summary>
-    /// Converts an internal name string to PlanetaryBodyType enum.
+    /// Converts an internal name string to OrbitalBodyType enum.
     /// </summary>
-    public static PlanetaryBodyType ToPlanetaryBodyType(string name)
+    public static OrbitalBodyType ToPlanetaryBodyType(string name)
     {
-        return (PlanetaryBodyType)Enum.Parse(typeof(PlanetaryBodyType), name, ignoreCase: true);
+        return (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), name, ignoreCase: true);
     }
 
     /// <summary>
@@ -263,21 +263,21 @@ public static class PlanetaryTypeLoader
     }
 
     /// <summary>
-    /// Returns the list of subtype entries for a given CelestialBodyType.
+    /// Returns the list of subtype entries for a given OrbitalBodyType.
     /// Each entry contains the enum name and a display-friendly version.
     /// </summary>
-    public static List<TypeEntry> GetSubtypesForBodyType(CelestialBodyType bodyType)
+    public static List<TypeEntry> GetSubtypesForBodyType(OrbitalBodyType bodyType)
     {
         var subtypes = new List<TypeEntry>();
         Type? enumType = bodyType switch
         {
-            CelestialBodyType.Star => typeof(StarSubtype),
-            CelestialBodyType.RockyPlanet => typeof(RockyPlanetSubtype),
-            CelestialBodyType.GasGiant => typeof(GasGiantSubtype),
-            CelestialBodyType.IceGiant => typeof(IceGiantSubtype),
-            CelestialBodyType.DwarfPlanet => typeof(DwarfPlanetSubtype),
-            CelestialBodyType.BlackHole => typeof(BlackHoleSubtype),
-            CelestialBodyType.NeutronStar => typeof(NeutronStarSubtype),
+            OrbitalBodyType.Star => typeof(StarSubtype),
+            OrbitalBodyType.RockyPlanet => typeof(RockyPlanetSubtype),
+            OrbitalBodyType.GasGiant => typeof(GasGiantSubtype),
+            OrbitalBodyType.IceGiant => typeof(IceGiantSubtype),
+            OrbitalBodyType.DwarfPlanet => typeof(DwarfPlanetSubtype),
+            OrbitalBodyType.BlackHole => typeof(BlackHoleSubtype),
+            OrbitalBodyType.NeutronStar => typeof(NeutronStarSubtype),
             _ => null,
         };
 
@@ -297,7 +297,7 @@ public static class PlanetaryTypeLoader
     /// </summary>
     public static void PopulateSubtypeOptionButton(
         OptionButton optionButton,
-        CelestialBodyType bodyType
+        OrbitalBodyType bodyType
     )
     {
         var subtypes = GetSubtypesForBodyType(bodyType);

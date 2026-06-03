@@ -14,7 +14,7 @@ public static class TemplateHelpers
 {
     private const float Limit = 10000f;
 
-    public static Dictionary GetCelestialBodyDefaults(CelestialBodyType type)
+    public static Dictionary GetCelestialBodyDefaults(OrbitalBodyType type)
     {
         var path = GetYamlPath(type);
         GD.Print($"Getting defaults for {type} from {path}");
@@ -37,7 +37,7 @@ public static class TemplateHelpers
     /// YAML omits the atmosphere block — small/dwarf bodies and dominant bodies
     /// default to no atmosphere.
     /// </summary>
-    public static (float min, float max) GetAtmosphereRange(CelestialBodyType type)
+    public static (float min, float max) GetAtmosphereRange(OrbitalBodyType type)
     {
         var path = GetYamlPath(type);
         try
@@ -61,7 +61,7 @@ public static class TemplateHelpers
         }
     }
 
-    public static Dictionary GetSatelliteBodyDefaults(SatelliteBodyType type)
+    public static Dictionary GetSatelliteBodyDefaults(OrbitalBodyType type)
     {
         var path = GetYamlPath(type);
 
@@ -103,6 +103,7 @@ public static class TemplateHelpers
         var dominant = new Array<Dictionary>();
         var belts = new Array<Dictionary>();
         var planetary = new Array<Dictionary>();
+        var satellites = new Array<Dictionary>();
 
         try
         {
@@ -149,13 +150,28 @@ public static class TemplateHelpers
                     }
                 }
             }
+
+            // Parse flattened top-level "satellites" section. Each entry names its parent
+            // (a planetary body or another satellite) via a top-level `parent:` string.
+            if (raw.TryGetValue("satellites", out var satellitesVariant))
+            {
+                var satelliteList = satellitesVariant.As<Godot.Collections.Array>();
+                if (satelliteList != null)
+                {
+                    foreach (var satVariant in satelliteList)
+                    {
+                        var satRaw = satVariant.AsGodotDictionary();
+                        satellites.Add(LoadSatelliteEntry(satRaw));
+                    }
+                }
+            }
         }
         catch (Exception e)
         {
             GD.PrintErr($"Error loading system template {fileName}: {e.Message}\n{e.StackTrace}");
         }
 
-        return new SystemTemplateData(dominant, belts, planetary);
+        return new SystemTemplateData(dominant, belts, planetary, satellites);
     }
 
     /// <summary>
@@ -169,7 +185,7 @@ public static class TemplateHelpers
         var name = ReadString(raw, "name", "");
         if (string.IsNullOrEmpty(name))
         {
-            var bodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), typeStr);
+            var bodyType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), typeStr);
             name = NameGenerator.GenerateCelestialBodyName(bodyType);
         }
         result["name"] = name;
@@ -239,9 +255,9 @@ public static class TemplateHelpers
         var groupType = (SatelliteGroupTypes)Enum.Parse(typeof(SatelliteGroupTypes), typeStr);
         var satType = groupType switch
         {
-            SatelliteGroupTypes.Comet => SatelliteBodyType.Comet,
-            SatelliteGroupTypes.IceBelt => SatelliteBodyType.Comet,
-            _ => SatelliteBodyType.Asteroid,
+            SatelliteGroupTypes.Comet => OrbitalBodyType.Comet,
+            SatelliteGroupTypes.IceBelt => OrbitalBodyType.Comet,
+            _ => OrbitalBodyType.Asteroid,
         };
 
         var satelliteNames = new Godot.Collections.Array<string>();
@@ -265,7 +281,7 @@ public static class TemplateHelpers
         var name = ReadString(raw, "name", "");
         if (string.IsNullOrEmpty(name))
         {
-            var bodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), typeStr);
+            var bodyType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), typeStr);
             name = NameGenerator.GeneratePlanetaryBodyName(bodyType);
         }
         result["name"] = name;
@@ -313,37 +329,27 @@ public static class TemplateHelpers
                 "amplitude_range"
             );
 
-        // satellites (optional, nested under planetary body)
-        if (raw.TryGetValue("satellites", out var satVariant))
-        {
-            var satList = satVariant.As<Godot.Collections.Array>();
-            if (satList != null && satList.Count > 0)
-            {
-                var satellites = new Array<Dictionary>();
-                foreach (var sv in satList)
-                {
-                    var satRaw = sv.AsGodotDictionary();
-                    satellites.Add(LoadSatelliteEntry(satRaw));
-                }
-                result["satellites"] = satellites;
-            }
-        }
+        // Satellites are no longer nested under planetary bodies — they live in a flattened
+        // top-level `satellites:` section and declare their parent by name (see LoadSatelliteEntry).
 
         return result;
     }
 
     /// <summary>
-    /// Loads a satellite entry from YAML into a dict matching SatelliteItem.ToParams() format.
+    /// Loads a satellite entry from the flattened top-level `satellites:` section into a dict
+    /// matching SatelliteItem.ToParams() format. Each entry carries a top-level <c>parent</c>
+    /// string naming the body it orbits (a planetary body or another satellite).
     /// </summary>
     private static Dictionary LoadSatelliteEntry(Dictionary raw)
     {
         var result = new Dictionary();
         var typeStr = ReadString(raw, "type", "Moon");
         result["type"] = typeStr;
+        result["parent"] = ReadString(raw, "parent", "barycenter");
         var name = ReadString(raw, "name", "");
         if (string.IsNullOrEmpty(name))
         {
-            var satType = (SatelliteBodyType)Enum.Parse(typeof(SatelliteBodyType), typeStr);
+            var satType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), typeStr);
             name = NameGenerator.GenerateSatelliteName(satType);
         }
         result["name"] = name;
@@ -489,7 +495,7 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static Dictionary TransformCelestialBodyTemplate(Dictionary raw, CelestialBodyType type)
+    private static Dictionary TransformCelestialBodyTemplate(Dictionary raw, OrbitalBodyType type)
     {
         var result = new Dictionary();
 
@@ -548,7 +554,7 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static Dictionary TransformSatelliteBodyTemplate(Dictionary raw, SatelliteBodyType type)
+    private static Dictionary TransformSatelliteBodyTemplate(Dictionary raw, OrbitalBodyType type)
     {
         var result = new Dictionary();
 
@@ -628,9 +634,9 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static bool IsDominantBodyType(CelestialBodyType type)
+    private static bool IsDominantBodyType(OrbitalBodyType type)
     {
-        return type == CelestialBodyType.Star || type == CelestialBodyType.BlackHole;
+        return type == OrbitalBodyType.Star || type == OrbitalBodyType.BlackHole;
     }
 
     private static bool IsDominantBodyTypeString(string typeStr)
@@ -640,7 +646,7 @@ public static class TemplateHelpers
             || typeStr.Equals("BlackHole", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static Dictionary TransformCelestialTemplate(Dictionary raw, CelestialBodyType type)
+    private static Dictionary TransformCelestialTemplate(Dictionary raw, OrbitalBodyType type)
     {
         var result = new Dictionary();
 
@@ -785,31 +791,17 @@ public static class TemplateHelpers
         return result;
     }
 
-    private static string GetYamlPath(CelestialBodyType type)
+    private static string GetYamlPath(OrbitalBodyType type)
     {
         string name = type switch
         {
-            CelestialBodyType.RockyPlanet => "RockyPlanet",
-            CelestialBodyType.GasGiant => "GasGiant",
-            CelestialBodyType.IceGiant => "IceGiant",
-            CelestialBodyType.DwarfPlanet => "DwarfPlanet",
-            CelestialBodyType.Star => "Star",
-            CelestialBodyType.NeutronStar => "NeutronStar",
-            CelestialBodyType.BlackHole => "BlackHole",
-            _ => type.ToString(),
-        };
-        return $"res://Configuration/SystemGen/{name}.yaml";
-    }
-
-    private static string GetYamlPath(SatelliteBodyType type)
-    {
-        string name = type switch
-        {
-            SatelliteBodyType.Asteroid => "Asteroid",
-            SatelliteBodyType.Moon => "Moon",
-            SatelliteBodyType.DwarfPlanet => "DwarfPlanet",
-            SatelliteBodyType.Rings => "Rings",
-            SatelliteBodyType.Satellite => "Satellite",
+            OrbitalBodyType.RockyPlanet => "RockyPlanet",
+            OrbitalBodyType.GasGiant => "GasGiant",
+            OrbitalBodyType.IceGiant => "IceGiant",
+            OrbitalBodyType.DwarfPlanet => "DwarfPlanet",
+            OrbitalBodyType.Star => "Star",
+            OrbitalBodyType.NeutronStar => "NeutronStar",
+            OrbitalBodyType.BlackHole => "BlackHole",
             _ => type.ToString(),
         };
         return $"res://Configuration/SystemGen/{name}.yaml";
@@ -827,28 +819,28 @@ public static class TemplateHelpers
         return $"res://Configuration/SystemGen/{name}.yaml";
     }
 
-    private static string GetNameFileForCelestialBodyType(CelestialBodyType type)
+    private static string GetNameFileForCelestialBodyType(OrbitalBodyType type)
     {
         return type switch
         {
-            CelestialBodyType.RockyPlanet => "rockyplanets",
-            CelestialBodyType.DwarfPlanet => "rockyplanets",
-            CelestialBodyType.GasGiant => "nonrocky",
-            CelestialBodyType.IceGiant => "nonrocky",
-            CelestialBodyType.Star => "centralbodies",
-            CelestialBodyType.NeutronStar => "centralbodies",
-            CelestialBodyType.BlackHole => "centralbodies",
+            OrbitalBodyType.RockyPlanet => "rockyplanets",
+            OrbitalBodyType.DwarfPlanet => "rockyplanets",
+            OrbitalBodyType.GasGiant => "nonrocky",
+            OrbitalBodyType.IceGiant => "nonrocky",
+            OrbitalBodyType.Star => "centralbodies",
+            OrbitalBodyType.NeutronStar => "centralbodies",
+            OrbitalBodyType.BlackHole => "centralbodies",
             _ => "rockyplanets",
         };
     }
 
-    private static string GetNameFileForSatelliteType(SatelliteBodyType type)
+    private static string GetNameFileForSatelliteType(OrbitalBodyType type)
     {
         return type switch
         {
-            SatelliteBodyType.Moon => "satellites",
-            SatelliteBodyType.Asteroid => "satellites",
-            SatelliteBodyType.DwarfPlanet => "rockyplanets",
+            OrbitalBodyType.Moon => "satellites",
+            OrbitalBodyType.Asteroid => "satellites",
+            OrbitalBodyType.DwarfPlanet => "rockyplanets",
             _ => "satellites",
         };
     }
@@ -1086,7 +1078,8 @@ public static class TemplateHelpers
     public static string GenerateYamlContent(
         Array<Dictionary> dominant,
         Array<Dictionary> belts,
-        Array<Dictionary> planetary
+        Array<Dictionary> planetary,
+        Array<Dictionary> satellites
     )
     {
         var serializer = new YamlDotNet.Serialization.SerializerBuilder()
@@ -1103,8 +1096,18 @@ public static class TemplateHelpers
             data["belts"] = ConvertBeltsToYaml(belts);
         if (planetary.Count > 0)
             data["planetary"] = ConvertPlanetaryToYaml(planetary);
+        if (satellites.Count > 0)
+            data["satellites"] = ConvertSatellitesToYaml(satellites);
 
         return serializer.Serialize(data);
+    }
+
+    private static List<SysDict> ConvertSatellitesToYaml(Array<Dictionary> satellites)
+    {
+        var result = new List<SysDict>();
+        foreach (var sat in satellites)
+            result.Add(ConvertSatelliteToYaml(sat));
+        return result;
     }
 
     private static List<SysDict> ConvertDominantToYaml(Array<Dictionary> bodies)
@@ -1245,17 +1248,7 @@ public static class TemplateHelpers
             // Phase 6: subtype + subtype_weights replace per-body gen-range blocks
             EmitSubtypeSlot(body, dict);
 
-            // satellites
-            if (body.ContainsKey("satellites"))
-            {
-                var satellites = (Godot.Collections.Array)body["satellites"];
-                var satList = new List<SysDict>();
-                foreach (Dictionary sat in satellites)
-                {
-                    satList.Add(ConvertSatelliteToYaml(sat));
-                }
-                dict["satellites"] = satList;
-            }
+            // Satellites are emitted separately in the flattened top-level `satellites:` section.
 
             result.Add(dict);
         }
@@ -1266,6 +1259,8 @@ public static class TemplateHelpers
     {
         var dict = new SysDict();
         dict["type"] = (string)sat["type"];
+        if (sat.ContainsKey("parent"))
+            dict["parent"] = (string)sat["parent"];
         if (ShouldSaveName(sat))
             dict["name"] = (string)sat["name"];
 

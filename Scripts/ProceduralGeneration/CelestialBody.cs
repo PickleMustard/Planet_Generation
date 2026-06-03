@@ -5,15 +5,19 @@ using System.Threading.Tasks;
 using Constructables;
 using Godot;
 using ProceduralGeneration.MeshGeneration;
+using ProceduralGeneration.MeshGeneration.ResourceGeneration;
 using ProceduralGeneration.SubtypeSystem;
 using ProceduralGeneration.TextureGeneration;
 using Structures;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.MeshGeneration;
+using Structures.Resources;
 using Structures.Transfers;
 using UtilityLibrary;
+using UtilityLibrary.DataLoading;
 using UtilityLibrary.GameMath.Orbital;
+using UtilityLibrary.NameGeneration;
 #if DEBUG
 using Debug;
 #endif
@@ -89,9 +93,9 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         set
         {
             // Deserialization: reconstruct Classification from stored type name
-            if (value != null && Enum.TryParse<CelestialBodyType>(value, out var cbt))
+            if (value != null && Enum.TryParse<OrbitalBodyType>(value, out var cbt))
             {
-                Classification = BodyClassification.FromLegacy(cbt, null);
+                Classification = BodyClassification.FromType(cbt, null);
             }
         }
     }
@@ -124,13 +128,65 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     /// </summary>
     public IOrbitalBody? OrbitalParent { get; set; }
 
+    /// <summary>
+    /// Depth in the orbital hierarchy: 0 = dominant (star/black hole), 1 = planetary, 2+ = satellites
+    /// (moons), 3+ = moon-of-moon, etc. Drives the physics branch (see <see cref="UsesNBody"/>) and is
+    /// the recursion that produces the cumulative-AU subtype distance. Set at generation time.
+    /// </summary>
+    public int Depth { get; set; }
+
+    /// <summary>
+    /// Cumulative distance from the system center in AU, summed along the orbital chain
+    /// (dominant = 0; each link adds its own distance-from-parent). Primary axis for subtype selection.
+    /// </summary>
+    public float EffectiveAU { get; set; }
+
+    /// <summary>
+    /// Forces analytical (Keplerian) orbit integration regardless of <see cref="Depth"/>. Set true for
+    /// belt members: a belt may sit at depth 1 around a star, but running N-body over thousands of
+    /// asteroids is infeasible, so belt bodies always orbit analytically.
+    /// </summary>
+    public bool ForceAnalyticalOrbit { get; set; }
+
+    /// <summary>
+    /// True when this body participates in N-body gravity integration (and joins the "CelestialBody"
+    /// group). Depth ≤ 1 → N-body; depth ≥ 2 → analytical. Belt members are always analytical.
+    /// </summary>
+    public bool UsesNBody => !ForceAnalyticalOrbit && Depth < 2;
+
+    /// <summary>
+    /// Resource deposits available on this body (populated for satellite-classified bodies).
+    /// Key is the resource ID, value is the deposit information.
+    /// </summary>
+    public Dictionary<string, ResourceDeposit> Resources { get; set; } = new();
+
+    // Analytical orbit fields (derived from initial position/velocity on first frame, or restored).
+    private float _orbitalRadius;
+    private float _orbitalAngle;
+    private float _orbitalSpeed;
+    private bool _orbitalInitialized;
+
     [Export]
     public BodyBillboardTextures BillboardTextures { get; private set; } = null!;
 
     /// <summary>
-    /// Backward-compat computed property. Returns the CelestialBodyType from Classification.
+    /// Backward-compat computed property. Returns the OrbitalBodyType from Classification.
     /// </summary>
-    public CelestialBodyType Type => Classification.AsCelestialBodyType!.Value;
+    public OrbitalBodyType Type => Classification.Type;
+
+    /// <summary>
+    /// This body's distance from the system center (the star/barycenter) in AU, derived from its
+    /// orbital parameters. Used as the primary axis for satellite subtype selection. Returns 0
+    /// when the body dict is unavailable (e.g. the dominant body itself).
+    /// </summary>
+    public float GetDistanceFromCenterAU()
+    {
+        return bodyDict != null
+            ? global::ProceduralGeneration.OrbitalDistanceCalculator.CalculateDistanceFromStarAU(
+                bodyDict
+            )
+            : 0f;
+    }
 
     public UnifiedCelestialMesh Mesh { get; private set; }
     public Octree<Point> Oct;
@@ -244,8 +300,8 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
         Oct = new Octree<Point>(new Aabb(aabbBegin, aabbSize * 2f));
 
-        var celestialBodyType = (CelestialBodyType)Enum.Parse(typeof(CelestialBodyType), type);
-        this.Classification = BodyClassification.FromLegacy(celestialBodyType, null);
+        var celestialBodyType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), type);
+        this.Classification = BodyClassification.FromType(celestialBodyType, null);
         this.Mass = mass;
         this.Velocity = velocity;
         this.Mesh = mesh;
@@ -262,7 +318,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         }
     }
 
-    private static float SampleAtmosphere(CelestialBodyType type, RandomNumberGenerator rand)
+    private static float SampleAtmosphere(OrbitalBodyType type, RandomNumberGenerator rand)
     {
         var (min, max) = UtilityLibrary.DataLoading.TemplateHelpers.GetAtmosphereRange(type);
         if (max <= min)
@@ -276,16 +332,19 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         this.Mass = builder._mass ?? 0f;
         this.Classification =
             builder._classification
-            ?? BodyClassification.FromLegacy(CelestialBodyType.RockyPlanet, null);
+            ?? BodyClassification.FromType(OrbitalBodyType.RockyPlanet, null);
         this.Mesh = builder._mesh;
         this.bodyDict = builder._bodyDict;
         this.TotalForce = Vector3.Zero;
         this.Name = builder._name ?? "";
+        this.Depth = builder._depth;
+        this.ForceAnalyticalOrbit = builder._forceAnalyticalOrbit;
+        if (builder._size.HasValue && builder._size.Value > 0f)
+            this.Radius = builder._size.Value;
         this.BillboardTextures = new BodyBillboardTextures();
 
         var atmRand = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        var cbt = this.Classification.AsCelestialBodyType;
-        this.Atmosphere = cbt.HasValue ? SampleAtmosphere(cbt.Value, atmRand) : 0f;
+        this.Atmosphere = SampleAtmosphere(this.Classification.Type, atmRand);
 
         if (this.Mesh != null)
         {
@@ -325,8 +384,14 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
     public override void _Ready()
     {
-        AddToGroup("CelestialBody");
-        barycenter.RegisterBody();
+        // Only N-body bodies (dominant + planetary) join the gravity group and the barycenter.
+        // Analytical bodies (moons at depth ≥ 2, belt members) integrate their own Keplerian orbit
+        // in _PhysicsProcess and must NOT participate in the N-body sum.
+        if (UsesNBody)
+        {
+            AddToGroup("CelestialBody");
+            barycenter.RegisterBody();
+        }
     }
 
     /// <summary>
@@ -585,6 +650,14 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
     public override void _PhysicsProcess(double delta)
     {
+        // Analytical bodies (depth ≥ 2 moons, belt members) follow a drift-free Keplerian orbit
+        // around their parent rather than joining the N-body sum.
+        if (!UsesNBody)
+        {
+            ProcessAnalyticalOrbit(delta);
+            return;
+        }
+
         // When NBodyCoordinator is active, it handles synchronized integration
         // for all CelestialBodies. Skip per-body physics to avoid double-updating.
         if (CoordinatorActive)
@@ -621,6 +694,120 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         Velocity += 0.5f * newAcceleration * deltaT;
         _savedForce = TotalForce;
     }
+
+    /// <summary>
+    /// Drift-free analytical circular orbit around the parent body. Derives radius/angle/speed from the
+    /// initial relative position on the first frame, then advances the angle each tick. Ported from the
+    /// former SatelliteBody._PhysicsProcess.
+    /// </summary>
+    private void ProcessAnalyticalOrbit(double delta)
+    {
+        var parent = (OrbitalParent as CelestialBody) ?? (GetParent() as CelestialBody);
+        if (parent == null)
+            return;
+
+        if (!_orbitalInitialized)
+        {
+            InitializeAnalyticalOrbit(parent);
+            _orbitalInitialized = true;
+        }
+
+        _orbitalAngle += _orbitalSpeed * (float)delta;
+        if (_orbitalAngle > Mathf.Tau)
+            _orbitalAngle -= Mathf.Tau;
+
+        float cos = Mathf.Cos(_orbitalAngle);
+        float sin = Mathf.Sin(_orbitalAngle);
+
+        GlobalPosition =
+            parent.GlobalPosition + new Vector3(cos * _orbitalRadius, 0f, sin * _orbitalRadius);
+
+        float linearSpeed = _orbitalRadius * _orbitalSpeed;
+        Velocity = new Vector3(-sin * linearSpeed, 0f, cos * linearSpeed);
+    }
+
+    /// <summary>
+    /// Derives analytical orbit parameters from the initial position relative to parent.
+    /// </summary>
+    private void InitializeAnalyticalOrbit(CelestialBody parent)
+    {
+        Vector3 relativePos = GlobalPosition - parent.GlobalPosition;
+        _orbitalRadius = new Vector2(relativePos.X, relativePos.Z).Length();
+
+        if (_orbitalRadius < 1e-6f)
+        {
+            _orbitalRadius = Radius * 1.5f;
+            _orbitalAngle = 0f;
+        }
+        else
+        {
+            _orbitalAngle = Mathf.Atan2(relativePos.Z, relativePos.X);
+        }
+
+        _orbitalSpeed = OrbitalParameters.CalculateAngularSpeed(parent.Mass, _orbitalRadius);
+    }
+
+    /// <summary>
+    /// Calculates the position and velocity of a satellite given orbital parameters.
+    /// Ported from the former SatelliteBody.
+    /// </summary>
+    public static (Vector3 position, Vector3 velocity) CalculateOrbitalState(
+        float apogee,
+        float perigee,
+        float startingAngle,
+        float verticalOffset,
+        float parentMass
+    )
+    {
+        float angleRad = Mathf.DegToRad(startingAngle);
+        float inclinationRad = Mathf.DegToRad(verticalOffset);
+
+        Vector3 pHat = new Vector3(Mathf.Cos(angleRad), 0, Mathf.Sin(angleRad)).Normalized();
+        Vector3 qHat = new Vector3(
+            -Mathf.Sin(angleRad) * Mathf.Cos(inclinationRad),
+            Mathf.Sin(inclinationRad),
+            Mathf.Cos(angleRad) * Mathf.Cos(inclinationRad)
+        ).Normalized();
+
+        float eccentricity = OrbitalMath.CalculateEccentricity(apogee, perigee);
+
+        Vector3 position = OrbitalMath.CalculateOrbitalPosition(
+            pHat,
+            qHat,
+            apogee,
+            perigee,
+            angleRad,
+            eccentricity
+        );
+
+        Vector3 velocity = OrbitalMath.CalculateEllipticalOrbitalVelocity(
+            pHat,
+            qHat,
+            parentMass,
+            apogee,
+            perigee,
+            angleRad,
+            false
+        );
+
+        return (position, velocity);
+    }
+
+    /// <summary>
+    /// Restores the analytic-orbit state. When <paramref name="initialized"/> is true the body resumes
+    /// from the saved angle/radius/speed; otherwise it re-derives from its position on the first frame.
+    /// </summary>
+    internal void RestoreOrbitState(float angle, float radius, float speed, bool initialized)
+    {
+        _orbitalAngle = angle;
+        _orbitalRadius = radius;
+        _orbitalSpeed = speed;
+        _orbitalInitialized = initialized;
+    }
+
+    /// <summary>Snapshot of analytic-orbit state for serialization.</summary>
+    internal (float Angle, float Radius, float Speed, bool Initialized) OrbitStateSnapshot =>
+        (_orbitalAngle, _orbitalRadius, _orbitalSpeed, _orbitalInitialized);
 
     public async Task GenerateMesh()
     {
@@ -663,6 +850,7 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             {
                 CalculateTectonicMeshFromParams(tectonics, meshParams);
             }
+            // Prefer spherical_harmonics_settings; fall back to scaling_settings (moon/satellite path).
             if (
                 bodyDict.ContainsKey("spherical_harmonics_settings")
                 && bodyDict["spherical_harmonics_settings"].Obj
@@ -670,6 +858,20 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             )
             {
                 CalculateSphericalHarmonicsFromParams(shSettings, meshParams);
+            }
+            else if (
+                bodyDict.ContainsKey("scaling_settings")
+                && bodyDict["scaling_settings"].Obj is Godot.Collections.Dictionary scaling
+            )
+            {
+                CalculateScalingFromParams(scaling, meshParams);
+            }
+            if (
+                bodyDict.ContainsKey("noise_settings")
+                && bodyDict["noise_settings"].Obj is Godot.Collections.Dictionary noise
+            )
+            {
+                CalculateNoiseSettingsFromParams(noise, meshParams);
             }
             if (
                 bodyDict.ContainsKey("resources")
@@ -694,7 +896,11 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
                 && bodyDict.ContainsKey("_use_midpoint")
                 && bodyDict["_use_midpoint"].AsBool();
             SubtypeGenParamResolver.ApplyMeshParams(meshParams, Classification, rng, useMidpoint);
-            SubtypeGenParamResolver.ApplyTectonicParams(meshParams, Classification, rng, useMidpoint);
+            // Satellites/belts use the SH/scaling/noise path (mirrors the old SatelliteBody and
+            // SatelliteBeltBody). Tectonic params would win gen-type detection and route them
+            // through the tectonic pipeline, which silently produces no surface mesh.
+            if (Classification is not (BodyClassification.Satellite or BodyClassification.Belt))
+                SubtypeGenParamResolver.ApplyTectonicParams(meshParams, Classification, rng, useMidpoint);
             SubtypeGenParamResolver.ApplySphericalHarmonicsParams(meshParams, Classification, rng, useMidpoint);
         }
 
@@ -707,6 +913,10 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             {
                 Radius = mesh.size;
                 StrDb.FinalizeDB();
+                if (Classification is BodyClassification.Satellite or BodyClassification.Belt)
+                {
+                    GenerateResources();
+                }
                 onCompleted?.Invoke(this);
             },
             onFailed: (mesh, error) =>
@@ -1152,6 +1362,69 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         meshParams.Add("spherical_harmonics", shDict);
     }
 
+    private void CalculateScalingFromParams(
+        Godot.Collections.Dictionary definedScaling,
+        Godot.Collections.Dictionary meshParams
+    )
+    {
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var scalingDict = new Godot.Collections.Dictionary();
+        float[] xScaleRange = (float[])definedScaling["scaling_range_x"];
+        scalingDict.Add("scaling_range_x", rng.RandfRange(xScaleRange[0], xScaleRange[1]));
+        float[] yScaleRange = (float[])definedScaling["scaling_range_y"];
+        scalingDict.Add("scaling_range_y", rng.RandfRange(yScaleRange[0], yScaleRange[1]));
+        float[] zScaleRange = (float[])definedScaling["scaling_range_z"];
+        scalingDict.Add("scaling_range_z", rng.RandfRange(zScaleRange[0], zScaleRange[1]));
+        meshParams.Add("scaling_settings", scalingDict);
+    }
+
+    private void CalculateNoiseSettingsFromParams(
+        Godot.Collections.Dictionary definedNoise,
+        Godot.Collections.Dictionary meshParams
+    )
+    {
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        var noiseDict = new Godot.Collections.Dictionary();
+        float[] amplitude = (float[])definedNoise["amplitude_range"];
+        noiseDict.Add("amplitude", rng.RandfRange(amplitude[0], amplitude[1]));
+        float[] scaling = (float[])definedNoise["scaling_range"];
+        noiseDict.Add("scaling", rng.RandfRange(scaling[0], scaling[1]));
+        int[] octaves = (int[])definedNoise["octave_range"];
+        noiseDict.Add("octaves", rng.RandiRange(octaves[0], octaves[1]));
+        if (definedNoise.ContainsKey("lacunarity"))
+        {
+            noiseDict.Add("lacunarity", (float)definedNoise["lacunarity"]);
+        }
+        if (definedNoise.ContainsKey("gain"))
+        {
+            noiseDict.Add("gain", (float)definedNoise["gain"]);
+        }
+        meshParams.Add("noise_settings", noiseDict);
+    }
+
+    /// <summary>
+    /// Generates resource deposits for satellite-classified bodies using the same config as the mesh
+    /// pipeline. Ported from the former SatelliteBody.
+    /// </summary>
+    public void GenerateResources()
+    {
+        var resDb = ResourceGenerationConfigDatabase.Instance;
+        if (!resDb.IsLoaded || resDb.PlanetaryResources == null)
+        {
+            GameLogger.Warning("GenerateResources: ResourceGenerationConfigDatabase not loaded");
+            return;
+        }
+
+        var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
+        Resources = SatelliteResourceGenerator.GenerateResources(
+            resDb.PlanetaryResources,
+            Classification,
+            rng
+        );
+
+        GameLogger.Info($"CelestialBody '{Name}' generated {Resources.Count} resource deposits");
+    }
+
     private Godot.Collections.Dictionary ConvertCustomMeshToParams(
         Godot.Collections.Dictionary customMesh
     )
@@ -1293,6 +1566,9 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     {
         internal Vector3? _velocity;
         internal float? _mass;
+        internal float? _size;
+        internal int _depth;
+        internal bool _forceAnalyticalOrbit;
         internal BodyClassification? _classification;
         internal UnifiedCelestialMesh? _mesh;
         internal Godot.Collections.Dictionary? _bodyDict;
@@ -1310,9 +1586,36 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             return this;
         }
 
+        public Builder WithSize(float size)
+        {
+            _size = size;
+            return this;
+        }
+
+        public Builder WithDepth(int depth)
+        {
+            _depth = depth;
+            return this;
+        }
+
+        public Builder WithForceAnalyticalOrbit(bool forceAnalyticalOrbit)
+        {
+            _forceAnalyticalOrbit = forceAnalyticalOrbit;
+            return this;
+        }
+
         public Builder WithClassification(BodyClassification classification)
         {
             _classification = classification;
+            return this;
+        }
+
+        public Builder WithSatelliteType(
+            OrbitalBodyType satelliteType,
+            Structures.Enums.SatelliteSubtype? subtype = null
+        )
+        {
+            _classification = BodyClassification.FromSatelliteType(satelliteType, subtype);
             return this;
         }
 
@@ -1347,14 +1650,17 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
                 var baseTemplates = (Godot.Collections.Dictionary)bodyDict["template"];
                 var type = (String)bodyDict["type"];
                 var mass = (float)baseTemplates["mass"];
-                var velocity = (Vector3)baseTemplates["velocity"];
 
-                var celestialBodyType = (CelestialBodyType)
-                    Enum.Parse(typeof(CelestialBodyType), type);
-                _classification = BodyClassification.FromLegacy(celestialBodyType, null);
+                var celestialBodyType = (OrbitalBodyType)
+                    Enum.Parse(typeof(OrbitalBodyType), type);
+                _classification = BodyClassification.FromType(celestialBodyType, null);
                 _mass = mass;
-                _velocity = velocity;
-                _name = (String)bodyDict["name"];
+                // Velocity / name are optional: satellite templates derive velocity from orbital
+                // parameters at generation time and may not carry an explicit name here.
+                _velocity = baseTemplates.ContainsKey("velocity")
+                    ? (Vector3)baseTemplates["velocity"]
+                    : Vector3.Zero;
+                _name = bodyDict.ContainsKey("name") ? (String)bodyDict["name"] : type;
 
                 if (mesh != null)
                 {
@@ -1368,12 +1674,9 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
 
         private void ValidateRequiredFields()
         {
-            if (!_velocity.HasValue)
-                throw new InvalidOperationException("Velocity is required");
-            if (!_mass.HasValue)
-                throw new InvalidOperationException("Mass is required");
-            if (_classification == null)
-                throw new InvalidOperationException("Classification is required");
+            // Mesh is the only hard requirement. Velocity/mass/classification are optional so the
+            // satellite construction paths (which lack a pre-build velocity, or set the subtype
+            // afterward) can build through the same Builder. Missing values default in the ctor.
             if (_mesh == null)
                 throw new InvalidOperationException("Mesh is required");
         }

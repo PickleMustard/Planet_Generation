@@ -4,16 +4,16 @@ using Godot;
 using Godot.Collections;
 using ProceduralGeneration.Data;
 using Structures.Enums;
+using Structures.Resources;
 
 namespace UtilityLibrary.DataLoading;
 
 public static class AUProbabilityLoader
 {
-    private static readonly Dictionary<CelestialBodyType, AUProbabilityConfig> _configCache = new();
-    private static SatelliteAUProbabilityConfig? _satelliteConfigCache;
+    private static readonly Dictionary<OrbitalBodyType, AUProbabilityConfig> _configCache = new();
     private static BeltAUProbabilityConfig? _beltConfigCache;
 
-    public static AUProbabilityConfig LoadForType(CelestialBodyType bodyType)
+    public static AUProbabilityConfig LoadForType(OrbitalBodyType bodyType)
     {
         if (_configCache.TryGetValue(bodyType, out var cachedConfig))
         {
@@ -49,29 +49,6 @@ public static class AUProbabilityLoader
         }
     }
 
-    public static SatelliteAUProbabilityConfig LoadSatelliteConfig()
-    {
-        if (_satelliteConfigCache != null)
-        {
-            return _satelliteConfigCache;
-        }
-
-        string fullPath = "res://Configuration/AUProbability/Satellite_AU.yaml";
-
-        try
-        {
-            var raw = TemplateLoader.LoadWithoutValidation(fullPath);
-            _satelliteConfigCache = ParseSatelliteConfig(raw);
-            return _satelliteConfigCache;
-        }
-        catch (Exception ex)
-        {
-            GameLogger.Warning($"Error loading satellite AU probability config: {ex.Message}");
-            _satelliteConfigCache = CreateDefaultSatelliteConfig();
-            return _satelliteConfigCache;
-        }
-    }
-
     public static BeltAUProbabilityConfig LoadBeltConfig()
     {
         if (_beltConfigCache != null)
@@ -84,7 +61,7 @@ public static class AUProbabilityLoader
         try
         {
             var raw = TemplateLoader.LoadWithoutValidation(fullPath);
-            var baseConfig = ParseConfig(raw, CelestialBodyType.DwarfPlanet);
+            var baseConfig = ParseConfig(raw, OrbitalBodyType.DwarfPlanet);
             _beltConfigCache = new BeltAUProbabilityConfig
             {
                 BodyType = baseConfig.BodyType,
@@ -127,13 +104,12 @@ public static class AUProbabilityLoader
     public static void ClearCache()
     {
         _configCache.Clear();
-        _satelliteConfigCache = null;
         _beltConfigCache = null;
     }
 
     private static AUProbabilityConfig ParseConfig(
         Godot.Collections.Dictionary raw,
-        CelestialBodyType bodyType
+        OrbitalBodyType bodyType
     )
     {
         var config = new AUProbabilityConfig
@@ -173,96 +149,59 @@ public static class AUProbabilityLoader
             }
         }
 
+        if (raw.ContainsKey("parent_subtype_modifiers"))
+        {
+            config.ParentSubtypeModifiers = ParseParentSubtypeModifiers(
+                raw["parent_subtype_modifiers"].As<Godot.Collections.Dictionary>()
+            );
+        }
+
         return config;
     }
 
-    private static SatelliteAUProbabilityConfig ParseSatelliteConfig(
-        Godot.Collections.Dictionary raw
-    )
+    /// <summary>
+    /// Parses the <c>parent_subtype_modifiers:</c> section: immediate-parent-subtype-id →
+    /// (target-subtype-id → multiplier). Keys are stable subtype id strings (see
+    /// <c>BiomeIdMapper</c>); the manager keys candidate weights by the same ids.
+    /// </summary>
+    private static System.Collections.Generic.Dictionary<
+        string,
+        System.Collections.Generic.Dictionary<string, float>
+    > ParseParentSubtypeModifiers(Godot.Collections.Dictionary raw)
     {
-        var config = new SatelliteAUProbabilityConfig
-        {
-            SchemaVersion = raw.ContainsKey("schema_version")
-                ? raw["schema_version"].ToString() ?? "1.0"
-                : "1.0",
-            MaxConsideredAU = raw.ContainsKey("max_considered_au")
-                ? (float)raw["max_considered_au"]
-                : 100f,
-        };
+        var modifiers = new System.Collections.Generic.Dictionary<
+            string,
+            System.Collections.Generic.Dictionary<string, float>
+        >();
 
-        // Parse parent_body_influence
-        if (raw.ContainsKey("parent_body_influence"))
+        foreach (var parentKey in raw.Keys)
         {
-            var influenceDict = raw["parent_body_influence"].As<Godot.Collections.Dictionary>();
-            foreach (var key in influenceDict.Keys)
+            string parentId = parentKey.ToString() ?? "";
+            if (string.IsNullOrEmpty(parentId))
             {
-                string parentTypeStr = key.ToString()!;
-                if (Enum.TryParse<CelestialBodyType>(parentTypeStr, out var parentType))
+                continue;
+            }
+
+            var targetMap = new System.Collections.Generic.Dictionary<string, float>();
+            var targetDict = raw[parentKey].As<Godot.Collections.Dictionary>();
+            foreach (var targetKey in targetDict.Keys)
+            {
+                string targetId = targetKey.ToString() ?? "";
+                if (!string.IsNullOrEmpty(targetId))
                 {
-                    var parentData = influenceDict[key].As<Godot.Collections.Dictionary>();
-                    var parentConfig = new AUProbabilityConfig { BodyType = parentType };
-
-                    if (parentData.ContainsKey("au_ranges"))
-                    {
-                        var ranges = parentData["au_ranges"].As<Godot.Collections.Array>();
-                        foreach (var rangeVariant in ranges)
-                        {
-                            var rangeDict = rangeVariant.As<Godot.Collections.Dictionary>();
-                            parentConfig.AURanges.Add(ParseSatelliteRange(rangeDict));
-                        }
-                    }
-
-                    config.ParentBodyInfluence[parentType] = parentConfig;
+                    targetMap[targetId] = (float)targetDict[targetKey];
                 }
             }
+
+            modifiers[parentId] = targetMap;
         }
 
-        // Parse default section
-        if (raw.ContainsKey("default"))
-        {
-            var defaultData = raw["default"].As<Godot.Collections.Dictionary>();
-            config.DefaultConfig = new AUProbabilityConfig();
-
-            if (defaultData.ContainsKey("au_ranges"))
-            {
-                var ranges = defaultData["au_ranges"].As<Godot.Collections.Array>();
-                foreach (var rangeVariant in ranges)
-                {
-                    var rangeDict = rangeVariant.As<Godot.Collections.Dictionary>();
-                    config.DefaultConfig.AURanges.Add(ParseSatelliteRange(rangeDict));
-                }
-            }
-        }
-        else
-        {
-            config.DefaultConfig = new AUProbabilityConfig
-            {
-                AURanges = new Array<AUProbabilityRange>
-                {
-                    new AUProbabilityRange
-                    {
-                        MinAU = 0f,
-                        MaxAU = 100f,
-                        Name = "default",
-                        SubtypeDistribution = new Array<SubtypeProbability>
-                        {
-                            new SubtypeProbability
-                            {
-                                Subtype = SatelliteSubtype.RockyMoon,
-                                Weight = 1.0f,
-                            },
-                        },
-                    },
-                },
-            };
-        }
-
-        return config;
+        return modifiers;
     }
 
     private static AUProbabilityRange ParseRange(
         Godot.Collections.Dictionary rangeDict,
-        CelestialBodyType bodyType
+        OrbitalBodyType bodyType
     )
     {
         var range = new AUProbabilityRange();
@@ -306,58 +245,30 @@ public static class AUProbabilityLoader
         return range;
     }
 
-    private static AUProbabilityRange ParseSatelliteRange(Godot.Collections.Dictionary rangeDict)
+    private static object ParseSubtypeFromString(OrbitalBodyType bodyType, string subtypeString)
     {
-        var range = new AUProbabilityRange();
-
-        if (rangeDict.ContainsKey("range"))
+        // Moon/Asteroid/Comet all share the SatelliteSubtype enum via the BodyFamily map.
+        if (bodyType.ToFamily() == BodyFamily.Satellite)
         {
-            var rangeBounds = rangeDict["range"].As<Godot.Collections.Dictionary>();
-            range.MinAU = rangeBounds.ContainsKey("min_au") ? (float)rangeBounds["min_au"] : 0f;
-            range.MaxAU = rangeBounds.ContainsKey("max_au") ? (float)rangeBounds["max_au"] : 100f;
+            return Enum.Parse(typeof(SatelliteSubtype), subtypeString);
         }
 
-        range.Name = rangeDict.ContainsKey("name") ? rangeDict["name"].ToString() ?? "" : "";
-
-        if (rangeDict.ContainsKey("subtype_distribution"))
-        {
-            var distribution = rangeDict["subtype_distribution"].As<Godot.Collections.Array>();
-            foreach (var distVariant in distribution)
-            {
-                var distDict = distVariant.As<Godot.Collections.Dictionary>();
-                string subtypeStr = distDict["subtype"].ToString()!;
-
-                var subtypeProb = new SubtypeProbability
-                {
-                    Subtype = Enum.Parse(typeof(SatelliteSubtype), subtypeStr),
-                    Weight = distDict.ContainsKey("weight") ? (float)distDict["weight"] : 1.0f,
-                };
-
-                range.SubtypeDistribution.Add(subtypeProb);
-            }
-        }
-
-        return range;
-    }
-
-    private static object ParseSubtypeFromString(CelestialBodyType bodyType, string subtypeString)
-    {
         return bodyType switch
         {
-            CelestialBodyType.Star => Enum.Parse(typeof(StarSubtype), subtypeString),
-            CelestialBodyType.RockyPlanet => Enum.Parse(typeof(RockyPlanetSubtype), subtypeString),
-            CelestialBodyType.GasGiant => Enum.Parse(typeof(GasGiantSubtype), subtypeString),
-            CelestialBodyType.IceGiant => Enum.Parse(typeof(IceGiantSubtype), subtypeString),
-            CelestialBodyType.DwarfPlanet => Enum.Parse(typeof(DwarfPlanetSubtype), subtypeString),
-            CelestialBodyType.BlackHole => Enum.Parse(typeof(BlackHoleSubtype), subtypeString),
-            CelestialBodyType.NeutronStar => Enum.Parse(typeof(NeutronStarSubtype), subtypeString),
+            OrbitalBodyType.Star => Enum.Parse(typeof(StarSubtype), subtypeString),
+            OrbitalBodyType.RockyPlanet => Enum.Parse(typeof(RockyPlanetSubtype), subtypeString),
+            OrbitalBodyType.GasGiant => Enum.Parse(typeof(GasGiantSubtype), subtypeString),
+            OrbitalBodyType.IceGiant => Enum.Parse(typeof(IceGiantSubtype), subtypeString),
+            OrbitalBodyType.DwarfPlanet => Enum.Parse(typeof(DwarfPlanetSubtype), subtypeString),
+            OrbitalBodyType.BlackHole => Enum.Parse(typeof(BlackHoleSubtype), subtypeString),
+            OrbitalBodyType.NeutronStar => Enum.Parse(typeof(NeutronStarSubtype), subtypeString),
             _ => throw new ArgumentException(
                 $"Unsupported body type for subtype parsing: {bodyType}"
             ),
         };
     }
 
-    private static AUProbabilityConfig CreateDefaultConfig(CelestialBodyType bodyType)
+    private static AUProbabilityConfig CreateDefaultConfig(OrbitalBodyType bodyType)
     {
         return new AUProbabilityConfig
         {
@@ -387,44 +298,20 @@ public static class AUProbabilityLoader
         };
     }
 
-    private static SatelliteAUProbabilityConfig CreateDefaultSatelliteConfig()
-    {
-        return new SatelliteAUProbabilityConfig
-        {
-            DefaultConfig = new AUProbabilityConfig
-            {
-                AURanges = new Array<AUProbabilityRange>
-                {
-                    new AUProbabilityRange
-                    {
-                        MinAU = 0f,
-                        MaxAU = 100f,
-                        Name = "default",
-                        SubtypeDistribution = new Array<SubtypeProbability>
-                        {
-                            new SubtypeProbability
-                            {
-                                Subtype = SatelliteSubtype.RockyMoon,
-                                Weight = 1.0f,
-                            },
-                        },
-                    },
-                },
-            },
-        };
-    }
-
-    public static object GetDefaultSubtype(CelestialBodyType bodyType)
+    public static object GetDefaultSubtype(OrbitalBodyType bodyType)
     {
         return bodyType switch
         {
-            CelestialBodyType.RockyPlanet => RockyPlanetSubtype.Temperate,
-            CelestialBodyType.GasGiant => GasGiantSubtype.StandardJupiter,
-            CelestialBodyType.IceGiant => IceGiantSubtype.StandardNeptune,
-            CelestialBodyType.DwarfPlanet => DwarfPlanetSubtype.IcyKuiper,
-            CelestialBodyType.Star => StarSubtype.MainSequence,
-            CelestialBodyType.BlackHole => BlackHoleSubtype.StellarMass,
-            CelestialBodyType.NeutronStar => NeutronStarSubtype.Pulsar,
+            OrbitalBodyType.RockyPlanet => RockyPlanetSubtype.Temperate,
+            OrbitalBodyType.GasGiant => GasGiantSubtype.StandardJupiter,
+            OrbitalBodyType.IceGiant => IceGiantSubtype.StandardNeptune,
+            OrbitalBodyType.DwarfPlanet => DwarfPlanetSubtype.IcyKuiper,
+            OrbitalBodyType.Star => StarSubtype.MainSequence,
+            OrbitalBodyType.BlackHole => BlackHoleSubtype.StellarMass,
+            OrbitalBodyType.NeutronStar => NeutronStarSubtype.Pulsar,
+            OrbitalBodyType.Moon => SatelliteSubtype.RockyMoon,
+            OrbitalBodyType.Asteroid => SatelliteSubtype.Carbonaceous,
+            OrbitalBodyType.Comet => SatelliteSubtype.ShortPeriod,
             _ => StarSubtype.MainSequence,
         };
     }

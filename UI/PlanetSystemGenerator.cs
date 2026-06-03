@@ -603,6 +603,11 @@ public partial class PlanetSystemGenerator : Control
                 planetaryBodies.Add(bi.ToParams());
         }
 
+        // Flatten each planetary body's nested satellites into a single top-level list, tagging
+        // each with its parent's name. The unified pipeline consumes satellites as a separate
+        // section (see SystemGenerator.ProcessFlattenedSatellites).
+        var satelliteBodies = ExtractFlattenedSatellites(planetaryBodies);
+
         // Compute the mass-weighted barycenter from actual orbital positions
         Barycenter barycenter;
         if (totalMass > 0f)
@@ -622,8 +627,39 @@ public partial class PlanetSystemGenerator : Control
             dominantBodies,
             satelliteBelts,
             planetaryBodies,
+            satelliteBodies,
             _barycenter
         );
+    }
+
+    /// <summary>
+    /// Pulls each planetary body's nested <c>satellites</c> array out into a single flat list,
+    /// stamping every entry with a <c>parent</c> key naming the body it orbits and removing the
+    /// nested key from the source dict. This bridges the GUI's nested item model to the unified
+    /// flattened template/pipeline format.
+    /// </summary>
+    private static Array<Dictionary> ExtractFlattenedSatellites(Array<Dictionary> planetary)
+    {
+        var satellites = new Array<Dictionary>();
+        foreach (var body in planetary)
+        {
+            if (!body.ContainsKey("satellites"))
+                continue;
+
+            string parentName = body.ContainsKey("name") ? (string)body["name"] : "barycenter";
+            var nested = body["satellites"].As<Godot.Collections.Array>();
+            if (nested != null)
+            {
+                foreach (var v in nested)
+                {
+                    var sat = v.AsGodotDictionary();
+                    sat["parent"] = parentName;
+                    satellites.Add(sat);
+                }
+            }
+            body.Remove("satellites");
+        }
+        return satellites;
     }
 
     private void GenerateSingleSystem(Array<Dictionary> dominantBodies)
@@ -710,7 +746,7 @@ public partial class PlanetSystemGenerator : Control
         foreach (var bodyDict in templateData.Dominant)
         {
             var typeStr = (string)bodyDict["type"];
-            if (!Enum.TryParse<DominantBodyType>(typeStr, out _))
+            if (!Enum.TryParse<OrbitalBodyType>(typeStr, out _))
                 continue;
 
             var template = (Godot.Collections.Dictionary)bodyDict["template"];
@@ -738,11 +774,36 @@ public partial class PlanetSystemGenerator : Control
             AddSatelliteBeltFromTemplate(beltDict, orbitalCenterIndex);
         }
 
+        // Re-nest the flattened satellites under their parent planetary body so the existing
+        // PlanetaryBodyItem UI (which models satellites as children) can populate. The GUI does
+        // not represent moon-of-a-moon chains; satellites whose parent is another satellite are
+        // dropped here (a warning is logged) but survive untouched on disk.
+        foreach (var sat in templateData.Satellites)
+        {
+            string parentName = sat.ContainsKey("parent") ? (string)sat["parent"] : "";
+            bool attached = false;
+            foreach (var bodyDict in templateData.Planetary)
+            {
+                if (bodyDict.ContainsKey("name") && (string)bodyDict["name"] == parentName)
+                {
+                    if (!bodyDict.ContainsKey("satellites"))
+                        bodyDict["satellites"] = new Godot.Collections.Array<Godot.Collections.Dictionary>();
+                    ((Godot.Collections.Array<Godot.Collections.Dictionary>)bodyDict["satellites"]).Add(sat);
+                    attached = true;
+                    break;
+                }
+            }
+            if (!attached)
+                GD.PrintErr(
+                    $"Template satellite parented to '{parentName}' has no matching planetary body in the editor — it will not be shown (still preserved on disk)"
+                );
+        }
+
         // Pass 3: Planetary bodies
         foreach (var bodyDict in templateData.Planetary)
         {
             var typeStr = (string)bodyDict["type"];
-            if (!Enum.TryParse<PlanetaryBodyType>(typeStr, out _))
+            if (!Enum.TryParse<OrbitalBodyType>(typeStr, out _))
                 continue;
 
             var pTemplate = (Godot.Collections.Dictionary)bodyDict["template"];
@@ -1015,7 +1076,15 @@ public partial class PlanetSystemGenerator : Control
                     belts.Add(sbi.ToParams());
             }
 
-            string yamlContent = TemplateHelpers.GenerateYamlContent(dominant, belts, planetary);
+            // Flatten nested satellites into a top-level section before serializing.
+            var satellites = ExtractFlattenedSatellites(planetary);
+
+            string yamlContent = TemplateHelpers.GenerateYamlContent(
+                dominant,
+                belts,
+                planetary,
+                satellites
+            );
 
             string filePath = $"res://Configuration/SystemTemplate/{fileName}";
 
