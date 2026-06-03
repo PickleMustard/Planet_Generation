@@ -157,15 +157,29 @@ public partial class OrbitalIndicatorCoordinator : Node
 
             _allBodies.Add(body);
 
-            // Include satellites
-            if (body.SatellitesContainer == null)
-                continue;
+            // Moons (depth >= 2) use analytical orbits, so they never join the "CelestialBody"
+            // group, and they are parented directly under their host (not in SatellitesContainer,
+            // which now holds constructed stations/ships). Walk the host's descendants to find
+            // them. Belt members set ForceAnalyticalOrbit and can number in the thousands -- each
+            // body costs a billboard texture-array layer -- so they are excluded.
+            CollectMoonBodies(body);
+        }
+    }
 
-            foreach (var child in body.SatellitesContainer.GetChildren())
+    private void CollectMoonBodies(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            if (
+                child is CelestialBody moon
+                && moon.Classification is BodyClassification.Satellite
+                && !moon.ForceAnalyticalOrbit
+                && !_allBodies.Contains(moon)
+            )
             {
-                if (child is IOrbitalBody satellite)
-                    _allBodies.Add(satellite);
+                _allBodies.Add(moon);
             }
+            CollectMoonBodies(child); // moons-of-moons, etc.
         }
     }
 

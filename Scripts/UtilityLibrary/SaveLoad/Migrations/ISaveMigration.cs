@@ -26,6 +26,8 @@ public static class SaveMigrator
         new V1ToV2Migration(),
         new V2ToV3Migration(),
         new V3ToV4Migration(),
+        new V4ToV5Migration(),
+        new V5ToV6Migration(),
     };
 
     /// <summary>
@@ -91,6 +93,29 @@ public sealed class V2ToV3Migration : ISaveMigration
 public sealed class V3ToV4Migration : ISaveMigration
 {
     public int From => 3;
+
+    public SaveFileDto Apply(SaveFileDto dto) => dto;
+}
+
+/// <summary>
+/// v4 → v5: introduces Market Station persistence. v4 saves predate market state, so the absent
+/// <see cref="StationDto.MarketState"/> simply stays null and the loader restores no market state.
+/// </summary>
+public sealed class V4ToV5Migration : ISaveMigration
+{
+    public int From => 4;
+
+    public SaveFileDto Apply(SaveFileDto dto) => dto;
+}
+
+/// <summary>
+/// v5 → v6: introduces the game-instance clock (TimeKeeper). v5 saves predate it, so the absent
+/// <see cref="SaveFileDto.Time"/> simply defaults to <c>TotalTicks = 0</c> and the clock starts at the
+/// beginning of Year 0, Q1.
+/// </summary>
+public sealed class V5ToV6Migration : ISaveMigration
+{
+    public int From => 5;
 
     public SaveFileDto Apply(SaveFileDto dto) => dto;
 }

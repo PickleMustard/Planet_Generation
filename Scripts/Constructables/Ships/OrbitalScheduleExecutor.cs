@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Constructables.Stations.Behaviors;
 using Structures.Enums;
 using Structures.Logistics;
 using UtilityLibrary;
@@ -191,6 +192,31 @@ public partial class OrbitalScheduleExecutor : Node
 
         TransitionScheduleState(OrbitalScheduleState.Stopped);
         GameLogger.Info($"OrbitalScheduleExecutor [{_unit.Name}]: Schedule stopped");
+    }
+
+    /// <summary>
+    /// Called by a <see cref="MarketStationBehavior"/> on the main thread when a held unit's hold
+    /// period elapses. Completes the held leg and advances the schedule so routing continues.
+    /// </summary>
+    public void ResumeAfterMarketHold()
+    {
+        if (_unit == null || _activeSchedule == null)
+            return;
+
+        if (_activeSchedule.State != OrbitalScheduleState.Held)
+        {
+            GameLogger.Warning(
+                $"OrbitalScheduleExecutor [{_unit.Name}]: ResumeAfterMarketHold called in state {_activeSchedule.State}");
+            return;
+        }
+
+        var leg = _activeSchedule.CurrentLeg;
+        if (leg != null)
+            leg.State = LegState.Complete;
+
+        EmitLegCompleted();
+        TransitionScheduleState(OrbitalScheduleState.Running);
+        AdvanceToNextLeg();
     }
 
     /// <summary>
@@ -464,8 +490,26 @@ public partial class OrbitalScheduleExecutor : Node
                 return;
             }
 
-            // Transfer completed successfully — handle post-arrival operations
-            if (leg.RefuelInstructions.RefuelAtDestination && leg.Destination.IsStation)
+            // Transfer completed successfully — handle post-arrival operations.
+            // Market Station takes priority: arriving at one means selling/holding, not a normal dropoff.
+            if (leg.Destination.IsStation
+                && leg.Destination.Station.GetBehavior<MarketStationBehavior>() is { } market)
+            {
+                if (market.TryAcceptUnit(_unit))
+                {
+                    // Unit is now held (or queued) by the station; pause the schedule. The station
+                    // drives the release via ResumeAfterMarketHold once the hold period elapses.
+                    leg.State = LegState.Held;
+                    TransitionScheduleState(OrbitalScheduleState.Held);
+                }
+                else
+                {
+                    // Rejected (ship level over limit): complete the leg normally, no sale.
+                    leg.State = LegState.Complete;
+                    EmitLegCompleted();
+                }
+            }
+            else if (leg.RefuelInstructions.RefuelAtDestination && leg.Destination.IsStation)
             {
                 leg.State = LegState.RefuelingAtDestination;
                 _unit.TransitionTo(LogisticsUnitState.Unloading);

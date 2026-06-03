@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using Godot;
 using Structures.Resources;
 using UtilityLibrary;
+using UtilityLibrary.SaveLoad;
+using UtilityLibrary.SaveLoad.Dto;
 
 namespace Structures.GameState;
 
@@ -15,9 +17,12 @@ namespace Structures.GameState;
 /// supply/demand model into later. Prices update on a main-thread Godot <see cref="Timer"/>,
 /// so all signal emission uses plain SignalBus emits (no SafeEmit needed).
 /// </summary>
-public partial class EconomyTracker : Node
+public partial class EconomyTracker : Node, ISaveSerializable, ISaveRestorable
 {
     public static EconomyTracker? Instance { get; private set; }
+
+    /// <summary>Section discriminator routing this tracker's DTO within the save file.</summary>
+    public string SaveKey => "economy";
 
     /// <summary>Seconds between price-update ticks.</summary>
     [Export]
@@ -41,6 +46,7 @@ public partial class EconomyTracker : Node
     public override void _Ready()
     {
         Instance = this;
+        AddToGroup("save_serializable");
         SeedMarket();
 
         _priceTimer = new Timer
@@ -90,6 +96,36 @@ public partial class EconomyTracker : Node
 
     public IReadOnlyDictionary<string, MarketEntry> GetMarket() => _market;
 
+    /// <summary>Snapshots market prices into an <see cref="EconomyDto"/>. See <see cref="ISaveSerializable"/>.</summary>
+    public object Serialize()
+    {
+        var dto = new EconomyDto { PriceUpdateInterval = PriceUpdateIntervalSeconds };
+        foreach (var kv in _market)
+        {
+            dto.Market.Add(new MarketEntryDto
+            {
+                Id = kv.Key,
+                BasePrice = kv.Value.BasePrice,
+                CurrentPrice = kv.Value.CurrentPrice,
+            });
+        }
+        return dto;
+    }
+
+    /// <summary>
+    /// Restores market state from an <see cref="EconomyDto"/>. See <see cref="ISaveRestorable"/>; must run
+    /// after _Ready/SeedMarket (enforced by calling from SaveLoader.RestoreSession, post-seed).
+    /// </summary>
+    public void Restore(object dto)
+    {
+        if (dto is not EconomyDto e)
+            return;
+        var entries = new List<(string, double, double)>(e.Market.Count);
+        foreach (var m in e.Market)
+            entries.Add((m.Id, m.BasePrice, m.CurrentPrice));
+        LoadState(e.PriceUpdateInterval, entries);
+    }
+
     /// <summary>
     /// Overwrites market prices from a loaded save. Must be called AFTER _Ready/SeedMarket so the
     /// loaded prices replace the freshly seeded defaults. Resources missing from the save keep their
@@ -127,7 +163,15 @@ public partial class EconomyTracker : Node
     /// cost from the company budget. Returns false (and emits MarketOrderRejected) on an unknown
     /// resource, non-positive quantity, or insufficient funds.
     /// </summary>
-    public bool RequestBuy(string resourceId, int quantity)
+    public bool RequestBuy(string resourceId, int quantity) =>
+        RequestBuy(resourceId, quantity, 1.0);
+
+    /// <summary>
+    /// Buy overload that scales the unit price by <paramref name="priceMultiplier"/> (e.g. a Market
+    /// Station's bulk-buy discount). Multiplier &lt; 1 reduces the cost; everything else (budget
+    /// withdrawal, demand pressure, signal) is identical to <see cref="RequestBuy(string,int)"/>.
+    /// </summary>
+    public bool RequestBuy(string resourceId, int quantity, double priceMultiplier)
     {
         if (string.IsNullOrEmpty(resourceId) || !_market.TryGetValue(resourceId, out var entry))
         {
@@ -140,7 +184,7 @@ public partial class EconomyTracker : Node
             return false;
         }
 
-        double cost = entry.CurrentPrice * quantity;
+        double cost = entry.CurrentPrice * quantity * priceMultiplier;
         if (CompanyDataTracker.Instance?.TryWithdraw(cost) != true)
         {
             SignalBus.Instance?.EmitMarketOrderRejected(resourceId, quantity, "insufficient_funds");
@@ -157,7 +201,15 @@ public partial class EconomyTracker : Node
     /// the company budget. Returns false (and emits MarketOrderRejected) on an unknown resource or
     /// non-positive quantity.
     /// </summary>
-    public bool RequestSell(string resourceId, int quantity)
+    public bool RequestSell(string resourceId, int quantity) =>
+        RequestSell(resourceId, quantity, 1.0);
+
+    /// <summary>
+    /// Sell overload that scales the unit price by <paramref name="priceMultiplier"/> (e.g. a Market
+    /// Station's bulk-sell bonus). Multiplier &gt; 1 increases revenue; everything else (budget
+    /// deposit, supply pressure, signal) is identical to <see cref="RequestSell(string,int)"/>.
+    /// </summary>
+    public bool RequestSell(string resourceId, int quantity, double priceMultiplier)
     {
         if (string.IsNullOrEmpty(resourceId) || !_market.TryGetValue(resourceId, out var entry))
         {
@@ -170,7 +222,7 @@ public partial class EconomyTracker : Node
             return false;
         }
 
-        double revenue = entry.CurrentPrice * quantity;
+        double revenue = entry.CurrentPrice * quantity * priceMultiplier;
         CompanyDataTracker.Instance?.Deposit(revenue);
 
         entry.SupplyPressure += quantity;

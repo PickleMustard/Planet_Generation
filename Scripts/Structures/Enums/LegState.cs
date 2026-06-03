@@ -46,6 +46,12 @@ public enum LegState
     UnloadingCargo,
 
     /// <summary>
+    /// Unit is held by a Market Station (sold to / buying from the galactic market). The
+    /// schedule pauses here until the station releases the unit.
+    /// </summary>
+    Held,
+
+    /// <summary>
     /// Leg has completed successfully.
     /// </summary>
     Complete,

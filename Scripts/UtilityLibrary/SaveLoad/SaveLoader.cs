@@ -294,11 +294,25 @@ public static class SaveLoader
             systemData.IsGameStarted = save.Session.IsGameStarted;
         }
 
-        if (CompanyDataTracker.Instance != null)
-            CompanyMapper.Restore(CompanyDataTracker.Instance, save.Company);
-
-        if (EconomyTracker.Instance != null)
-            EconomyMapper.Restore(EconomyTracker.Instance, save.Economy);
+        // Restore self-contained singletons polymorphically. Runs post-SeedMarket (RestoreSession is
+        // called from GameScene._Ready), satisfying EconomyTracker's load-after-seed ordering. Adding a
+        // tracker needs no edit here beyond a new SaveKey→DTO case.
+        foreach (var node in systemContainer.GetTree().GetNodesInGroup("save_serializable"))
+        {
+            if (node is not ISaveRestorable restorable)
+                continue;
+            object? section = restorable.SaveKey switch
+            {
+                "company" => save.Company,
+                "economy" => save.Economy,
+                "time" => save.Time,
+                _ => null,
+            };
+            if (section != null)
+                restorable.Restore(section);
+            else
+                GameLogger.Warning($"[SaveLoader] No DTO for restorable section '{restorable.SaveKey}'.");
+        }
 
         // Register restored buildings/stations with the now-running ManufactureTickEngine. Storage
         // capacity was reconstructed directly into slots during restore, so there is no economy

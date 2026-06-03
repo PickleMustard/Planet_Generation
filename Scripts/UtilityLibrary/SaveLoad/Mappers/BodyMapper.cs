@@ -13,63 +13,14 @@ using UtilityLibrary.SaveLoad.Dto;
 namespace UtilityLibrary.SaveLoad.Mappers;
 
 /// <summary>
-/// Maps CelestialBody / SatelliteBody runtime nodes to <see cref="BodyDto"/> and back. Geometry is
-/// delegated to <see cref="GeometryMapper"/>. Tree placement, local Position, orbit-system init and
-/// band-count restore are driven by the loader (see <see cref="ApplyPostInit"/>) because they depend
-/// on the body already being in the scene tree.
+/// Load half for CelestialBody / satellite nodes: rebuilds a <see cref="BodyDto"/> into a live body with
+/// its geometry restored (geometry delegated to <see cref="GeometryMapper"/>). Tree placement, local
+/// Position, orbit-system init and band-count restore are driven by the loader (see
+/// <see cref="ApplyPostInit"/>) because they depend on the body already being in the scene tree. The save
+/// half lives on the body itself (<c>CelestialBody.Serialize()</c>).
 /// </summary>
 public static class BodyMapper
 {
-    // ---------- Save ----------
-
-    public static BodyDto ToDto(CelestialBody body, string? parentName)
-    {
-        bool isSatellite = body.Classification
-            is BodyClassification.Satellite or BodyClassification.Belt;
-        var orbit = body.OrbitStateSnapshot;
-        var dto = new BodyDto
-        {
-            // Kind drives the loader's two-pass parent-after-child ordering; derive it from the
-            // classification now that satellites are also CelestialBody instances.
-            Kind = isSatellite ? "Satellite" : "Celestial",
-            Name = body.Name,
-            Classification = body.Classification?.TypeName ?? "",
-            Mass = body.Mass,
-            Radius = body.Radius,
-            BodySeed = body.BodySeed.ToString(CultureInfo.InvariantCulture),
-            Atmosphere = body.Atmosphere,
-            Position = Vec3Dto.From(body.Position),
-            Velocity = Vec3Dto.From(body.Velocity),
-            TotalForce = Vec3Dto.From(body.TotalForce),
-            SavedForce = Vec3Dto.From(body.SavedForce),
-            OrbitalParentName = parentName,
-            OrbitalAngle = orbit.Angle,
-            OrbitalRadius = orbit.Radius,
-            OrbitalSpeed = orbit.Speed,
-            OrbitalInitialized = orbit.Initialized,
-            Geometry = GeometryMapper.ToDto(body.Mesh),
-        };
-
-        foreach (var kv in body.BandCountsSnapshot)
-            dto.BandSatelliteCounts.Add(new KvIntIntDto { Key = kv.Key, Value = kv.Value });
-
-        if (body.Resources != null && body.Resources.Count > 0)
-        {
-            dto.SatelliteResources = new System.Collections.Generic.List<ResourceDepositDto>();
-            foreach (var kv in body.Resources)
-            {
-                dto.SatelliteResources.Add(new ResourceDepositDto
-                {
-                    ResourceId = kv.Value.ResourceId,
-                    Abundance = kv.Value.Abundance,
-                    Accessibility = kv.Value.Accessibility,
-                });
-            }
-        }
-
-        return dto;
-    }
-
     // ---------- Load ----------
 
     /// <summary>

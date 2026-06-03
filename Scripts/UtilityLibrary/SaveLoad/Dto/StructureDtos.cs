@@ -73,6 +73,44 @@ public sealed class StationDto
 
     /// <summary>Null unless the station has a transfer-hub behavior.</summary>
     public TransferBehaviorStateDto? Transfer { get; set; }
+
+    /// <summary>Null unless the station has a market behavior (save_version ≥ 5).</summary>
+    public MarketStationStateDto? MarketState { get; set; }
+}
+
+/// <summary>
+/// Serialized runtime state of a <see cref="Constructables.Stations.Behaviors.MarketStationBehavior"/>:
+/// player-edited purchase orders, the running monthly purchase counters, and the units it is currently
+/// holding/queuing. Config (level limit, capacity, hold time, speed modifiers) is NOT serialized — it is
+/// re-applied from the station YAML definition on load.
+/// </summary>
+public sealed class MarketStationStateDto
+{
+    public List<MarketPurchaseOrderDto> PurchaseOrders { get; set; } = new();
+    public Dictionary<string, int> PurchasedThisMonth { get; set; } = new();
+    public long MonthAnchorTick { get; set; }
+
+    /// <summary>Units currently held out of the system (mid sell/purchase cycle).</summary>
+    public List<MarketHeldUnitDto> Held { get; set; } = new();
+
+    /// <summary>Unit ids waiting (in order) for a hold slot to free.</summary>
+    public List<string> Queue { get; set; } = new();
+}
+
+public sealed class MarketPurchaseOrderDto
+{
+    public string ResourceId { get; set; } = "";
+    public int MonthlyLimit { get; set; }
+}
+
+public sealed class MarketHeldUnitDto
+{
+    public string UnitId { get; set; } = "";
+    public long SellSegmentTicks { get; set; }
+    public long TotalHoldTicks { get; set; }
+    public long ElapsedTicks { get; set; }
+    public bool HasSold { get; set; }
+    public Dictionary<string, int> PlannedPurchase { get; set; } = new();
 }
 
 /// <summary>

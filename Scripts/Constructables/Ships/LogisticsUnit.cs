@@ -408,6 +408,25 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     /// </summary>
     public TrajectoryPreviewManager? PreviewManager => _trajectoryPreviewManager;
 
+    /// <summary>
+    /// Takes the unit out of the visible system while a Market Station holds it ("wormhole"). The
+    /// schedule executor is paused separately by the caller. Must run on the main thread.
+    /// </summary>
+    public void EnterMarketHold()
+    {
+        Visible = false;
+        _state = LogisticsUnitState.Idle;
+    }
+
+    /// <summary>
+    /// Returns the unit to the visible system when a Market Station releases it. The caller resumes
+    /// the schedule executor. Must run on the main thread.
+    /// </summary>
+    public void ExitMarketHold()
+    {
+        Visible = true;
+    }
+
     public override void _ExitTree()
     {
         // Unregister BEFORE teardown so the registry never points at a half-destroyed unit.

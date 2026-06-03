@@ -24,7 +24,7 @@ public class LogisticsIdRoundTripTest
         var unit = new LogisticsUnit { Name = "Source" };
         unit.SetPersistedId("source-id");
 
-        var dto = LogisticsMapper.ToDto(unit);
+        var dto = (LogisticsUnitDto)unit.Serialize();
 
         AssertThat(dto.Id).IsEqual("source-id");
 

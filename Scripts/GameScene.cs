@@ -52,6 +52,16 @@ namespace Scenes
                     GameLogger.Debug("EconomyTracker added to system_container");
                 }
 
+                // TimeKeeper added after SystemData so the ManufactureTickEngine is already running
+                // (SystemData._Ready starts it), and before RestoreSession so it is in the
+                // "save_serializable" group when the loader restores the clock.
+                if (systemContainer.GetNodeOrNull<Structures.GameState.TimeKeeper>("TimeKeeper") == null)
+                {
+                    var timeKeeper = new Structures.GameState.TimeKeeper { Name = "TimeKeeper" };
+                    systemContainer.AddChild(timeKeeper);
+                    GameLogger.Debug("TimeKeeper added to system_container");
+                }
+
                 // If a save is being loaded, restore company/economy/session state now that the
                 // trackers exist and have run their _Ready (Instance set, market seeded).
                 if (UtilityLibrary.SaveLoad.SaveLoader.IsLoadPending)

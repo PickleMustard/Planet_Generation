@@ -15,6 +15,12 @@ public class ShipDefinition
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Tier/class of the ship. Market Stations accept units up to a configured level limit.
+    /// Defaults to 1 when not specified in YAML.
+    /// </summary>
+    public int ShipLevel { get; set; } = 1;
+
+    /// <summary>
     /// The dry mass of the ship without fuel or cargo (in kg).
     /// </summary>
     public float DryMass { get; set; }

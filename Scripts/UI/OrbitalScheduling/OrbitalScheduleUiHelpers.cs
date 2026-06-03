@@ -3,6 +3,8 @@ using System.Linq;
 using Constructables;
 using Godot;
 using ProceduralGeneration;
+using ProceduralGeneration.PlanetGeneration;
+using Structures;
 using Structures.Logistics;
 
 namespace UI.OrbitalScheduling;
@@ -141,12 +143,23 @@ public static class OrbitalScheduleUiHelpers
         if (!into.Contains(body))
             into.Add(body);
 
+        // Artificial satellites (stations / ships) live in SatellitesContainer.
         var container = body.SatellitesContainer;
-        if (container == null)
-            return;
-        foreach (var child in container.GetChildren())
-            if (child is IOrbitalBody sat)
-                CollectBodyAndSatellites(sat, into);
+        if (container != null)
+            foreach (var child in container.GetChildren())
+                if (child is IOrbitalBody sat)
+                    CollectBodyAndSatellites(sat, into);
+
+        // Natural moons are parented directly under the body node (not in
+        // SatellitesContainer). Recurse so moons — and moons-of-moons — are
+        // enumerated. Belt members are also direct children but can number in the
+        // thousands, so skip them here to keep callers (e.g. the scheduling
+        // dropdown) usable; the System Overview board enumerates belts separately.
+        if (body is Node node)
+            foreach (var child in node.GetChildren())
+                if (child is CelestialBody moon
+                    && !(moon.Classification is BodyClassification.Satellite && moon.ForceAnalyticalOrbit))
+                    CollectBodyAndSatellites(moon, into);
     }
 
     public static Node? FindSystemContainer(Node node)

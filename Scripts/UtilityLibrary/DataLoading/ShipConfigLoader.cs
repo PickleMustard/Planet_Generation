@@ -262,6 +262,7 @@ public static class ShipConfigLoader
         var definition = new ShipDefinition
         {
             Name = name,
+            ShipLevel = BaseConfigLoader.ReadInt(dict, "ship_level", 1),
             DryMass = BaseConfigLoader.ReadFloat(dict, "dry_mass", 0f),
             CargoCapacity = BaseConfigLoader.ReadFloat(dict, "cargo_capacity", 0f),
             FuelCapacity = BaseConfigLoader.ReadFloat(dict, "fuel_capacity", 0f),

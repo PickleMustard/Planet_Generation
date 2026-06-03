@@ -149,45 +149,14 @@ public static class BuildingMapper
 }
 
 /// <summary>
-/// Maps orbital <see cref="StationSatellite"/> instances to <see cref="StationDto"/> and back. The
-/// station is rebuilt from its <see cref="StationDefinition"/> (via <see cref="StationDatabase"/>),
-/// re-attached under the host body's SatellitesContainer with its saved id and orbital arc, then
-/// brought online via <see cref="StationSatellite.ActivateFromSave"/>.
+/// Load half for orbital <see cref="StationSatellite"/> instances. The station is rebuilt from its
+/// <see cref="StationDefinition"/> (via <see cref="StationDatabase"/>), re-attached under the host body's
+/// SatellitesContainer with its saved id and orbital arc, then brought online via
+/// <see cref="StationSatellite.ActivateFromSave"/>. The save half lives on the station itself
+/// (<c>StationSatellite.Serialize()</c>).
 /// </summary>
 public static class StationMapper
 {
-    public static StationDto ToDto(StationSatellite s, string bodyName)
-    {
-        var dto = new StationDto
-        {
-            Id = s.Id,
-            Name = s.Name,
-            DefinitionName = s.Definition?.Name ?? "",
-            BodyName = bodyName,
-            BandIndex = s.BandIndex,
-            IsActive = s.IsActive,
-            IsStationary = s.IsStationary,
-            OrbitalAngle = s.OrbitalAngle,
-            OrbitalRadius = s.OrbitalRadius,
-            OrbitalSpeed = s.OrbitalSpeed,
-            HostMass = s.HostMass,
-            Position = Vec3Dto.From(s.Position),
-            Velocity = Vec3Dto.From(s.Velocity),
-        };
-
-        foreach (var kv in s.BulkStorage.GetAllQuantities())
-            dto.BulkStorage[kv.Key] = kv.Value;
-
-        var hub = s.GetBehavior<TransferHubBehavior>();
-        if (hub != null)
-            dto.Transfer = TransferMapper.ToDto(
-                hub.TotalTime,
-                hub.GetActiveTransfers().Values.Select(t => t.Order),
-                hub.GetAllSchedules());
-
-        return dto;
-    }
-
     public static StationSatellite? Restore(StationDto dto, IOrbitalBody body)
     {
         if (StationDatabase.Instance == null
@@ -228,6 +197,12 @@ public static class StationMapper
                 dto.Transfer.TotalTime,
                 TransferMapper.RestoreOrders(dto.Transfer.ActiveTransfers),
                 TransferMapper.RestoreSchedules(dto.Transfer.Schedules));
+        }
+
+        if (dto.MarketState != null)
+        {
+            var market = station.GetBehavior<MarketStationBehavior>();
+            market?.RestoreState(dto.MarketState);
         }
 
         return station;

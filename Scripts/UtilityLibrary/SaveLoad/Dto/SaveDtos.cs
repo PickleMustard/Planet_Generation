@@ -72,6 +72,10 @@ public sealed class SaveFileDto
     public SessionDto Session { get; set; } = new();
     public CompanyDto Company { get; set; } = new();
     public EconomyDto Economy { get; set; } = new();
+
+    /// <summary>Game-instance clock (save_version ≥ 6). Defaults to tick 0 for older saves.</summary>
+    public TimeDto Time { get; set; } = new();
+
     public List<BodyDto> Bodies { get; set; } = new();
 
     /// <summary>Logistics units (save_version ≥ 2). Null/omitted in v1 saves.</summary>
@@ -115,6 +119,12 @@ public sealed class CompanyDto
     public double Debt { get; set; }
     public float Antagonism { get; set; }
     public double Research { get; set; }
+}
+
+public sealed class TimeDto
+{
+    /// <summary>Total manufacture ticks elapsed since the game instance began. Quarter/year derive from this.</summary>
+    public long TotalTicks { get; set; }
 }
 
 public sealed class EconomyDto

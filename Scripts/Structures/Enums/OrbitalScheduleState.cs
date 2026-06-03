@@ -33,5 +33,11 @@ public enum OrbitalScheduleState
     /// <summary>
     /// Schedule was manually stopped by the player. Can be resumed.
     /// </summary>
-    Stopped
+    Stopped,
+
+    /// <summary>
+    /// The unit is held by a Market Station for the duration of a sell/purchase cycle. The
+    /// executor idles; the station drives the release via <c>ResumeAfterMarketHold</c>.
+    /// </summary>
+    Held
 }

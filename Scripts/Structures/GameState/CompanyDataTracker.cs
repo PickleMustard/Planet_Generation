@@ -1,5 +1,7 @@
 using Godot;
 using UtilityLibrary;
+using UtilityLibrary.SaveLoad;
+using UtilityLibrary.SaveLoad.Dto;
 
 namespace Structures.GameState;
 
@@ -12,9 +14,12 @@ namespace Structures.GameState;
 /// This is a framework: state + mutators + SignalBus notifications to plug into later.
 /// Currency is represented as <c>double</c> for Godot signal compatibility.
 /// </summary>
-public partial class CompanyDataTracker : Node
+public partial class CompanyDataTracker : Node, ISaveSerializable, ISaveRestorable
 {
     public static CompanyDataTracker? Instance { get; private set; }
+
+    /// <summary>Section discriminator routing this tracker's DTO within the save file.</summary>
+    public string SaveKey => "company";
 
     /// <summary>Available spendable currency.</summary>
     public double Budget { get; private set; }
@@ -34,7 +39,24 @@ public partial class CompanyDataTracker : Node
     public override void _Ready()
     {
         Instance = this;
+        AddToGroup("save_serializable");
         base._Ready();
+    }
+
+    /// <summary>Snapshots company state into a <see cref="CompanyDto"/>. See <see cref="ISaveSerializable"/>.</summary>
+    public object Serialize() => new CompanyDto
+    {
+        Budget = Budget,
+        Debt = Debt,
+        Antagonism = Antagonism,
+        Research = Research,
+    };
+
+    /// <summary>Restores company state from a <see cref="CompanyDto"/>. See <see cref="ISaveRestorable"/>.</summary>
+    public void Restore(object dto)
+    {
+        if (dto is CompanyDto c)
+            LoadState(c.Budget, c.Debt, c.Antagonism, c.Research);
     }
 
     public override void _ExitTree()

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Constructables;
 using Godot;
 using ProceduralGeneration;
+using ProceduralGeneration.PlanetGeneration;
+using Structures;
 using Structures.Enums;
 using Structures.GameState;
 using Structures.Logistics;
@@ -35,6 +37,9 @@ public partial class SystemBoardWorld : Node2D
     private const float SatelliteClearance = 1.8f; // orbit radius >= parentIcon * this
     private const float StationRadius = 18f;
     private const float UnitRadius = 13f;
+    private const int BeltIconCap = 64;      // max belt-member textures drawn per belt
+    private const float BeltIconRadius = 6f; // belt debris icon half-size
+    private const float BoardSizeFactor = 1.2f; // board ~1.2x the largest orbit, W and H
 
     // ── Draw constants ──────────────────────────────────────────────────
     private static readonly Color OrbitColor = new(WireColors.Ink.R, WireColors.Ink.G, WireColors.Ink.B, 0.45f);
@@ -76,6 +81,7 @@ public partial class SystemBoardWorld : Node2D
 
     private readonly List<BodyPlacement> _bodies = new();
     private readonly List<StationPlacement> _stations = new();
+    private readonly List<BeltPlacement> _belts = new();
     private readonly Dictionary<IOrbitalBody, float> _iconRadii = new();
 
     private double _redrawAccum;
@@ -107,6 +113,19 @@ public partial class SystemBoardWorld : Node2D
         public IOrbitalBody Parent = null!;
     }
 
+    /// <summary>
+    /// One belt (asteroid or comet) around a parent body. Belt members are
+    /// individual analytical CelestialBodies parented directly under the host;
+    /// the board collapses them into a single orbit ring plus a sampled set of
+    /// member textures rather than thousands of per-member rings.
+    /// </summary>
+    private sealed class BeltPlacement
+    {
+        public IOrbitalBody Parent = null!;
+        public OrbitalBodyType Kind;
+        public readonly List<CelestialBody> Members = new();
+    }
+
     // ── Public API ──────────────────────────────────────────────────────
 
     public void SetPickMode(bool enabled) => _pickMode = enabled;
@@ -128,6 +147,7 @@ public partial class SystemBoardWorld : Node2D
     {
         _bodies.Clear();
         _stations.Clear();
+        _belts.Clear();
         _iconRadii.Clear();
 
         // Resolve via the container node (always in-tree), since this world node
@@ -155,8 +175,41 @@ public partial class SystemBoardWorld : Node2D
                         _stations.Add(new StationPlacement { Station = st, Parent = body });
         }
 
+        CollectBelts(roots);
         RecomputeScale(roots);
         QueueRedraw();
+    }
+
+    /// <summary>
+    /// Groups belt members — analytical satellites parented directly under a body
+    /// (asteroids / comets) — into one <see cref="BeltPlacement"/> per
+    /// (parent, asteroid|comet). These are excluded from <see cref="_bodies"/> so
+    /// each belt draws a single ring instead of thousands.
+    /// </summary>
+    private void CollectBelts(List<IOrbitalBody> roots)
+    {
+        var groups = new Dictionary<(IOrbitalBody, OrbitalBodyType), BeltPlacement>();
+        foreach (var body in roots)
+        {
+            if (body is not Node node)
+                continue;
+            foreach (var child in node.GetChildren())
+            {
+                if (child is not CelestialBody cb)
+                    continue;
+                if (cb.Classification is not BodyClassification.Satellite || !cb.ForceAnalyticalOrbit)
+                    continue;
+
+                var key = (body, cb.Classification.Type);
+                if (!groups.TryGetValue(key, out var belt))
+                {
+                    belt = new BeltPlacement { Parent = body, Kind = cb.Classification.Type };
+                    groups[key] = belt;
+                    _belts.Add(belt);
+                }
+                belt.Members.Add(cb);
+            }
+        }
     }
 
     /// <summary>Bounding box of all body board positions, for camera framing.</summary>
@@ -170,15 +223,42 @@ public partial class SystemBoardWorld : Node2D
 
             Vector2 min = new(float.PositiveInfinity, float.PositiveInfinity);
             Vector2 max = new(float.NegativeInfinity, float.NegativeInfinity);
+
+            void Enclose(Vector2 c, float rad)
+            {
+                min.X = Mathf.Min(min.X, c.X - rad); min.Y = Mathf.Min(min.Y, c.Y - rad);
+                max.X = Mathf.Max(max.X, c.X + rad); max.Y = Mathf.Max(max.Y, c.Y + rad);
+            }
+
             foreach (var bp in _bodies)
             {
                 Vector2 p = BoardPosFor(bp.Body);
-                float r = IconRadiusFor(bp.Body);
-                min.X = Mathf.Min(min.X, p.X - r); min.Y = Mathf.Min(min.Y, p.Y - r);
-                max.X = Mathf.Max(max.X, p.X + r); max.Y = Mathf.Max(max.Y, p.Y + r);
+                Enclose(p, IconRadiusFor(bp.Body));
+                // Enclose the whole orbit ring, not just the body's current point,
+                // so the far side of every path stays on-screen when zoomed out.
+                if (bp.Parent != null)
+                {
+                    Vector2 parentPos = BoardPosFor(bp.Parent);
+                    Enclose(parentPos, (p - parentPos).Length());
+                }
             }
-            Vector2 pad = new(64f, 64f);
-            return new Rect2(min - pad, (max - min) + pad * 2f);
+
+            foreach (var belt in _belts)
+            {
+                if (belt.Members.Count == 0)
+                    continue;
+                Vector2 parentPos = BoardPosFor(belt.Parent);
+                float maxR = 0f;
+                foreach (var m in belt.Members)
+                    maxR = Mathf.Max(maxR, (BoardPos(m.BodyPosition) - parentPos).Length());
+                Enclose(parentPos, maxR);
+            }
+
+            // Grow about the center so the board is ~1.2x the largest orbit (W and H).
+            Vector2 center = (min + max) * 0.5f;
+            Vector2 half = (max - min) * 0.5f * BoardSizeFactor;
+            Vector2 pad = new(32f, 32f);
+            return new Rect2(center - half - pad, half * 2f + pad * 2f);
         }
     }
 
@@ -230,6 +310,7 @@ public partial class SystemBoardWorld : Node2D
     public override void _Draw()
     {
         DrawBodyOrbits();
+        DrawBelts();
         DrawUnits();          // route arcs + parked rings drawn within, behind triangles
         DrawBodies();
         DrawStations();
@@ -247,6 +328,43 @@ public partial class SystemBoardWorld : Node2D
             float r = (BoardPosFor(bp.Body) - parentPos).Length();
             if (r > 0.5f)
                 DrawArc(parentPos, r, 0f, Mathf.Tau, OrbitSegments, OrbitColor, 1.5f, antialiased: true);
+        }
+    }
+
+    private void DrawBelts()
+    {
+        foreach (var belt in _belts)
+        {
+            int count = belt.Members.Count;
+            if (count == 0)
+                continue;
+
+            Vector2 parentPos = BoardPosFor(belt.Parent);
+
+            // Single orbit ring at the mean member radius.
+            float sum = 0f;
+            foreach (var m in belt.Members)
+                sum += (BoardPos(m.BodyPosition) - parentPos).Length();
+            float r = sum / count;
+            if (r > 0.5f)
+                DrawArc(parentPos, r, 0f, Mathf.Tau, OrbitSegments, OrbitColor, 1.5f, antialiased: true);
+
+            // Capped, even-sampled member textures placed at their true positions.
+            int shown = Mathf.Min(count, BeltIconCap);
+            int stride = Mathf.Max(1, count / shown);
+            for (int i = 0; i < count; i += stride)
+            {
+                var m = belt.Members[i];
+                Vector2 pos = BoardPos(m.BodyPosition);
+                Texture2D? tex = SafeTexture(m);
+                if (tex != null)
+                    DrawTextureRect(tex,
+                        new Rect2(pos - new Vector2(BeltIconRadius, BeltIconRadius),
+                            new Vector2(BeltIconRadius * 2f, BeltIconRadius * 2f)),
+                        tile: false);
+                else
+                    DrawCircle(pos, BeltIconRadius * 0.5f, FaintOrbitColor);
+            }
         }
     }
 
@@ -570,6 +688,14 @@ public partial class SystemBoardWorld : Node2D
             float d = (SystemBoardShapes.ProjectXZ(b.BodyPosition) - _worldOrigin).Length();
             if (d > extent) extent = d;
         }
+        // Belt members live outside `bodies`; fold them in so the outermost belt
+        // doesn't fall off the board.
+        foreach (var belt in _belts)
+            foreach (var m in belt.Members)
+            {
+                float d = (SystemBoardShapes.ProjectXZ(m.BodyPosition) - _worldOrigin).Length();
+                if (d > extent) extent = d;
+            }
         _scale = TargetBoardExtent / extent;
     }
 

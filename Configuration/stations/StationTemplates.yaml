@@ -10,3 +10,6 @@ categories:
 
   - name: Orbital_Architect
     description: Stations that manage construction of surface buildings via orbital work beams
+
+  - name: Market
+    description: Wormhole stations that hold logistics units to sell cargo to the galactic market and fulfill purchase orders

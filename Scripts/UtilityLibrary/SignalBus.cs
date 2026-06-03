@@ -384,6 +384,31 @@ namespace UtilityLibrary
         }
 
         /// <summary>
+        /// Fired by <c>TimeKeeper</c> when an in-game month (quarter) rolls over.
+        /// Parameters: year (0-based), quarter (Quarter enum as int for Godot compat).
+        /// </summary>
+        [Signal]
+        public delegate void MonthElapsedEventHandler(int year, int quarter);
+
+        public void EmitMonthElapsed(int year, int quarter)
+        {
+            WarnOffMain(nameof(EmitMonthElapsed));
+            EmitSignal(SignalName.MonthElapsed, year, quarter);
+        }
+
+        /// <summary>
+        /// Thread-safe variant of <see cref="EmitMonthElapsed"/>. The month rollover is detected on the
+        /// ManufactureTickEngine background thread, so callers must use this.
+        /// </summary>
+        public void SafeEmitMonthElapsed(int year, int quarter)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.MonthElapsed, year, quarter);
+            else
+                CallDeferred(MethodName.EmitMonthElapsed, year, quarter);
+        }
+
+        /// <summary>
         /// Fired when a transfer schedule changes state.
         /// Parameters: scheduleId, newState (as int for Godot compat)
         /// </summary>
@@ -536,6 +561,78 @@ namespace UtilityLibrary
                 attemptNumber,
                 maxAttempts
             );
+        }
+
+        // --- Market Station Signals ---
+        // A Market Station accepts a logistics unit, holds it, sells its cargo, and runs purchase
+        // orders. The hold/sell/release logic runs on the ManufactureTickEngine background thread,
+        // so each Emit has a SafeEmit companion.
+
+        /// <summary>
+        /// Fired when a Market Station accepts and begins holding a logistics unit.
+        /// Parameters: stationId, unitId
+        /// </summary>
+        [Signal]
+        public delegate void MarketStationUnitAcceptedEventHandler(string stationId, string unitId);
+
+        public void EmitMarketStationUnitAccepted(string stationId, string unitId)
+        {
+            WarnOffMain(nameof(EmitMarketStationUnitAccepted));
+            EmitSignal(SignalName.MarketStationUnitAccepted, stationId, unitId);
+        }
+
+        public void SafeEmitMarketStationUnitAccepted(string stationId, string unitId)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.MarketStationUnitAccepted, stationId, unitId);
+            else
+                CallDeferred(MethodName.EmitMarketStationUnitAccepted, stationId, unitId);
+        }
+
+        /// <summary>
+        /// Fired when a held unit's cargo has been sold to the market.
+        /// Parameters: stationId, unitId, totalRevenue
+        /// </summary>
+        [Signal]
+        public delegate void MarketStationSaleCompletedEventHandler(
+            string stationId,
+            string unitId,
+            double totalRevenue
+        );
+
+        public void EmitMarketStationSaleCompleted(string stationId, string unitId, double totalRevenue)
+        {
+            WarnOffMain(nameof(EmitMarketStationSaleCompleted));
+            EmitSignal(SignalName.MarketStationSaleCompleted, stationId, unitId, totalRevenue);
+        }
+
+        public void SafeEmitMarketStationSaleCompleted(string stationId, string unitId, double totalRevenue)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.MarketStationSaleCompleted, stationId, unitId, totalRevenue);
+            else
+                CallDeferred(MethodName.EmitMarketStationSaleCompleted, stationId, unitId, totalRevenue);
+        }
+
+        /// <summary>
+        /// Fired when a Market Station releases a held unit back into the system.
+        /// Parameters: stationId, unitId
+        /// </summary>
+        [Signal]
+        public delegate void MarketStationUnitReleasedEventHandler(string stationId, string unitId);
+
+        public void EmitMarketStationUnitReleased(string stationId, string unitId)
+        {
+            WarnOffMain(nameof(EmitMarketStationUnitReleased));
+            EmitSignal(SignalName.MarketStationUnitReleased, stationId, unitId);
+        }
+
+        public void SafeEmitMarketStationUnitReleased(string stationId, string unitId)
+        {
+            if (SignalMarshal.IsOnMainThread)
+                EmitSignal(SignalName.MarketStationUnitReleased, stationId, unitId);
+            else
+                CallDeferred(MethodName.EmitMarketStationUnitReleased, stationId, unitId);
         }
 
         /// <summary>

@@ -64,11 +64,31 @@ public static class SaveManager
             };
         }
 
-        // --- Company / Economy ---
-        if (CompanyDataTracker.Instance != null)
-            dto.Company = CompanyMapper.ToDto(CompanyDataTracker.Instance);
-        if (EconomyTracker.Instance != null)
-            dto.Economy = EconomyMapper.ToDto(EconomyTracker.Instance);
+        // --- Serializable singletons (trackers) ---
+        // Discovered via the "save_serializable" group; each owns its Serialize() and is routed into
+        // the typed SaveFileDto field by SaveKey. Adding a tracker needs no edit here beyond a new case.
+        foreach (var node in systemContainer.GetTree().GetNodesInGroup("save_serializable"))
+        {
+            if (node is not ISaveSerializable savable)
+                continue;
+            var section = savable.Serialize();
+            switch (savable.SaveKey)
+            {
+                case "company" when section is CompanyDto company:
+                    dto.Company = company;
+                    break;
+                case "economy" when section is EconomyDto economy:
+                    dto.Economy = economy;
+                    break;
+                case "time" when section is TimeDto time:
+                    dto.Time = time;
+                    break;
+                default:
+                    GameLogger.Warning(
+                        $"[SaveManager] Unhandled serializable section '{savable.SaveKey}' ({section?.GetType().Name}).");
+                    break;
+            }
+        }
 
         // --- Bodies (celestial first, then their satellite descendants) ---
         foreach (var child in systemContainer.GetChildren())
@@ -76,11 +96,10 @@ public static class SaveManager
             if (child is not CelestialBody body)
                 continue;
 
-            string? parentName = (body.OrbitalParent as Node)?.Name;
-            dto.Bodies.Add(BodyMapper.ToDto(body, parentName));
+            dto.Bodies.Add((BodyDto)body.Serialize());
 
             foreach (var sat in FindSatellites(body))
-                dto.Bodies.Add(BodyMapper.ToDto(sat, body.Name));
+                dto.Bodies.Add((BodyDto)sat.Serialize());
         }
 
         // --- Logistics units (registry covers orbiting + adrift-in-transit ships uniformly) ---
@@ -89,7 +108,7 @@ public static class SaveManager
         {
             dto.LogisticsUnits = new System.Collections.Generic.List<LogisticsUnitDto>(units.Count);
             foreach (var unit in units)
-                dto.LogisticsUnits.Add(LogisticsMapper.ToDto(unit));
+                dto.LogisticsUnits.Add((LogisticsUnitDto)unit.Serialize());
         }
 
         // --- Buildings + stations (Phase 3, save_version 3) ---
@@ -194,7 +213,7 @@ public static class SaveManager
         if (container != null)
             foreach (var c in container.GetChildren())
                 if (c is StationSatellite station)
-                    stations.Add(StationMapper.ToDto(station, bodyName));
+                    stations.Add((StationDto)station.Serialize());
     }
 
 }
