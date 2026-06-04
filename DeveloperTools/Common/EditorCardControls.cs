@@ -16,7 +16,6 @@ namespace DeveloperTools.Common;
 public static class EditorCardControls
 {
     private static readonly Color SectionResources = new(1.0f, 0.85f, 0.6f);
-    private static readonly Color SectionVisual = new(0.7f, 1.0f, 0.7f);
     private static readonly Color SectionIcon = new(0.9f, 0.9f, 0.7f);
 
     private static Label Header(string text, Color color)
@@ -52,26 +51,34 @@ public static class EditorCardControls
         var rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         parent.AddChild(rows);
 
-        var allResourceIds = GetAllResourceIds();
-
         for (int i = 0; i < resources.Count; i++)
         {
             int index = i;
             var slot = resources[index];
             var row = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
 
-            var idOption = new OptionButton
+            var idButton = new Button
             {
+                Text = string.IsNullOrEmpty(slot.ResourceId) ? "(select resource)" : slot.ResourceId,
+                TooltipText = slot.ResourceId,
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-                CustomMinimumSize = new Vector2(220, 0)
+                CustomMinimumSize = new Vector2(220, 0),
+                ClipText = true
             };
-            PopulateResourceDropdown(idOption, slot.ResourceId, allResourceIds);
-            idOption.ItemSelected += selectedIdx =>
+            idButton.Pressed += () =>
             {
-                slot.ResourceId = idOption.GetItemText((int)selectedIdx);
-                onChanged();
+                var popup = new ResourcePickerPopup();
+                popup.ResourcePicked += id =>
+                {
+                    slot.ResourceId = id;
+                    idButton.Text = id;
+                    idButton.TooltipText = id;
+                    onChanged();
+                };
+                idButton.GetTree().Root.AddChild(popup);
+                popup.PopupCentered();
             };
-            row.AddChild(idOption);
+            row.AddChild(idButton);
 
             var amount = new SpinBox
             {
@@ -97,45 +104,6 @@ public static class EditorCardControls
         }
     }
 
-    // ── Visual ───────────────────────────────────────────────────────────
-
-    /// <summary>Builds the optional "Visual" subsection (model/shape fields).</summary>
-    public static void BuildVisual(Control parent, EditorVisual v, Action onChanged)
-    {
-        parent.AddChild(Header("Visual (optional)", SectionVisual));
-        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        parent.AddChild(grid);
-
-        AddLineEdit(grid, "Model Path", v.ModelPath, s => { v.ModelPath = Nullify(s); onChanged(); },
-            "res:// path to a .tscn/.glb model (optional)");
-        AddLineEdit(grid, "Model Material", v.ModelMaterial, s => { v.ModelMaterial = Nullify(s); onChanged(); });
-        AddLineEdit(grid, "Animation Path", v.AnimationPath, s => { v.AnimationPath = Nullify(s); onChanged(); });
-
-        grid.AddChild(new Label { Text = "Scale" });
-        var scale = new SpinBox
-        {
-            MinValue = 0.01, MaxValue = 1000, Step = 0.01, AllowGreater = true,
-            Value = v.Scale, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        scale.ValueChanged += val => { v.Scale = (float)val; onChanged(); };
-        grid.AddChild(scale);
-
-        AddLineEdit(grid, "Shape Id", v.ShapeId, s =>
-        {
-            v.ShapeId = string.IsNullOrWhiteSpace(s) ? "hexagon" : s.Trim();
-            onChanged();
-        }, "Fallback 2D shape when no model (default hexagon)");
-
-        grid.AddChild(new Label { Text = "Shape Size" });
-        var shapeSize = new SpinBox
-        {
-            MinValue = 1, MaxValue = 4096, Step = 1, AllowGreater = true,
-            Value = v.ShapeSize, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        shapeSize.ValueChanged += val => { v.ShapeSize = (float)val; onChanged(); };
-        grid.AddChild(shapeSize);
-    }
-
     // ── Icon ─────────────────────────────────────────────────────────────
 
     /// <summary>Builds the "Icon" subsection (base_path / scale / tint).</summary>
@@ -148,7 +116,7 @@ public static class EditorCardControls
         AddLineEdit(grid, "Base Path", icon.BasePath, s => { icon.BasePath = Nullify(s); onChanged(); },
             "res:// path to the icon (without extension)");
 
-        grid.AddChild(new Label { Text = "Scale" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Scale" });
         var scale = new SpinBox
         {
             MinValue = 0.01, MaxValue = 100, Step = 0.01, AllowGreater = true,
@@ -157,7 +125,7 @@ public static class EditorCardControls
         scale.ValueChanged += val => { icon.Scale = (float)val; onChanged(); };
         grid.AddChild(scale);
 
-        grid.AddChild(new Label { Text = "Tint" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Tint" });
         var tint = new ColorPickerButton
         {
             Color = icon.Tint,
@@ -187,44 +155,10 @@ public static class EditorCardControls
         return new List<string>();
     }
 
-    /// <summary>
-    /// Populates an <see cref="OptionButton"/> with resource IDs, selecting the
-    /// current value. Unknown IDs are shown with an "(unknown)" suffix so they
-    /// are not silently lost. Mirrors <see cref="BuildingEditor.RequiredResourceRow.RebuildResourceOptions"/>
-    /// and <see cref="RecipeEditor.InputSlotRow.RebuildKeyOptions"/>.
-    /// </summary>
-    private static void PopulateResourceDropdown(OptionButton button, string currentId,
-        List<string> options)
-    {
-        button.Clear();
-        int selectedIndex = -1;
-        for (int i = 0; i < options.Count; i++)
-        {
-            button.AddItem(options[i], i);
-            if (options[i] == currentId) selectedIndex = i;
-        }
-        if (selectedIndex < 0)
-        {
-            if (!string.IsNullOrEmpty(currentId))
-            {
-                button.AddItem($"{currentId} (unknown)", options.Count);
-                button.Select(options.Count);
-            }
-            else if (options.Count > 0)
-            {
-                button.Select(0);
-            }
-        }
-        else
-        {
-            button.Select(selectedIndex);
-        }
-    }
-
     private static void AddLineEdit(GridContainer grid, string label, string? value,
         Action<string> onText, string tooltip = "")
     {
-        grid.AddChild(new Label { Text = label });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = label });
         var edit = new LineEdit
         {
             Text = value ?? "",

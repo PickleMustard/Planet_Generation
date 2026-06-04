@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Godot;
-using DeveloperTools.BiomeEditor.Popups;
+using DeveloperTools.Common;
 using Structures.Enums;
 
 namespace DeveloperTools.BiomeEditor.Cards;
@@ -59,25 +59,25 @@ public partial class SubtypeResourceCard : PanelContainer
         root.AddChild(title);
 
         var baseRow = new HBoxContainer();
-        baseRow.AddChild(new Label { Text = "base_resource_weight:", CustomMinimumSize = new Vector2(180, 0) });
+        baseRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "base_resource_weight:", CustomMinimumSize = new Vector2(180, 0) });
         _baseWeightEdit = new LineEdit { CustomMinimumSize = new Vector2(80, 0) };
         _baseWeightEdit.TextSubmitted += s => CommitBaseWeight(s);
         _baseWeightEdit.FocusExited += () => CommitBaseWeight(_baseWeightEdit.Text);
         baseRow.AddChild(_baseWeightEdit);
         root.AddChild(baseRow);
 
-        root.AddChild(new Label { Text = "Resource Groups:" });
+        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Resource Groups:" });
         _groupFlow = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_groupFlow);
 
-        root.AddChild(new Label { Text = "Add Resources:" });
+        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Add Resources:" });
         _addList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_addList);
         var addAddBtn = new Button { Text = "+ Add Resource" };
         addAddBtn.Pressed += () => OnPickResource(true);
         root.AddChild(addAddBtn);
 
-        root.AddChild(new Label { Text = "Remove Resources:" });
+        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Remove Resources:" });
         _removeList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_removeList);
         var addRemBtn = new Button { Text = "+ Remove Resource" };
@@ -116,7 +116,7 @@ public partial class SubtypeResourceCard : PanelContainer
         {
             string id = ids[i];
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var del = new Button { Text = "✕" };
             del.Pressed += () => RemoveIdAt(isAdd, id);
             row.AddChild(del);
@@ -153,7 +153,7 @@ public partial class SubtypeResourceCard : PanelContainer
 
     private void OnPickResource(bool isAdd)
     {
-        var popup = new ResourceIdPickerPopup();
+        var popup = new ResourcePickerPopup();
         popup.ResourcePicked += id =>
         {
             if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry)) return;

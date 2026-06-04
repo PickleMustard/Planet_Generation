@@ -48,12 +48,12 @@ public partial class BiomeAssignerCard : PanelContainer
         header.AddChild(_hazardLabel);
         root.AddChild(header);
 
-        root.AddChild(new Label { Text = "Moisture" });
+        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Moisture" });
         _moistureFields = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_moistureFields);
 
         root.AddChild(new HSeparator());
-        root.AddChild(new Label { Text = "Rules (first match wins)" });
+        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Rules (first match wins)" });
         _ruleList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_ruleList);
 
@@ -76,7 +76,7 @@ public partial class BiomeAssignerCard : PanelContainer
         var m = entry.Moisture;
 
         var modeRow = new HBoxContainer();
-        modeRow.AddChild(new Label { Text = "Mode:" });
+        modeRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Mode:" });
         var modeOpt = new OptionButton();
         modeOpt.AddItem("Whittaker");
         modeOpt.AddItem("UniformRandom");
@@ -111,7 +111,7 @@ public partial class BiomeAssignerCard : PanelContainer
     private void AddFloatRow(string name, float value, Action<float> onChange)
     {
         var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        row.AddChild(new Label { Text = name, CustomMinimumSize = new Vector2(180, 0) });
+        row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = name, CustomMinimumSize = new Vector2(180, 0) });
         var edit = new LineEdit
         {
             Text = value.ToString("0.######", CultureInfo.InvariantCulture),
@@ -200,7 +200,7 @@ public partial class BiomeAssignerCard : PanelContainer
 
     private static void AddCondFloatEdit(HBoxContainer row, string label, float? value, Action<float?> onChange)
     {
-        row.AddChild(new Label { Text = label });
+        row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = label });
         var edit = new LineEdit
         {
             Text = value.HasValue ? value.Value.ToString("0.##", CultureInfo.InvariantCulture) : "",

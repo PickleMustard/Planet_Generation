@@ -82,7 +82,7 @@ public partial class BuildingEditorModule : BaseDebugModule
         leftPanel.AddChild(leftVBox);
 
         var categoriesHeader = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Text = "Categories",
             HorizontalAlignment = HorizontalAlignment.Center
         };

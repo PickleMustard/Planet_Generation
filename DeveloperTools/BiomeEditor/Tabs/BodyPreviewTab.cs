@@ -47,12 +47,12 @@ public partial class BodyPreviewTab : Control
         AddChild(root);
 
         var ctrlRow = new HBoxContainer();
-        ctrlRow.AddChild(new Label { Text = "Subtype:" });
+        ctrlRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Subtype:" });
         _subtypeOpt = new OptionButton();
         foreach (var s in Enum.GetNames<RockyPlanetSubtype>()) _subtypeOpt.AddItem(s);
         ctrlRow.AddChild(_subtypeOpt);
 
-        ctrlRow.AddChild(new Label { Text = "Seed:" });
+        ctrlRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Seed:" });
         _seedSpin = new SpinBox { MinValue = 0, MaxValue = 99999, Step = 1, Value = 42 };
         ctrlRow.AddChild(_seedSpin);
 

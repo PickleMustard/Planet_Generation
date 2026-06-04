@@ -56,37 +56,37 @@ public partial class PlacementRequirementsSection : VBoxContainer
         var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         AddChild(grid);
 
-        grid.AddChild(new Label { Text = "Biomes" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Biomes" });
         _biomesButton = new Button { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _biomesButton.Pressed += OnBiomesPressed;
         grid.AddChild(_biomesButton);
 
-        grid.AddChild(new Label { Text = "Min Elevation" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Min Elevation" });
         _minElevSpin = MakeSpin(0, 1, 0.01f);
         _minElevSpin.ValueChanged += v => OnFieldEdited("MinElevation", (float)v);
         grid.AddChild(_minElevSpin);
 
-        grid.AddChild(new Label { Text = "Max Elevation" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Max Elevation" });
         _maxElevSpin = MakeSpin(0, 1, 0.01f);
         _maxElevSpin.ValueChanged += v => OnFieldEdited("MaxElevation", (float)v);
         grid.AddChild(_maxElevSpin);
 
-        grid.AddChild(new Label { Text = "Max Slope" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Max Slope" });
         _maxSlopeSpin = MakeSpin(0, 90, 0.5f);
         _maxSlopeSpin.ValueChanged += v => OnFieldEdited("MaxSlope", (float)v);
         grid.AddChild(_maxSlopeSpin);
 
-        grid.AddChild(new Label { Text = "Cell Count" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Cell Count" });
         _cellCountSpin = MakeSpin(1, 64, 1);
         _cellCountSpin.ValueChanged += v => OnFieldEdited("CellCount", (int)v);
         grid.AddChild(_cellCountSpin);
 
-        grid.AddChild(new Label { Text = "Requires Adjacent" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Requires Adjacent" });
         _requiresAdjacentCheck = new CheckBox();
         _requiresAdjacentCheck.Toggled += b => OnFieldEdited("RequiresAdjacent", b);
         grid.AddChild(_requiresAdjacentCheck);
 
-        grid.AddChild(new Label { Text = "Configurable Behavior" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Configurable Behavior" });
         _configurableBehaviorButton = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _configurableBehaviorButton.ItemSelected += OnConfigurableBehaviorSelected;
         grid.AddChild(_configurableBehaviorButton);
@@ -166,7 +166,7 @@ public partial class PlacementRequirementsSection : VBoxContainer
         var schema = PlacementBehaviorSchemaRegistry.GetSchema(_entry.Placement.ConfigurableBehavior);
         foreach (var field in schema)
         {
-            _behaviorConfigGrid.AddChild(new Label { Text = field.Name, TooltipText = field.Tooltip ?? "" });
+            _behaviorConfigGrid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = field.Name, TooltipText = field.Tooltip ?? "" });
             object? current = _entry.Placement.ConfigurableBehaviorConfig.TryGetValue(field.Name, out var v)
                 ? v : field.Default;
             var control = BehaviorFieldControlFactory.Create(field, current,

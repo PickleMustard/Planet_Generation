@@ -4,7 +4,7 @@ using System.Linq;
 using Godot;
 using UtilityLibrary;
 
-namespace DeveloperTools.BuildingEditor;
+namespace DeveloperTools.Common;
 
 /// <summary>
 /// SubViewport-backed 3D preview of a building model with orbit camera.

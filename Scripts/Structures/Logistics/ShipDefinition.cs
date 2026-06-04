@@ -15,6 +15,11 @@ public class ShipDefinition
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional free-form description shown in editors and tooltips.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Tier/class of the ship. Market Stations accept units up to a configured level limit.
     /// Defaults to 1 when not specified in YAML.
     /// </summary>

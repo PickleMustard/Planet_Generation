@@ -101,6 +101,14 @@ namespace UtilityLibrary
         public void EmitCompanyResearchChanged(double newResearch) =>
             EmitSignal(SignalName.CompanyResearchChanged, newResearch);
 
+        // Last quarter's net revenue (Budget delta over the quarter that just closed). Recomputed by
+        // CompanyDataTracker on MonthElapsed, which already fires on the main thread.
+        [Signal]
+        public delegate void CompanyQuarterlyRevenueUpdatedEventHandler(double lastQuarterRevenue);
+
+        public void EmitCompanyQuarterlyRevenueUpdated(double lastQuarterRevenue) =>
+            EmitSignal(SignalName.CompanyQuarterlyRevenueUpdated, lastQuarterRevenue);
+
         // ---------------------------------------------------------------------
         // EconomyTracker signals — galactic market orders and price movement.
         // Orders are player-driven and the price loop runs on a main-thread

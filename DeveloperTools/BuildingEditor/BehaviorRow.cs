@@ -117,7 +117,7 @@ public partial class BehaviorRow : VBoxContainer
         foreach (var field in schema)
         {
             _configGrid.AddChild(new Label
-            {
+            { ThemeTypeVariation = "LabelHighContrast",
                 Text = field.Name,
                 TooltipText = field.Tooltip ?? ""
             });

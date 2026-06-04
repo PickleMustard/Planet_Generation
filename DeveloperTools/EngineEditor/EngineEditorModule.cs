@@ -78,7 +78,7 @@ public partial class EngineEditorModule : BaseDebugModule
         var leftVBox = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         leftPanel.AddChild(leftVBox);
 
-        var categoriesHeader = new Label { Text = "Categories", HorizontalAlignment = HorizontalAlignment.Center };
+        var categoriesHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Categories", HorizontalAlignment = HorizontalAlignment.Center };
         categoriesHeader.AddThemeFontSizeOverride("font_size", 14);
         leftVBox.AddChild(categoriesHeader);
 

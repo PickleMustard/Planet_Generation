@@ -96,7 +96,7 @@ public partial class ConfigurableValuesPopup : PopupPanel
             var row = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
 
             var keyLabel = new Label
-            {
+            { ThemeTypeVariation = "LabelHighContrast",
                 Text = key,
                 SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             };

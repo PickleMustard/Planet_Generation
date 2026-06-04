@@ -48,6 +48,7 @@ public class StationEditorModel
     public class StationEditEntry
     {
         public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
         public string StationType { get; set; } = "";
         public float ConstructionTime { get; set; }
         public List<BehaviorConfigEdit> Behaviors { get; set; } = new();
@@ -131,6 +132,7 @@ public class StationEditorModel
         return new StationEditEntry
         {
             Name = BaseConfigLoader.ReadString(dict, "name", ""),
+            Description = BaseConfigLoader.ReadString(dict, "description", ""),
             StationType = BaseConfigLoader.ReadString(dict, "station_type", ""),
             ConstructionTime = BaseConfigLoader.ReadFloat(dict, "construction_time", 0f),
             Behaviors = ParseBehaviorEntries(dict),

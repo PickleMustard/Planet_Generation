@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using DeveloperTools.BiomeEditor.Popups;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.BiomeEditor.Cards;
 
@@ -58,7 +58,7 @@ public partial class ResourceGroupCard : PanelContainer
         {
             string captured = id;
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var del = new Button { Text = "✕" };
             del.Pressed += () =>
             {
@@ -76,7 +76,7 @@ public partial class ResourceGroupCard : PanelContainer
 
     private void OnAddResource()
     {
-        var popup = new ResourceIdPickerPopup();
+        var popup = new ResourcePickerPopup();
         popup.ResourcePicked += id =>
         {
             var g = _model.ResourceGroups.Find(x => x.GroupName == _groupName);

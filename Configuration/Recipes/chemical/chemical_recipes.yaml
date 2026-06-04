@@ -1,0 +1,20 @@
+recipes:
+  - recipe_id: "fertilizer"
+    display_name: "Fertilizer Production"
+    category: chemical
+    work_required: 10
+    input_resources:
+      - ammonia: 8
+      - gravel: 4
+    output_resources:
+      - fertilizer: 2
+  - recipe_id: "charcoal_burning"
+    display_name: "Charcoal Burning"
+    category: chemical
+    work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
+    input_resources:
+      - wood: 10
+    output_resources:
+      - condensed_carbon: 2

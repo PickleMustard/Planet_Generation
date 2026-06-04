@@ -6,8 +6,8 @@ stations:
       - behavior_id: StorageHubBehavior
         storage_capacity: "40"
     required_resources:
-      Steel: 500
-      Electronics: 100
+      steel: 500
+      pcb: 100
     icon:
       base_path: "res://Assets/Icons/Stations/habitat/small_habitat"
 
@@ -18,9 +18,9 @@ stations:
       - behavior_id: StorageHubBehavior
         storage_capacity: "40"
     required_resources:
-      Steel: 2000
-      Electronics: 500
-      Composites: 300
+      steel: 1
+      motor: 1
+      kevlar: 1
     icon:
       base_path: "res://Assets/Icons/Stations/habitat/medium_habitat"
 

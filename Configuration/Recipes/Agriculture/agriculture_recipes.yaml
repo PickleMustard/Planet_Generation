@@ -4,6 +4,8 @@ recipes:
     description: Cycles through different crops each season to maintain soil fertility and produce food.
     category: agriculture
     work_required: 30
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - water: 5
     output_resources:
@@ -38,6 +40,8 @@ recipes:
     description: Liberal application of pesticides helps to stem losses from local fauna
     category: agriculture
     work_required: 30
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - water: 5
       - pesticide: 3
@@ -48,6 +52,8 @@ recipes:
     description: Combined fish and plant cultivation using a symbiotic nutrient cycle.
     category: agriculture
     work_required: 35
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - water: 15
       - power: 4
@@ -58,5 +64,7 @@ recipes:
     display_name: "Trawl Fishing"
     category: agriculture
     work_required: 20
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     output_resources:
       - fish: 20

@@ -66,7 +66,7 @@ public partial class SettingsPanel : BaseDebugModule
         headerPanel.AddChild(headerHBox);
 
         var iconLabel = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Text = "⚙",
             VerticalAlignment = VerticalAlignment.Center
         };

@@ -1,11 +1,13 @@
 #if DEBUG
 using Godot;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.BuildingEditor;
 
 /// <summary>
-/// Row for one required_resources entry: resource dropdown + integer amount + delete.
-/// Built programmatically. Mirrors RecipeEditor's OutputSlotRow.
+/// Row for one required_resources entry: resource picker button + integer amount
+/// + delete. Built programmatically. The resource button opens the shared
+/// <see cref="ResourcePickerPopup"/> (grid, grouping, fuzzy search, filters).
 /// </summary>
 public partial class RequiredResourceRow : HBoxContainer
 {
@@ -19,7 +21,7 @@ public partial class RequiredResourceRow : HBoxContainer
     private string _resourceId = "";
     private int _amount = 1;
 
-    private OptionButton _resourceButton = null!;
+    private Button _resourceButton = null!;
     private SpinBox _amountSpin = null!;
     private Button _deleteButton = null!;
 
@@ -35,12 +37,13 @@ public partial class RequiredResourceRow : HBoxContainer
         base._Ready();
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
 
-        _resourceButton = new OptionButton
+        _resourceButton = new Button
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(220, 0)
+            CustomMinimumSize = new Vector2(220, 0),
+            ClipText = true
         };
-        _resourceButton.ItemSelected += OnResourceSelected;
+        _resourceButton.Pressed += OnPickResource;
         AddChild(_resourceButton);
 
         _amountSpin = new SpinBox
@@ -59,48 +62,32 @@ public partial class RequiredResourceRow : HBoxContainer
         _deleteButton.Pressed += () => EmitSignal(SignalName.SlotDeleted, _slotIndex);
         AddChild(_deleteButton);
 
-        RebuildResourceOptions();
+        UpdateResourceButtonText();
     }
 
-    private void OnResourceSelected(long index)
+    private void OnPickResource()
     {
-        _resourceId = _resourceButton.GetItemText((int)index);
-        EmitChange();
+        var popup = new ResourcePickerPopup();
+        popup.ResourcePicked += id =>
+        {
+            _resourceId = id;
+            UpdateResourceButtonText();
+            EmitChange();
+        };
+        GetTree().Root.AddChild(popup);
+        popup.PopupCentered();
+    }
+
+    private void UpdateResourceButtonText()
+    {
+        _resourceButton.Text = string.IsNullOrEmpty(_resourceId) ? "(select resource)" : _resourceId;
+        _resourceButton.TooltipText = _resourceId;
     }
 
     private void OnAmountChanged(double value)
     {
         _amount = (int)value;
         EmitChange();
-    }
-
-    private void RebuildResourceOptions()
-    {
-        _resourceButton.Clear();
-        var options = BuildingEditorModel.GetAllResourceIds();
-        int selectedIndex = -1;
-        for (int i = 0; i < options.Count; i++)
-        {
-            _resourceButton.AddItem(options[i], i);
-            if (options[i] == _resourceId) selectedIndex = i;
-        }
-        if (selectedIndex < 0)
-        {
-            if (!string.IsNullOrEmpty(_resourceId))
-            {
-                _resourceButton.AddItem($"{_resourceId} (unknown)", options.Count);
-                _resourceButton.Select(options.Count);
-            }
-            else if (options.Count > 0)
-            {
-                _resourceButton.Select(0);
-                _resourceId = options[0];
-            }
-        }
-        else
-        {
-            _resourceButton.Select(selectedIndex);
-        }
     }
 
     private void EmitChange()

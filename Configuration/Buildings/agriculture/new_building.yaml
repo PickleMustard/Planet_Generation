@@ -32,6 +32,8 @@ buildings:
     visual:
       model_path: "res://Mesh/external/factory_a.glb"
       shape_id: small_manufacturing
+    icon:
+      base_path: "res://Materials/Icons/default_building"
 
   - id_name: fishmonger
     display_name: Fish Monger
@@ -59,3 +61,5 @@ buildings:
         base_draw: 1
     visual:
       model_path: "res://Mesh/external/factory_e.glb"
+    icon:
+      base_path: "res://Materials/Icons/default_building"

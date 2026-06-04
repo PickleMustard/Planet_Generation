@@ -211,13 +211,13 @@ namespace Debug.Economy
                     var hbox = new HBoxContainer();
 
                     var nameLabel = new Label
-                    {
+                    { ThemeTypeVariation = "LabelHighContrast",
                         Text = $"  {item.resource}",
                         CustomMinimumSize = new Vector2(150, 0),
                     };
                     hbox.AddChild(nameLabel);
 
-                    var amountLabel = new Label { Text = $"{item.amount:F1}" };
+                    var amountLabel = new Label { ThemeTypeVariation = "LabelHighContrast", Text = $"{item.amount:F1}" };
                     hbox.AddChild(amountLabel);
 
                     var rateLabel = new Label

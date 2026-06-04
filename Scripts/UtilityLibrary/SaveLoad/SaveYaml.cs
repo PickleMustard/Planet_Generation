@@ -15,7 +15,7 @@ namespace UtilityLibrary.SaveLoad;
 public static class SaveYaml
 {
     public const string SaveDir = "user://saves";
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
 
     private static readonly ISerializer _serializer = new SerializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)

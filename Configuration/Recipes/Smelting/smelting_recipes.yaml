@@ -4,6 +4,8 @@ recipes:
     description: Ores are smelted by blasting them inside a crucible
     category: smelting
     work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - tag:ore: 1
     output_resources:
@@ -13,6 +15,8 @@ recipes:
     description: The heat required to liquefy the metal is generated through a powerful electric arc between two anodes
     category: smelting
     work_required: 8
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - condensed_carbon: 2
       - tag:ore: 1
@@ -20,9 +24,33 @@ recipes:
       - tag:metal: 2
   - recipe_id: "glass_smelting"
     display_name: "Glass Smelting"
+    description: The inputs are heated to several thousands of degrees, melting them into a workable slurry. The result after cooling is an incredibly hard and transparent material.
     category: smelting
     work_required: 4
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - silicon: 5
     output_resources:
       - glass: 1
+  - recipe_id: "concrete"
+    display_name: "Concrete"
+    category: smelting
+    work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
+    input_resources:
+      - gravel: 5
+      - water: 2
+    output_resources:
+      - concrete: 7
+  - recipe_id: "brick_fire"
+    display_name: "Brick Firing"
+    category: smelting
+    work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
+    input_resources:
+      - clay: 10
+    output_resources:
+      - bricks: 6

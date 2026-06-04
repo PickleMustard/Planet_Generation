@@ -1,0 +1,23 @@
+buildings:
+  - id_name: carpenter
+    display_name: Carpenter Workshop
+    category: commodity_production
+    max_resource_tier: 0
+    work_required: 100
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      iron: 80
+      concrete: 50
+      bricks: 50
+    behaviors:
+      - behavior_id: ManufacturingBehavior
+        default_recipe: ""
+        alternative_recipes: []
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 5

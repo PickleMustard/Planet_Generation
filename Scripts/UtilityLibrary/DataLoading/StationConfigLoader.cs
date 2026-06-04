@@ -259,6 +259,7 @@ public static class StationConfigLoader
         var definition = new StationDefinition
         {
             Name = name,
+            Description = BaseConfigLoader.ReadString(dict, "description", ""),
             StationType = BaseConfigLoader.ReadString(dict, "station_type", ""),
             ConstructionTime = BaseConfigLoader.ReadFloat(dict, "construction_time", 0f),
             RequiredResources = BaseConfigLoader.ReadResourceDict(dict, "required_resources"),

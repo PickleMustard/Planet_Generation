@@ -27,3 +27,5 @@ buildings:
           type: ATMOSPHERE_LINEAR
           reference_atmosphere: "1.0"
           max_scale: "4.0"
+    icon:
+      base_path: "res://Materials/Icons/default_building"

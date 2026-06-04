@@ -82,7 +82,7 @@ public partial class SubtypeCard : PanelContainer
         root.AddChild(header);
 
         var nameRow = new HBoxContainer();
-        nameRow.AddChild(new Label { Text = "display_name:", CustomMinimumSize = new Vector2(150, 0) });
+        nameRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "display_name:", CustomMinimumSize = new Vector2(150, 0) });
         _displayEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _displayEdit.TextSubmitted += s => CommitDisplay(s);
         _displayEdit.FocusExited += () => CommitDisplay(_displayEdit.Text);
@@ -90,14 +90,14 @@ public partial class SubtypeCard : PanelContainer
         root.AddChild(nameRow);
 
         var familyRow = new HBoxContainer();
-        familyRow.AddChild(new Label { Text = "family:", CustomMinimumSize = new Vector2(150, 0) });
+        familyRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "family:", CustomMinimumSize = new Vector2(150, 0) });
         _familyLabel = new Label { Text = "", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _familyLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
         familyRow.AddChild(_familyLabel);
         root.AddChild(familyRow);
 
         var atmRow = new HBoxContainer();
-        atmRow.AddChild(new Label { Text = "atmosphere [min,max]:", CustomMinimumSize = new Vector2(150, 0) });
+        atmRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "atmosphere [min,max]:", CustomMinimumSize = new Vector2(150, 0) });
         _atmMinSpin = NewSpin(0.0, 100.0, 0.05);
         _atmMaxSpin = NewSpin(0.0, 100.0, 0.05);
         _atmMinSpin.ValueChanged += v => CommitAtmosphere();
@@ -107,21 +107,21 @@ public partial class SubtypeCard : PanelContainer
         root.AddChild(atmRow);
 
         var hazardRow = new HBoxContainer();
-        hazardRow.AddChild(new Label { Text = "base_hazard:", CustomMinimumSize = new Vector2(150, 0) });
+        hazardRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "base_hazard:", CustomMinimumSize = new Vector2(150, 0) });
         _hazardSpin = NewSpin(0.0, 10.0, 0.1);
         _hazardSpin.ValueChanged += v => CommitHazard((float)v);
         hazardRow.AddChild(_hazardSpin);
         root.AddChild(hazardRow);
 
         var bwRow = new HBoxContainer();
-        bwRow.AddChild(new Label { Text = "base_resource_weight:", CustomMinimumSize = new Vector2(150, 0) });
+        bwRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "base_resource_weight:", CustomMinimumSize = new Vector2(150, 0) });
         _baseWeightSpin = NewSpin(0.0, 10.0, 0.05);
         _baseWeightSpin.ValueChanged += v => CommitBaseWeight((float)v);
         bwRow.AddChild(_baseWeightSpin);
         root.AddChild(bwRow);
 
         var modeRow = new HBoxContainer();
-        modeRow.AddChild(new Label { Text = "moisture_mode:", CustomMinimumSize = new Vector2(150, 0) });
+        modeRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "moisture_mode:", CustomMinimumSize = new Vector2(150, 0) });
         _moistureModeOpt = new OptionButton();
         _moistureModeOpt.AddItem("whittaker");
         _moistureModeOpt.AddItem("uniform_random");
@@ -130,7 +130,7 @@ public partial class SubtypeCard : PanelContainer
         root.AddChild(modeRow);
 
         var rulesHeader = new HBoxContainer();
-        rulesHeader.AddChild(new Label { Text = "assigner_rules:", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        rulesHeader.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "assigner_rules:", SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var addRule = new Button { Text = "+ Rule" };
         addRule.Pressed += OnAddRule;
         rulesHeader.AddChild(addRule);
@@ -146,7 +146,7 @@ public partial class SubtypeCard : PanelContainer
     private LineEdit AddCsvRow(VBoxContainer root, string label)
     {
         var row = new HBoxContainer();
-        row.AddChild(new Label { Text = label, CustomMinimumSize = new Vector2(150, 0) });
+        row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = label, CustomMinimumSize = new Vector2(150, 0) });
         var edit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         edit.TextSubmitted += s => CommitCsvLists();
         edit.FocusExited += () => CommitCsvLists();
@@ -185,7 +185,7 @@ public partial class SubtypeCard : PanelContainer
             int idx = i;
             var rule = s.AssignerRules[i];
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { Text = $"{idx}:", CustomMinimumSize = new Vector2(28, 0) });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = $"{idx}:", CustomMinimumSize = new Vector2(28, 0) });
             var biomeEdit = new LineEdit { Text = rule.BiomeId, SizeFlagsHorizontal = SizeFlags.ExpandFill };
             biomeEdit.FocusExited += () => CommitRuleBiome(idx, biomeEdit.Text);
             biomeEdit.TextSubmitted += t => CommitRuleBiome(idx, t);

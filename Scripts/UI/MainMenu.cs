@@ -31,6 +31,7 @@ namespace UI
         private Control? _shipEditorOverlay;
         private Control? _stationEditorOverlay;
         private Control? _engineEditorOverlay;
+        private Control? _productionChainVisualizerOverlay;
         private Control? _templateMenu;
 
         public override void _Ready()
@@ -706,6 +707,15 @@ namespace UI
                 engineEditorButton.Pressed += OnEngineEditorButtonPressed;
                 vbox.AddChild(engineEditorButton);
             }
+
+            // Production Chain Visualizer
+            if (ResourceLoader.Exists("res://DeveloperTools/ProductionChainVisualizer/ProductionChainVisualizerModule.tscn"))
+            {
+                var pcvButton = new Button();
+                pcvButton.Text = "Production Chain Visualizer";
+                pcvButton.Pressed += OnProductionChainVisualizerButtonPressed;
+                vbox.AddChild(pcvButton);
+            }
 #endif
 
             // Close button
@@ -1264,6 +1274,23 @@ namespace UI
             catch (Exception ex)
             {
                 GameLogger.Error($"Failed to open Engine Editor: {ex.Message}");
+                ShowNotification($"Error: {ex.Message}");
+            }
+        }
+
+        private void OnProductionChainVisualizerButtonPressed()
+        {
+            if (_productionChainVisualizerOverlay != null) { _productionChainVisualizerOverlay.Visible = true; return; }
+            try
+            {
+                _productionChainVisualizerOverlay = OpenEditorOverlay(
+                    "Production Chain Visualizer",
+                    "res://DeveloperTools/ProductionChainVisualizer/ProductionChainVisualizerModule.tscn",
+                    () => _productionChainVisualizerOverlay = null);
+            }
+            catch (Exception ex)
+            {
+                GameLogger.Error($"Failed to open Production Chain Visualizer: {ex.Message}");
                 ShowNotification($"Error: {ex.Message}");
             }
         }

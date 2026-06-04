@@ -36,10 +36,19 @@ public partial class CompanyDataTracker : Node, ISaveSerializable, ISaveRestorab
     /// <summary>Accumulated research points.</summary>
     public double Research { get; private set; }
 
+    /// <summary>Budget snapshot taken at the start of the current quarter; the basis for the next revenue calc.</summary>
+    private double _quarterOpeningBudget;
+
+    /// <summary>Net Budget change over the quarter that most recently closed (revenue minus spend). Drives the HUD.</summary>
+    public double LastQuarterRevenue { get; private set; }
+
     public override void _Ready()
     {
         Instance = this;
         AddToGroup("save_serializable");
+        _quarterOpeningBudget = Budget;
+        if (SignalBus.Instance != null)
+            SignalBus.Instance.MonthElapsed += OnMonthElapsed;
         base._Ready();
     }
 
@@ -50,20 +59,36 @@ public partial class CompanyDataTracker : Node, ISaveSerializable, ISaveRestorab
         Debt = Debt,
         Antagonism = Antagonism,
         Research = Research,
+        QuarterOpeningBudget = _quarterOpeningBudget,
+        LastQuarterRevenue = LastQuarterRevenue,
     };
 
     /// <summary>Restores company state from a <see cref="CompanyDto"/>. See <see cref="ISaveRestorable"/>.</summary>
     public void Restore(object dto)
     {
         if (dto is CompanyDto c)
-            LoadState(c.Budget, c.Debt, c.Antagonism, c.Research);
+            LoadState(c.Budget, c.Debt, c.Antagonism, c.Research, c.QuarterOpeningBudget, c.LastQuarterRevenue);
     }
 
     public override void _ExitTree()
     {
+        if (SignalBus.Instance != null)
+            SignalBus.Instance.MonthElapsed -= OnMonthElapsed;
         if (ReferenceEquals(Instance, this))
             Instance = null;
         base._ExitTree();
+    }
+
+    /// <summary>
+    /// Quarter rollover (fired on the main thread by TimeKeeper via SignalBus). Closes the books on the
+    /// quarter that just ended — last quarter's revenue is the Budget delta since the quarter opened —
+    /// and reopens the snapshot for the new quarter.
+    /// </summary>
+    private void OnMonthElapsed(int year, int quarter)
+    {
+        LastQuarterRevenue = Budget - _quarterOpeningBudget;
+        _quarterOpeningBudget = Budget;
+        SignalBus.Instance?.EmitCompanyQuarterlyRevenueUpdated(LastQuarterRevenue);
     }
 
     /// <summary>Adds currency to the budget (sell-order proceeds, income, grants).</summary>
@@ -126,16 +151,20 @@ public partial class CompanyDataTracker : Node, ISaveSerializable, ISaveRestorab
     /// Overwrites all company state from a loaded save and re-emits the change signals so any
     /// listening UI refreshes. Called by the save loader, not during normal play.
     /// </summary>
-    public void LoadState(double budget, double debt, float antagonism, double research)
+    public void LoadState(double budget, double debt, float antagonism, double research,
+        double quarterOpeningBudget = 0, double lastQuarterRevenue = 0)
     {
         Budget = budget;
         Debt = debt;
         Antagonism = antagonism;
         Research = research;
+        _quarterOpeningBudget = quarterOpeningBudget;
+        LastQuarterRevenue = lastQuarterRevenue;
         SignalBus.Instance?.EmitCompanyBudgetChanged(Budget);
         SignalBus.Instance?.EmitCompanyDebtChanged(Debt);
         SignalBus.Instance?.EmitCompanyAntagonismChanged(Antagonism);
         SignalBus.Instance?.EmitCompanyResearchChanged(Research);
+        SignalBus.Instance?.EmitCompanyQuarterlyRevenueUpdated(LastQuarterRevenue);
     }
 
     /// <summary>Adds research points.</summary>

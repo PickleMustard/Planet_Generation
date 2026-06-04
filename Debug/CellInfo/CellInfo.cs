@@ -322,7 +322,7 @@ namespace Debug.CellInfo
                 row.AddChild(colorIndicator);
 
                 var nameLabel = new Label
-                {
+                { ThemeTypeVariation = "LabelHighContrast",
                     Text = $" {displayName}{tierText}",
                     SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 };

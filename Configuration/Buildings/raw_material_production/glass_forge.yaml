@@ -19,3 +19,5 @@ buildings:
         base_draw: 3
     visual:
       shape_id: small_manufacturing
+    icon:
+      base_path: "res://Materials/Icons/default_building"

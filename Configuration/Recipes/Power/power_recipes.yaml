@@ -4,6 +4,8 @@ recipes:
     description: Sustained nuclear fusion generating massive amounts of power from hydrogen isotopes.
     category: power
     work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - tritium: 2
       - water: 5
@@ -14,6 +16,8 @@ recipes:
     description: Pressurized water reactor splits uranium for steady high-output power.
     category: power
     work_required: 12
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - uranium: 1
       - water: 8
@@ -24,6 +28,8 @@ recipes:
     description: Antimatter-matter annihilation releases massive quantities of energy.
     category: power
     work_required: 15
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - antimatter: 1
       - water: 5
@@ -33,5 +39,7 @@ recipes:
     display_name: "Wind Harvesting"
     category: power
     work_required: 1
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     output_resources:
       - power: 10

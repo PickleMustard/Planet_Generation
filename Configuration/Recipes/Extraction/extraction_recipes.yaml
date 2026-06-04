@@ -3,6 +3,8 @@ recipes:
     display_name: "Surface Mining"
     category: extraction
     work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     output_resources:
       - tag:ore: 1
   - recipe_id: "clear_cutting"
@@ -10,5 +12,7 @@ recipes:
     description: Chop down a forest. What comes next is someone else's problem.
     category: extraction
     work_required: 5
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     output_resources:
       - wood: 2

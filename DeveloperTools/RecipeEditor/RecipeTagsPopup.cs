@@ -57,7 +57,7 @@ public partial class RecipeTagsPopup : PopupPanel
         };
         AddChild(root);
 
-        var currentHeader = new Label { Text = "Current tags" };
+        var currentHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Current tags" };
         currentHeader.AddThemeFontSizeOverride("font_size", 12);
         root.AddChild(currentHeader);
 
@@ -69,7 +69,7 @@ public partial class RecipeTagsPopup : PopupPanel
 
         root.AddChild(new HSeparator { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
 
-        var allHeader = new Label { Text = "All tags" };
+        var allHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "All tags" };
         allHeader.AddThemeFontSizeOverride("font_size", 12);
         root.AddChild(allHeader);
 

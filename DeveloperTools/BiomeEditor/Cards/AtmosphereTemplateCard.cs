@@ -38,12 +38,12 @@ public partial class AtmosphereTemplateCard : PanelContainer
         root.AddChild(title);
 
         var row = new HBoxContainer();
-        row.AddChild(new Label { Text = "atmosphere min:" });
+        row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "atmosphere min:" });
         _minEdit = new LineEdit { CustomMinimumSize = new Vector2(80, 0) };
         _minEdit.TextSubmitted += s => Commit();
         _minEdit.FocusExited += Commit;
         row.AddChild(_minEdit);
-        row.AddChild(new Label { Text = "max:" });
+        row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "max:" });
         _maxEdit = new LineEdit { CustomMinimumSize = new Vector2(80, 0) };
         _maxEdit.TextSubmitted += s => Commit();
         _maxEdit.FocusExited += Commit;

@@ -141,7 +141,7 @@ public partial class BuildingCard : PanelContainer
         var fields = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(fields);
 
-        fields.AddChild(new Label { Text = "Category" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Category" });
         _categoryEdit = new LineEdit
         {
             PlaceholderText = "power / extraction / agriculture / ...",
@@ -150,7 +150,7 @@ public partial class BuildingCard : PanelContainer
         _categoryEdit.TextChanged += t => OnFieldEdited("Category", t);
         fields.AddChild(_categoryEdit);
 
-        fields.AddChild(new Label { Text = "Description" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
         _descriptionEdit = new TextEdit
         {
             PlaceholderText = "Building description",
@@ -161,7 +161,7 @@ public partial class BuildingCard : PanelContainer
         _descriptionEdit.TextChanged += () => OnFieldEdited("Description", _descriptionEdit.Text);
         fields.AddChild(_descriptionEdit);
 
-        fields.AddChild(new Label { Text = "Max Resource Tier" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Max Resource Tier" });
         _maxResourceTierSpin = new SpinBox
         {
             MinValue = 0,
@@ -173,7 +173,7 @@ public partial class BuildingCard : PanelContainer
         _maxResourceTierSpin.ValueChanged += v => OnFieldEdited("MaxResourceTier", (int)v);
         fields.AddChild(_maxResourceTierSpin);
 
-        fields.AddChild(new Label { Text = "Work Required" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Work Required" });
         _workRequiredSpin = new SpinBox
         {
             MinValue = 0,
@@ -185,7 +185,7 @@ public partial class BuildingCard : PanelContainer
         _workRequiredSpin.ValueChanged += v => OnFieldEdited("WorkRequired", (float)v);
         fields.AddChild(_workRequiredSpin);
 
-        fields.AddChild(new Label { Text = "Build Limit" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Build Limit" });
         _buildingLimitSpin = new SpinBox
         {
             MinValue = -1,
@@ -198,17 +198,17 @@ public partial class BuildingCard : PanelContainer
         _buildingLimitSpin.ValueChanged += v => OnFieldEdited("BuildingLimit", (int)v);
         fields.AddChild(_buildingLimitSpin);
 
-        fields.AddChild(new Label { Text = "Demolishable" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Demolishable" });
         _demolishableCheck = new CheckBox();
         _demolishableCheck.Toggled += b => OnFieldEdited("Demolishable", b);
         fields.AddChild(_demolishableCheck);
 
-        fields.AddChild(new Label { Text = "Link Profile" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Link Profile" });
         _linkProfileEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _linkProfileEdit.TextChanged += t => OnFieldEdited("LinkProfile", t);
         fields.AddChild(_linkProfileEdit);
 
-        fields.AddChild(new Label { Text = "Allowed Recipe Cat." });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Allowed Recipe Cat." });
         _allowedRecipeCategoryEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _allowedRecipeCategoryEdit.TextChanged += t => OnFieldEdited("AllowedRecipeCategory", t);
         fields.AddChild(_allowedRecipeCategoryEdit);

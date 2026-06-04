@@ -17,3 +17,5 @@ buildings:
       steel: 200
       adult: 100
       workstation: 50
+    icon:
+      base_path: "res://Materials/Icons/default_building"

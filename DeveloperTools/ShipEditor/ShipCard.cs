@@ -73,13 +73,26 @@ public partial class ShipCard : PanelContainer
     {
         NameEdit.Text = _entry.Name;
 
+        // Description
+        ScalarGrid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
+        var description = new TextEdit
+        {
+            Text = _entry.Description,
+            PlaceholderText = "Ship description",
+            CustomMinimumSize = new Vector2(0, 50),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            WrapMode = TextEdit.LineWrappingMode.Boundary
+        };
+        description.TextChanged += () => { _entry.Description = description.Text; MarkDirty(); };
+        ScalarGrid.AddChild(description);
+
         // Scalar grid: spin boxes + engine option
         AddSpin(ScalarGrid, "Dry Mass", _entry.DryMass, v => { _entry.DryMass = (float)v; MarkDirty(); });
         AddSpin(ScalarGrid, "Cargo Capacity", _entry.CargoCapacity, v => { _entry.CargoCapacity = (float)v; MarkDirty(); });
         AddSpin(ScalarGrid, "Fuel Capacity", _entry.FuelCapacity, v => { _entry.FuelCapacity = (float)v; MarkDirty(); });
         AddSpin(ScalarGrid, "Work Required", _entry.WorkRequired, v => { _entry.WorkRequired = (float)v; MarkDirty(); });
 
-        ScalarGrid.AddChild(new Label { Text = "Engine Category" });
+        ScalarGrid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Engine Category" });
         _engineOption = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         PopulateEngineOptions();
         _engineOption.ItemSelected += OnEngineSelected;
@@ -88,8 +101,10 @@ public partial class ShipCard : PanelContainer
         // Required resources
         RebuildRequiredResources();
 
-        // Visual + Icon
-        EditorCardControls.BuildVisual(Root, _entry.Visual, MarkDirty);
+        // Visual (full 3D preview parity) + Icon
+        var visualSection = new EditorVisualSection();
+        visualSection.Initialize(_entry.Visual, MarkDirty);
+        Root.AddChild(visualSection);
         EditorCardControls.BuildIcon(Root, _entry.Icon, MarkDirty);
 
         UpdateMoveButtons();
@@ -135,7 +150,7 @@ public partial class ShipCard : PanelContainer
 
     private void AddSpin(GridContainer grid, string label, float value, Action<double> onChanged)
     {
-        grid.AddChild(new Label { Text = label });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = label });
         var spin = new SpinBox
         {
             MinValue = 0, MaxValue = 10000000, Step = 0.5f, AllowGreater = true,

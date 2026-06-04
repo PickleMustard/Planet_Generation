@@ -214,9 +214,9 @@ public partial class TablesTab : Control
         var body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var idEdit = new LineEdit { PlaceholderText = "biome_<name>", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var nameEdit = new LineEdit { PlaceholderText = "display name", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        body.AddChild(new Label { Text = "id:" });
+        body.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "id:" });
         body.AddChild(idEdit);
-        body.AddChild(new Label { Text = "display_name:" });
+        body.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "display_name:" });
         body.AddChild(nameEdit);
 
         var dialog = new ConfirmationDialog { Title = "Add Biome", DialogText = "New biome registry entry:" };
@@ -242,11 +242,11 @@ public partial class TablesTab : Control
         foreach (var f in families) familyOpt.AddItem(f.ToString());
         familyOpt.Selected = 0;
 
-        body.AddChild(new Label { Text = "id:" });
+        body.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "id:" });
         body.AddChild(idEdit);
-        body.AddChild(new Label { Text = "display_name:" });
+        body.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "display_name:" });
         body.AddChild(nameEdit);
-        body.AddChild(new Label { Text = "family (locked after create):" });
+        body.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "family (locked after create):" });
         body.AddChild(familyOpt);
 
         var dialog = new ConfirmationDialog { Title = "Add Subtype", DialogText = "New subtype registry entry:" };

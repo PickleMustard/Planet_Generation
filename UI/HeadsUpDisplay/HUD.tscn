@@ -4,6 +4,8 @@
 [ext_resource type="PackedScene" uid="uid://daut5m8r6t28a" path="res://UI/Components/ChamferedPanel.tscn" id="1_pd1ex"]
 [ext_resource type="PackedScene" uid="uid://b8cmdlayer01a" path="res://UI/CommandLayer/CommandLayer.tscn" id="4_1pp8m"]
 [ext_resource type="Script" uid="uid://bakvbrf51lc60" path="res://Scripts/UI/FarFieldIndicators/FarFieldIndicatorManager.cs" id="8_wkukm"]
+[ext_resource type="Script" uid="uid://86lb0oc8d8hr" path="res://Scripts/UI/HeadsUpDisplay/HUD.cs" id="9_hud"]
+[ext_resource type="Script" path="res://Scripts/UI/HeadsUpDisplay/TimeControlPanel.cs" id="10_tcp"]
 
 [node name="Hud" type="Control" unique_id=1835559965]
 layout_mode = 3
@@ -15,6 +17,7 @@ grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 1
+script = ExtResource("9_hud")
 
 [node name="OverviewCartouche" type="MarginContainer" parent="." unique_id=2074786307]
 layout_mode = 1
@@ -104,6 +107,8 @@ theme_override_constants/margin_bottom = 4
 
 [node name="BalanceLabel" type="RichTextLabel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails/BalanceBackground/MarginContainer" unique_id=368248636]
 layout_mode = 2
+theme = ExtResource("1_bg37d")
+theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/normal_font_size = 14
 text = "100000 Balance"
 fit_content = true
@@ -131,6 +136,8 @@ theme_override_constants/margin_bottom = 4
 
 [node name="RevenueLabel" type="RichTextLabel" parent="OverviewCartouche/VBoxContainer/Panel/MarginContainer/DetailsCartouche/BusinessDetails/RevenueBackground/MarginContainer" unique_id=667126853]
 layout_mode = 2
+theme = ExtResource("1_bg37d")
+theme_override_colors/default_color = Color(0, 0, 0, 1)
 text = "+ 2520"
 fit_content = true
 scroll_active = false
@@ -197,6 +204,26 @@ anchor_left = 0.265
 anchor_top = 0.87
 anchor_right = 0.33
 anchor_bottom = 0.99
+theme = ExtResource("1_bg37d")
+script = ExtResource("10_tcp")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TimeControlPanel" unique_id=619360900]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="QuarterYearLabel" type="Label" parent="TimeControlPanel/VBoxContainer" unique_id=619360901]
+layout_mode = 2
+size_flags_vertical = 3
+theme = ExtResource("1_bg37d")
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "Q1 · Year 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PauseResumeButton" type="Button" parent="TimeControlPanel/VBoxContainer" unique_id=619360902]
+layout_mode = 2
+theme = ExtResource("1_bg37d")
+text = "Pause"
 
 [node name="ChyronPanel" type="PanelContainer" parent="." unique_id=890465484]
 layout_mode = 1

@@ -119,6 +119,12 @@ public sealed class CompanyDto
     public double Debt { get; set; }
     public float Antagonism { get; set; }
     public double Research { get; set; }
+
+    /// <summary>Budget at the start of the current quarter (save_version ≥ 7). Defaults to 0 on older saves.</summary>
+    public double QuarterOpeningBudget { get; set; }
+
+    /// <summary>Net Budget change over the last closed quarter (save_version ≥ 7). Defaults to 0 on older saves.</summary>
+    public double LastQuarterRevenue { get; set; }
 }
 
 public sealed class TimeDto

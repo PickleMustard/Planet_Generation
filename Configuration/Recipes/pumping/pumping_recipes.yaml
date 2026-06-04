@@ -1,7 +1,10 @@
 recipes:
   - recipe_id: "archimedes_screw"
     display_name: "Archimedes Screw"
+    description: Ol' reliable
     category: pumping
     work_required: 2
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     output_resources:
       - water: 1

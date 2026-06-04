@@ -79,6 +79,8 @@ public static class StationEditorYamlIO
     private static void WriteStation(StringBuilder sb, StationEditorModel.StationEditEntry s)
     {
         YamlIndent.AppendLine(sb, 1, $"- name: {EditorYamlScalar.QuoteIfNeeded(s.Name)}");
+        if (!string.IsNullOrEmpty(s.Description))
+            YamlIndent.AppendLine(sb, 2, $"description: {EditorYamlScalar.QuoteIfNeeded(s.Description)}");
         if (!string.IsNullOrEmpty(s.StationType))
             YamlIndent.AppendLine(sb, 2, $"station_type: {EditorYamlScalar.QuoteIfNeeded(s.StationType)}");
         YamlIndent.AppendLine(sb, 2, $"construction_time: {EditorYamlScalar.FormatFloat(s.ConstructionTime)}");

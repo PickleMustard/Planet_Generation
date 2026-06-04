@@ -24,6 +24,8 @@ buildings:
     visual:
       model_path: "res://Mesh/external/factory_d.glb"
       shape_id: small_manufacturing
+    icon:
+      base_path: "res://Materials/Icons/default_building"
 
   - id_name: lumbermill
     display_name: Lumbermill
@@ -47,3 +49,5 @@ buildings:
         base_draw: 1
     visual:
       shape_id: small_manufacturing
+    icon:
+      base_path: "res://Materials/Icons/default_building"

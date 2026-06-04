@@ -33,6 +33,8 @@ resources:
     max_stack_size: 500
     transport_weight: 2.5
     tags: [frozen, water]
+    icon:
+      base_path: "res://Materials/Icons/default_item"
   - id_name: uranium_ore
     resource_tier: 2
     base_price: 3000

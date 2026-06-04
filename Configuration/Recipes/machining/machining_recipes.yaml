@@ -1,0 +1,29 @@
+recipes:
+  - recipe_id: "steel_extrusion"
+    display_name: "Rebar Extrusion"
+    category: machining
+    work_required: 20
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
+    input_resources:
+      - steel: 3
+    output_resources:
+      - rebar: 6
+  - recipe_id: "copper_extrusion"
+    display_name: "Low Voltage Extrusion"
+    category: machining
+    work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
+    input_resources:
+      - copper: 1
+    output_resources:
+      - low_voltage_wire: 4
+  - recipe_id: "electrum_extrusion"
+    display_name: "High Voltage Extrusion"
+    category: machining
+    work_required: 10
+    input_resources:
+      - electrum: 2
+    output_resources:
+      - high_voltage_wire: 3

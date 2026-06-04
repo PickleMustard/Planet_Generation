@@ -3,7 +3,7 @@ using System;
 using System.Globalization;
 using System.Linq;
 using Godot;
-using DeveloperTools.BiomeEditor.Popups;
+using DeveloperTools.Common;
 using Structures.Enums;
 
 namespace DeveloperTools.BiomeEditor.Cards;
@@ -71,7 +71,7 @@ public partial class BiomeResourceCard : PanelContainer
             string id = kvp.Key;
             float weight = kvp.Value;
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var edit = new LineEdit
             {
                 Text = weight.ToString("0.##", CultureInfo.InvariantCulture),
@@ -95,7 +95,7 @@ public partial class BiomeResourceCard : PanelContainer
 
     private void OnAddResource()
     {
-        var popup = new ResourceIdPickerPopup();
+        var popup = new ResourcePickerPopup();
         popup.ResourcePicked += id => _model.SetBiomeResourceWeight(_biome, id, 1f);
         GetTree().Root.AddChild(popup);
         popup.PopupCentered();

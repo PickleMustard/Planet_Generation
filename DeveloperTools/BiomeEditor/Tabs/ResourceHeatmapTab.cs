@@ -47,13 +47,13 @@ public partial class ResourceHeatmapTab : Control
         AddChild(root);
 
         var ctrlRow = new HBoxContainer();
-        ctrlRow.AddChild(new Label { Text = "Subtype:" });
+        ctrlRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Subtype:" });
         _subtypeOpt = new OptionButton();
         foreach (var id in GetRockySubtypeIds()) _subtypeOpt.AddItem(id);
         _subtypeOpt.ItemSelected += _ => Refresh();
         ctrlRow.AddChild(_subtypeOpt);
 
-        ctrlRow.AddChild(new Label { Text = "Biome:" });
+        ctrlRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Biome:" });
         _biomeOpt = new OptionButton();
         foreach (var id in GetBiomeIds()) _biomeOpt.AddItem(id);
         _biomeOpt.ItemSelected += _ => Refresh();

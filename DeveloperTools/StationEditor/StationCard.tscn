@@ -65,6 +65,7 @@ unique_name_in_owner = true
 
 [node name="StationTypeLabel" type="Label" parent="CardRoot/ScalarGrid"]
 layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
 text = "Station Type"
 
 [node name="TypeOption" type="OptionButton" parent="CardRoot/ScalarGrid"]
@@ -74,6 +75,7 @@ unique_name_in_owner = true
 
 [node name="ConstructionTimeLabel" type="Label" parent="CardRoot/ScalarGrid"]
 layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
 text = "Construction Time"
 
 [node name="ConstructionTimeSpin" type="SpinBox" parent="CardRoot/ScalarGrid"]

@@ -93,7 +93,7 @@ public partial class Building2DEditorModule : BaseDebugModule
         var leftVBox = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         leftPanel.AddChild(leftVBox);
 
-        var leftHeader = new Label { Text = "Shapes", HorizontalAlignment = HorizontalAlignment.Center };
+        var leftHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Shapes", HorizontalAlignment = HorizontalAlignment.Center };
         leftHeader.AddThemeFontSizeOverride("font_size", 14);
         leftVBox.AddChild(leftHeader);
 
@@ -140,17 +140,17 @@ public partial class Building2DEditorModule : BaseDebugModule
         var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _editorPane.AddChild(grid);
 
-        grid.AddChild(new Label { Text = "Id" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Id" });
         _idEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _idEdit.TextChanged += OnIdChanged;
         grid.AddChild(_idEdit);
 
-        grid.AddChild(new Label { Text = "Display Name" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Display Name" });
         _displayNameEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _displayNameEdit.TextChanged += OnDisplayNameChanged;
         grid.AddChild(_displayNameEdit);
 
-        var canvasHeader = new Label { Text = "Vertices  (left-drag to move, right-click handle to remove, right-click edge to insert)" };
+        var canvasHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Vertices  (left-drag to move, right-click handle to remove, right-click edge to insert)" };
         canvasHeader.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _editorPane.AddChild(canvasHeader);
 
@@ -158,7 +158,7 @@ public partial class Building2DEditorModule : BaseDebugModule
         _canvas.ShapeMutated += OnCanvasMutated;
         _editorPane.AddChild(_canvas);
 
-        var sidesHeader = new Label { Text = "Sides" };
+        var sidesHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Sides" };
         sidesHeader.AddThemeFontSizeOverride("font_size", 13);
         _editorPane.AddChild(sidesHeader);
 
@@ -280,7 +280,7 @@ public partial class Building2DEditorModule : BaseDebugModule
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             _sidesContainer.AddChild(row);
 
-            row.AddChild(new Label { Text = $"Side {i}: " });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = $"Side {i}: " });
 
             var countSpin = new SpinBox
             {

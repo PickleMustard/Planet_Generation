@@ -70,7 +70,7 @@ public partial class DebugConsole : BaseDebugModule
         var inputContainer = new HBoxContainer { Name = "InputContainer" };
 
         var promptLabel = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Name = "PromptLabel",
             Text = ">",
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -350,7 +350,7 @@ public partial class DebugConsole : BaseDebugModule
         {
             var suggestion = _currentSuggestions[i];
             var label = new Label
-            {
+            { ThemeTypeVariation = "LabelHighContrast",
                 Text = GetSuggestionDisplayText(suggestion),
                 MouseFilter = Control.MouseFilterEnum.Pass,
                 CustomMinimumSize = new Vector2(0, SuggestionItemHeight),

@@ -1,7 +1,7 @@
 #if DEBUG
 using Godot;
 
-namespace DeveloperTools.BuildingEditor;
+namespace DeveloperTools.Common;
 
 /// <summary>
 /// File picker popup constrained to res://Models/Buildings/ and the
@@ -34,7 +34,7 @@ public partial class ModelPathPopup : PopupPanel
         root.AddChild(_browseButton);
 
         _previewLabel = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Text = "(no model selected)",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             AutowrapMode = TextServer.AutowrapMode.WordSmart

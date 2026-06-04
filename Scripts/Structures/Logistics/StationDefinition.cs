@@ -24,6 +24,11 @@ public class StationDefinition
     public string StationType { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional free-form description shown in editors and tooltips.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Time required to construct the station (in game ticks or seconds).
     /// </summary>
     public float ConstructionTime { get; set; }

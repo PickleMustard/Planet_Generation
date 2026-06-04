@@ -26,3 +26,5 @@ buildings:
         production_speed: 3
     visual:
       scale: 1.4
+    icon:
+      base_path: "res://Materials/Icons/default_building"

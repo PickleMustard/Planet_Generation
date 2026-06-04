@@ -81,7 +81,7 @@ public partial class DatabaseViewer : BaseDebugModule
         };
 
         var categoryLabel = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Name = "CategoryLabel",
             Text = "Categories",
             HorizontalAlignment = HorizontalAlignment.Center
@@ -151,7 +151,7 @@ public partial class DatabaseViewer : BaseDebugModule
         };
 
         var searchLabel = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Text = "Filter:"
         };
 

@@ -55,7 +55,7 @@ public partial class IconSection : VBoxContainer
         var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         AddChild(grid);
 
-        grid.AddChild(new Label { Text = "Icon" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Icon" });
 
         var iconRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _iconRect = new TextureRect
@@ -81,7 +81,7 @@ public partial class IconSection : VBoxContainer
         iconRow.AddChild(_clearButton);
         grid.AddChild(iconRow);
 
-        grid.AddChild(new Label { Text = "Scale" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Scale" });
         _scaleSpin = new SpinBox
         {
             MinValue = 0.1,
@@ -93,7 +93,7 @@ public partial class IconSection : VBoxContainer
         _scaleSpin.ValueChanged += v => OnIconEdited("Scale", (float)v);
         grid.AddChild(_scaleSpin);
 
-        grid.AddChild(new Label { Text = "Tint" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Tint" });
         _tintButton = new ColorPickerButton
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,

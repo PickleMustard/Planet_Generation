@@ -28,6 +28,7 @@ public static class SaveMigrator
         new V3ToV4Migration(),
         new V4ToV5Migration(),
         new V5ToV6Migration(),
+        new V6ToV7Migration(),
     };
 
     /// <summary>
@@ -118,4 +119,20 @@ public sealed class V5ToV6Migration : ISaveMigration
     public int From => 5;
 
     public SaveFileDto Apply(SaveFileDto dto) => dto;
+}
+
+/// <summary>
+/// v6 → v7: introduces quarterly revenue tracking on the company. v6 saves have no quarter snapshot, so
+/// seed it from the loaded Budget — otherwise the first post-load rollover would report the entire Budget
+/// as that quarter's revenue. <see cref="CompanyDto.LastQuarterRevenue"/> stays 0 until a quarter closes.
+/// </summary>
+public sealed class V6ToV7Migration : ISaveMigration
+{
+    public int From => 6;
+
+    public SaveFileDto Apply(SaveFileDto dto)
+    {
+        dto.Company.QuarterOpeningBudget = dto.Company.Budget;
+        return dto;
+    }
 }

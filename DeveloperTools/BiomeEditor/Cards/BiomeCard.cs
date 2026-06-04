@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Godot;
-using DeveloperTools.BiomeEditor.Popups;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.BiomeEditor.Cards;
 
@@ -78,7 +78,7 @@ public partial class BiomeCard : PanelContainer
         root.AddChild(header);
 
         var nameRow = new HBoxContainer();
-        nameRow.AddChild(new Label { Text = "display_name:", CustomMinimumSize = new Vector2(150, 0) });
+        nameRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "display_name:", CustomMinimumSize = new Vector2(150, 0) });
         _displayEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _displayEdit.TextSubmitted += s => CommitDisplay(s);
         _displayEdit.FocusExited += () => CommitDisplay(_displayEdit.Text);
@@ -86,14 +86,14 @@ public partial class BiomeCard : PanelContainer
         root.AddChild(nameRow);
 
         var colorRow = new HBoxContainer();
-        colorRow.AddChild(new Label { Text = "default_color:", CustomMinimumSize = new Vector2(150, 0) });
+        colorRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "default_color:", CustomMinimumSize = new Vector2(150, 0) });
         _defaultColorBtn = new ColorPickerButton { CustomMinimumSize = new Vector2(120, 24), EditAlpha = false };
         _defaultColorBtn.ColorChanged += c => CommitDefaultColor(c);
         colorRow.AddChild(_defaultColorBtn);
         root.AddChild(colorRow);
 
         var ovHeader = new HBoxContainer();
-        ovHeader.AddChild(new Label { Text = "color_overrides:", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        ovHeader.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "color_overrides:", SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var ovAdd = new Button { Text = "+ Add Override" };
         ovAdd.Pressed += OnAddOverride;
         ovHeader.AddChild(ovAdd);
@@ -102,21 +102,21 @@ public partial class BiomeCard : PanelContainer
         root.AddChild(_overridesList);
 
         var hazardRow = new HBoxContainer();
-        hazardRow.AddChild(new Label { Text = "hazard_weight:", CustomMinimumSize = new Vector2(150, 0) });
+        hazardRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "hazard_weight:", CustomMinimumSize = new Vector2(150, 0) });
         _hazardSpin = NewSpin(0.0, 10.0, 0.1);
         _hazardSpin.ValueChanged += v => CommitHazard((float)v);
         hazardRow.AddChild(_hazardSpin);
         root.AddChild(hazardRow);
 
         var ventRow = new HBoxContainer();
-        ventRow.AddChild(new Label { Text = "vent_probability:", CustomMinimumSize = new Vector2(150, 0) });
+        ventRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "vent_probability:", CustomMinimumSize = new Vector2(150, 0) });
         _ventSpin = NewSpin(0.0, 1.0, 0.01);
         _ventSpin.ValueChanged += v => CommitVent((float)v);
         ventRow.AddChild(_ventSpin);
         root.AddChild(ventRow);
 
         var tagsRow = new HBoxContainer();
-        tagsRow.AddChild(new Label { Text = "tags (csv):", CustomMinimumSize = new Vector2(150, 0) });
+        tagsRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "tags (csv):", CustomMinimumSize = new Vector2(150, 0) });
         _tagsEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _tagsEdit.TextSubmitted += s => CommitTags(s);
         _tagsEdit.FocusExited += () => CommitTags(_tagsEdit.Text);
@@ -124,7 +124,7 @@ public partial class BiomeCard : PanelContainer
         root.AddChild(tagsRow);
 
         var wHeader = new HBoxContainer();
-        wHeader.AddChild(new Label { Text = "resource_weight_modifiers:", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        wHeader.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "resource_weight_modifiers:", SizeFlagsHorizontal = SizeFlags.ExpandFill });
         var wAdd = new Button { Text = "+ Resource" };
         wAdd.Pressed += OnAddWeight;
         wHeader.AddChild(wAdd);
@@ -158,7 +158,7 @@ public partial class BiomeCard : PanelContainer
             string subId = kvp.Key;
             Color color = kvp.Value;
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { Text = subId, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = subId, SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var pick = new ColorPickerButton
             {
                 Color = color,
@@ -179,7 +179,7 @@ public partial class BiomeCard : PanelContainer
             string resId = kvp.Key;
             float w = kvp.Value;
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { Text = resId, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = resId, SizeFlagsHorizontal = SizeFlags.ExpandFill });
             var edit = new LineEdit
             {
                 Text = w.ToString("0.##", CultureInfo.InvariantCulture),
@@ -287,7 +287,7 @@ public partial class BiomeCard : PanelContainer
 
     private void OnAddWeight()
     {
-        var popup = new ResourceIdPickerPopup();
+        var popup = new ResourcePickerPopup();
         popup.ResourcePicked += id =>
         {
             if (!_model.Biomes.TryGetValue(_biomeId, out var b)) return;

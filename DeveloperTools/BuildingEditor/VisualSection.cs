@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using DeveloperTools.Common;
 using Structures.Resources;
 
 namespace DeveloperTools.BuildingEditor;
@@ -61,7 +62,7 @@ public partial class VisualSection : VBoxContainer
         var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         AddChild(grid);
 
-        grid.AddChild(new Label { Text = "Model Path" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Model Path" });
         var modelRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _modelPathButton = new Button
         {
@@ -76,7 +77,7 @@ public partial class VisualSection : VBoxContainer
         modelRow.AddChild(_modelPathClearButton);
         grid.AddChild(modelRow);
 
-        grid.AddChild(new Label { Text = "Scale" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Scale" });
         _scaleSpin = new SpinBox
         {
             MinValue = 0.01,
@@ -88,7 +89,7 @@ public partial class VisualSection : VBoxContainer
         _scaleSpin.ValueChanged += v => { OnVisualEdited("Scale", (float)v); ApplyToPreview(); };
         grid.AddChild(_scaleSpin);
 
-        grid.AddChild(new Label { Text = "Rotation Offset (deg)" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Rotation Offset (deg)" });
         var rotRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _rotX = MakeRot();
         _rotY = MakeRot();
@@ -101,17 +102,17 @@ public partial class VisualSection : VBoxContainer
         rotRow.AddChild(_rotZ);
         grid.AddChild(rotRow);
 
-        grid.AddChild(new Label { Text = "Animation" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Animation" });
         _animationButton = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _animationButton.ItemSelected += OnAnimationSelected;
         grid.AddChild(_animationButton);
 
-        grid.AddChild(new Label { Text = "Shape (2D Board)" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Shape (2D Board)" });
         _shapeButton = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _shapeButton.ItemSelected += OnShapeSelected;
         grid.AddChild(_shapeButton);
 
-        grid.AddChild(new Label { Text = "Shape Size (px)" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Shape Size (px)" });
         _shapeSizeSpin = new SpinBox
         {
             MinValue = 8,
@@ -123,9 +124,9 @@ public partial class VisualSection : VBoxContainer
         _shapeSizeSpin.ValueChanged += v => OnVisualEdited("ShapeSize", (float)v);
         grid.AddChild(_shapeSizeSpin);
 
-        grid.AddChild(new Label { Text = "Shape Slots" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Shape Slots" });
         _shapeSummaryLabel = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Text = "",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill

@@ -6,6 +6,8 @@ resources:
     max_stack_size: 50
     configurable_values:
       burn_potential: 80
+    icon:
+      base_path: "res://Materials/Icons/default_item"
   - id_name: hydrogen
     resource_tier: 2
     base_price: 3000
@@ -13,6 +15,8 @@ resources:
     max_stack_size: 200
     configurable_values:
       burn_potential: 40
+    icon:
+      base_path: "res://Materials/Icons/default_item"
   - id_name: tritium
     resource_tier: 3
     base_price: 4000
@@ -20,6 +24,8 @@ resources:
     max_stack_size: 100
     configurable_values:
       burn_potential: 120
+    icon:
+      base_path: "res://Materials/Icons/default_item"
   - id_name: liquid_uranium
     resource_tier: 2
     base_price: 3000
@@ -27,6 +33,8 @@ resources:
     max_stack_size: 100
     configurable_values:
       burn_potential: 85
+    icon:
+      base_path: "res://Materials/Icons/default_item"
   - id_name: antimatter
     resource_tier: 3
     base_price: 4000
@@ -35,6 +43,8 @@ resources:
     transport_weight: 0.9
     configurable_values:
       burn_potential: 200
+    icon:
+      base_path: "res://Materials/Icons/default_item"
   - id_name: methane
     resource_tier: 1
     base_price: 2000
@@ -44,6 +54,8 @@ resources:
     tags: [power, heat]
     configurable_values:
       burn_potential: 30
+    icon:
+      base_path: "res://Materials/Icons/default_item"
   - id_name: hydrazine
     resource_tier: 2
     base_price: 3000
@@ -52,3 +64,5 @@ resources:
     tags: [power, heat]
     configurable_values:
       burn_potential: 50
+    icon:
+      base_path: "res://Materials/Icons/default_item"

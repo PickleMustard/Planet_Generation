@@ -138,7 +138,7 @@ public partial class RecipeCard : PanelContainer
         var fields = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(fields);
 
-        fields.AddChild(new Label { Text = "Category" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Category" });
         _categoryEdit = new LineEdit
         {
             PlaceholderText = "extraction / agriculture / power / ...",
@@ -147,7 +147,7 @@ public partial class RecipeCard : PanelContainer
         _categoryEdit.TextChanged += text => OnFieldEdited("Category", text);
         fields.AddChild(_categoryEdit);
 
-        fields.AddChild(new Label { Text = "Work" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Work" });
         _workRequiredSpin = new SpinBox
         {
             MinValue = 0,
@@ -159,7 +159,7 @@ public partial class RecipeCard : PanelContainer
         _workRequiredSpin.ValueChanged += value => OnFieldEdited("WorkRequired", (float)value);
         fields.AddChild(_workRequiredSpin);
 
-        fields.AddChild(new Label { Text = "Description" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
         _descriptionEdit = new TextEdit
         {
             PlaceholderText = "Recipe description",
@@ -170,7 +170,7 @@ public partial class RecipeCard : PanelContainer
         _descriptionEdit.TextChanged += () => OnFieldEdited("Description", _descriptionEdit.Text);
         fields.AddChild(_descriptionEdit);
 
-        fields.AddChild(new Label { Text = "Tags" });
+        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Tags" });
         _tagsButton = new Button { Text = "Tags (0)" };
         _tagsButton.Pressed += OnTagsPressed;
         fields.AddChild(_tagsButton);

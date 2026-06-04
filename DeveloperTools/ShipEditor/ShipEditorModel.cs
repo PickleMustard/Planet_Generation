@@ -31,6 +31,7 @@ public class ShipEditorModel
     public class ShipEditEntry
     {
         public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
         public float DryMass { get; set; }
         public float CargoCapacity { get; set; }
         public float FuelCapacity { get; set; }
@@ -117,6 +118,7 @@ public class ShipEditorModel
         return new ShipEditEntry
         {
             Name = BaseConfigLoader.ReadString(dict, "name", ""),
+            Description = BaseConfigLoader.ReadString(dict, "description", ""),
             DryMass = BaseConfigLoader.ReadFloat(dict, "dry_mass", 0f),
             CargoCapacity = BaseConfigLoader.ReadFloat(dict, "cargo_capacity", 0f),
             FuelCapacity = BaseConfigLoader.ReadFloat(dict, "fuel_capacity", 0f),

@@ -140,11 +140,11 @@ public partial class ManufactureTickModule : BaseDebugModule
     {
         var row = new HBoxContainer();
         var keyLabel = new Label
-        {
+        { ThemeTypeVariation = "LabelHighContrast",
             Text = key,
             CustomMinimumSize = new Vector2(140, 0),
         };
-        var valueLabel = new Label { Text = initialValue };
+        var valueLabel = new Label { ThemeTypeVariation = "LabelHighContrast", Text = initialValue };
         row.AddChild(keyLabel);
         row.AddChild(valueLabel);
         parent.AddChild(row);

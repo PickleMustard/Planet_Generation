@@ -60,14 +60,14 @@ public partial class WhittakerTab : Control
         root.AddChild(left);
 
         var ctrlRow = new HBoxContainer();
-        ctrlRow.AddChild(new Label { Text = "Subtype:" });
+        ctrlRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Subtype:" });
         _subtypeOpt = new OptionButton();
         foreach (var id in GetRockySubtypeIds())
             _subtypeOpt.AddItem(id);
         _subtypeOpt.ItemSelected += _ => RegenerateImage();
         ctrlRow.AddChild(_subtypeOpt);
 
-        ctrlRow.AddChild(new Label { Text = "Latitude:" });
+        ctrlRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Latitude:" });
         _latSlider = new HSlider
         {
             MinValue = -1.0,
@@ -78,7 +78,7 @@ public partial class WhittakerTab : Control
         };
         _latSlider.ValueChanged += _ => RegenerateImage();
         ctrlRow.AddChild(_latSlider);
-        _latLabel = new Label { Text = "0.00" };
+        _latLabel = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "0.00" };
         ctrlRow.AddChild(_latLabel);
         left.AddChild(ctrlRow);
 
@@ -93,7 +93,7 @@ public partial class WhittakerTab : Control
         left.AddChild(_texture);
 
         var axisRow = new HBoxContainer();
-        axisRow.AddChild(new Label { Text = "X = height (0→1)    Y = moisture (0→max)" });
+        axisRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "X = height (0→1)    Y = moisture (0→max)" });
         left.AddChild(axisRow);
 
         var scroll = new ScrollContainer
@@ -166,7 +166,7 @@ public partial class WhittakerTab : Control
     private void RebuildLegend(RockyPlanetSubtype subtype, HashSet<string> biomes)
     {
         foreach (var c in _legend.GetChildren()) c.QueueFree();
-        var header = new Label { Text = "Legend" };
+        var header = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Legend" };
         header.AddThemeFontSizeOverride("font_size", 14);
         _legend.AddChild(header);
 
@@ -178,7 +178,7 @@ public partial class WhittakerTab : Control
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             var swatch = new ColorRect { Color = BiomeColor(biomeId), CustomMinimumSize = new Vector2(16, 16) };
             row.AddChild(swatch);
-            row.AddChild(new Label { Text = biomeId, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = biomeId, SizeFlagsHorizontal = SizeFlags.ExpandFill });
             float hz = HazardCalculator.Compute(subtype, atm.Item1, atm.Item2, biomeId);
             var hzLabel = new Label { Text = $"hz {hz:0.0}" };
             hzLabel.AddThemeColorOverride("font_color", new Color(1f, 0.6f, 0.6f));

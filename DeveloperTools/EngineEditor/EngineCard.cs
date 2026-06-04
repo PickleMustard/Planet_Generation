@@ -80,7 +80,7 @@ public partial class EngineCard : PanelContainer
         var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(grid);
 
-        grid.AddChild(new Label { Text = "Specific Impulse (s)" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Specific Impulse (s)" });
         var isp = new SpinBox
         {
             MinValue = 0, MaxValue = 1000000, Step = 1, AllowGreater = true,
@@ -89,7 +89,7 @@ public partial class EngineCard : PanelContainer
         isp.ValueChanged += v => { _entry.SpecificImpulse = (float)v; MarkDirty(); };
         grid.AddChild(isp);
 
-        grid.AddChild(new Label { Text = "Thrust (N)" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Thrust (N)" });
         var thrust = new SpinBox
         {
             MinValue = 0, MaxValue = 100000000, Step = 1, AllowGreater = true,
@@ -98,7 +98,7 @@ public partial class EngineCard : PanelContainer
         thrust.ValueChanged += v => { _entry.Thrust = (float)v; MarkDirty(); };
         grid.AddChild(thrust);
 
-        grid.AddChild(new Label { Text = "Description" });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
         var description = new TextEdit
         {
             Text = _entry.Description,

@@ -17,3 +17,5 @@ buildings:
         production_speed: 1
       - behavior_id: PowerConsumerBehavior
         base_draw: 8
+    icon:
+      base_path: "res://Materials/Icons/default_building"

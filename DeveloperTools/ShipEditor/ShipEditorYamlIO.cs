@@ -77,6 +77,8 @@ public static class ShipEditorYamlIO
     private static void WriteShip(StringBuilder sb, ShipEditorModel.ShipEditEntry s)
     {
         YamlIndent.AppendLine(sb, 1, $"- name: {EditorYamlScalar.QuoteIfNeeded(s.Name)}");
+        if (!string.IsNullOrEmpty(s.Description))
+            YamlIndent.AppendLine(sb, 2, $"description: {EditorYamlScalar.QuoteIfNeeded(s.Description)}");
         YamlIndent.AppendLine(sb, 2, $"dry_mass: {EditorYamlScalar.FormatFloat(s.DryMass)}");
         YamlIndent.AppendLine(sb, 2, $"cargo_capacity: {EditorYamlScalar.FormatFloat(s.CargoCapacity)}");
         YamlIndent.AppendLine(sb, 2, $"fuel_capacity: {EditorYamlScalar.FormatFloat(s.FuelCapacity)}");

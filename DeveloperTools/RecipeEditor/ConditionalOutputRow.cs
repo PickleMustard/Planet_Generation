@@ -1,6 +1,7 @@
 #if DEBUG
 using System.Collections.Generic;
 using Godot;
+using DeveloperTools.Common;
 using Structures.Resources;
 
 namespace DeveloperTools.RecipeEditor;
@@ -37,7 +38,7 @@ public partial class ConditionalOutputRow : VBoxContainer
     public float Amount => _amount;
 
     private VBoxContainer _rulesContainer = null!;
-    private OptionButton _resourceButton = null!;
+    private Button _resourceButton = null!;
     private SpinBox _amountSpin = null!;
 
     public void Configure(int slotIndex, RecipeEditorModel.ConditionalOutputSlot slot)
@@ -87,12 +88,13 @@ public partial class ConditionalOutputRow : VBoxContainer
             footer.AddChild(addRuleBtn);
         }
 
-        _resourceButton = new OptionButton
+        _resourceButton = new Button
         {
             CustomMinimumSize = new Vector2(180, 0),
+            ClipText = true,
             TooltipText = "Resource produced when condition is true",
         };
-        _resourceButton.ItemSelected += OnResourceSelected;
+        _resourceButton.Pressed += OnPickResource;
         footer.AddChild(_resourceButton);
 
         _amountSpin = new SpinBox
@@ -111,7 +113,7 @@ public partial class ConditionalOutputRow : VBoxContainer
         deleteBtn.Pressed += () => EmitSignal(SignalName.SlotDeleted, _slotIndex);
         footer.AddChild(deleteBtn);
 
-        RebuildResourceOptions();
+        UpdateResourceButton();
         RebuildRulesUI();
     }
 
@@ -274,12 +276,12 @@ public partial class ConditionalOutputRow : VBoxContainer
         EmitChange();
     }
 
-    private void OnResourceSelected(long index)
+    private void OnPickResource()
     {
-        _resource = _resourceButton.GetItemText((int)index);
-        if (_resource.EndsWith(" (unknown)"))
-            _resource = _resource[..^" (unknown)".Length];
-        EmitChange();
+        var popup = new ResourcePickerPopup();
+        popup.ResourcePicked += id => { _resource = id; UpdateResourceButton(); EmitChange(); };
+        GetTree().Root.AddChild(popup);
+        popup.PopupCentered();
     }
 
     private void OnAmountChanged(double value)
@@ -288,34 +290,12 @@ public partial class ConditionalOutputRow : VBoxContainer
         EmitChange();
     }
 
-    private void RebuildResourceOptions()
+    private void UpdateResourceButton()
     {
-        _resourceButton.Clear();
-        var options = RecipeEditorModel.GetAllResourceIds();
-        int selectedIndex = -1;
-        for (int i = 0; i < options.Count; i++)
-        {
-            _resourceButton.AddItem(options[i], i);
-            if (options[i] == _resource) selectedIndex = i;
-        }
-
-        if (selectedIndex < 0)
-        {
-            if (!string.IsNullOrEmpty(_resource))
-            {
-                _resourceButton.AddItem($"{_resource} (unknown)", options.Count);
-                _resourceButton.Select(options.Count);
-            }
-            else if (options.Count > 0)
-            {
-                _resourceButton.Select(0);
-                _resource = options[0];
-            }
-        }
-        else
-        {
-            _resourceButton.Select(selectedIndex);
-        }
+        _resourceButton.Text = string.IsNullOrEmpty(_resource) ? "(select resource)" : _resource;
+        _resourceButton.TooltipText = string.IsNullOrEmpty(_resource)
+            ? "Resource produced when condition is true"
+            : _resource;
     }
 
     private void EmitChange()

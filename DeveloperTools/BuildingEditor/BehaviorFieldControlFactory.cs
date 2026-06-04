@@ -43,7 +43,7 @@ public static class BehaviorFieldControlFactory
             case BehaviorFieldType.StringIntDict:
                 return MakeStringIntDictEditor(currentValue, onValueChanged);
         }
-        return new Label { Text = "?" };
+        return new Label { ThemeTypeVariation = "LabelHighContrast", Text = "?" };
     }
 
     private static SpinBox MakeFloatSpin(BehaviorFieldSpec spec, object? current, Action<object?> set)

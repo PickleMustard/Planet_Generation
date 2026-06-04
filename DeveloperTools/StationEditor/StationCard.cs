@@ -28,6 +28,8 @@ public partial class StationCard : PanelContainer
     private Button _moveDownButton = null!;
     private OptionButton _typeOption = null!;
     private SpinBox _constructionTimeSpin = null!;
+    private GridContainer _scalarGrid = null!;
+    private VBoxContainer _cardRoot = null!;
     private VBoxContainer _behaviorsContainer = null!;
     private VBoxContainer _requiredResourcesContainer = null!;
 
@@ -64,9 +66,11 @@ public partial class StationCard : PanelContainer
         AcquireNodeReferences();
         BindEntryData();
         WireScalarSignals();
+        BuildDescriptionField();
         PopulateStationTypes();
         RebuildBehaviors();
         RebuildRequiredResources();
+        BuildVisualSection();
         UpdateMoveButtons();
     }
 
@@ -77,8 +81,32 @@ public partial class StationCard : PanelContainer
         _moveDownButton = GetNode<Button>("%MoveDownButton");
         _typeOption = GetNode<OptionButton>("%TypeOption");
         _constructionTimeSpin = GetNode<SpinBox>("%ConstructionTimeSpin");
+        _scalarGrid = GetNode<GridContainer>("%ScalarGrid");
+        _cardRoot = GetNode<VBoxContainer>("CardRoot");
         _behaviorsContainer = GetNode<VBoxContainer>("%BehaviorsContainer");
         _requiredResourcesContainer = GetNode<VBoxContainer>("%RequiredResourcesContainer");
+    }
+
+    private void BuildDescriptionField()
+    {
+        _scalarGrid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
+        var description = new TextEdit
+        {
+            Text = _entry.Description,
+            PlaceholderText = "Station description",
+            CustomMinimumSize = new Vector2(0, 50),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            WrapMode = TextEdit.LineWrappingMode.Boundary
+        };
+        description.TextChanged += () => { _entry.Description = description.Text; MarkDirty(); };
+        _scalarGrid.AddChild(description);
+    }
+
+    private void BuildVisualSection()
+    {
+        var visualSection = new EditorVisualSection();
+        visualSection.Initialize(_entry.Visual, MarkDirty);
+        _cardRoot.AddChild(visualSection);
     }
 
     private void BindEntryData()
@@ -205,7 +233,7 @@ public partial class StationCard : PanelContainer
     private void AddConfigSpin(GridContainer grid, string label, StationEditorModel.BehaviorConfigEdit beh,
         string key, float defaultValue)
     {
-        grid.AddChild(new Label { Text = label });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = label });
         float current = defaultValue;
         if (beh.Config.TryGetValue(key, out var obj))
             current = System.Convert.ToSingle(obj);
@@ -225,7 +253,7 @@ public partial class StationCard : PanelContainer
     private void AddConfigSpinInt(GridContainer grid, string label, StationEditorModel.BehaviorConfigEdit beh,
         string key, int defaultValue)
     {
-        grid.AddChild(new Label { Text = label });
+        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = label });
         int current = defaultValue;
         if (beh.Config.TryGetValue(key, out var obj))
             current = System.Convert.ToInt32(obj);
@@ -245,7 +273,7 @@ public partial class StationCard : PanelContainer
     private static void AddConfigLabel(GridContainer grid, string text)
     {
         // Span both columns for section headers
-        var label = new Label { Text = text };
+        var label = new Label { ThemeTypeVariation = "LabelHighContrast", Text = text };
         grid.AddChild(label);
     }
 

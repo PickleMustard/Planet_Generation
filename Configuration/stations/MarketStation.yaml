@@ -1,25 +1,23 @@
 stations:
-  - name: Small_Market
+  - name: mercums_station
     station_type: Market
     construction_time: 90
     behaviors:
       - behavior_id: MarketStationBehavior
         ship_level_limit: "1"
         max_held_ships: "1"
-        # base_hold_time is in manufacture ticks (60Hz). Total hold scales with cargo:
-        #   sell = (base/2) * sellUnits * to_market_speed_modifier
-        #   buy  = (base/2) * buyUnits  * from_market_speed_modifier
         base_hold_time: "600"
         to_market_speed_modifier: "1.0"
         from_market_speed_modifier: "1.0"
     required_resources:
-      Steel: 1500
-      Electronics: 400
-      Machinery: 300
+      steel: 100
+      aluminum: 100
+      ceramics: 80
+      low_voltage_wire: 32
     icon:
       base_path: "res://Assets/Icons/Stations/market/small_market"
 
-  - name: Large_Market
+  - name: industrial_mercums_station
     station_type: Market
     construction_time: 200
     behaviors:
@@ -29,18 +27,12 @@ stations:
         base_hold_time: "600"
         to_market_speed_modifier: "0.85"
         from_market_speed_modifier: "0.85"
-        # Stackable modifiers fold onto the base values (additive deltas first, then multiplicative
-        # factors). Speed factors lower = faster; sell_price > 1 sells for more; buy_price < 1 buys
-        # for less.
-        modifiers:
-          - type: multiplicative
-            source: WormholeBrokerage
-            sell_price: "1.1"
-            buy_price: "0.95"
+        modifiers: System.Collections.Generic.List`1[System.Object]
     required_resources:
-      Steel: 9000
-      Electronics: 2500
-      Machinery: 1500
-      Composites: 800
+      titanium: 250
+      tungsten: 100
+      high_tensile_wire: 150
+      high_voltage_wire: 75
+      motor: 40
     icon:
       base_path: "res://Assets/Icons/Stations/market/large_market"

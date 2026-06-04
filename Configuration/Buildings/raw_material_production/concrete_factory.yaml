@@ -1,0 +1,25 @@
+buildings:
+  - id_name: concrete_factory
+    display_name: Concrete Factory
+    category: raw_material_production
+    max_resource_tier: 0
+    work_required: 100
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      iron: 25
+    behaviors:
+      - behavior_id: ManufacturingBehavior
+        default_recipe: "concrete"
+        alternative_recipes: []
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 5
+    visual:
+      shape_id: small_manufacturing
+    icon:
+      base_path: "res://Materials/Icons/default_building"

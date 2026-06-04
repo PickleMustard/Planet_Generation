@@ -1,6 +1,7 @@
 #if DEBUG
 using System;
 using Godot;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.RecipeEditor;
 
@@ -24,7 +25,8 @@ public partial class OutputSlotRow : HBoxContainer
     private float _amount;
 
     private OptionButton _kindButton = null!;
-    private OptionButton _keyButton = null!;
+    private Button _resourceButton = null!;
+    private OptionButton _tagOption = null!;
     private SpinBox _amountSpin = null!;
     private Button _deleteButton = null!;
 
@@ -48,13 +50,22 @@ public partial class OutputSlotRow : HBoxContainer
         _kindButton.ItemSelected += OnKindSelected;
         AddChild(_kindButton);
 
-        _keyButton = new OptionButton
+        _resourceButton = new Button
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(220, 0),
+            ClipText = true
+        };
+        _resourceButton.Pressed += OnPickResource;
+        AddChild(_resourceButton);
+
+        _tagOption = new OptionButton
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(220, 0)
         };
-        _keyButton.ItemSelected += OnKeySelected;
-        AddChild(_keyButton);
+        _tagOption.ItemSelected += OnTagSelected;
+        AddChild(_tagOption);
 
         _amountSpin = new SpinBox
         {
@@ -72,7 +83,7 @@ public partial class OutputSlotRow : HBoxContainer
         _deleteButton.Pressed += () => EmitSignal(SignalName.SlotDeleted, _slotIndex);
         AddChild(_deleteButton);
 
-        RebuildKeyOptions();
+        UpdateKeyControl();
     }
 
     private void OnKindSelected(long index)
@@ -80,14 +91,22 @@ public partial class OutputSlotRow : HBoxContainer
         _kind = (RecipeEditorModel.SlotKind)_kindButton.GetItemId((int)index);
         // Reset the key when switching kinds because options change.
         _key = "";
-        RebuildKeyOptions();
+        UpdateKeyControl();
         EmitChange();
     }
 
-    private void OnKeySelected(long index)
+    private void OnTagSelected(long index)
     {
-        _key = _keyButton.GetItemText((int)index);
+        _key = _tagOption.GetItemText((int)index);
         EmitChange();
+    }
+
+    private void OnPickResource()
+    {
+        var popup = new ResourcePickerPopup();
+        popup.ResourcePicked += id => { _key = id; UpdateKeyControl(); EmitChange(); };
+        GetTree().Root.AddChild(popup);
+        popup.PopupCentered();
     }
 
     private void OnAmountChanged(double value)
@@ -96,37 +115,48 @@ public partial class OutputSlotRow : HBoxContainer
         EmitChange();
     }
 
-    private void RebuildKeyOptions()
+    /// <summary>
+    /// Shows the resource picker button (Resource kind) or the tag dropdown
+    /// (Tag kind) and syncs the active control to the current key.
+    /// </summary>
+    private void UpdateKeyControl()
     {
-        _keyButton.Clear();
-        var options = _kind == RecipeEditorModel.SlotKind.Tag
-            ? RecipeEditorModel.GetAllResourceTags()
-            : RecipeEditorModel.GetAllResourceIds();
+        bool isTag = _kind == RecipeEditorModel.SlotKind.Tag;
+        _resourceButton.Visible = !isTag;
+        _tagOption.Visible = isTag;
 
-        int selectedIndex = -1;
-        for (int i = 0; i < options.Count; i++)
+        if (isTag)
         {
-            _keyButton.AddItem(options[i], i);
-            if (options[i] == _key) selectedIndex = i;
-        }
-
-        if (selectedIndex < 0 && options.Count > 0)
-        {
-            // Unknown key — add it explicitly so it's not silently lost.
-            if (!string.IsNullOrEmpty(_key))
+            _tagOption.Clear();
+            var options = RecipeEditorModel.GetAllResourceTags();
+            int selectedIndex = -1;
+            for (int i = 0; i < options.Count; i++)
             {
-                _keyButton.AddItem($"{_key} (unknown)", options.Count);
-                _keyButton.Select(options.Count);
+                _tagOption.AddItem(options[i], i);
+                if (options[i] == _key) selectedIndex = i;
             }
-            else
+            if (selectedIndex < 0 && options.Count > 0)
             {
-                _keyButton.Select(0);
-                _key = options[0];
+                if (!string.IsNullOrEmpty(_key))
+                {
+                    _tagOption.AddItem($"{_key} (unknown)", options.Count);
+                    _tagOption.Select(options.Count);
+                }
+                else
+                {
+                    _tagOption.Select(0);
+                    _key = options[0];
+                }
+            }
+            else if (selectedIndex >= 0)
+            {
+                _tagOption.Select(selectedIndex);
             }
         }
-        else if (selectedIndex >= 0)
+        else
         {
-            _keyButton.Select(selectedIndex);
+            _resourceButton.Text = string.IsNullOrEmpty(_key) ? "(select resource)" : _key;
+            _resourceButton.TooltipText = _key;
         }
     }
 

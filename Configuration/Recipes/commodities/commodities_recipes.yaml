@@ -3,7 +3,17 @@ recipes:
     display_name: "Metal Cans"
     category: commodities
     work_required: 10
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - tag:metal: 1
     output_resources:
       - can: 5
+  - recipe_id: "mass_produced_furniture"
+    display_name: "Mass Produced Furniture"
+    category: commodities
+    work_required: 10
+    input_resources:
+      - wood: 12
+    output_resources:
+      - furniture: 1

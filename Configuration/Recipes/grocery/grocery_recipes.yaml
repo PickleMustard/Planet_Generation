@@ -4,6 +4,8 @@ recipes:
     description: Drop some raw edibles into some sort of preservative. It doesn't taste great but it's shelf stable.
     category: grocery
     work_required: 5
+    icon:
+      base_path: "res://Materials/Icons/default_recipe"
     input_resources:
       - can: 1
       - tag:unprocessed_food: 3
