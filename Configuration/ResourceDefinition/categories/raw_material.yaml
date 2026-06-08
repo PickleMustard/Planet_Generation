@@ -7,7 +7,7 @@ resources:
     transport_weight: 2
     tags: [metal, material:iron]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: copper
     resource_tier: 0
     base_price: 1000
@@ -16,7 +16,7 @@ resources:
     transport_weight: 1.4
     tags: [metal, conductive, material:copper]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: gold
     resource_tier: 0
     base_price: 1000
@@ -25,7 +25,7 @@ resources:
     transport_weight: 2.5
     tags: [metal, valuables, conductive, material:gold]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: nickel
     resource_tier: 0
     base_price: 1000
@@ -34,7 +34,7 @@ resources:
     transport_weight: 2
     tags: [metal, valuables, conductive, material:nickel]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: clay
     resource_tier: 0
     base_price: 1000
@@ -43,7 +43,7 @@ resources:
     transport_weight: 1.2
     tags: [water, earth, mineral]
     icon:
-      base_path: "res://Materials/Icons/clay"
+      resource: "res://Materials/Icons/clay.tres"
   - id_name: silicon
     resource_tier: 0
     base_price: 1000
@@ -51,7 +51,7 @@ resources:
     max_stack_size: 500
     transport_weight: 0.8
     icon:
-      base_path: "res://Materials/Icons/water"
+      resource: "res://Materials/Icons/water.tres"
   - id_name: plastic
     resource_tier: 1
     base_price: 2000
@@ -60,7 +60,7 @@ resources:
     transport_weight: 0.5
     tags: [raw_material, synthetic]
     icon:
-      base_path: "res://Materials/Icons/water"
+      resource: "res://Materials/Icons/water.tres"
   - id_name: titanium
     resource_tier: 2
     base_price: 3000
@@ -68,7 +68,7 @@ resources:
     max_stack_size: 300
     tags: [metal, high_metal, material:titanium]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: tungsten
     resource_tier: 2
     base_price: 3000
@@ -77,7 +77,7 @@ resources:
     transport_weight: 6
     tags: [metal, high_metal, material:tungsten]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: aluminum
     resource_tier: 1
     base_price: 2000
@@ -86,7 +86,7 @@ resources:
     transport_weight: 0.8
     tags: [metal, high_metal, material:aluminum]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: silver
     resource_tier: 2
     base_price: 3000
@@ -95,7 +95,7 @@ resources:
     transport_weight: 1.4
     tags: [metal, valuables, high_metal, material:silver]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: wood
     resource_tier: 0
     base_price: 1000
@@ -104,7 +104,7 @@ resources:
     transport_weight: 1.2
     tags: [timber, artisanal]
     icon:
-      base_path: "res://Materials/Icons/wood"
+      resource: "res://Materials/Icons/wood.tres"
   - id_name: lead
     resource_tier: 1
     base_price: 2000
@@ -113,7 +113,7 @@ resources:
     transport_weight: 5
     tags: [metal, high_metal, toxic, material:lead]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: salt
     resource_tier: 0
     base_price: 1000
@@ -121,7 +121,7 @@ resources:
     max_stack_size: 500
     transport_weight: 1.8
     icon:
-      base_path: "res://Materials/Icons/water"
+      resource: "res://Materials/Icons/water.tres"
   - id_name: gravel
     resource_tier: 0
     base_price: 1000
@@ -129,7 +129,7 @@ resources:
     max_stack_size: 499
     transport_weight: 2
     icon:
-      base_path: "res://Materials/Icons/gravel"
+      resource: "res://Materials/Icons/gravel.tres"
   - id_name: fiber
     resource_tier: 1
     base_price: 2000
@@ -137,4 +137,4 @@ resources:
     max_stack_size: 500
     transport_weight: 0.3
     icon:
-      base_path: "res://Materials/Icons/water"
+      resource: "res://Materials/Icons/water.tres"

@@ -17,7 +17,7 @@ namespace UI.PlanetBoard;
 public partial class PlanetBoardWindow : Control
 {
     [Signal]
-    public delegate void ClosedEventHandler();
+    public delegate void WindowCloseRequestedEventHandler();
 
     [Signal]
     public delegate void BackRequestedEventHandler();
@@ -58,14 +58,12 @@ public partial class PlanetBoardWindow : Control
     private readonly TransferRoutePlanningMode _routeMode = new();
     private readonly OverviewMode _overviewMode = new();
 
-    private Input.MouseModeEnum _previousMouseMode = Input.MouseModeEnum.Captured;
     private IOrbitalBody? _body;
     private bool _boardEventsBound;
 
     public override void _Ready()
     {
         AddToGroup("planet_board_window");
-        VisibilityChanged += OnVisibilityChanged;
 
         if (_modeSwitcher != null)
         {
@@ -107,21 +105,6 @@ public partial class PlanetBoardWindow : Control
         _boardEventsBound = true;
     }
 
-    private void OnVisibilityChanged()
-    {
-        if (Visible)
-        {
-            _previousMouseMode = Input.MouseMode;
-            if (_previousMouseMode != Input.MouseModeEnum.Visible)
-                Input.SetMouseMode(Input.MouseModeEnum.Visible);
-        }
-        else
-        {
-            if (Input.MouseMode == Input.MouseModeEnum.Visible)
-                Input.SetMouseMode(_previousMouseMode);
-        }
-    }
-
     public void OpenForBody(IOrbitalBody body, string mode = "ResourceLink")
     {
         _body = body;
@@ -138,7 +121,7 @@ public partial class PlanetBoardWindow : Control
     {
         Visible = false;
         ClearInfoBar();
-        EmitSignal(SignalName.Closed);
+        EmitSignal(SignalName.WindowCloseRequested);
     }
 
     private void OnBackPressed()

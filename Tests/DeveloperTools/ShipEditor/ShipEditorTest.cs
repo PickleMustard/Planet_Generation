@@ -44,7 +44,7 @@ public class ShipEditorTest
                 new() { ResourceId = "Steel", Amount = 200 },
                 new() { ResourceId = "Electronics", Amount = 50 },
             },
-            Icon = new EditorIcon { BasePath = "res://Assets/Icons/Ships/freighter/test" },
+            Icon = new EditorIcon { ResourcePath = "res://Assets/Icons/Ships/freighter/test" },
         });
 
         ShipEditorYamlIO.WriteAllCategories(TempDir,
@@ -63,7 +63,7 @@ public class ShipEditorTest
         AssertThat(s.EngineCategory).IsEqual("Chemical");
         AssertThat(s.WorkRequired).IsEqual(15f);
         AssertThat(s.RequiredResources.Count).IsEqual(2);
-        AssertThat(s.Icon.BasePath).IsEqual("res://Assets/Icons/Ships/freighter/test");
+        AssertThat(s.Icon.ResourcePath).IsEqual("res://Assets/Icons/Ships/freighter/test");
 
         ResetTempDir();
     }

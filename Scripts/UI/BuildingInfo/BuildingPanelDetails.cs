@@ -17,6 +17,11 @@ namespace UI.BuildingInfo;
 /// </summary>
 public partial class BuildingPanelDetails : BaseBuildingDetails
 {
+    /// <summary>Raised when the player clicks an extraction slot row; carries the slot index.
+    /// <see cref="BuildingInfoWindow"/> opens the resource picker in response.</summary>
+    [Signal]
+    public delegate void ExtractionSlotClickedEventHandler(int slotIndex);
+
     private TextureRect? _renderIcon;
 
     private Label? _stateValueLabel;
@@ -41,6 +46,9 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
     private VBoxContainer? _busOutputsList;
 
     private VBoxContainer? _nodesList;
+
+    private VBoxContainer? _extractionSlotsPane;
+    private GridContainer? _extractionSlotsGrid;
 
     private PackedScene? _resourceSlotItemScene;
     private PackedScene? _resourceRateItemScene;
@@ -90,6 +98,9 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
 
         _nodesList = GetNodeOrNull<VBoxContainer>("Layout/Bottom/NodesPane/Scroll/NodesList");
 
+        _extractionSlotsPane = GetNodeOrNull<VBoxContainer>("Layout/ExtractionSlotsPane");
+        _extractionSlotsGrid = GetNodeOrNull<GridContainer>("Layout/ExtractionSlotsPane/ExtractionSlotsGrid");
+
         _resourceSlotItemScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/ResourceSlotItem.tscn");
         _resourceRateItemScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/ResourceRateItem.tscn");
     }
@@ -107,7 +118,72 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
         UpdateGridTile();
         UpdateAssemblyLine(mfg, ext);
         UpdateRecipePane(recipe, mfg, ext);
+        UpdateExtractionSlots(ext);
         UpdateNodesList();
+    }
+
+    /// <summary>
+    /// Renders one clickable button per extraction slot (primary/secondary badge, assigned
+    /// resource icon+name, and per-cycle rate) for extraction buildings; hidden otherwise.
+    /// Clicking a row raises <see cref="ExtractionSlotClicked"/> so the window opens the picker.
+    /// </summary>
+    private void UpdateExtractionSlots(ExtractionBehavior? ext)
+    {
+        if (_extractionSlotsPane == null || _extractionSlotsGrid == null) return;
+
+        if (ext == null)
+        {
+            _extractionSlotsPane.Visible = false;
+            ClearChildren(_extractionSlotsGrid);
+            return;
+        }
+
+        _extractionSlotsPane.Visible = true;
+        ClearChildren(_extractionSlotsGrid);
+
+        var slots = ext.Slots;
+        var db = ResourceDatabase.Instance;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            var btn = new Button
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                ClipText = true,
+                Alignment = HorizontalAlignment.Left,
+            };
+            string badge = slot.Kind == ExtractionSlotKind.Primary ? "[P]" : "[S]";
+
+            if (slot.ResourceId == null)
+            {
+                btn.Text = $"{badge}  — empty —";
+                btn.Modulate = new Color(0.7f, 0.7f, 0.7f);
+            }
+            else
+            {
+                ResourceDefinition? rdef = null;
+                db?.TryGetResource(slot.ResourceId, out rdef);
+                if (rdef?.Icon?.Texture != null)
+                    btn.Icon = rdef.Icon.Texture;
+                string name = PrettifyResourceId(rdef?.IdName ?? slot.ResourceId);
+                float rate = ext.GetSlotRate(i);
+                btn.Text = $"{badge} {name}  ·  {rate:0.##}/cyc";
+            }
+
+            int idx = i; // capture per-iteration index
+            btn.Pressed += () => EmitSignal(SignalName.ExtractionSlotClicked, idx);
+            _extractionSlotsGrid.AddChild(btn);
+        }
+    }
+
+    private static string PrettifyResourceId(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return "Unknown";
+        var words = id.Split('_');
+        for (int i = 0; i < words.Length; i++)
+            if (words[i].Length > 0)
+                words[i] = char.ToUpperInvariant(words[i][0]) + words[i][1..].ToLowerInvariant();
+        return string.Join(" ", words);
     }
 
     private void UpdateGridTile()
@@ -192,6 +268,8 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
         ClearChildren(_busInputsList);
         ClearChildren(_busOutputsList);
         ClearChildren(_nodesList);
+        ClearChildren(_extractionSlotsGrid);
+        if (_extractionSlotsPane != null) _extractionSlotsPane.Visible = false;
         _recipeDisplay?.Clear();
     }
 
@@ -200,10 +278,9 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
         if (_renderIcon == null || _building?.Definition == null) return;
         var iconDef = _building.Definition.Icon;
         Texture2D? tex = iconDef?.Texture;
-        if (tex == null && !string.IsNullOrEmpty(iconDef?.BasePath))
+        if (tex == null && !string.IsNullOrEmpty(iconDef?.ResourcePath))
         {
-            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + ".png"); }
-            catch { tex = null; }
+            tex = UtilityLibrary.DataLoading.IconDataLoader.LoadIconTexture(iconDef.ResourcePath, "building-panel");
         }
         _renderIcon.Texture = tex;
     }

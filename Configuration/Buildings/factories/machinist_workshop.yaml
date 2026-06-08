@@ -1,0 +1,25 @@
+buildings:
+  - id_name: machinist_workshop
+    display_name: Machinists Workshop
+    category: factories
+    max_resource_tier: 2
+    work_required: 100
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      concrete: 80
+      steel: 45
+      copper: 30
+    behaviors:
+      - behavior_id: ManufacturingBehavior
+        default_recipe: "copper_extrusion"
+        alternative_recipes: ["steel_extrusion", "electrum_extrusion"]
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 12
+    icon:
+      resource: "res://Materials/Icons/default_recipe.tres"

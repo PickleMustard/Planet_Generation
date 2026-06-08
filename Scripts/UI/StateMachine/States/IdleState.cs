@@ -20,8 +20,9 @@ public partial class IdleState : LimboState
         // Clear blackboard data
         Blackboard?.Top().Clear();
 
-        // Ensure mouse is captured for gameplay
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
+        // Back at the HUD: drop any leaked cursor requests and restore the
+        // gameplay base mode (Captured, or Confined if the player toggled it).
+        WorldInputController.Instance?.ResetCursorMode();
 
         GameLogger.ExitFunction(nameof(_Enter));
     }

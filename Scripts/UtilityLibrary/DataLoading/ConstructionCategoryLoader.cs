@@ -47,7 +47,8 @@ public static class ConstructionCategoryLoader
 
         _tabs = new List<CategoryTab>();
 
-        if (!Godot.FileAccess.FileExists(ConfigPath))
+        string? yamlContent = BaseConfigLoader.ReadAllText(ConfigPath);
+        if (yamlContent == null)
         {
             GameLogger.Warning($"ConstructionCategoryLoader: config not found: {ConfigPath}");
             return _tabs;
@@ -55,9 +56,6 @@ public static class ConstructionCategoryLoader
 
         try
         {
-            using var file = Godot.FileAccess.Open(ConfigPath, Godot.FileAccess.ModeFlags.Read);
-            string yamlContent = file.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();

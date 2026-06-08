@@ -11,8 +11,8 @@ public class VisualDefinition
 {
     // ========== 3D Model Properties ==========
 
-    /// <summary>Path to 3D model resource (for reference/debugging).</summary>
-    public string? ModelPath { get; set; }
+    /// <summary>Path to the model wrapper resource (<c>ModelConfig</c> <c>.tres</c>).</summary>
+    public string? ModelResourcePath { get; set; }
 
     /// <summary>Pre-loaded PackedScene prototype (loaded during configuration).</summary>
     public PackedScene? ModelPrototype { get; set; }
@@ -79,12 +79,13 @@ public class VisualDefinition
     /// Caller must add the returned node to the scene tree.
     /// </summary>
     /// <param name="bodyRadius">The radius of the parent body for scaling calculations. Default is 1.0 for no body-relative scaling.</param>
-    public Node3D? CreateModelInstance(float bodyRadius = 1.0f)
+    /// <param name="scaleWithBody">When true (buildings), the model is sized proportionally to <paramref name="bodyRadius"/>. When false (ships, stations), a flat <see cref="Scale"/> multiplier is used regardless of orbit/body.</param>
+    public Node3D? CreateModelInstance(float bodyRadius = 1.0f, bool scaleWithBody = true)
     {
         if (!HasValidPrototype)
         {
             GameLogger.Debug(
-                $"VisualDefinition: No valid prototype available for model '{ModelPath}'"
+                $"VisualDefinition: No valid prototype available for model '{ModelResourcePath}'"
             );
             return null;
         }
@@ -92,20 +93,22 @@ public class VisualDefinition
         try
         {
             var instance = ModelPrototype!.Instantiate<Node3D>();
-            // Apply body-relative scaling: yamlScale * bodyRadius * 0.5
-            // This makes buildings proportionally sized to the celestial body
-            instance.Scale = Vector3.One * Scale * Mathf.Log(bodyRadius);
+            // Buildings scale proportionally to the celestial body; ships/stations use a
+            // flat Scale multiplier so they look the same wherever they orbit.
+            instance.Scale = scaleWithBody
+                ? Vector3.One * Scale * Mathf.Log(bodyRadius)
+                : Vector3.One * Scale;
             instance.RotationDegrees = RotationOffset;
 
             GameLogger.Debug(
-                $"VisualDefinition: Created model instance from prototype '{ModelPath}' with body scale (radius: {bodyRadius})"
+                $"VisualDefinition: Created model instance from prototype '{ModelResourcePath}' with body scale (radius: {bodyRadius})"
             );
             return instance;
         }
         catch (System.Exception ex)
         {
             GameLogger.Error(
-                $"VisualDefinition: Failed to instantiate model '{ModelPath}': {ex.Message}"
+                $"VisualDefinition: Failed to instantiate model '{ModelResourcePath}': {ex.Message}"
             );
             return null;
         }

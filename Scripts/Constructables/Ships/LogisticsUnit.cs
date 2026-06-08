@@ -68,8 +68,29 @@ public partial class LogisticsUnit : Node3D, IArtificialSatellite
     {
         _shipDefinition = definition;
 
-        Node3D? model = definition.Visual?.CreateModelInstance(1.0f);
+        Node3D? model = definition.Visual?.CreateModelInstance(scaleWithBody: false);
         InstallModel(model, definition.Name);
+    }
+
+    /// <summary>
+    /// Camera anchor attached to this ship, created on demand by
+    /// <see cref="GetOrCreateCameraAnchor"/>. The focus camera reparents under it.
+    /// </summary>
+    public Node3D? CameraAnchor { get; private set; }
+
+    /// <summary>
+    /// Gets or creates the camera anchor for this ship. Anchor is a child
+    /// <see cref="Node3D"/> named "CameraAnchor" at the unit origin. Mirrors
+    /// <see cref="StationSatellite.GetOrCreateCameraAnchor"/>.
+    /// </summary>
+    public Node3D GetOrCreateCameraAnchor()
+    {
+        if (CameraAnchor == null)
+        {
+            CameraAnchor = new Node3D { Name = "CameraAnchor" };
+            AddChild(CameraAnchor);
+        }
+        return CameraAnchor;
     }
 
     #region OrbitalParameters

@@ -72,6 +72,41 @@ public class PowerDrawScalingTest
     }
 
     [TestCase]
+    public void BuildingProductionState_Manufacturing_DrawsBaseDraw()
+    {
+        // The power consumer reads the building's canonical ProductionState, which
+        // any production behavior (manufacturing OR extraction) pushes onto the building.
+        var building = new Building { PoweredOn = true };
+        var consumer = new PowerConsumerBehavior { BaseDraw = 50f, StandbyDraw = 10f };
+        consumer.OnAttach(building);
+        building.Behaviors.Add(consumer);
+
+        building.SetProductionState(ManufacturingState.Idle);
+        AssertThat(consumer.GetCurrentDraw()).IsEqual(10f);
+
+        building.SetProductionState(ManufacturingState.Manufacturing);
+        AssertThat(consumer.GetCurrentDraw()).IsEqual(50f);
+    }
+
+    [TestCase]
+    public void ExtractionBehavior_PushesStateToBuilding()
+    {
+        // Attaching an extraction behavior syncs its Idle state onto the building, so a
+        // powered extraction building draws standby until it actually extracts.
+        var building = new Building { PoweredOn = true };
+        var ext = new ExtractionBehavior();
+        ext.OnAttach(building);
+        building.Behaviors.Add(ext);
+
+        var consumer = new PowerConsumerBehavior { BaseDraw = 50f, StandbyDraw = 10f };
+        consumer.OnAttach(building);
+        building.Behaviors.Add(consumer);
+
+        AssertThat(building.ProductionState).IsEqual(ManufacturingState.Idle);
+        AssertThat(consumer.GetCurrentDraw()).IsEqual(10f);
+    }
+
+    [TestCase]
     public void NoManufacturingBehavior_DrawsZero()
     {
         var building = new Building();

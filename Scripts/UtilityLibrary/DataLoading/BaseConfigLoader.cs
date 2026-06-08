@@ -12,11 +12,124 @@ namespace UtilityLibrary.DataLoading;
 public static class BaseConfigLoader
 {
     /// <summary>
-    /// Recursively scans a directory for all .yaml and .yml files.
+    /// Resolves a res:// path to one that <see cref="Godot.FileAccess"/> can actually open.
+    /// Exported builds remap resource paths for compression (e.g. foo.yaml -> foo.yaml.remap
+    /// pointing at the packed file). Godot's ResourceLoader resolves these transparently, but
+    /// raw FileAccess/DirAccess do not. This mirrors that resolution manually:
+    ///   1. the path itself, 2. its ".remap" sidecar, 3. ".yaml"/".yml" extension fallbacks
+    ///      (each re-checked for a ".remap").
+    /// In the editor (no remaps) this returns the original path on the first probe.
     /// </summary>
-    /// <param name="directory">The directory path to scan (e.g., "res://Configuration/stations/")</param>
-    /// <returns>List of file paths found</returns>
-    public static List<string> GetYamlFilesRecursive(string directory)
+    /// <param name="path">A res:// (or user://) path.</param>
+    /// <returns>An openable path, or null if nothing resolves.</returns>
+    public static string? ResolveResPath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        // a) Direct hit (editor, or non-remapped export).
+        if (Godot.FileAccess.FileExists(path))
+            return path;
+
+        // b) .remap sidecar resolution.
+        string? viaRemap = ResolveViaRemap(path);
+        if (viaRemap != null)
+            return viaRemap;
+
+        // c) Extension fallbacks (caller may have passed an extension-less path).
+        foreach (var ext in new[] { ".yaml", ".yml" })
+        {
+            string candidate = path + ext;
+            if (Godot.FileAccess.FileExists(candidate))
+                return candidate;
+
+            string? candidateRemap = ResolveViaRemap(candidate);
+            if (candidateRemap != null)
+                return candidateRemap;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// If a "<paramref name="path"/>.remap" sidecar exists, parses it and returns the remap target.
+    /// </summary>
+    private static string? ResolveViaRemap(string path)
+    {
+        string remapPath = path + ".remap";
+        if (!Godot.FileAccess.FileExists(remapPath))
+            return null;
+
+        using var rf = Godot.FileAccess.Open(remapPath, Godot.FileAccess.ModeFlags.Read);
+        if (rf == null)
+            return null;
+
+        string target = ParseRemapTarget(rf.GetAsText());
+        return string.IsNullOrEmpty(target) ? null : target;
+    }
+
+    /// <summary>
+    /// Parses the target path out of a Godot ".remap" file (INI format with a
+    /// <c>path="res://..."</c> entry under <c>[remap]</c>).
+    /// </summary>
+    public static string ParseRemapTarget(string remapContents)
+    {
+        if (string.IsNullOrEmpty(remapContents))
+            return "";
+
+        foreach (var raw in remapContents.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (!line.StartsWith("path"))
+                continue;
+
+            int eq = line.IndexOf('=');
+            if (eq < 0)
+                continue;
+
+            var value = line.Substring(eq + 1).Trim().Trim('"');
+            if (!string.IsNullOrEmpty(value))
+                return value;
+        }
+
+        return "";
+    }
+
+    /// <summary>
+    /// Export-safe replacement for <c>FileAccess.FileExists</c>. Returns true if the path
+    /// resolves (directly or via a ".remap" sidecar).
+    /// </summary>
+    public static bool ResExists(string path) => ResolveResPath(path) != null;
+
+    /// <summary>
+    /// Export-safe text read. Resolves remaps, opens the file, and returns its contents.
+    /// Returns null (with a warning) if the path cannot be resolved or opened.
+    /// </summary>
+    public static string? ReadAllText(string path)
+    {
+        string? resolved = ResolveResPath(path);
+        if (resolved == null)
+        {
+            GameLogger.Warning($"BaseConfigLoader.ReadAllText: cannot resolve path: {path}");
+            return null;
+        }
+
+        using var file = Godot.FileAccess.Open(resolved, Godot.FileAccess.ModeFlags.Read);
+        if (file == null)
+        {
+            GameLogger.Warning($"BaseConfigLoader.ReadAllText: failed to open: {resolved}");
+            return null;
+        }
+
+        return file.GetAsText();
+    }
+
+    /// <summary>
+    /// Returns the .yaml/.yml files directly inside a directory (non-recursive).
+    /// Export-safe: strips ".remap"/".import" suffixes from listed entries before filtering,
+    /// so remapped files are still discovered, and returns the logical (un-suffixed) paths.
+    /// </summary>
+    public static List<string> GetYamlFilesInDir(string directory)
     {
         var files = new List<string>();
 
@@ -26,16 +139,46 @@ public static class BaseConfigLoader
             return files;
         }
 
-        var currentFiles = DirAccess.GetFilesAt(directory);
-        foreach (var file in currentFiles)
+        // Normalize so callers may pass a directory with or without a trailing slash.
+        string prefix = directory.EndsWith("/") ? directory : directory + "/";
+
+        var seen = new HashSet<string>();
+        foreach (var entry in DirAccess.GetFilesAt(directory))
         {
-            if (file.EndsWith(".yaml") || file.EndsWith(".yml"))
-                files.Add(directory + file);
+            string name = entry;
+            if (name.EndsWith(".remap"))
+                name = name.Substring(0, name.Length - ".remap".Length);
+            if (name.EndsWith(".import"))
+                name = name.Substring(0, name.Length - ".import".Length);
+
+            if (!seen.Add(name)) // dedup foo.yaml + foo.yaml.remap
+                continue;
+
+            if (name.EndsWith(".yaml") || name.EndsWith(".yml"))
+                files.Add(prefix + name);
         }
 
+        return files;
+    }
+
+    /// <summary>
+    /// Recursively scans a directory for all .yaml and .yml files.
+    /// Export-safe: see <see cref="GetYamlFilesInDir"/>. Subdirectories are not remapped,
+    /// so directory enumeration needs no suffix handling.
+    /// </summary>
+    /// <param name="directory">The directory path to scan (e.g., "res://Configuration/stations/")</param>
+    /// <returns>List of logical file paths found</returns>
+    public static List<string> GetYamlFilesRecursive(string directory)
+    {
+        var files = GetYamlFilesInDir(directory);
+
+        if (!DirAccess.DirExistsAbsolute(directory))
+            return files;
+
+        string prefix = directory.EndsWith("/") ? directory : directory + "/";
         var subdirs = DirAccess.GetDirectoriesAt(directory);
         foreach (var subdir in subdirs)
-            files.AddRange(GetYamlFilesRecursive(directory + subdir + "/"));
+            files.AddRange(GetYamlFilesRecursive(prefix + subdir + "/"));
 
         return files;
     }

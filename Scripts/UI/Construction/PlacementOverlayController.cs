@@ -33,11 +33,33 @@ public partial class PlacementOverlayController : Node
 
     private PlanetAimSelector? _aimSelector;
     private BuildingPlacementMode? _buildingMode;
-    private StationPlacementMode? _stationMode;
+    private StationOrbitPlacementMode? _stationMode;
     private BuildingDefinition? _buildingDef;
+
+    private bool _cursorPushed;
 
     /// <summary>Provides the HSM used only for the headquarters dispatch path.</summary>
     public void Initialize(GUIControllerHSM hsm) => _hsm = hsm;
+
+    /// <summary>
+    /// Maintain exactly one cursor request for the placement lifecycle, swapping the
+    /// mode in place as the flow moves aim → placement. Released in <see cref="Teardown"/>.
+    /// </summary>
+    private void SetPlacementCursor(Input.MouseModeEnum mode)
+    {
+        if (_cursorPushed)
+            WorldInputController.Instance?.PopCursorMode();
+        WorldInputController.Instance?.PushCursorMode(mode);
+        _cursorPushed = true;
+    }
+
+    private void ReleasePlacementCursor()
+    {
+        if (!_cursorPushed)
+            return;
+        WorldInputController.Instance?.PopCursorMode();
+        _cursorPushed = false;
+    }
 
     public void Begin(string itemType, string definitionName)
     {
@@ -48,8 +70,10 @@ public partial class PlacementOverlayController : Node
         _itemType = itemType;
         _definitionName = definitionName;
 
-        // Place on the inspected body if a window is showing one; else aim.
-        if (OrbitalBodyWindow.Instance is { IsOpen: true, CurrentBody: { } body })
+        // Auto-pick the focused body when the camera is focused on one (any
+        // window enabling construction); otherwise run the full aim flow.
+        var controller = GetViewport().GetCamera3D() as PlayerInteraction.Camera.PlayerCameraController;
+        if (controller?.FocusTarget is IOrbitalBody body)
         {
             _overOrbitalWindow = true;
             StartPlacement(body, useMouse: true);
@@ -80,7 +104,7 @@ public partial class PlacementOverlayController : Node
         _aimSelector = new PlanetAimSelector();
         _aimSelector.BodySelected += OnAimConfirmed;
         AddChild(_aimSelector);
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
+        SetPlacementCursor(Input.MouseModeEnum.Captured);
     }
 
     private void OnAimConfirmed(IOrbitalBody body)
@@ -97,6 +121,11 @@ public partial class PlacementOverlayController : Node
 
     private void StartPlacement(IOrbitalBody body, bool useMouse)
     {
+        // The single player camera stays Current in every state (it reparents on
+        // focus rather than being swapped out), so the viewport camera is always
+        // the right one — no injection chain needed.
+        Camera3D? camera = GetViewport().GetCamera3D();
+
         if (_itemType == "Station")
         {
             StationDatabase.Instance.TryGetStation(_definitionName, out var def);
@@ -107,7 +136,9 @@ public partial class PlacementOverlayController : Node
                 return;
             }
 
-            _stationMode = new StationPlacementMode { UseMousePosition = useMouse };
+            // The top-down placement mode always uses the cursor and the
+            // always-Current player camera; it swoops the camera overhead itself.
+            _stationMode = new StationOrbitPlacementMode();
             _stationMode.PlacementConfirmed += OnStationConfirmed;
             _stationMode.PlacementCancelled += Teardown;
             AddChild(_stationMode);
@@ -123,16 +154,18 @@ public partial class PlacementOverlayController : Node
                 return;
             }
 
-            _buildingMode = new BuildingPlacementMode { UseMousePosition = useMouse };
+            _buildingMode = new BuildingPlacementMode { UseMousePosition = useMouse, OverrideCamera = camera };
             _buildingMode.PlacementConfirmed += OnBuildingConfirmed;
             _buildingMode.PlacementCancelled += Teardown;
             AddChild(_buildingMode);
             _buildingMode.Initialize(_buildingDef, body);
         }
 
-        // Captured/center-reticle for HUD launch; cursor stays visible over the
-        // orbital window (where we suspend its own input instead).
-        Input.SetMouseMode(useMouse
+        // Stations use the top-down board (always cursor-driven); buildings use a
+        // center reticle on the HUD launch (captured) but the cursor over the
+        // orbital window. Recaptured on teardown for the HUD path.
+        bool wantsCursor = _itemType == "Station" || useMouse;
+        SetPlacementCursor(wantsCursor
             ? Input.MouseModeEnum.Visible
             : Input.MouseModeEnum.Captured);
 
@@ -197,6 +230,8 @@ public partial class PlacementOverlayController : Node
 
     private void Teardown()
     {
+        bool wasStation = _stationMode != null;
+
         if (_aimSelector != null)
         {
             _aimSelector.QueueFree();
@@ -221,15 +256,26 @@ public partial class PlacementOverlayController : Node
             _stationMode = null;
         }
 
+        // Swoop the camera back after a station placement. Over the orbital
+        // window, restore that window's framing; otherwise return to the ship.
+        if (wasStation)
+        {
+            var controller = GetViewport().GetCamera3D() as PlayerInteraction.Camera.PlayerCameraController;
+            if (_overOrbitalWindow && OrbitalBodyWindow.Instance != null)
+                OrbitalBodyWindow.Instance.RefocusCamera();
+            else
+                controller?.ExitFocus();
+        }
+
         if (_overOrbitalWindow && OrbitalBodyWindow.Instance != null)
         {
             // Window stays visible; just hand input back to it.
             OrbitalBodyWindow.Instance.InteractionSuspended = false;
         }
-        else
-        {
-            Input.SetMouseMode(Input.MouseModeEnum.Captured);
-        }
+
+        // Pop our placement cursor request; the stack restores the underlying mode
+        // (the orbital window's Visible, or the gameplay base when launched from HUD).
+        ReleasePlacementCursor();
 
         _buildingDef = null;
         _overOrbitalWindow = false;

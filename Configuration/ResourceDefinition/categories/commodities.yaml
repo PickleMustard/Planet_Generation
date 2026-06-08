@@ -6,7 +6,7 @@ resources:
     max_stack_size: 100
     tags: [processed]
     icon:
-      base_path: "res://Materials/Icons/can"
+      resource: "res://Materials/Icons/can.tres"
   - id_name: furniture
     resource_tier: 2
     base_price: 8000
@@ -15,4 +15,4 @@ resources:
     transport_weight: 5
     tags: [artisanal]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"

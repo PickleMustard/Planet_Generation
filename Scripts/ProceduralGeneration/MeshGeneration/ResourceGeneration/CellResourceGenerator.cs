@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ProceduralGeneration.BiomeSystem;
+using ProceduralGeneration.TextureGeneration;
 using Structures;
+using Structures.Enums;
 using Structures.GameState;
 using Structures.Resources;
 using UtilityLibrary;
@@ -10,22 +13,61 @@ using UtilityLibrary;
 namespace ProceduralGeneration.MeshGeneration.ResourceGeneration;
 
 /// <summary>
-/// Generates resources per VoronoiCell using the new group-based eligibility system.
-/// Body subtypes define resources via resource groups, biome probability modifiers
-/// control where resources generate via resource ID weight lookups.
+/// Generates resources per VoronoiCell as spatially-coherent fields.
+///
+/// Each eligible resource owns a deterministic spherical noise field; neighbouring cells
+/// sample nearby points on that field, so resources form gradual, overlapping patches
+/// instead of independent per-cell random draws. A resource group's per-biome
+/// <see cref="AvailabilityLevel"/> sets the field threshold (patch coverage) and an
+/// abundance scale. Physical impossibilities (frozen resources in hot biomes, aquatic
+/// resources in arid biomes) are gated in code from biome/resource tags.
 /// </summary>
 public static class CellResourceGenerator
 {
+    /// <summary>Noise frequency for resource patch fields. Larger patches span more cells.</summary>
+    private const float PATCH_FREQUENCY = 1.2f;
+
+    /// <summary>Direction-space sampling scale for the spherical noise lookup.</summary>
+    private const float PATCH_SCALE = 2.0f;
+
+    /// <summary>Minimum abundance written for a resource that clears its threshold.</summary>
+    private const float MIN_ABUNDANCE = 0.05f;
+
     /// <summary>
-    /// Generates resources for all cells across all continents using group-based matching.
+    /// Per-level patch threshold (on remapped [0,1] noise) and abundance scale.
+    /// Lower threshold → larger, more frequent patches. Tunable.
+    /// </summary>
+    private static readonly Dictionary<AvailabilityLevel, (float threshold, float abundance)> LevelTable =
+        new()
+        {
+            [AvailabilityLevel.Abundant] = (0.30f, 1.00f),
+            [AvailabilityLevel.Frequent] = (0.45f, 0.85f),
+            [AvailabilityLevel.Normal] = (0.60f, 0.70f),
+            [AvailabilityLevel.Scarce] = (0.75f, 0.55f),
+            [AvailabilityLevel.Rare] = (0.86f, 0.40f),
+        };
+
+    // Biome tag groups that drive the physical hard gates.
+    private static readonly HashSet<string> HotBiomeTags = new(StringComparer.Ordinal)
+        { "hot", "volcanic", "lethal" };
+    private static readonly HashSet<string> AridBiomeTags = new(StringComparer.Ordinal)
+        { "arid", "hot", "volcanic", "lethal" };
+
+    // Resource tags that mark a resource as frozen-only / aquatic-only.
+    private static readonly HashSet<string> FrozenResourceTags = new(StringComparer.Ordinal)
+        { "frozen" };
+    private static readonly HashSet<string> AquaticResourceTags = new(StringComparer.Ordinal)
+        { "aquatic", "marine", "water_world", "water_needed" };
+
+    /// <summary>
+    /// Generates resource fields for all cells across all continents.
     /// </summary>
     /// <param name="continents">Continents containing VoronoiCells to populate.</param>
-    /// <param name="planetaryResourceConfig">Planetary resource configuration with resolved resource sets.</param>
-    /// <param name="biomeResourceConfig">Biome resource weight configuration.</param>
-    /// <param name="bodyType">The celestial body type.</param>
-    /// <param name="bodySubtype">The body subtype enum value.</param>
-    /// <param name="rng">Random number generator for deterministic generation.</param>
-    /// <param name="maxResourcesPerCell">Maximum number of resources per cell.</param>
+    /// <param name="planetaryResourceConfig">Resolved subtype eligibility + resource groups.</param>
+    /// <param name="biomeResourceConfig">Per-biome group availability levels.</param>
+    /// <param name="classification">The celestial body classification (selects subtype config).</param>
+    /// <param name="rng">RNG; its Seed drives deterministic per-resource fields.</param>
+    /// <param name="maxResourcesPerCell">Unused by the field path (kept for compatibility).</param>
     public static void GenerateResources(
         Dictionary<int, Continent> continents,
         PlanetaryResourceConfig planetaryResourceConfig,
@@ -57,22 +99,14 @@ public static class CellResourceGenerator
         var subtypeConfig = planetaryResourceConfig.GetConfigForSubtype(classification);
         if (subtypeConfig == null)
         {
-            GameLogger.Warning(
-                $"CellResourceGenerator: No resource config for {classification}"
-            );
+            GameLogger.Warning($"CellResourceGenerator: No resource config for {classification}");
             return;
         }
 
-        var resolvedResources = subtypeConfig.ResolvedResources;
         float baseResourceWeight = subtypeConfig.GetResourceWeight();
 
-        GameLogger.Info(
-            $"CellResourceGenerator: Body {classification}, resolvedResources: [{string.Join(", ", resolvedResources)}], baseWeight: {baseResourceWeight}"
-        );
-
-        // Step 2: Pre-filter eligible resources by resolved set membership
+        // Step 2: Eligible resources for this subtype
         var eligibleResources = GetEligibleResources(subtypeConfig);
-
         if (eligibleResources.Count == 0)
         {
             GameLogger.Warning(
@@ -81,9 +115,39 @@ public static class CellResourceGenerator
             return;
         }
 
-        GameLogger.Info($"CellResourceGenerator: {eligibleResources.Count} eligible resources");
+        GameLogger.Info(
+            $"CellResourceGenerator: Body {classification}, {eligibleResources.Count} eligible resources, baseWeight: {baseResourceWeight}"
+        );
 
-        // Step 3: Generate resources per cell
+        // Step 3: Build per-resource lookups (groups, fields, gate flags)
+        var resourceToGroups = BuildResourceToGroups(eligibleResources, planetaryResourceConfig.ResourceGroups);
+        int baseSeed = unchecked((int)rng.Seed);
+
+        var fields = new Dictionary<string, FastNoiseLite>(eligibleResources.Count);
+        var frozenOnly = new HashSet<string>(StringComparer.Ordinal);
+        var aquaticOnly = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var resource in eligibleResources)
+        {
+            string id = resource.IdName!;
+            fields[id] = NoiseHelpers.CreateSurfaceNoise(
+                unchecked(baseSeed ^ StableHash(id)),
+                PATCH_FREQUENCY,
+                octaves: 4
+            );
+
+            if (resource.Tags != null)
+            {
+                if (resource.Tags.Overlaps(FrozenResourceTags))
+                    frozenOnly.Add(id);
+                if (resource.Tags.Overlaps(AquaticResourceTags))
+                    aquaticOnly.Add(id);
+            }
+        }
+
+        var biomeDb = BiomeDatabase.Instance;
+
+        // Step 4: Generate per cell
         int totalCells = 0;
         int cellsWithResources = 0;
 
@@ -101,17 +165,19 @@ public static class CellResourceGenerator
                 int assigned = GenerateCellResources(
                     cell,
                     eligibleResources,
+                    resourceToGroups,
+                    fields,
+                    frozenOnly,
+                    aquaticOnly,
                     biomeResourceConfig,
-                    baseResourceWeight,
-                    rng,
-                    maxResourcesPerCell
+                    biomeDb,
+                    baseResourceWeight
                 );
 
                 if (assigned > 0)
                     cellsWithResources++;
             }
 
-            // Step 4: Aggregate to continent level for backward compatibility
             continent.AggregateResourcesFromCells();
         }
 
@@ -121,8 +187,141 @@ public static class CellResourceGenerator
     }
 
     /// <summary>
-    /// Generates resources for satellite bodies using group-based matching.
-    /// For bodies without cells/biomes, uses subtype config only.
+    /// Generates resources for a single cell by sampling each eligible resource's field.
+    /// No per-cell cap — every resource clearing its threshold is placed, so overlapping
+    /// patches naturally produce rich cells and gaps produce sparse cells.
+    /// </summary>
+    private static int GenerateCellResources(
+        VoronoiCell cell,
+        List<ResourceDefinition> eligibleResources,
+        Dictionary<string, List<string>> resourceToGroups,
+        Dictionary<string, FastNoiseLite> fields,
+        HashSet<string> frozenOnly,
+        HashSet<string> aquaticOnly,
+        BiomeResourceConfig biomeResourceConfig,
+        BiomeDatabase? biomeDb,
+        float baseResourceWeight
+    )
+    {
+        // Resolve biome tags once per cell for the physical gates.
+        bool biomeHot = false;
+        bool biomeArid = false;
+        var biomeDef = biomeDb?.GetById(cell.Biome);
+        if (biomeDef?.Tags != null)
+        {
+            foreach (var tag in biomeDef.Tags)
+            {
+                if (HotBiomeTags.Contains(tag))
+                    biomeHot = true;
+                if (AridBiomeTags.Contains(tag))
+                    biomeArid = true;
+            }
+        }
+
+        Vector3 dir = cell.Center.Normalized();
+        int assigned = 0;
+
+        foreach (var resource in eligibleResources)
+        {
+            string id = resource.IdName!;
+
+            // Physical hard gates — frozen resources cannot form in hot biomes,
+            // aquatic resources cannot form in arid biomes.
+            if (biomeHot && frozenOnly.Contains(id))
+                continue;
+            if (biomeArid && aquaticOnly.Contains(id))
+                continue;
+
+            // Most permissive availability across this resource's groups in this biome.
+            var level = ResolveLevel(id, resourceToGroups, biomeResourceConfig, cell.Biome);
+            if (level == null)
+                continue; // group(s) not listed for this biome → None
+
+            var (threshold, abundScale) = LevelTable[level.Value];
+
+            float s = NoiseHelpers.Remap01(
+                NoiseHelpers.SampleSphericalNoise(fields[id], dir, PATCH_SCALE)
+            );
+
+            if (s <= threshold)
+                continue;
+
+            float t = (s - threshold) / (1.0f - threshold);
+            float abundance = Mathf.Clamp(t * abundScale * baseResourceWeight, MIN_ABUNDANCE, 1.0f);
+            cell.Resources[id] = abundance;
+            assigned++;
+        }
+
+        return assigned;
+    }
+
+    /// <summary>
+    /// Picks the most permissive (lowest-threshold) availability level among all groups a
+    /// resource belongs to that the biome lists. Returns null if no group is listed.
+    /// </summary>
+    private static AvailabilityLevel? ResolveLevel(
+        string resourceId,
+        Dictionary<string, List<string>> resourceToGroups,
+        BiomeResourceConfig biomeResourceConfig,
+        string biomeId
+    )
+    {
+        if (!resourceToGroups.TryGetValue(resourceId, out var groups))
+            return null;
+
+        AvailabilityLevel? best = null;
+        float bestThreshold = float.MaxValue;
+
+        foreach (var group in groups)
+        {
+            var level = biomeResourceConfig.GetGroupAvailability(biomeId, group);
+            if (level == null)
+                continue;
+
+            float threshold = LevelTable[level.Value].threshold;
+            if (threshold < bestThreshold)
+            {
+                bestThreshold = threshold;
+                best = level;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// Maps each eligible resource ID to the groups (within the provided group definitions)
+    /// that contain it. A resource may belong to more than one group.
+    /// </summary>
+    private static Dictionary<string, List<string>> BuildResourceToGroups(
+        List<ResourceDefinition> eligibleResources,
+        Dictionary<string, List<string>> resourceGroups
+    )
+    {
+        var map = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var resource in eligibleResources)
+            map[resource.IdName!] = new List<string>();
+
+        if (resourceGroups != null)
+        {
+            foreach (var groupKvp in resourceGroups)
+            {
+                if (groupKvp.Value == null)
+                    continue;
+                foreach (var resourceId in groupKvp.Value)
+                {
+                    if (map.TryGetValue(resourceId, out var groups))
+                        groups.Add(groupKvp.Key);
+                }
+            }
+        }
+
+        return map;
+    }
+
+    /// <summary>
+    /// Generates resources for satellite bodies (no cells / biomes) using subtype config only.
+    /// Unchanged field-less path: a single weighted deposit set with no spatial field.
     /// </summary>
     public static Dictionary<string, ResourceDeposit> GenerateSatelliteResources(
         PlanetaryResourceConfig planetaryResourceConfig,
@@ -169,7 +368,6 @@ public static class CellResourceGenerator
             pool.Add((resource.IdName!, score));
         }
 
-        // Select resources
         int count = Math.Min(maxResources, pool.Count);
         var selected = SelectWeightedResources(pool, rng, count);
 
@@ -186,50 +384,6 @@ public static class CellResourceGenerator
         }
 
         return results;
-    }
-
-    /// <summary>
-    /// Generates resources for a single Voronoi cell based on eligible resources and biome modifiers.
-    /// </summary>
-    private static int GenerateCellResources(
-        VoronoiCell cell,
-        List<ResourceDefinition> eligibleResources,
-        BiomeResourceConfig biomeResourceConfig,
-        float baseResourceWeight,
-        RandomNumberGenerator rng,
-        int maxResources
-    )
-    {
-        var pool = new List<(string id, float score)>();
-
-        foreach (var resource in eligibleResources)
-        {
-            float score = ComputeResourceScore(
-                resource.IdName!,
-                cell.Biome,
-                biomeResourceConfig,
-                baseResourceWeight
-            );
-
-            if (score > 0.05f)
-            {
-                pool.Add((resource.IdName!, score));
-            }
-        }
-
-        if (pool.Count == 0)
-            return 0;
-
-        int count = Math.Min(maxResources, pool.Count);
-        var selected = SelectWeightedResources(pool, rng, count);
-
-        foreach (var (resourceId, score) in selected)
-        {
-            float abundance = Mathf.Clamp(score * rng.RandfRange(0.5f, 1.5f), 0.1f, 1.0f);
-            cell.Resources[resourceId] = abundance;
-        }
-
-        return selected.Count;
     }
 
     /// <summary>
@@ -254,22 +408,27 @@ public static class CellResourceGenerator
     }
 
     /// <summary>
-    /// Computes the resource score using biome-based weight modifiers.
-    /// Uses single resource ID lookup instead of tag intersection.
+    /// Deterministic FNV-1a 32-bit hash of a string (stable across runs/processes, unlike
+    /// <see cref="string.GetHashCode()"/>). Used to derive a per-resource noise seed.
     /// </summary>
-    private static float ComputeResourceScore(
-        string resourceId,
-        string biomeId,
-        BiomeResourceConfig biomeResourceConfig,
-        float baseResourceWeight
-    )
+    private static int StableHash(string s)
     {
-        float modifier = biomeResourceConfig.GetWeightModifier(biomeId, resourceId);
-        return baseResourceWeight * modifier;
+        unchecked
+        {
+            const uint offset = 2166136261;
+            const uint prime = 16777619;
+            uint hash = offset;
+            foreach (char c in s)
+            {
+                hash ^= c;
+                hash *= prime;
+            }
+            return (int)hash;
+        }
     }
 
     /// <summary>
-    /// Selects weighted random resources from a pool.
+    /// Selects weighted random resources from a pool (used by the satellite path).
     /// </summary>
     private static List<(string id, float score)> SelectWeightedResources(
         List<(string id, float score)> pool,

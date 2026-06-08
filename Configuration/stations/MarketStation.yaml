@@ -1,5 +1,6 @@
 stations:
   - name: mercums_station
+    description: The wormhole technology used by this station was first pioneered by Anthony Mercums. It revolutionized  intersystem trading, making the Mercum Corporation wealthy in the process.
     station_type: Market
     construction_time: 90
     behaviors:
@@ -9,15 +10,17 @@ stations:
         base_hold_time: "600"
         to_market_speed_modifier: "1.0"
         from_market_speed_modifier: "1.0"
+      - StorageHubBehavior
     required_resources:
       steel: 100
       aluminum: 100
       ceramics: 80
       low_voltage_wire: 32
     icon:
-      base_path: "res://Assets/Icons/Stations/market/small_market"
+      resource: "res://Materials/Icons/default_station.tres"
 
   - name: industrial_mercums_station
+    description: As the mercantile traffic through systems grew, the capacity of the Mercums Station became a bottleneck. The Industrial Mercums Station was the Mercums Corporations answer to the problem. It was tailored to moving the slow, bulk cargo carriers that had become dominant throughout Human Occupied Space.
     station_type: Market
     construction_time: 200
     behaviors:
@@ -35,4 +38,4 @@ stations:
       high_voltage_wire: 75
       motor: 40
     icon:
-      base_path: "res://Assets/Icons/Stations/market/large_market"
+      resource: "res://Materials/Icons/default_station.tres"

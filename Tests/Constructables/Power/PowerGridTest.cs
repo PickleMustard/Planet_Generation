@@ -139,6 +139,43 @@ public partial class PowerGridTest
     }
 
     [TestCase]
+    public void Grid_PoweredConsumerIdle_DrawsStandby()
+    {
+        var grid = new PowerGrid(0, body: null!);
+
+        // Producer covers demand so the consumer stays powered on but idle.
+        var producerBuilding = MakeBuildingWithProducer(output: 100f, manufacturing: true);
+        var consumerBuilding = MakeBuildingWithConsumer(
+            draw: 40f, standby: 8f, manufacturing: false);
+
+        grid.Contributors.Add(producerBuilding);
+        grid.Consumers.Add(consumerBuilding);
+        producerBuilding.PoweredOn = true;
+        consumerBuilding.PoweredOn = true;
+
+        grid.OnManufactureTick(1f);
+
+        // Idle but powered → standby load, not full base draw and not zero.
+        AssertThat(grid.LastDraw).IsEqual(8f);
+    }
+
+    [TestCase]
+    public void Grid_PoweredOffConsumer_DrawsZero()
+    {
+        var grid = new PowerGrid(0, body: null!);
+
+        var consumerBuilding = MakeBuildingWithConsumer(
+            draw: 40f, standby: 8f, manufacturing: false);
+
+        grid.Consumers.Add(consumerBuilding);
+        consumerBuilding.PoweredOn = false;
+
+        grid.OnManufactureTick(1f);
+
+        AssertThat(grid.LastDraw).IsEqual(0f);
+    }
+
+    [TestCase]
     public void Grid_AbsorbFrom_MovesMembersAndCells()
     {
         var keeper = new PowerGrid(0, body: null!);
@@ -181,19 +218,26 @@ public partial class PowerGridTest
         mfg?.SetState(global::Structures.Enums.ManufacturingState.Manufacturing);
     }
 
-    private static Building MakeBuildingWithConsumer(float draw)
+    private static Building MakeBuildingWithConsumer(float draw) =>
+        MakeBuildingWithConsumer(draw, standby: 0f, manufacturing: true);
+
+    /// <summary>
+    /// Builds a consumer with explicit base/standby draw and a chosen manufacturing state.
+    /// Draw is two-tier: full <paramref name="draw"/> while Manufacturing, otherwise
+    /// <paramref name="standby"/> when powered on.
+    /// </summary>
+    private static Building MakeBuildingWithConsumer(float draw, float standby, bool manufacturing)
     {
         var building = MakeBuilding();
 
-        // Power draw is gated on the consumer's owner being in ManufacturingState.Manufacturing
-        // (per spec: idle/asleep buildings draw 0). Add a ManufacturingBehavior parked in
-        // Manufacturing so SumDraw counts BaseDraw for these tests.
         var mfg = new ManufacturingBehavior();
         building.Behaviors.Add(mfg);
         mfg.OnAttach(building);
-        mfg.SetState(global::Structures.Enums.ManufacturingState.Manufacturing);
+        mfg.SetState(manufacturing
+            ? global::Structures.Enums.ManufacturingState.Manufacturing
+            : global::Structures.Enums.ManufacturingState.Idle);
 
-        var consumer = new PowerConsumerBehavior { BaseDraw = draw };
+        var consumer = new PowerConsumerBehavior { BaseDraw = draw, StandbyDraw = standby };
         building.Behaviors.Add(consumer);
         consumer.OnAttach(building);
         return building;

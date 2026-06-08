@@ -17,7 +17,8 @@ public static class LinkConfigLoader
     {
         var definitions = new List<LinkProfile>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             GameLogger.Error($"Link profile definition file not found: {filePath}");
             return definitions;
@@ -25,9 +26,6 @@ public static class LinkConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();

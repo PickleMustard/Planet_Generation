@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Structures.Logistics;
+using Registries;
 using Structures.Resources;
 using UtilityLibrary;
 using YamlDotNet.Serialization;
@@ -94,7 +95,8 @@ public static class ShipConfigLoader
     {
         var ships = new List<ShipDefinition>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? yamlContent = BaseConfigLoader.ReadAllText(filePath);
+        if (yamlContent == null)
         {
             GD.PrintErr($"ShipConfigLoader: File not found: {filePath}");
             return ships;
@@ -102,9 +104,6 @@ public static class ShipConfigLoader
 
         try
         {
-            using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string yamlContent = file.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
@@ -147,7 +146,8 @@ public static class ShipConfigLoader
 
         _templateCategories = new List<ShipTemplateCategory>();
 
-        if (!Godot.FileAccess.FileExists(ShipTemplatesPath))
+        string? yamlContent = BaseConfigLoader.ReadAllText(ShipTemplatesPath);
+        if (yamlContent == null)
         {
             GameLogger.Warning($"ShipConfigLoader: Templates file not found: {ShipTemplatesPath}");
             return _templateCategories;
@@ -155,9 +155,6 @@ public static class ShipConfigLoader
 
         try
         {
-            using var file = Godot.FileAccess.Open(ShipTemplatesPath, Godot.FileAccess.ModeFlags.Read);
-            string yamlContent = file.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
@@ -294,7 +291,7 @@ public static class ShipConfigLoader
         if (iconDict == null)
             return new IconDefinition();
 
-        string? basePath = BaseConfigLoader.ReadString(iconDict, "base_path", "");
+        string? basePath = BaseConfigLoader.ReadString(iconDict, "resource", "");
         if (string.IsNullOrEmpty(basePath))
         {
             return new IconDefinition();
@@ -374,35 +371,43 @@ public static class ShipConfigLoader
         if (visualDict == null)
             return visual;
 
-        string? modelPath = BaseConfigLoader.ReadString(visualDict, "model_path", "");
-        if (!string.IsNullOrEmpty(modelPath) && Godot.FileAccess.FileExists(modelPath))
+        string? modelPath = BaseConfigLoader.ReadString(visualDict, "model_resource", "");
+        if (!string.IsNullOrEmpty(modelPath))
         {
-            visual.ModelPath = modelPath;
+            visual.ModelResourcePath = modelPath;
             try
             {
-                visual.ModelPrototype = GD.Load<PackedScene>(modelPath);
+                var modelConfig = GD.Load<ModelConfig>(modelPath);
+                visual.ModelPrototype = modelConfig?.Model;
                 if (visual.ModelPrototype != null)
                 {
+                    // Wrapper supplies the defaults; explicit YAML keys below override them.
+                    visual.Scale = modelConfig!.Scale;
+                    visual.RotationOffset = modelConfig.RotationOffset;
                     GameLogger.Info($"ShipConfigLoader: Loaded model prototype '{modelPath}'");
                     ModelsLoadedCount++;
                 }
                 else
                 {
-                    GameLogger.Error($"ShipConfigLoader: Failed to load model at '{modelPath}'");
+                    GameLogger.Error($"ShipConfigLoader: Failed to load model wrapper at '{modelPath}'");
                     ModelsFailedCount++;
                 }
             }
             catch (System.Exception ex)
             {
                 GameLogger.Error($"ShipConfigLoader: Exception loading model '{modelPath}': {ex.Message}");
+                visual.ModelResourcePath = null;
                 ModelsFailedCount++;
             }
         }
 
         visual.ModelMaterial = BaseConfigLoader.ReadString(visualDict, "model_material", "");
         visual.AnimationPath = BaseConfigLoader.ReadString(visualDict, "animation_path", "");
-        visual.Scale = BaseConfigLoader.ReadFloat(visualDict, "scale", 1.0f);
-        visual.RotationOffset = BaseConfigLoader.ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
+        // Wrapper defaults already applied above; only override when YAML sets the key.
+        if (visualDict.ContainsKey("scale"))
+            visual.Scale = BaseConfigLoader.ReadFloat(visualDict, "scale", visual.Scale);
+        if (visualDict.ContainsKey("rotation_offset"))
+            visual.RotationOffset = BaseConfigLoader.ReadVector3(visualDict, "rotation_offset", visual.RotationOffset);
         visual.ShapeId = BaseConfigLoader.ReadString(visualDict, "shape_id", "hexagon").Trim();
         if (string.IsNullOrEmpty(visual.ShapeId)) visual.ShapeId = "hexagon";
         visual.ShapeSize = BaseConfigLoader.ReadFloat(visualDict, "shape_size", 64f);

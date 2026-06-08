@@ -36,7 +36,6 @@ public partial class VoronoiCellHSM : LimboHsm
         var body = Blackboard?.Top().GetVar("SelectedBody").As<Node3D>();
         CellSelectionManager.Instance?.SelectCell(cell, body);
 
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
         WorldInputController.Instance?.PushDisable();
         GameLogger.ExitFunction(nameof(_Enter));
     }
@@ -49,7 +48,6 @@ public partial class VoronoiCellHSM : LimboHsm
         Blackboard.Top()?.SetVar("SelectedCell", default(Variant));
         CellSelectionManager.Instance?.ClearSelection();
 
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
         WorldInputController.Instance?.PopDisable();
         GameLogger.ExitFunction(nameof(_Exit));
     }

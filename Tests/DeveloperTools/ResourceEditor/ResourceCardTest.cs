@@ -72,7 +72,7 @@ public class ResourceCardTest
 			MaxStackSize = 100f,
 			TransportWeight = 1.0f,
 			Tags = new HashSet<string> { "ore", "metallic" },
-			IconBasePath = null,
+			IconResourcePath = null,
 			IconScale = 1.0f,
 			IconTint = Colors.White
 		};

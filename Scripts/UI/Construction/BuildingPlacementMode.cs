@@ -30,6 +30,14 @@ public partial class BuildingPlacementMode : Node
     /// </summary>
     public bool UseMousePosition { get; set; }
 
+    /// <summary>
+    /// Explicit camera to raycast through, injected by the placement overlay. Set
+    /// when launching over the Orbital Body Window, whose orbit camera repositions
+    /// the player camera without marking it <c>Current</c> — so the one-shot
+    /// <see cref="_Ready"/> <c>GetCamera3D()</c> would otherwise return null.
+    /// </summary>
+    public Camera3D? OverrideCamera { get; set; }
+
     private BuildingDefinition _definition = null!;
     private Camera3D? _camera;
     private Node3D? _targetBodyNode;
@@ -49,16 +57,21 @@ public partial class BuildingPlacementMode : Node
     private HashSet<VoronoiCell>? _previewCoverage;
     private PowerGrid? _previewDominant;
     private IReadOnlyList<PowerGrid> _previewAbsorbed = System.Array.Empty<PowerGrid>();
+    private IReadOnlyList<PowerGrid> _allGrids = System.Array.Empty<PowerGrid>();
+    private readonly HashSet<PowerGrid> _touchedGrids = new();
     private bool _previewWanted;
+    private bool _previewResolved;
     private bool _previewWarningEmitted;
+    private bool _isPowerConsumer;
     private int _gridRadius;
+    private PlacementCursorLabel? _cursorLabel;
 
     /// <summary>
     /// <paramref name="targetBody"/> locks placement to one body (the inspected
     /// body when launched from the Orbital Body Window, or the aimed body from
     /// the HUD). When set, raycast hits on any other body are ignored so the
     /// reticle can't wander onto a background planet. Mirrors
-    /// <see cref="StationPlacementMode"/>'s body lock.
+    /// <see cref="StationOrbitPlacementMode"/>'s body lock.
     /// </summary>
     public void Initialize(BuildingDefinition definition, IOrbitalBody? targetBody = null)
     {
@@ -74,33 +87,56 @@ public partial class BuildingPlacementMode : Node
         _gridRadius = powerEntry != null
             ? BehaviorConfigHelper.ReadInt(powerEntry.Config, "grid_radius", -1)
             : -1;
-        _previewWanted = _gridRadius >= 0;
+        // Consumers have no coverage radius but still connect to a grid — show the
+        // existing-grid overlay for them too so the player sees what they'll join.
+        _isPowerConsumer = _definition.BehaviorEntries
+            .Any(e => e.BehaviorId == "PowerConsumerBehavior");
+        _previewWanted = _gridRadius >= 0 || _isPowerConsumer;
         _previewWarningEmitted = false;
         // Ghost model will be created on first valid hover to get proper body scaling
     }
 
     public override void _Ready()
     {
-        _camera = GetViewport().GetCamera3D();
+        _camera = OverrideCamera ?? GetViewport().GetCamera3D();
+
+        // Screen-space cursor label, on its own CanvasLayer so it draws above the HUD.
+        var layer = new CanvasLayer { Layer = 50 };
+        AddChild(layer);
+        _cursorLabel = new PlacementCursorLabel();
+        layer.AddChild(_cursorLabel);
     }
 
     public override void _PhysicsProcess(double delta)
     {
+        // Re-acquire lazily: the camera may have been unavailable on the launch
+        // frame (orbit camera not marked Current). This self-heals once a usable
+        // camera exists.
+        _camera ??= OverrideCamera ?? GetViewport().GetCamera3D();
         if (!_isActive || _camera == null)
             return;
 
         CastRayFromScreenCenter();
 
+        // Keep the cursor label beside the aim point (mouse, or screen center in HUD mode).
+        if (_cursorLabel != null)
+        {
+            var anchor = UseMousePosition
+                ? GetViewport().GetMousePosition()
+                : GetViewport().GetVisibleRect().Size * 0.5f;
+            _cursorLabel.UpdateAnchor(anchor);
+        }
+
         // Recover from the first-frame race where PowerGridMgr was null (deferred-add on
         // CelestialBody._Ready) when the user first hovered a cell. Without this retry the
         // preview would stay blank until the user moved to a different cell.
         if (_previewWanted
-            && _previewCoverage == null
+            && !_previewResolved
             && _hoveredBody != null
             && _selectedCells.Count > 0)
         {
             UpdateGridPreview(_hoveredBody);
-            if (_previewCoverage != null)
+            if (_previewResolved)
                 UpdateHighlight(_hoveredBody);
         }
     }
@@ -216,6 +252,9 @@ public partial class BuildingPlacementMode : Node
             {
                 CreateGhostModel();
             }
+
+            // Refresh the cursor label content for the newly hovered cell.
+            _cursorLabel?.SetRows(PlacementLabelResolver.Resolve(_definition, cell));
         }
 
         UpdateGhostPosition(_selectedCells, bodyNode);
@@ -381,12 +420,15 @@ public partial class BuildingPlacementMode : Node
         _previewCoverage = null;
         _previewDominant = null;
         _previewAbsorbed = System.Array.Empty<PowerGrid>();
+        _allGrids = System.Array.Empty<PowerGrid>();
+        _touchedGrids.Clear();
+        _previewResolved = false;
 
-        if (_gridRadius < 0)
+        if (!_previewWanted)
             return;
         if (body is not CelestialBody cb || cb.PowerGridMgr == null)
         {
-            if (_previewWanted && !_previewWarningEmitted)
+            if (!_previewWarningEmitted)
             {
                 _previewWarningEmitted = true;
                 GameLogger.Warning(
@@ -399,10 +441,36 @@ public partial class BuildingPlacementMode : Node
         if (_selectedCells.Count == 0)
             return;
 
-        var preview = cb.PowerGridMgr.PreviewPlacement(_selectedCells, _gridRadius);
-        _previewCoverage = preview.Coverage as HashSet<VoronoiCell> ?? new HashSet<VoronoiCell>(preview.Coverage);
-        _previewDominant = preview.Dominant;
-        _previewAbsorbed = preview.Absorbed;
+        var mgr = cb.PowerGridMgr;
+        _previewResolved = true;
+        // Snapshot every grid on the body so all of them render (each its own shade),
+        // not just the ones this placement connects to.
+        _allGrids = mgr.Grids;
+
+        if (_gridRadius >= 0)
+        {
+            // Producer/battery: real coverage range, may extend or merge grids.
+            var preview = mgr.PreviewPlacement(_selectedCells, _gridRadius);
+            _previewCoverage = preview.Coverage as HashSet<VoronoiCell>
+                ?? new HashSet<VoronoiCell>(preview.Coverage);
+            _previewDominant = preview.Dominant;
+            _previewAbsorbed = preview.Absorbed;
+            if (_previewDominant != null)
+                _touchedGrids.Add(_previewDominant);
+            foreach (var g in _previewAbsorbed)
+                _touchedGrids.Add(g);
+        }
+        else
+        {
+            // Consumer: no coverage range; it simply joins whatever grid(s) cover its
+            // footprint cells. Consumers never merge grids.
+            foreach (var c in _selectedCells)
+            {
+                var g = mgr.GetGridForCell(c);
+                if (g != null)
+                    _touchedGrids.Add(g);
+            }
+        }
     }
 
     private void UpdateHighlight(ISelectableBody body)
@@ -414,30 +482,37 @@ public partial class BuildingPlacementMode : Node
         if (buf.Length == 0)
             return;
 
+        // Pass 1: building coverage range (yellow). Lowest priority.
         if (_previewCoverage != null && _previewCoverage.Count > 0)
         {
             foreach (var cell in _previewCoverage)
             {
                 int idx = cell.Index;
-                if (idx < 0 || idx >= buf.Length)
-                    continue;
-                bool inDominant = _previewDominant != null && _previewDominant.CoveredCells.Contains(cell);
-                bool inAbsorbed = false;
-                if (!inDominant)
-                {
-                    foreach (var g in _previewAbsorbed)
-                    {
-                        if (g.CoveredCells.Contains(cell))
-                        {
-                            inAbsorbed = true;
-                            break;
-                        }
-                    }
-                }
-                buf[idx] = inDominant ? (byte)4 : inAbsorbed ? (byte)5 : (byte)3;
+                if (idx >= 0 && idx < buf.Length)
+                    buf[idx] = CODE_COVERAGE;
             }
         }
 
+        // Pass 2: every existing grid (each its own orange shade). Overrides yellow
+        // coverage where they overlap, so existing grids win. A touched grid also gets
+        // a line pattern: single diagonal if the placement joins exactly one grid, an
+        // X if it would merge two or more.
+        int touchedCount = _touchedGrids.Count;
+        int linePattern = touchedCount >= 2 ? PATTERN_X : PATTERN_SINGLE;
+        for (int slot = 0; slot < _allGrids.Count; slot++)
+        {
+            var grid = _allGrids[slot];
+            int pattern = _touchedGrids.Contains(grid) ? linePattern : PATTERN_NONE;
+            byte code = GridCode(slot, pattern);
+            foreach (var cell in grid.CoveredCells)
+            {
+                int idx = cell.Index;
+                if (idx >= 0 && idx < buf.Length)
+                    buf[idx] = code;
+            }
+        }
+
+        // Pass 3: building footprint validity (green/red). Highest priority.
         for (int i = 0; i < _selectedCells.Count; i++)
         {
             int idx = _selectedCells[i].Index;
@@ -448,6 +523,22 @@ public partial class BuildingPlacementMode : Node
 
         body.Mesh.SetPlacementHighlightData(buf, width, height);
     }
+
+    // Per-cell highlight codes shared with cell_selection_highlight.gdshader.
+    private const byte CODE_COVERAGE = 3;
+    private const int GRID_CODE_BASE = 16;
+    private const int GRID_PALETTE = 16;
+    private const int PATTERN_NONE = 0;
+    private const int PATTERN_SINGLE = 1;
+    private const int PATTERN_X = 2;
+
+    /// <summary>
+    /// Encodes an existing-grid cell as <c>GRID_CODE_BASE + (slot % GRID_PALETTE) * 3 +
+    /// pattern</c>. The slot selects the orange shade; pattern (0/1/2) selects the
+    /// diagonal-line overlay. Max value 16 + 15*3 + 2 = 63, well within R8.
+    /// </summary>
+    private static byte GridCode(int slot, int pattern) =>
+        (byte)(GRID_CODE_BASE + (slot % GRID_PALETTE) * 3 + pattern);
 
     private void UpdateGhostPosition(List<VoronoiCell> cells, Node3D bodyNode)
     {
@@ -490,7 +581,6 @@ public partial class BuildingPlacementMode : Node
 
     private void OnPlacementClick()
     {
-        GD.Print("OnPlacementClick");
         if (_hoveredCell == null || _hoveredBodyNode == null)
             return;
 
@@ -512,7 +602,6 @@ public partial class BuildingPlacementMode : Node
             for (int i = 1; i < _selectedCells.Count; i++)
                 additionalCells.Add(_selectedCells[i]);
 
-            GD.Print("Construction started");
             ToastSystem.Instance?.Show("Construction started");
             EmitSignal(
                 SignalName.PlacementConfirmed,
@@ -524,7 +613,6 @@ public partial class BuildingPlacementMode : Node
         else
         {
             ToastSystem.Instance?.Show("Construction blocked: placement requirements not met");
-            GD.Print("Construction blocked: placement requirements not met");
         }
     }
 
@@ -555,9 +643,14 @@ public partial class BuildingPlacementMode : Node
         _previewCoverage = null;
         _previewDominant = null;
         _previewAbsorbed = System.Array.Empty<PowerGrid>();
+        _allGrids = System.Array.Empty<PowerGrid>();
+        _touchedGrids.Clear();
+        _previewResolved = false;
 
         if (_ghostContainer != null)
             _ghostContainer.Visible = false;
+
+        _cursorLabel?.HideLabel();
     }
 
     private void CreateGhostModel()

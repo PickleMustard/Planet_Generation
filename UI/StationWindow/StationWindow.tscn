@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://tejc44gqclpv"]
 
 [ext_resource type="Script" uid="uid://vpk3thqhttuu" path="res://Scripts/UI/StationWindow/StationWindow.cs" id="1_window"]
-[ext_resource type="Script" uid="uid://coiqxxk8uan2f" path="res://Scripts/UI/StationWindow/StationOrbitCamera.cs" id="2_orbitcam"]
 [ext_resource type="PackedScene" uid="uid://b33x5giscukws" path="res://UI/StationWindow/StationCartouchePanel.tscn" id="3_cartouche"]
 [ext_resource type="Script" uid="uid://nxjrnvar72a2" path="res://Scripts/UI/StationWindow/StationTabbedPanel.cs" id="4_tabbed"]
 [ext_resource type="PackedScene" uid="uid://u2h5jpagw5gp" path="res://UI/Components/FilterableSidebar.tscn" id="5_fwb1k"]
@@ -9,7 +8,7 @@
 [ext_resource type="FontFile" uid="uid://ol3s1oinw7n3" path="res://UI/Theme/wireframe_paper/fonts/SpecialElite-Regular.ttf" id="7_elite"]
 [ext_resource type="PackedScene" uid="uid://bqg7n2x8klm3p" path="res://UI/StationWindow/StationGenericPanel.tscn" id="7_fwb1k"]
 
-[node name="StationWindow" type="Control" unique_id=1675658805 node_paths=PackedStringArray("_closeButton", "_backButton", "_cartouchePanel", "_tabbedPanel", "_orbitCamera", "_sidebar")]
+[node name="StationWindow" type="Control" unique_id=1675658805 node_paths=PackedStringArray("_closeButton", "_backButton", "_cartouchePanel", "_tabbedPanel", "_sidebar")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -23,11 +22,7 @@ _closeButton = NodePath("CloseButton")
 _backButton = NodePath("BackButton")
 _cartouchePanel = NodePath("StationCartouchePanel")
 _tabbedPanel = NodePath("StationTabbedPanel")
-_orbitCamera = NodePath("StationOrbitCamera")
 _sidebar = NodePath("StationSidebar")
-
-[node name="StationOrbitCamera" type="Node" parent="." unique_id=1329383069]
-script = ExtResource("2_orbitcam")
 
 [node name="StationCartouchePanel" parent="." unique_id=1527257939 instance=ExtResource("3_cartouche")]
 layout_mode = 1

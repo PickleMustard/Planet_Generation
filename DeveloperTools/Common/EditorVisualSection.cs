@@ -149,7 +149,7 @@ public partial class EditorVisualSection : VBoxContainer
 
     private void RefreshControls()
     {
-        string mp = _visual.ModelPath ?? "";
+        string mp = _visual.ModelResourcePath ?? "";
         _modelPathButton.Text = string.IsNullOrEmpty(mp) ? "(none)" : mp;
         _modelPathButton.TooltipText = mp;
         _materialEdit.Text = _visual.ModelMaterial ?? "";
@@ -278,7 +278,7 @@ public partial class EditorVisualSection : VBoxContainer
         AddChild(popup);
         popup.ModelSelected += path =>
         {
-            _visual.ModelPath = string.IsNullOrWhiteSpace(path) ? null : path;
+            _visual.ModelResourcePath = string.IsNullOrWhiteSpace(path) ? null : path;
             _onChanged();
             _modelPathButton.Text = path;
             _modelPathButton.TooltipText = path;
@@ -291,7 +291,7 @@ public partial class EditorVisualSection : VBoxContainer
 
     private void OnModelPathCleared()
     {
-        _visual.ModelPath = null;
+        _visual.ModelResourcePath = null;
         _onChanged();
         _modelPathButton.Text = "(none)";
         _modelPathButton.TooltipText = "";
@@ -306,6 +306,6 @@ public partial class EditorVisualSection : VBoxContainer
     }
 
     private void ApplyToPreview() =>
-        _preview.ApplyVisual(_visual.ModelPath, _visual.Scale, _visual.RotationOffset, _visual.AnimationPath);
+        _preview.ApplyVisual(_visual.ModelResourcePath, _visual.Scale, _visual.RotationOffset, _visual.AnimationPath);
 }
 #endif

@@ -273,13 +273,13 @@ public class ResourceEditorModelTest
 	}
 
 	[TestCase]
-	public void UpdateResourceField_IconBasePath_Updates()
+	public void UpdateResourceField_IconResourcePath_Updates()
 	{
 		var model = SetupModelWithEntry();
-		model.UpdateResourceField("ore", 0, "IconBasePath",
+		model.UpdateResourceField("ore", 0, "IconResourcePath",
 			"res://Assets/Icons/test");
 
-		AssertThat(model.Categories["ore"].Resources[0].IconBasePath)
+		AssertThat(model.Categories["ore"].Resources[0].IconResourcePath)
 			.IsEqual("res://Assets/Icons/test");
 	}
 
@@ -518,7 +518,7 @@ public class ResourceEditorModelTest
 		var model = new ResourceEditorModel("res://nonexistent");
 		model.AddCategory("ore");
 		var entry = NewEntry("bad_icon");
-		entry.IconBasePath = "user://bad/path";
+		entry.IconResourcePath = "user://bad/path";
 		model.AddResource("ore", entry);
 
 		ResetDirtyFlags(model);
@@ -537,7 +537,7 @@ public class ResourceEditorModelTest
 		var model = new ResourceEditorModel("res://nonexistent");
 		model.AddCategory("ore");
 		var entry = NewEntry("no_icon");
-		entry.IconBasePath = null;
+		entry.IconResourcePath = null;
 		model.AddResource("ore", entry);
 
 		ResetDirtyFlags(model);
@@ -606,7 +606,7 @@ public class ResourceEditorModelTest
 			MaxStackSize = 100f,
 			TransportWeight = 1.0f,
 			Tags = new HashSet<string>(),
-			IconBasePath = null,
+			IconResourcePath = null,
 			IconScale = 1.0f,
 			IconTint = Colors.White
 		};

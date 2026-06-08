@@ -20,4 +20,4 @@ buildings:
     visual:
       shape_id: small_collection_hub
     icon:
-      base_path: "res://Materials/Icons/default_building"
+      resource: "res://Materials/Icons/default_building.tres"

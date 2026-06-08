@@ -16,7 +16,7 @@ stations:
       ceramics: 20
       low_voltage_wire: 30
     icon:
-      base_path: "res://Assets/Icons/Stations/architect/small_orbital_architect"
+      resource: "res://Materials/Icons/default_station.tres"
 
   - name: Large_Orbital_Architect
     station_type: Orbital_Architect
@@ -34,7 +34,7 @@ stations:
       high_tensile_wire: 1
       motor: 1
     icon:
-      base_path: "res://Assets/Icons/Stations/architect/large_orbital_architect"
+      resource: "res://Materials/Icons/default_station.tres"
 
   - name: industrial_construction_ring
     station_type: Orbital_Architect
@@ -54,4 +54,4 @@ stations:
       hydrazine: 100
       motor: 100
     icon:
-      base_path: "res://Assets/Icons/Stations/architect/industrial_construction_ring"
+      resource: "res://Materials/Icons/default_station.tres"

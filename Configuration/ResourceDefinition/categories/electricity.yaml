@@ -6,7 +6,7 @@ resources:
     max_stack_size: 100
     tags: [electronic, industrial]
     icon:
-      base_path: "res://Materials/Icons/wire"
+      resource: "res://Materials/Icons/wire.tres"
   - id_name: high_voltage_wire
     resource_tier: 2
     base_price: 3000
@@ -14,7 +14,7 @@ resources:
     max_stack_size: 100
     tags: [electronic, industrial]
     icon:
-      base_path: "res://Materials/Icons/wire"
+      resource: "res://Materials/Icons/wire.tres"
   - id_name: superconductive_wire
     resource_tier: 3
     base_price: 4000
@@ -22,4 +22,4 @@ resources:
     max_stack_size: 100
     tags: [electronic, industrial]
     icon:
-      base_path: "res://Materials/Icons/wire"
+      resource: "res://Materials/Icons/wire.tres"

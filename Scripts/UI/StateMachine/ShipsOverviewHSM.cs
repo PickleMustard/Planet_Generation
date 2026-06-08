@@ -31,7 +31,6 @@ public partial class ShipsOverviewHSM : LimboHsm
     {
         base._Enter();
 
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
         WorldInputController.Instance?.PushDisable();
     }
 
@@ -39,7 +38,6 @@ public partial class ShipsOverviewHSM : LimboHsm
     {
         base._Exit();
 
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
         WorldInputController.Instance?.PopDisable();
     }
 }

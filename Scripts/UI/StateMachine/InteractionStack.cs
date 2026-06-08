@@ -68,6 +68,25 @@ public static class InteractionStack
     }
 
     /// <summary>
+    /// Resolve a "back one level" request: pop the top entry (restoring its
+    /// snapshot) and return the event to dispatch. If the stack is empty or the
+    /// popped entry returns to the HUD, clears the stack and returns
+    /// <c>"window_closed"</c>. This is the single source of truth for the back
+    /// rule, shared by <see cref="InGamePanelState"/> and the HSM-level handlers.
+    /// </summary>
+    /// <returns>The dispatch event for the previous panel, or "window_closed".</returns>
+    public static string ResolveBack(Blackboard bb)
+    {
+        var returnEvent = Pop(bb);
+        if (returnEvent == null || returnEvent == "window_closed")
+        {
+            Clear(bb);
+            return "window_closed";
+        }
+        return returnEvent;
+    }
+
+    /// <summary>
     /// Peek at the top entry without removing it.
     /// </summary>
     public static string? Peek(Blackboard bb)

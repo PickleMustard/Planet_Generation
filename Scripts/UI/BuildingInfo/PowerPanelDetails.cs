@@ -190,10 +190,9 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         if (_renderIcon == null || _building?.Definition == null) return;
         var iconDef = _building.Definition.Icon;
         Texture2D? tex = iconDef?.Texture;
-        if (tex == null && !string.IsNullOrEmpty(iconDef?.BasePath))
+        if (tex == null && !string.IsNullOrEmpty(iconDef?.ResourcePath))
         {
-            try { tex = ResourceLoader.Load<Texture2D>(iconDef.BasePath + ".png"); }
-            catch { tex = null; }
+            tex = UtilityLibrary.DataLoading.IconDataLoader.LoadIconTexture(iconDef.ResourcePath, "power-panel");
         }
         _renderIcon.Texture = tex;
     }

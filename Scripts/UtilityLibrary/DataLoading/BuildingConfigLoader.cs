@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Godot;
+using Registries;
 using Structures.Enums;
 using Structures.Logistics;
 using Structures.Resources;
@@ -32,12 +33,6 @@ public static class BuildingConfigLoader
     {
         var definitions = new List<BuildingDefinition>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
-        {
-            GD.PrintErr($"Building definition file not found: {filePath}");
-            return definitions;
-        }
-
         var validation = YamlValidator.ValidateBuildingDefinition(filePath);
         if (!validation.IsValid)
         {
@@ -49,11 +44,15 @@ public static class BuildingConfigLoader
             return definitions;
         }
 
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
+        {
+            GD.PrintErr($"Building definition file not found: {filePath}");
+            return definitions;
+        }
+
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
@@ -130,7 +129,7 @@ public static class BuildingConfigLoader
         if (iconDict == null)
             return new IconDefinition();
 
-        string? basePath = ReadString(iconDict, "base_path", "");
+        string? basePath = ReadString(iconDict, "resource", "");
         if (string.IsNullOrEmpty(basePath))
         {
             return new IconDefinition();
@@ -590,25 +589,29 @@ public static class BuildingConfigLoader
             return visual;
 
         string? modelPath = ValidateFilePath(
-            ReadString(visualDict, "model_path", ""),
-            "visual.model_path"
+            ReadString(visualDict, "model_resource", ""),
+            "visual.model_resource"
         );
-        visual.ModelPath = modelPath;
+        visual.ModelResourcePath = modelPath;
 
-        // Eagerly load the PackedScene prototype
+        // Eagerly load the PackedScene prototype from the ModelConfig wrapper.
         if (!string.IsNullOrEmpty(modelPath))
         {
             try
             {
-                visual.ModelPrototype = GD.Load<PackedScene>(modelPath);
+                var modelConfig = GD.Load<ModelConfig>(modelPath);
+                visual.ModelPrototype = modelConfig?.Model;
                 if (visual.ModelPrototype != null)
                 {
+                    // Wrapper supplies the defaults; explicit YAML keys below override them.
+                    visual.Scale = modelConfig!.Scale;
+                    visual.RotationOffset = modelConfig.RotationOffset;
                     GameLogger.Info($"BuildingConfigLoader: Loaded model prototype '{modelPath}'");
                     ModelsLoadedCount++;
                 }
                 else
                 {
-                    GameLogger.Error($"BuildingConfigLoader: Failed to load model at '{modelPath}'");
+                    GameLogger.Error($"BuildingConfigLoader: Failed to load model wrapper at '{modelPath}'");
                     ModelsFailedCount++;
                 }
             }
@@ -616,6 +619,7 @@ public static class BuildingConfigLoader
             {
                 GameLogger.Error($"BuildingConfigLoader: Exception loading model '{modelPath}': {ex.Message}");
                 visual.ModelPrototype = null;
+                visual.ModelResourcePath = null;
                 ModelsFailedCount++;
             }
         }
@@ -630,8 +634,11 @@ public static class BuildingConfigLoader
         );
         string animName = ReadString(visualDict, "animation_name", "");
         visual.AnimationName = string.IsNullOrEmpty(animName) ? null : animName;
-        visual.Scale = ReadFloat(visualDict, "scale", 1.0f);
-        visual.RotationOffset = ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
+        // Wrapper defaults already applied above; only override when YAML sets the key.
+        if (visualDict.ContainsKey("scale"))
+            visual.Scale = ReadFloat(visualDict, "scale", visual.Scale);
+        if (visualDict.ContainsKey("rotation_offset"))
+            visual.RotationOffset = ReadVector3(visualDict, "rotation_offset", visual.RotationOffset);
         visual.ShapeId = ReadString(visualDict, "shape_id", "hexagon").Trim();
         if (string.IsNullOrEmpty(visual.ShapeId))
             visual.ShapeId = "hexagon";
@@ -676,11 +683,11 @@ public static class BuildingConfigLoader
         if (string.IsNullOrEmpty(path))
             return null;
 
-        if (!Godot.FileAccess.FileExists(path))
-        {
-            GD.PrintErr($"File not found for '{fieldName}': {path} — using default");
-            return null;
-        }
+        // NOTE: Do NOT use FileAccess.FileExists() here. Exported builds remap
+        // resource paths (e.g. .tres → .tres.remap) and FileAccess.FileExists
+        // returns false for the original path, even though GD.Load can still
+        // resolve it. Just return the path and let callers handle load failures
+        // via try-catch or null checks.
 
         return path;
     }

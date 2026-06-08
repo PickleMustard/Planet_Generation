@@ -309,8 +309,8 @@ public class StationEditorModel
                         errors.Add($"Station '{entry.Name}' references unknown behavior '{beh.BehaviorId}'");
                 }
 
-                if (!string.IsNullOrEmpty(entry.Icon.BasePath) && !entry.Icon.BasePath!.StartsWith("res://"))
-                    errors.Add($"Warning: Station '{entry.Name}' icon.base_path '{entry.Icon.BasePath}' not starting with res://");
+                if (!string.IsNullOrEmpty(entry.Icon.ResourcePath) && !entry.Icon.ResourcePath!.StartsWith("res://"))
+                    errors.Add($"Warning: Station '{entry.Name}' icon.resource '{entry.Icon.ResourcePath}' not starting with res://");
             }
         }
 

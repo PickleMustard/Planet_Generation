@@ -26,6 +26,11 @@ environment = ExtResource("1_8cch0")
 camera_attributes = SubResource("CameraAttributesPractical_dl6d0")
 compositor = SubResource("Compositor_al28a")
 
+[node name="SunLight" type="DirectionalLight3D" parent="." unique_id=1107438948]
+transform = Transform3D(0.86601907, -0.25000688, 0.43302146, 0, 0.8660238, 0.50000274, -0.500011, -0.4330119, 0.7499931, 0, 0, 0)
+light_energy = 1.0
+shadow_enabled = false
+
 [node name="PlanetSystemGeneratorUI" type="Control" parent="." unique_id=1570725724 instance=ExtResource("3_qqilr")]
 layout_mode = 3
 anchor_left = 0.04

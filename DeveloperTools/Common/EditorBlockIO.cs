@@ -37,15 +37,15 @@ public static class EditorBlockIO
         return list;
     }
 
-    /// <summary>Reads the <c>icon:</c> block (raw base_path, scale, tint).</summary>
+    /// <summary>Reads the <c>icon:</c> block (resource path, scale, tint).</summary>
     public static EditorIcon ParseIcon(Dictionary<object, object> dict)
     {
         var icon = new EditorIcon();
         if (!dict.TryGetValue("icon", out var raw) || raw is not Dictionary<object, object> iconDict)
             return icon;
 
-        string basePath = BaseConfigLoader.ReadString(iconDict, "base_path", "");
-        icon.BasePath = string.IsNullOrEmpty(basePath) ? null : basePath;
+        string basePath = BaseConfigLoader.ReadString(iconDict, "resource", "");
+        icon.ResourcePath = string.IsNullOrEmpty(basePath) ? null : basePath;
         icon.Scale = BaseConfigLoader.ReadFloat(iconDict, "scale", 1.0f);
         icon.Tint = ReadColor(iconDict, "tint", Colors.White);
         return icon;
@@ -58,8 +58,8 @@ public static class EditorBlockIO
         if (!dict.TryGetValue("visual", out var raw) || raw is not Dictionary<object, object> visualDict)
             return v;
 
-        string modelPath = BaseConfigLoader.ReadString(visualDict, "model_path", "");
-        v.ModelPath = string.IsNullOrEmpty(modelPath) ? null : modelPath;
+        string modelPath = BaseConfigLoader.ReadString(visualDict, "model_resource", "");
+        v.ModelResourcePath = string.IsNullOrEmpty(modelPath) ? null : modelPath;
         string material = BaseConfigLoader.ReadString(visualDict, "model_material", "");
         v.ModelMaterial = string.IsNullOrEmpty(material) ? null : material;
         string anim = BaseConfigLoader.ReadString(visualDict, "animation_path", "");
@@ -108,7 +108,7 @@ public static class EditorBlockIO
     /// <summary>Writes the <c>visual:</c> block, omitting defaults. Skips it entirely if empty.</summary>
     public static void WriteVisual(StringBuilder sb, EditorVisual v, int keyLevel)
     {
-        bool any = !string.IsNullOrEmpty(v.ModelPath)
+        bool any = !string.IsNullOrEmpty(v.ModelResourcePath)
                 || !string.IsNullOrEmpty(v.ModelMaterial)
                 || !string.IsNullOrEmpty(v.AnimationPath)
                 || !Mathf.IsEqualApprox(v.Scale, 1f)
@@ -119,8 +119,8 @@ public static class EditorBlockIO
 
         int f = keyLevel + 1;
         YamlIndent.AppendLine(sb, keyLevel, "visual:");
-        if (!string.IsNullOrEmpty(v.ModelPath))
-            YamlIndent.AppendLine(sb, f, $"model_path: \"{v.ModelPath}\"");
+        if (!string.IsNullOrEmpty(v.ModelResourcePath))
+            YamlIndent.AppendLine(sb, f, $"model_resource: \"{v.ModelResourcePath}\"");
         if (!string.IsNullOrEmpty(v.ModelMaterial))
             YamlIndent.AppendLine(sb, f, $"model_material: \"{v.ModelMaterial}\"");
         if (!string.IsNullOrEmpty(v.AnimationPath))
@@ -135,14 +135,14 @@ public static class EditorBlockIO
             YamlIndent.AppendLine(sb, f, $"shape_size: {EditorYamlScalar.FormatFloat(v.ShapeSize)}");
     }
 
-    /// <summary>Writes the <c>icon:</c> block. Skipped when base_path is empty.</summary>
+    /// <summary>Writes the <c>icon:</c> block. Skipped when resource is empty.</summary>
     public static void WriteIcon(StringBuilder sb, EditorIcon icon, int keyLevel)
     {
-        if (string.IsNullOrEmpty(icon.BasePath)) return;
+        if (string.IsNullOrEmpty(icon.ResourcePath)) return;
 
         int f = keyLevel + 1;
         YamlIndent.AppendLine(sb, keyLevel, "icon:");
-        YamlIndent.AppendLine(sb, f, $"base_path: \"{icon.BasePath}\"");
+        YamlIndent.AppendLine(sb, f, $"resource: \"{icon.ResourcePath}\"");
         if (!Mathf.IsEqualApprox(icon.Scale, 1f))
             YamlIndent.AppendLine(sb, f, $"scale: {EditorYamlScalar.FormatFloat(icon.Scale)}");
         if (icon.Tint != Colors.White)

@@ -388,7 +388,7 @@ public partial class RecipeEditorModule : BaseDebugModule
             Inputs = new List<RecipeEditorModel.InputSlot>(),
             Outputs = new List<RecipeEditorModel.OutputSlot>(),
             Tags = new HashSet<string>(),
-            IconBasePath = null,
+            IconResourcePath = null,
             IconScale = 1f,
             IconTint = Colors.White,
             SourceFilePath = _model.DefaultSourceFilePath(_selectedCategory)

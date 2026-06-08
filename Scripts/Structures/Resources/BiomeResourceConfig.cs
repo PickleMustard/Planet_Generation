@@ -5,6 +5,8 @@ using Structures.Enums;
 using UtilityLibrary;
 using YamlDotNet.Serialization;
 
+#nullable enable
+
 namespace Structures.Resources;
 
 /// <summary>
@@ -107,9 +109,13 @@ public class BiomeResourceConfig
     public BiomeResourceEntry? GetBiomeConfig(Biome.BiomeType biomeType) =>
         GetBiomeConfig(BiomeIdMapper.BiomeTypeToId(biomeType));
 
-    public float GetWeightModifier(string biomeId, string resourceId) =>
-        GetBiomeConfig(biomeId)?.GetWeightModifier(resourceId) ?? 1.0f;
+    /// <summary>
+    /// Gets the availability level of a resource group within a biome, or null when the
+    /// group is not listed for that biome (i.e. it does not generate there).
+    /// </summary>
+    public AvailabilityLevel? GetGroupAvailability(string biomeId, string groupName) =>
+        GetBiomeConfig(biomeId)?.GetGroupAvailability(groupName);
 
-    public float GetWeightModifier(Biome.BiomeType biomeType, string resourceId) =>
-        GetWeightModifier(BiomeIdMapper.BiomeTypeToId(biomeType), resourceId);
+    public AvailabilityLevel? GetGroupAvailability(Biome.BiomeType biomeType, string groupName) =>
+        GetGroupAvailability(BiomeIdMapper.BiomeTypeToId(biomeType), groupName);
 }

@@ -66,22 +66,30 @@ public partial class ConstructionMenuController : PanelContainer
 
     // ───────── Open / Close ─────────
 
+    private bool _cursorPushed;
+
     public void Open()
     {
+        if (Visible)
+            return;
         Visible = true;
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
+        WorldInputController.Instance?.PushCursorMode(Input.MouseModeEnum.Visible);
+        _cursorPushed = true;
         ResetToDefault();
     }
 
     public void Close()
     {
+        if (!Visible)
+            return;
         Visible = false;
-        // Leave the cursor visible if another window is still managing it;
-        // otherwise hand control back to the captured HUD camera.
-        bool windowOpen = OrbitalBodyWindow.Instance?.IsOpen == true;
-        Input.SetMouseMode(windowOpen
-            ? Input.MouseModeEnum.Visible
-            : Input.MouseModeEnum.Captured);
+        // Pop our cursor request; the stack restores whatever was effective before
+        // (e.g. an orbital-body window still open underneath), no peeking required.
+        if (_cursorPushed)
+        {
+            WorldInputController.Instance?.PopCursorMode();
+            _cursorPushed = false;
+        }
     }
 
     public void Toggle()

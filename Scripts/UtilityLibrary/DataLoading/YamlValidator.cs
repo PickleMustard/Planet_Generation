@@ -13,7 +13,8 @@ public static class YamlValidator
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -21,8 +22,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -49,7 +48,8 @@ public static class YamlValidator
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -57,8 +57,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -85,7 +83,8 @@ public static class YamlValidator
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -93,8 +92,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -125,7 +122,8 @@ public static class YamlValidator
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -133,8 +131,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -224,7 +220,8 @@ public static class YamlValidator
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -232,8 +229,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -1393,7 +1388,8 @@ public static class YamlValidator
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -1401,8 +1397,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -1570,16 +1564,9 @@ public static class YamlValidator
         }
 
         var systemTemplatePath = "res://Configuration/SystemTemplate/";
-        if (DirAccess.DirExistsAbsolute(systemTemplatePath))
+        foreach (var file in BaseConfigLoader.GetYamlFilesInDir(systemTemplatePath))
         {
-            var files = DirAccess.GetFilesAt(systemTemplatePath);
-            foreach (var file in files)
-            {
-                if (file.EndsWith(".yaml"))
-                {
-                    results.Add(ValidateSystemTemplate(systemTemplatePath + file));
-                }
-            }
+            results.Add(ValidateSystemTemplate(file));
         }
 
         results.Add(
@@ -1590,64 +1577,27 @@ public static class YamlValidator
 
         // Validate building definitions if directory exists
         var buildingsPath = "res://Configuration/Buildings/";
-        if (DirAccess.DirExistsAbsolute(buildingsPath))
+        foreach (var file in BaseConfigLoader.GetYamlFilesRecursive(buildingsPath))
         {
-            var buildingFiles = GetYamlFilesRecursive(buildingsPath);
-            foreach (var file in buildingFiles)
-            {
-                results.Add(ValidateBuildingDefinition(file));
-            }
+            results.Add(ValidateBuildingDefinition(file));
         }
 
         // Validate AU probability configurations
         var auProbabilityPath = "res://Configuration/AUProbability/";
-        if (DirAccess.DirExistsAbsolute(auProbabilityPath))
+        foreach (var file in BaseConfigLoader.GetYamlFilesInDir(auProbabilityPath))
         {
-            var auFiles = DirAccess.GetFilesAt(auProbabilityPath);
-            foreach (var file in auFiles)
-            {
-                if (file.EndsWith(".yaml"))
-                {
-                    results.Add(ValidateAUProbability(auProbabilityPath + file));
-                }
-            }
+            results.Add(ValidateAUProbability(file));
         }
 
         return results;
-    }
-
-    private static List<string> GetYamlFilesRecursive(string directory)
-    {
-        var files = new List<string>();
-
-        if (!DirAccess.DirExistsAbsolute(directory))
-            return files;
-
-        // Get files in current directory
-        var currentFiles = DirAccess.GetFilesAt(directory);
-        foreach (var file in currentFiles)
-        {
-            if (file.EndsWith(".yaml"))
-            {
-                files.Add(directory + file);
-            }
-        }
-
-        // Get subdirectories
-        var subdirs = DirAccess.GetDirectoriesAt(directory);
-        foreach (var subdir in subdirs)
-        {
-            files.AddRange(GetYamlFilesRecursive(directory + subdir + "/"));
-        }
-
-        return files;
     }
 
     public static ValidationResult ValidateBuildingShape2D(string filePath)
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -1655,8 +1605,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
 
             var parseResult = ValidateYamlSyntax(text);
             if (!parseResult.IsValid)
@@ -1800,7 +1748,8 @@ public static class YamlValidator
     {
         var result = new ValidationResult { FilePath = filePath };
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? rawText = BaseConfigLoader.ReadAllText(filePath);
+        if (rawText == null)
         {
             result.AddError("File does not exist");
             return result;
@@ -1808,8 +1757,6 @@ public static class YamlValidator
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string rawText = f.GetAsText();
 
             // Empty-key slot entries (e.g. `- : 5`) crash YamlDotNet's representation
             // model. Pre-substitute them so the rest of the file can still parse, and
@@ -2208,28 +2155,26 @@ public static class YamlValidator
             return;
         }
 
-        // Check for base_path
-        if (!icon.Children.ContainsKey("base_path"))
+        // Check for the icon wrapper resource path
+        if (!icon.Children.ContainsKey("resource"))
         {
-            result.AddWarning($"{context}: 'icon' section missing 'base_path' - will use fallback icons");
+            result.AddWarning($"{context}: 'icon' section missing 'resource' - will use fallback icons");
             return;
         }
 
-        var basePathNode = icon.Children["base_path"];
-        if (basePathNode is not YamlScalarNode basePathScalar || string.IsNullOrEmpty(basePathScalar.Value))
+        var resourceNode = icon.Children["resource"];
+        if (resourceNode is not YamlScalarNode resourceScalar || string.IsNullOrEmpty(resourceScalar.Value))
         {
-            result.AddWarning($"{context}: 'icon.base_path' is empty - will use fallback icons");
+            result.AddWarning($"{context}: 'icon.resource' is empty - will use fallback icons");
             return;
         }
 
-        string basePath = basePathScalar.Value;
+        string resourcePath = resourceScalar.Value;
 
-        // Single texture per icon — Godot mipmaps handle runtime scaling.
-        string svgPath = $"{basePath}.svg";
-        string pngPath = $"{basePath}.png";
-        if (!Godot.FileAccess.FileExists(svgPath) && !Godot.FileAccess.FileExists(pngPath))
+        // Configuration points at an IconConfig .tres wrapper (export-safe).
+        if (!BaseConfigLoader.ResExists(resourcePath))
         {
-            result.AddWarning($"{context}: Icon not found: {svgPath} (or .png)");
+            result.AddWarning($"{context}: Icon wrapper not found: {resourcePath}");
         }
 
         // Validate optional scale field

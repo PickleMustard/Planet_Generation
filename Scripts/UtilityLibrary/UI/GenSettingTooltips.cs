@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using UtilityLibrary.DataLoading;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using SysDict = System.Collections.Generic.Dictionary<string, object>;
@@ -54,7 +55,8 @@ public static class GenSettingTooltips
     {
         var result = new Dictionary<string, string>(System.StringComparer.Ordinal);
 
-        if (!Godot.FileAccess.FileExists(path))
+        string? text = BaseConfigLoader.ReadAllText(path);
+        if (text == null)
         {
             GameLogger.Warning($"GenSettingTooltips: file not found {path} — tooltips disabled");
             return result;
@@ -62,9 +64,6 @@ public static class GenSettingTooltips
 
         try
         {
-            using var f = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();

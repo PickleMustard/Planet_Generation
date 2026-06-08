@@ -141,17 +141,10 @@ public partial class BuildingInfoHeader : HBoxContainer
             return definition.Icon.Texture;
         }
 
-        if (!string.IsNullOrEmpty(definition?.Icon?.BasePath))
+        if (!string.IsNullOrEmpty(definition?.Icon?.ResourcePath))
         {
-            try
-            {
-                string iconPath = definition.Icon.BasePath + ".png";
-                return ResourceLoader.Load<Texture2D>(iconPath);
-            }
-            catch
-            {
-                GameLogger.Debug($"BuildingInfoHeader: Failed to load icon for building '{definition.IdName}'");
-            }
+            return UtilityLibrary.DataLoading.IconDataLoader.LoadIconTexture(
+                definition.Icon.ResourcePath, $"building:{definition.IdName}");
         }
 
         return null;

@@ -18,6 +18,11 @@ environment = ExtResource("1_env")
 camera_attributes = SubResource("CameraAttributesPractical_game")
 compositor = SubResource("Compositor_game")
 
+[node name="SunLight" type="DirectionalLight3D" parent="." unique_id=1825904804]
+transform = Transform3D(0.86601907, -0.25000688, 0.43302146, 0, 0.8660238, 0.50000274, -0.500011, -0.4330119, 0.7499931, 0, 0, 0)
+light_energy = 1.0
+shadow_enabled = false
+
 [node name="Crosshair" type="Control" parent="." unique_id=1934431878]
 layout_mode = 3
 anchors_preset = 8

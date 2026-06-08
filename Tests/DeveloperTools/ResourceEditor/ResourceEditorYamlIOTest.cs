@@ -71,7 +71,7 @@ public class ResourceEditorYamlIOTest
 					MaxStackSize = 100f,
 					TransportWeight = 1.0f,
 					Tags = new HashSet<string> { "ore", "metallic" },
-					IconBasePath = "res://Assets/Icons/Resources/ore/iron_ore",
+					IconResourcePath = "res://Assets/Icons/Resources/ore/iron_ore",
 					IconScale = 1.0f,
 					IconTint = Colors.White
 				}
@@ -90,7 +90,7 @@ public class ResourceEditorYamlIOTest
 		AssertThat(content).Contains("state_of_matter: solid");
 		AssertThat(content).Contains("max_stack_size: 100");
 		AssertThat(content).Contains("tags: [ore, metallic]");
-		AssertThat(content).Contains("base_path: \"res://Assets/Icons/Resources/ore/iron_ore\"");
+		AssertThat(content).Contains("resource: \"res://Assets/Icons/Resources/ore/iron_ore\"");
 		// transport_weight should be omitted (default 1.0)
 		AssertThat(content.Contains("transport_weight")).IsFalse();
 	}
@@ -231,7 +231,7 @@ public class ResourceEditorYamlIOTest
 					MaxStackSize = 100f,
 					TransportWeight = 1.0f,
 					Tags = new HashSet<string>(),
-					IconBasePath = "res://Assets/Icons/Resources/raw_material/silicon"
+					IconResourcePath = "res://Assets/Icons/Resources/raw_material/silicon"
 				}
 			}
 		};
@@ -262,7 +262,7 @@ public class ResourceEditorYamlIOTest
 					MaxStackSize = 100f,
 					TransportWeight = 1.0f,
 					Tags = new HashSet<string> { "metal", "ferrous" },
-					IconBasePath = null
+					IconResourcePath = null
 				}
 			}
 		};
@@ -274,7 +274,7 @@ public class ResourceEditorYamlIOTest
 		string content = file.GetAsText();
 
 		AssertThat(content.Contains("icon")).IsFalse();
-		AssertThat(content.Contains("base_path")).IsFalse();
+		AssertThat(content.Contains("icon:")).IsFalse();
 	}
 
 	[TestCase]
@@ -294,7 +294,7 @@ public class ResourceEditorYamlIOTest
 					MaxStackSize = 200f,
 					TransportWeight = 0.5f,
 					Tags = new HashSet<string> { "aquatic" },
-					IconBasePath = "res://Assets/Icons/Resources/fuel/water"
+					IconResourcePath = "res://Assets/Icons/Resources/fuel/water"
 				}
 			}
 		};
@@ -326,7 +326,7 @@ public class ResourceEditorYamlIOTest
 					MaxStackSize = 50f,
 					TransportWeight = 3.0f,
 					Tags = new HashSet<string> { "rare" },
-					IconBasePath = "res://Assets/Icons/Resources/special/glow_ore",
+					IconResourcePath = "res://Assets/Icons/Resources/special/glow_ore",
 					IconScale = 1.5f,
 					IconTint = tint
 				}
@@ -339,7 +339,7 @@ public class ResourceEditorYamlIOTest
 		using var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Read);
 		string content = file.GetAsText();
 
-		AssertThat(content).Contains("base_path: \"res://Assets/Icons/Resources/special/glow_ore\"");
+		AssertThat(content).Contains("resource: \"res://Assets/Icons/Resources/special/glow_ore\"");
 		AssertThat(content).Contains("scale: 1.5");
 		AssertThat(content).Contains("tint:");
 	}
@@ -388,7 +388,7 @@ public class ResourceEditorYamlIOTest
 					MaxStackSize = 100f,
 					TransportWeight = 1.0f,
 					Tags = new HashSet<string> { "ore", "conductive" },
-					IconBasePath = "res://Assets/Icons/Resources/ore/copper_ore"
+					IconResourcePath = "res://Assets/Icons/Resources/ore/copper_ore"
 				}
 			}
 		};

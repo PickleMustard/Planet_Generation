@@ -6,16 +6,16 @@ metallic = 0.7
 roughness = 0.3
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_main"]
-top_radius = 0.3
-bottom_radius = 0.5
-height = 1.0
+top_radius = 0.9
+bottom_radius = 1.5
+height = 3.0
 radial_segments = 16
 rings = 4
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_antenna"]
-top_radius = 0.1
-bottom_radius = 0.2
-height = 0.5
+top_radius = 0.3
+bottom_radius = 0.6
+height = 1.5
 radial_segments = 12
 rings = 2
 
@@ -26,6 +26,6 @@ mesh = SubResource("CylinderMesh_main")
 material_override = SubResource("StationMat_default")
 
 [node name="Antenna" type="MeshInstance3D" parent="MainMesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 mesh = SubResource("CylinderMesh_antenna")
 material_override = SubResource("StationMat_default")

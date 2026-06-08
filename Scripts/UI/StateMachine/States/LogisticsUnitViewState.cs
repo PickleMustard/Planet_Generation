@@ -9,7 +9,7 @@ namespace UI.StateMachine.States;
 /// Main sub-state within LogisticsUnitHSM. Shows the LogisticsUnitWindow when entered,
 /// wires window close signal and dispatches return based on source tracking.
 /// </summary>
-public partial class LogisticsUnitViewState : LimboState
+public partial class LogisticsUnitViewState : InGamePanelState
 {
     private LogisticsUnitWindow.LogisticsUnitWindow? _window;
 
@@ -56,8 +56,8 @@ public partial class LogisticsUnitViewState : LimboState
             return;
         }
 
-        _window.WindowCloseRequested += OnWindowCloseRequested;
-        _window.BackRequested += OnBackRequested;
+        _window.WindowCloseRequested += HandleClose;
+        _window.BackRequested += HandleBack;
 
         _window.ShowWindow(unit, playerCamera);
 
@@ -71,32 +71,13 @@ public partial class LogisticsUnitViewState : LimboState
 
         if (_window != null)
         {
-            _window.WindowCloseRequested -= OnWindowCloseRequested;
-            _window.BackRequested -= OnBackRequested;
+            _window.WindowCloseRequested -= HandleClose;
+            _window.BackRequested -= HandleBack;
             _window.HideWindow();
         }
 
         _window = null;
 
         GameLogger.ExitFunction(nameof(_Exit));
-    }
-
-    private void OnWindowCloseRequested()
-    {
-        InteractionStack.Clear(Blackboard?.Top());
-        Dispatch("window_closed");
-    }
-
-    private void OnBackRequested()
-    {
-        var bb = Blackboard?.Top();
-        var returnEvent = InteractionStack.Pop(bb);
-        if (returnEvent == null || returnEvent == "window_closed")
-        {
-            InteractionStack.Clear(bb);
-            Dispatch("window_closed");
-            return;
-        }
-        Dispatch(returnEvent);
     }
 }

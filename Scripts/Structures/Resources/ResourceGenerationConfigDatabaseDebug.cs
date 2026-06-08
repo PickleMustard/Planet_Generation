@@ -84,12 +84,12 @@ namespace Structures.Resources
                 {
                     var biomeTypeNode = biomeNode.AddChild(biomeEntry.Key.ToString());
 
-                    if (biomeEntry.Value.ResourceWeightModifiers != null && biomeEntry.Value.ResourceWeightModifiers.Count > 0)
+                    if (biomeEntry.Value.GroupAvailability != null && biomeEntry.Value.GroupAvailability.Count > 0)
                     {
-                        var weightsNode = biomeTypeNode.AddChild("Resource Weight Modifiers");
-                        foreach (var modifier in biomeEntry.Value.ResourceWeightModifiers)
+                        var weightsNode = biomeTypeNode.AddChild("Group Availability");
+                        foreach (var entry in biomeEntry.Value.GroupAvailability)
                         {
-                            weightsNode.AddProperty(modifier.Key, modifier.Value);
+                            weightsNode.AddProperty(entry.Key, entry.Value.ToString());
                         }
                     }
                 }

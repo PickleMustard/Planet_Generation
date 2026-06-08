@@ -68,7 +68,6 @@ public partial class VoronoiCellInfoWindow : Control
         _currentBody = body;
 
         Show();
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
 
         PopulatePanels();
 

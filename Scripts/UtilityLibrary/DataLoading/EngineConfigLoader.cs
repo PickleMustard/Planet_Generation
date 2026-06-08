@@ -79,7 +79,8 @@ public static class EngineConfigLoader
     {
         var engines = new List<EngineConfigDefinition>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? yamlContent = BaseConfigLoader.ReadAllText(filePath);
+        if (yamlContent == null)
         {
             GD.PrintErr($"EngineConfigLoader: File not found: {filePath}");
             return engines;
@@ -87,9 +88,6 @@ public static class EngineConfigLoader
 
         try
         {
-            using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string yamlContent = file.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
@@ -132,7 +130,8 @@ public static class EngineConfigLoader
 
         _templateCategories = new List<EngineTypeCategory>();
 
-        if (!Godot.FileAccess.FileExists(EngineTypesPath))
+        string? yamlContent = BaseConfigLoader.ReadAllText(EngineTypesPath);
+        if (yamlContent == null)
         {
             GameLogger.Warning($"EngineConfigLoader: Types file not found: {EngineTypesPath}");
             return _templateCategories;
@@ -140,9 +139,6 @@ public static class EngineConfigLoader
 
         try
         {
-            using var file = Godot.FileAccess.Open(EngineTypesPath, Godot.FileAccess.ModeFlags.Read);
-            string yamlContent = file.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();

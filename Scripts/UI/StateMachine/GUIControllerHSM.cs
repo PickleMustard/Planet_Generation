@@ -142,6 +142,10 @@ public partial class GUIControllerHSM : LimboHsm
         AddTransition(_buildingHSM, _hud, "window_closed");
         AddTransition(_buildingHSM, _voronoiCell, "cell_selected");
         AddTransition(_buildingHSM, _orbitalBodyHSM, "orbital_body_selected");
+        // Back from building → orbital uses the canonical return event (matches
+        // the station/logistics "back_to_orbital_body" convention). Without this
+        // the Back button from a building opened off the orbital window is a no-op.
+        AddTransition(_buildingHSM, _orbitalBodyHSM, "back_to_orbital_body");
         AddTransition(_buildingHSM, _stationHSM, "station_opened");
 
         // Game start flow: headquarters placement routes through dedicated state
@@ -262,17 +266,7 @@ public partial class GUIControllerHSM : LimboHsm
     /// </summary>
     private void OnPlanetBoardBackRequested()
     {
-        var bb = Blackboard?.Top();
-        var returnEvent = InteractionStack.Pop(bb);
-        if (returnEvent == null || returnEvent == "window_closed")
-        {
-            InteractionStack.Clear(bb);
-            Dispatch("window_closed");
-        }
-        else
-        {
-            Dispatch(returnEvent);
-        }
+        Dispatch(InteractionStack.ResolveBack(Blackboard?.Top()));
     }
 
     /// <summary>

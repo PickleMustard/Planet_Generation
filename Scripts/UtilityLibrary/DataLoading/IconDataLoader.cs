@@ -1,13 +1,15 @@
 using System;
 using Godot;
+using Registries;
 using Structures.Resources;
 
 namespace UtilityLibrary.DataLoading;
 
 /// <summary>
-/// Static library for loading icon textures from the filesystem.
-/// Loads a single texture per icon and lets Godot's mipmap pipeline handle
-/// runtime resizing at the TextureRect level.
+/// Static library for loading icon textures from <c>IconConfig</c> <c>.tres</c> wrapper
+/// resources. Configuration points at the <c>.tres</c> (export-safe) instead of a raw
+/// <c>.png</c>/<c>.svg</c>; the texture is pulled from the wrapper. Godot's mipmap pipeline
+/// handles runtime resizing at the TextureRect level.
 /// </summary>
 public static class IconDataLoader
 {
@@ -28,64 +30,62 @@ public static class IconDataLoader
     }
 
     /// <summary>
-    /// Loads an icon definition from a base path.
+    /// Loads an icon definition from an <c>IconConfig</c> <c>.tres</c> wrapper path.
     /// </summary>
-    /// <param name="basePath">Base path without extension (e.g., "res://Assets/Icons/ore/iron_ore")</param>
+    /// <param name="resourcePath">Path to the wrapper resource (e.g., "res://Materials/Icons/ore.tres")</param>
     /// <param name="context">Context for logging (e.g., entity name)</param>
-    /// <returns>IconDefinition with loaded texture, or empty if basePath is null/empty</returns>
-    public static IconDefinition LoadIcon(string? basePath, string context)
+    /// <returns>IconDefinition populated from the wrapper, or empty if resourcePath is null/empty</returns>
+    public static IconDefinition LoadIcon(string? resourcePath, string context)
     {
-        var icon = new IconDefinition { BasePath = basePath };
+        var icon = new IconDefinition { ResourcePath = resourcePath };
 
-        if (string.IsNullOrEmpty(basePath))
+        if (string.IsNullOrEmpty(resourcePath))
         {
             return icon; // Return empty - data loader will apply fallback
         }
 
-        icon.Texture = LoadIconTexture(basePath, context);
+        var config = LoadIconConfig(resourcePath, context);
+        if (config != null)
+        {
+            icon.Texture = config.Texture;
+            icon.Scale = config.Scale;
+            icon.Tint = config.Tint;
+        }
         return icon;
     }
 
     /// <summary>
-    /// Loads a single icon texture. Tries SVG first, then PNG.
+    /// Loads the texture out of an <c>IconConfig</c> <c>.tres</c> wrapper.
     /// </summary>
-    /// <param name="basePath">Base path without extension</param>
+    /// <param name="resourcePath">Path to the wrapper resource (a <c>.tres</c>)</param>
     /// <param name="context">Context for logging</param>
-    /// <returns>Loaded Texture2D or null if loading fails</returns>
-    public static Texture2D? LoadIconTexture(string basePath, string context)
-    {
-        string fullPath = $"{basePath}.svg";
+    /// <returns>Loaded Texture2D or null if the wrapper is missing/invalid</returns>
+    public static Texture2D? LoadIconTexture(string resourcePath, string context)
+        => LoadIconConfig(resourcePath, context)?.Texture;
 
+    /// <summary>
+    /// Loads an <c>IconConfig</c> wrapper resource, guarding against a missing file so the
+    /// exporter-stripped/absent case logs a warning rather than throwing.
+    /// </summary>
+    private static IconConfig? LoadIconConfig(string resourcePath, string context)
+    {
         try
         {
-            if (!Godot.FileAccess.FileExists(fullPath))
+            var config = GD.Load<IconConfig>(resourcePath);
+            if (config?.Texture != null)
             {
-                fullPath = $"{basePath}.png";
-                if (!Godot.FileAccess.FileExists(fullPath))
-                {
-                    GameLogger.Warning($"Icon not found for {context}: {basePath}");
-                    IconsFailed++;
-                    return null;
-                }
+                GameLogger.Debug($"Loaded icon for {context}: {resourcePath}");
+                IconsLoaded++;
+                return config;
             }
 
-            var texture = GD.Load<Texture2D>(fullPath);
-            if (texture != null)
-            {
-                GameLogger.Debug($"Loaded icon for {context}: {fullPath}");
-                IconsLoaded++;
-                return texture;
-            }
-            else
-            {
-                GameLogger.Error($"Failed to load icon for {context}: {fullPath}");
-                IconsFailed++;
-                return null;
-            }
+            GameLogger.Error($"Failed to load icon wrapper for {context}: {resourcePath}");
+            IconsFailed++;
+            return null;
         }
         catch (Exception ex)
         {
-            GameLogger.Error($"Exception loading icon for {context}: {fullPath} - {ex.Message}");
+            GameLogger.Error($"Exception loading icon for {context}: {resourcePath} - {ex.Message}");
             IconsFailed++;
             return null;
         }
@@ -106,7 +106,7 @@ public static class IconDataLoader
     {
         return new IconDefinition
         {
-            BasePath = null,
+            ResourcePath = null,
             Texture = GetFallbackIcon()
         };
     }

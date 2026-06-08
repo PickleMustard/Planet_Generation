@@ -310,11 +310,11 @@ public static class PlanetaryTypeLoader
     private static string ResolveCategoryPath(string categoryFileName)
     {
         string ymlPath = BasePath + categoryFileName + ".yml";
-        if (FileAccess.FileExists(ymlPath))
+        if (BaseConfigLoader.ResExists(ymlPath))
             return ymlPath;
 
         string yamlPath = BasePath + categoryFileName + ".yaml";
-        if (FileAccess.FileExists(yamlPath))
+        if (BaseConfigLoader.ResExists(yamlPath))
             return yamlPath;
 
         // Default to .yml — let TemplateLoader handle the error if missing

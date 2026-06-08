@@ -9,7 +9,7 @@ stations:
       steel: 500
       pcb: 100
     icon:
-      base_path: "res://Assets/Icons/Stations/habitat/small_habitat"
+      resource: "res://Materials/Icons/default_station.tres"
 
   - name: Medium_Habitat
     station_type: Orbital_Habitat
@@ -22,7 +22,7 @@ stations:
       motor: 1
       kevlar: 1
     icon:
-      base_path: "res://Assets/Icons/Stations/habitat/medium_habitat"
+      resource: "res://Materials/Icons/default_station.tres"
 
   - name: Large_Habitat
     station_type: Orbital_Habitat
@@ -36,4 +36,4 @@ stations:
       Composites: 1500
       LifeSupport: 500
     icon:
-      base_path: "res://Assets/Icons/Stations/habitat/large_habitat"
+      resource: "res://Materials/Icons/default_station.tres"

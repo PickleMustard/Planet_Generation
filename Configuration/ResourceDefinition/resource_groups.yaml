@@ -11,6 +11,9 @@ commonOres:
   - bauxite_ore
   - lithium_ore
 
+flora:
+  - wood
+
 frozenVolatiles:
   - water_ice
 

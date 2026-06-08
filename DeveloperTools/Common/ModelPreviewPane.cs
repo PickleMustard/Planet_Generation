@@ -117,7 +117,7 @@ public partial class ModelPreviewPane : SubViewportContainer
         }
 
         PackedScene? packed = null;
-        try { packed = GD.Load<PackedScene>(modelPath); }
+        try { packed = GD.Load<Registries.ModelConfig>(modelPath)?.Model; }
         catch (System.Exception ex)
         {
             GameLogger.Warning($"ModelPreviewPane: failed to load '{modelPath}': {ex.Message}");

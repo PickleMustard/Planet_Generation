@@ -365,6 +365,12 @@ public class SaveYamlRoundTripTest
             InputStorage = new Dictionary<string, int> { ["ore_iron"] = 60 },
             OutputStorage = new Dictionary<string, int> { ["metal_iron"] = 12 },
             BulkStorage = new Dictionary<string, int> { ["metal_iron"] = 200 },
+            ExtractionSlots = new List<ExtractionSlotDto>
+            {
+                new() { Kind = "Primary", ResourceId = "iron_ore" },
+                new() { Kind = "Primary", ResourceId = "copper_ore" },
+                new() { Kind = "Secondary", ResourceId = null }, // explicitly cleared
+            },
             Transfer = new TransferBehaviorStateDto
             {
                 TotalTime = 512.25,
@@ -481,6 +487,14 @@ public class SaveYamlRoundTripTest
         AssertThat(ord.State).IsEqual("InTransit");
         AssertThat(b.Transfer.Schedules[0].Threshold).IsEqual("Half");
         AssertThat(b.Transfer.Schedules[0].State).IsEqual("Dispatched");
+
+        AssertThat(b.ExtractionSlots).IsNotNull();
+        AssertThat(b.ExtractionSlots!.Count).IsEqual(3);
+        AssertThat(b.ExtractionSlots[0].Kind).IsEqual("Primary");
+        AssertThat(b.ExtractionSlots[0].ResourceId).IsEqual("iron_ore");
+        AssertThat(b.ExtractionSlots[1].ResourceId).IsEqual("copper_ore");
+        AssertThat(b.ExtractionSlots[2].Kind).IsEqual("Secondary");
+        AssertThat(b.ExtractionSlots[2].ResourceId).IsNull();
     }
 
     [TestCase]

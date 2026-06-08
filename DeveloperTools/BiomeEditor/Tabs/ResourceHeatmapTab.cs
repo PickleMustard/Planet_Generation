@@ -112,7 +112,11 @@ public partial class ResourceHeatmapTab : Control
         var subtypeCfg = BuildSubtypeConfig(_model, subtypeEnum.Value);
         var biomeEntry = BuildBiomeEntry(_model, biomeEnum.Value);
 
-        var weights = ResourceWeightSampler.ForBiome(subtypeCfg, biomeEntry);
+        var groupDict = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var g in _model.ResourceGroups)
+            groupDict[g.GroupName] = new List<string>(g.ResourceIds);
+
+        var weights = ResourceWeightSampler.ForBiome(subtypeCfg, biomeEntry, groupDict);
         _chart.SetData(weights);
     }
 
@@ -137,7 +141,7 @@ public partial class ResourceHeatmapTab : Control
     {
         var entry = new BiomeResourceEntry { Biome = biome };
         if (model.BiomeResources.TryGetValue(biome, out var e))
-            entry.ResourceWeightModifiers = new Dictionary<string, float>(e.Weights);
+            entry.GroupAvailability = new Dictionary<string, AvailabilityLevel>(e.Groups);
         return entry;
     }
 

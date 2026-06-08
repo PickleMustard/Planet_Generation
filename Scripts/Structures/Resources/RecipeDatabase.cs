@@ -67,7 +67,7 @@ namespace Structures.Resources
                     );
                 }
 
-                var recipeFiles = GetYamlFilesRecursive(basePath);
+                var recipeFiles = BaseConfigLoader.GetYamlFilesRecursive(basePath);
                 if (recipeFiles.Count == 0)
                 {
                     GD.Print($"RecipeDatabase: No YAML files found in {basePath}");
@@ -199,31 +199,6 @@ namespace Structures.Resources
             {
                 throw new DatabaseNotLoadedException(DatabaseName);
             }
-        }
-
-        private List<string> GetYamlFilesRecursive(string directory)
-        {
-            var files = new List<string>();
-
-            if (!DirAccess.DirExistsAbsolute(directory))
-                return files;
-
-            var currentFiles = DirAccess.GetFilesAt(directory);
-            foreach (var file in currentFiles)
-            {
-                if (file.EndsWith(".yaml") || file.EndsWith(".yml"))
-                {
-                    files.Add(directory + file);
-                }
-            }
-
-            var subdirs = DirAccess.GetDirectoriesAt(directory);
-            foreach (var subdir in subdirs)
-            {
-                files.AddRange(GetYamlFilesRecursive(directory + subdir + "/"));
-            }
-
-            return files;
         }
 
         public bool TryGetRecipe(string recipeId, out RecipeDefinition? recipe)

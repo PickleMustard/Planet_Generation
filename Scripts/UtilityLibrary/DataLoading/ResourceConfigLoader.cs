@@ -30,7 +30,7 @@ public static class ResourceConfigLoader
             string path =
                 $"res://Configuration/ResourceDefinitions/{bodyType}/{subtypeName}_Resources.yaml";
 
-            if (Godot.FileAccess.FileExists(path))
+            if (BaseConfigLoader.ResExists(path))
             {
                 try
                 {
@@ -47,7 +47,7 @@ public static class ResourceConfigLoader
 
         // Fallback to body type default
         string defaultPath = $"res://Configuration/ResourceDefinitions/{bodyType}_Default.yaml";
-        if (Godot.FileAccess.FileExists(defaultPath))
+        if (BaseConfigLoader.ResExists(defaultPath))
         {
             try
             {
@@ -69,7 +69,7 @@ public static class ResourceConfigLoader
     {
         var definitions = new List<ResourceDefinition>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        if (!BaseConfigLoader.ResExists(filePath))
         {
             GD.PrintErr($"Resource definition file not found: {filePath}");
             return definitions;
@@ -79,8 +79,7 @@ public static class ResourceConfigLoader
         // New category files will have different validation
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -127,30 +126,16 @@ public static class ResourceConfigLoader
             return definitions;
         }
 
-        var dir = Godot.DirAccess.Open(directoryPath);
-        if (dir == null)
+        // Use the export-safe enumerator (resolves remapped names, returns logical
+        // res:// paths). Note: do NOT GlobalizePath — that yields an OS filesystem
+        // path that does not exist inside an exported .pck.
+        foreach (var filePath in BaseConfigLoader.GetYamlFilesInDir(directoryPath))
         {
-            GD.PrintErr($"Failed to open directory: {directoryPath}");
-            return definitions;
-        }
+            GD.Print($"Loading resource category: {filePath}");
 
-        dir.ListDirBegin();
-        string fileName = dir.GetNext();
-        while (!string.IsNullOrEmpty(fileName))
-        {
-            if (fileName.EndsWith(".yaml") && !fileName.StartsWith("."))
-            {
-                string filePath = Godot.ProjectSettings.GlobalizePath(
-                    $"{directoryPath}/{fileName}"
-                );
-                GD.Print($"Loading resource category: {fileName}");
-
-                var categoryDefinitions = LoadResourceDefinitionCategory(filePath);
-                definitions.AddRange(categoryDefinitions);
-            }
-            fileName = dir.GetNext();
+            var categoryDefinitions = LoadResourceDefinitionCategory(filePath);
+            definitions.AddRange(categoryDefinitions);
         }
-        dir.ListDirEnd();
 
         GD.Print($"Loaded {definitions.Count} resources from {directoryPath}");
         return definitions;
@@ -164,7 +149,7 @@ public static class ResourceConfigLoader
     {
         var definitions = new List<ResourceDefinition>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        if (!BaseConfigLoader.ResExists(filePath))
         {
             GD.PrintErr($"Resource category file not found: {filePath}");
             return definitions;
@@ -172,8 +157,7 @@ public static class ResourceConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -272,11 +256,11 @@ public static class ResourceConfigLoader
         if (iconDict == null)
             return new IconDefinition();
 
-        // Get base_path (required)
-        string? basePath = ReadString(iconDict, "base_path", "");
+        // Get wrapper resource path (required)
+        string? basePath = ReadString(iconDict, "resource", "");
         if (string.IsNullOrEmpty(basePath))
         {
-            GameLogger.Warning($"Icon section missing base_path for {context}");
+            GameLogger.Warning($"Icon section missing resource for {context}");
             return new IconDefinition();
         }
 
@@ -455,7 +439,7 @@ public static class ResourceConfigLoader
     /// <returns>Loaded planetary type tag configuration, or null if loading fails</returns>
     public static PlanetaryTypeTagConfig? LoadPlanetaryTypeTagConfig(string filePath)
     {
-        if (!Godot.FileAccess.FileExists(filePath))
+        if (!BaseConfigLoader.ResExists(filePath))
         {
             GD.PrintErr($"Planetary type tag configuration file not found: {filePath}");
             return null;
@@ -463,8 +447,7 @@ public static class ResourceConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
@@ -515,7 +498,7 @@ public static class ResourceConfigLoader
     /// <returns>Loaded biome category configuration, or null if loading fails</returns>
     public static BiomeCategoryConfig? LoadBiomeCategories(string filePath)
     {
-        if (!Godot.FileAccess.FileExists(filePath))
+        if (!BaseConfigLoader.ResExists(filePath))
         {
             GD.PrintErr($"Biome categories file not found: {filePath}");
             return null;
@@ -523,8 +506,7 @@ public static class ResourceConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -631,7 +613,7 @@ public static class ResourceConfigLoader
     /// <returns>Dictionary mapping group names to resource ID lists, or null if loading fails</returns>
     public static Dictionary<string, List<string>>? LoadResourceGroups(string filePath)
     {
-        if (!Godot.FileAccess.FileExists(filePath))
+        if (!BaseConfigLoader.ResExists(filePath))
         {
             GD.PrintErr($"Resource groups file not found: {filePath}");
             return null;
@@ -639,8 +621,7 @@ public static class ResourceConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
 
             // Use CamelCaseNamingConvention to map camelCase YAML keys to PascalCase
             var deserializer = new DeserializerBuilder()
@@ -735,7 +716,7 @@ public static class ResourceConfigLoader
     /// <returns>Loaded planetary resource configuration, or null if loading fails</returns>
     public static PlanetaryResourceConfig? LoadPlanetaryResourceConfig(string filePath)
     {
-        if (!Godot.FileAccess.FileExists(filePath))
+        if (!BaseConfigLoader.ResExists(filePath))
         {
             GD.PrintErr($"Planetary resource configuration file not found: {filePath}");
             return null;
@@ -743,8 +724,7 @@ public static class ResourceConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
@@ -795,7 +775,7 @@ public static class ResourceConfigLoader
     /// <returns>Loaded biome resource configuration, or null if loading fails</returns>
     public static BiomeResourceConfig? LoadBiomeResourceConfig(string filePath)
     {
-        if (!Godot.FileAccess.FileExists(filePath))
+        if (!BaseConfigLoader.ResExists(filePath))
         {
             GD.PrintErr($"Biome resource configuration file not found: {filePath}");
             return null;
@@ -803,8 +783,7 @@ public static class ResourceConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)

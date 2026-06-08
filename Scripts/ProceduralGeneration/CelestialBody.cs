@@ -104,6 +104,27 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
     public Vector3 TotalForce;
     private Vector3 _savedForce;
 
+    /// <summary>
+    /// Inner "no-entry" shell radius as a multiple of <see cref="Radius"/>. The player ship
+    /// cannot pass through <see cref="NoEntryRadius"/>; it decelerates and is nudged back to
+    /// the shell edge on contact. Just above the surface by default.
+    /// </summary>
+    [Export]
+    public float NoEntryRadiusFactor { get; set; } = 1.05f;
+
+    /// <summary>
+    /// Outer "capture" shell radius as a multiple of <see cref="Radius"/>. Entering
+    /// <see cref="CaptureRadius"/> captures the player ship into this body's reference frame.
+    /// </summary>
+    [Export]
+    public float CaptureRadiusFactor { get; set; } = 6.0f;
+
+    /// <summary>Inner shell the player ship may not pass through. Valid post-mesh-generation.</summary>
+    public float NoEntryRadius => Radius * NoEntryRadiusFactor;
+
+    /// <summary>Outer shell that captures the player ship into this body's frame. Valid post-mesh-generation.</summary>
+    public float CaptureRadius => Radius * CaptureRadiusFactor;
+
     public BodyClassification Classification { get; set; } = null!;
 
     /// <summary>
@@ -308,14 +329,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
         this.Atmosphere = SampleAtmosphere(celestialBodyType, rand);
         mesh.size = size;
         this.AddChild(mesh);
-
-        if (Classification is BodyClassification.Star)
-        {
-            OmniLight3D emision = new OmniLight3D();
-            emision.OmniRange = 4096f;
-            emision.OmniAttenuation = .14f;
-            this.AddChild(emision);
-        }
     }
 
     private static float SampleAtmosphere(OrbitalBodyType type, RandomNumberGenerator rand)
@@ -372,14 +385,6 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             StrDb = new StructureDatabase(rand.RandiRange(0, 100000));
             Oct = new Octree<Point>(new Aabb(Vector3.One * -10, Vector3.One * 20));
         }
-
-        if (Classification is BodyClassification.Star)
-        {
-            OmniLight3D emision = new OmniLight3D();
-            emision.OmniRange = 4096f;
-            emision.OmniAttenuation = .14f;
-            this.AddChild(emision);
-        }
     }
 
     public override void _Ready()
@@ -392,6 +397,10 @@ public partial class CelestialBody : Node3D, IOrbitalBody, ISelectableBody
             AddToGroup("CelestialBody");
             barycenter.RegisterBody();
         }
+
+        // All bodies (incl. analytical moons not in the N-body group) join the collidable
+        // group so the player ship's capture/collision system can enumerate them.
+        AddToGroup("celestial_collidable");
     }
 
     /// <summary>

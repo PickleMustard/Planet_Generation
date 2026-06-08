@@ -6,7 +6,7 @@ resources:
     max_stack_size: 50
     tags: [human, unskilled, fragile]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: adult
     resource_tier: 0
     base_price: 1000
@@ -14,7 +14,7 @@ resources:
     max_stack_size: 50
     tags: [human, unskilled]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: scientist
     resource_tier: 1
     base_price: 2000
@@ -22,7 +22,7 @@ resources:
     max_stack_size: 25
     tags: [human, skilled, research]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: robot
     resource_tier: 2
     base_price: 3000
@@ -30,7 +30,7 @@ resources:
     max_stack_size: 25
     tags: [robot, unskilled]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: drone
     resource_tier: 1
     base_price: 2000
@@ -38,7 +38,7 @@ resources:
     max_stack_size: 50
     tags: [robot, unskilled, fragile]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: android
     resource_tier: 3
     base_price: 4000
@@ -46,4 +46,4 @@ resources:
     max_stack_size: 25
     tags: [robot, skilled]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"

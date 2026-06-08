@@ -6,7 +6,7 @@ resources:
     max_stack_size: 100
     tags: [metal, ferrous]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: electrum
     resource_tier: 2
     base_price: 600
@@ -14,7 +14,7 @@ resources:
     max_stack_size: 100
     tags: [metal, gold, copper, silver]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: ignicite
     resource_tier: 4
     base_price: 1000
@@ -22,4 +22,4 @@ resources:
     max_stack_size: 100
     tags: [metal, tungsten, stradium, platinum, heatproof]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"

@@ -96,18 +96,11 @@ public partial class RecipeDisplay : HBoxContainer
             return recipe.Icon.Texture;
         }
 
-        // Fallback: try to load from base path if defined
-        if (!string.IsNullOrEmpty(recipe.Icon?.BasePath))
+        // Fallback: load from the wrapper resource if defined
+        if (!string.IsNullOrEmpty(recipe.Icon?.ResourcePath))
         {
-            try
-            {
-                string iconPath = recipe.Icon.BasePath + ".png";
-                return ResourceLoader.Load<Texture2D>(iconPath);
-            }
-            catch
-            {
-                GameLogger.Debug($"RecipeDisplay: Failed to load icon for recipe '{recipe.RecipeId}'");
-            }
+            return UtilityLibrary.DataLoading.IconDataLoader.LoadIconTexture(
+                recipe.Icon.ResourcePath, $"recipe:{recipe.RecipeId}");
         }
 
         return null;

@@ -5,6 +5,7 @@ using Godot;
 using ProceduralGeneration;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.GameState;
+using Structures.Resources;
 using System.Collections.Generic;
 using System.Linq;
 using UI.Components;
@@ -349,6 +350,53 @@ public partial class OrbitalBodyDetailsPanel : PanelContainer
             AddDetailRow(kvp.Key, $"{kvp.Value:F1}");
             if (++shown >= 16)
                 break;
+        }
+    }
+
+    // ───────── Cell Details (Voronoi cell click in orbital window) ─────────
+
+    /// <summary>
+    /// Renders details for a Voronoi cell selected by clicking the planet surface in
+    /// the orbital window. Mirrors CellGeneralInfoPanel / CellResourcePanel but draws
+    /// into this panel's content container so the orbital window stays open.
+    /// </summary>
+    public void ShowCellDetails(VoronoiCell cell)
+    {
+        if (_titleLabel == null || _contentContainer == null || cell == null)
+            return;
+
+        // Drop tabbed-item tracking so a later RefreshCurrentDetails() (economy debounce)
+        // doesn't clobber the cell view.
+        _lastItemType = null;
+        _lastItemIndex = -1;
+
+        _titleLabel.Text = $"Cell #{cell.Index}";
+        ClearContent();
+
+        AddDetailHeader("Surface");
+        AddDetailRow("Biome", cell.Biome);
+        AddDetailRow("Elevation", $"{cell.Height:P1}");
+        AddDetailRow("Slope", $"{cell.GetSlope():F1}°");
+
+        AddSeparator();
+        AddDetailHeader("Resources");
+
+        if (cell.Resources == null || cell.Resources.Count == 0)
+        {
+            AddDetailRow("Status", "None");
+            return;
+        }
+
+        foreach (var kvp in cell.Resources.OrderByDescending(k => k.Value))
+        {
+            string label = kvp.Key;
+            if (ResourceDatabase.Instance != null
+                && ResourceDatabase.Instance.TryGetResource(kvp.Key, out var def)
+                && def?.IdName != null)
+            {
+                label = def.IdName;
+            }
+            AddDetailRow(label, $"{kvp.Value:F1}");
         }
     }
 

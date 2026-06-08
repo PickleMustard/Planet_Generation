@@ -8,7 +8,7 @@ ships:
     required_resources:
       aluminum: 50
     icon:
-      base_path: "res://Assets/Icons/Ships/freighter/small_freighter"
+      resource: "res://Materials/Icons/default_ship.tres"
 
   - name: Medium_Freighter
     dry_mass: 2000
@@ -21,7 +21,7 @@ ships:
       Electronics: 150
       Composites: 100
     icon:
-      base_path: "res://Assets/Icons/Ships/freighter/medium_freighter"
+      resource: "res://Materials/Icons/default_ship.tres"
 
   - name: Large_Freighter
     dry_mass: 10000
@@ -35,7 +35,7 @@ ships:
       Composites: 300
       Machinery: 200
     icon:
-      base_path: "res://Assets/Icons/Ships/freighter/large_freighter"
+      resource: "res://Materials/Icons/default_ship.tres"
 
   - name: Bulk_Hauler
     dry_mass: 50000
@@ -49,4 +49,4 @@ ships:
       Composites: 1500
       Machinery: 1000
     icon:
-      base_path: "res://Assets/Icons/Ships/freighter/bulk_hauler"
+      resource: "res://Materials/Icons/default_ship.tres"

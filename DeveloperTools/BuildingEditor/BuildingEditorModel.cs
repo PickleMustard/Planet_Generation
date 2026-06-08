@@ -49,7 +49,7 @@ public class BuildingEditorModel
 
     public class VisualEdit
     {
-        public string? ModelPath { get; set; }
+        public string? ModelResourcePath { get; set; }
         public string? ModelMaterial { get; set; }
         public string? AnimationPath { get; set; }
         public string? AnimationName { get; set; }
@@ -62,7 +62,7 @@ public class BuildingEditorModel
 
     public class IconEdit
     {
-        public string? BasePath { get; set; }
+        public string? ResourcePath { get; set; }
         public float Scale { get; set; } = 1f;
         public Color Tint { get; set; } = Colors.White;
     }
@@ -514,10 +514,10 @@ public class BuildingEditorModel
         var v = entry.Visual;
         switch (fieldName)
         {
-            case "ModelPath":
+            case "ModelResourcePath":
                 {
                     string s = value?.ToString() ?? "";
-                    v.ModelPath = string.IsNullOrEmpty(s) ? null : s;
+                    v.ModelResourcePath = string.IsNullOrEmpty(s) ? null : s;
                     break;
                 }
             case "ModelMaterial":
@@ -563,10 +563,10 @@ public class BuildingEditorModel
         var entry = GetEntryOrThrow(categoryName, index);
         switch (fieldName)
         {
-            case "BasePath":
+            case "ResourcePath":
                 {
                     string s = value?.ToString() ?? "";
-                    entry.Icon.BasePath = string.IsNullOrEmpty(s) ? null : s;
+                    entry.Icon.ResourcePath = string.IsNullOrEmpty(s) ? null : s;
                     break;
                 }
             case "Scale": entry.Icon.Scale = Convert.ToSingle(value); break;
@@ -747,16 +747,16 @@ public class BuildingEditorModel
                 }
 
                 // Visual warnings (sentinel "Warning:" prefix so module can split errors vs warnings)
-                if (!string.IsNullOrEmpty(entry.Visual.ModelPath))
+                if (!string.IsNullOrEmpty(entry.Visual.ModelResourcePath))
                 {
-                    if (!entry.Visual.ModelPath!.StartsWith("res://"))
-                        errors.Add($"Warning: Building '{entry.IdName}' model_path '{entry.Visual.ModelPath}' not starting with res://");
-                    else if (!Godot.FileAccess.FileExists(entry.Visual.ModelPath))
-                        errors.Add($"Warning: Building '{entry.IdName}' model_path '{entry.Visual.ModelPath}' does not exist on disk");
+                    if (!entry.Visual.ModelResourcePath!.StartsWith("res://"))
+                        errors.Add($"Warning: Building '{entry.IdName}' model_resource '{entry.Visual.ModelResourcePath}' not starting with res://");
+                    else if (!Godot.FileAccess.FileExists(entry.Visual.ModelResourcePath))
+                        errors.Add($"Warning: Building '{entry.IdName}' model_resource '{entry.Visual.ModelResourcePath}' does not exist on disk");
                 }
 
-                if (!string.IsNullOrEmpty(entry.Icon.BasePath) && !entry.Icon.BasePath!.StartsWith("res://"))
-                    errors.Add($"Warning: Building '{entry.IdName}' icon.base_path '{entry.Icon.BasePath}' not starting with res://");
+                if (!string.IsNullOrEmpty(entry.Icon.ResourcePath) && !entry.Icon.ResourcePath!.StartsWith("res://"))
+                    errors.Add($"Warning: Building '{entry.IdName}' icon.resource '{entry.Icon.ResourcePath}' not starting with res://");
 
                 if (entry.SpecifierEnabled)
                 {
@@ -875,7 +875,7 @@ public class BuildingEditorModel
     {
         return new VisualEdit
         {
-            ModelPath = v.ModelPath,
+            ModelResourcePath = v.ModelResourcePath,
             ModelMaterial = v.ModelMaterial,
             AnimationPath = v.AnimationPath,
             AnimationName = v.AnimationName,
@@ -891,7 +891,7 @@ public class BuildingEditorModel
     {
         return new IconEdit
         {
-            BasePath = icon.BasePath,
+            ResourcePath = icon.ResourcePath,
             Scale = icon.Scale,
             Tint = icon.Tint
         };

@@ -37,7 +37,7 @@ public class ResourceEditorModel
 		public float MaxStackSize { get; set; } = 100f;
 		public StateOfMatter StateOfMatter { get; set; }
 		public HashSet<string> Tags { get; set; } = new();
-		public string? IconBasePath { get; set; }
+		public string? IconResourcePath { get; set; }
 		public float IconScale { get; set; } = 1.0f;
 		public Color IconTint { get; set; } = Colors.White;
 		public bool IsNew { get; set; }
@@ -200,7 +200,7 @@ public class ResourceEditorModel
 	/// <summary>
 	/// Updates a single field on a resource entry by field name.
 	/// Supported field names: IdName, ResourceTier, BasePrice, MaxStackSize,
-	/// TransportWeight, StateOfMatter, IconBasePath, IconScale, IconTint.
+	/// TransportWeight, StateOfMatter, IconResourcePath, IconScale, IconTint.
 	/// Throws if category not found, index out of range, or unknown field name.
 	/// </summary>
 	public void UpdateResourceField(string categoryName, int index,
@@ -230,8 +230,8 @@ public class ResourceEditorModel
 					? som
 					: StateOfMatterExtensions.Parse(value?.ToString());
 				break;
-			case "IconBasePath":
-				entry.IconBasePath = value?.ToString();
+			case "IconResourcePath":
+				entry.IconResourcePath = value?.ToString();
 				break;
 			case "IconScale":
 				entry.IconScale = Convert.ToSingle(value);
@@ -350,12 +350,12 @@ public class ResourceEditorModel
 		{
 			foreach (var entry in category.Resources)
 			{
-				if (!string.IsNullOrEmpty(entry.IconBasePath) &&
-					!entry.IconBasePath.StartsWith("res://"))
+				if (!string.IsNullOrEmpty(entry.IconResourcePath) &&
+					!entry.IconResourcePath.StartsWith("res://"))
 				{
 					errors.Add(
 						$"Resource '{entry.IdName}' has icon path " +
-						$"not starting with res://: '{entry.IconBasePath}'");
+						$"not starting with res://: '{entry.IconResourcePath}'");
 				}
 			}
 		}
@@ -393,7 +393,7 @@ public class ResourceEditorModel
 			MaxStackSize = def.MaxStackSize,
 			StateOfMatter = def.StateOfMatter,
 			Tags = new HashSet<string>(def.Tags ?? new HashSet<string>()),
-			IconBasePath = def.Icon?.BasePath,
+			IconResourcePath = def.Icon?.ResourcePath,
 			IconScale = def.Icon?.Scale ?? 1.0f,
 			IconTint = def.Icon?.Tint ?? Colors.White,
 			IsNew = false,

@@ -1,181 +1,288 @@
 #if DEBUG
 using System;
-using System.Text.RegularExpressions;
+using System.Collections.Generic;
 using Godot;
-using Structures.Enums;
+using Registries;
 using UtilityLibrary;
 using UtilityLibrary.DataLoading;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.ResourceEditor;
 
 /// <summary>
-/// Icon file picker popup with preview. Opens a FileDialog for browsing
-/// icon files, displays a preview of the selected icon, and extracts
-/// the base path from filenames with size suffixes
-/// (e.g., iron_ore_128x128.svg → iron_ore).
-/// Emits IconSelected signal with the extracted base path on confirm.
-/// GUI layout is defined in IconPickerPopup.tscn.
+/// Icon picker popup. Presents the <see cref="IconConfig"/> wrapper <em>objects</em> from
+/// <see cref="IconManifest"/> as a searchable icon grid — the developer selects a Godot resource,
+/// not a file path. A "Browse raw…" escape hatch still wraps a loose <c>.svg</c>/<c>.png</c> into
+/// an <c>IconConfig</c> <c>.tres</c> (create-on-pick) and anchors it via
+/// <see cref="AssetManifestBuilder.AddToManifest"/> so it survives export. Either way the chosen
+/// wrapper's resource path is emitted through <see cref="IconSelected"/>, so callers and the YAML
+/// save format are unchanged. The hosting scene (IconPickerPopup.tscn) is now a bare shell; the
+/// content is built in code.
 /// </summary>
 public partial class IconPickerPopup : PopupPanel
 {
-	// --- Signal ---
+    // --- Signal ---
 
-	/// <summary>
-	/// Emitted when the user confirms an icon selection.
-	/// basePath is the extracted path without size suffix or extension.
-	/// </summary>
-	[Signal]
-	public delegate void IconSelectedEventHandler(string basePath);
+    /// <summary>
+    /// Emitted when the user confirms an icon selection.
+    /// resourcePath points at the <c>IconConfig</c> <c>.tres</c> wrapper.
+    /// </summary>
+    [Signal]
+    public delegate void IconSelectedEventHandler(string resourcePath);
 
-	// --- Regex for size suffix extraction ---
+    private const int Columns = 5;
 
-	private static readonly Regex SizeSuffixRegex =
-		new(@"_(\d+)x(\d+)\.\w+$", RegexOptions.Compiled);
+    // --- State ---
 
-	// --- State ---
+    private readonly List<IconConfig> _icons = new();
 
-	private string? _selectedFilePath;
-	private string? _extractedBasePath;
+    private LineEdit _search = null!;
+    private VBoxContainer _resultsBox = null!;
+    private FileDialog _fileDialog = null!;
 
-	// --- UI References ---
+    // ========================================================================
+    // LIFECYCLE
+    // ========================================================================
 
-	private Button _browseButton = null!;
-	private TextureRect _previewRect = null!;
-	private Button _confirmButton = null!;
-	private Button _cancelButton = null!;
-	private FileDialog _fileDialog = null!;
+    public override void _Ready()
+    {
+        base._Ready();
+        LoadManifest();
+        BuildLayout();
+        Rebuild();
+    }
 
-	// ========================================================================
-	// LIFECYCLE
-	// ========================================================================
+    /// <summary>Opens the popup. Layout is built in <see cref="_Ready"/>.</summary>
+    public void OpenPicker()
+    {
+        base.Popup();
+    }
 
-	public override void _Ready()
-	{
-		base._Ready();
+    private void LoadManifest()
+    {
+        _icons.Clear();
+        if (!Godot.FileAccess.FileExists(AssetManifests.IconManifestPath))
+        {
+            GameLogger.Warning($"IconPickerPopup: icon manifest missing at {AssetManifests.IconManifestPath}; use Rebuild Asset Manifests.");
+            return;
+        }
 
-		_browseButton = GetNode<Button>("%BrowseButton");
-		_previewRect = GetNode<TextureRect>("%PreviewRect");
-		_confirmButton = GetNode<Button>("%ConfirmButton");
-		_cancelButton = GetNode<Button>("%CancelButton");
-		_fileDialog = GetNode<FileDialog>("%IconFileDialog");
+        var manifest = GD.Load<IconManifest>(AssetManifests.IconManifestPath);
+        if (manifest == null) return;
+        foreach (var icon in manifest.Icons)
+            if (icon != null)
+                _icons.Add(icon);
+    }
 
-		// Connect signals
-		_browseButton.Pressed += OnBrowsePressed;
-		_confirmButton.Pressed += OnConfirmPressed;
-		_cancelButton.Pressed += OnCancelPressed;
-		_fileDialog.FileSelected += OnFileSelected;
+    // ========================================================================
+    // LAYOUT
+    // ========================================================================
 
-		_confirmButton.Disabled = true;
-	}
+    private void BuildLayout()
+    {
+        var root = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        AddChild(root);
 
-	/// <summary>
-	/// Opens the popup and resets previous selection state.
-	/// </summary>
-	public void OpenPicker()
-	{
-		ResetState();
-		base.Popup();
-	}
+        root.AddChild(new Label
+        {
+            ThemeTypeVariation = "LabelHighContrast",
+            Text = "Select Icon",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        });
 
-	// ========================================================================
-	// FILE DIALOG
-	// ========================================================================
+        _search = new LineEdit
+        {
+            PlaceholderText = "Search icons…",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        _search.TextChanged += _ => Rebuild();
+        root.AddChild(_search);
 
-	private void OnBrowsePressed()
-	{
-		_fileDialog.PopupCentered(new Vector2I(800, 600));
-	}
+        var scroll = new ScrollContainer
+        {
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        root.AddChild(scroll);
+        _resultsBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        scroll.AddChild(_resultsBox);
 
-	private void OnFileSelected(string path)
-	{
-		_selectedFilePath = path;
+        var actions = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        root.AddChild(actions);
 
-		// Load texture for preview
-		var texture = GD.Load<Texture2D>(path);
-		if (texture != null)
-		{
-			_previewRect.Texture = texture;
-		}
-		else
-		{
-			GameLogger.Warning($"Failed to load icon for preview: {path}");
-			_previewRect.Texture = IconDataLoader.GetFallbackIcon();
-		}
+        var browse = new Button { Text = "Browse raw…", TooltipText = "Wrap a loose .svg/.png into an IconConfig and anchor it" };
+        browse.Pressed += OnBrowsePressed;
+        actions.AddChild(browse);
 
-		// Extract base path
-		_extractedBasePath = ExtractBasePath(path);
-		_confirmButton.Disabled = false;
-	}
+        actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
 
-	// ========================================================================
-	// BASE PATH EXTRACTION
-	// ========================================================================
+        var cancel = new Button { Text = "Cancel" };
+        cancel.Pressed += () => { Hide(); QueueFree(); };
+        actions.AddChild(cancel);
 
-	/// <summary>
-	/// Extracts the base path from a full resource path by stripping
-	/// size suffixes like _128x128.svg.
-	/// Example: res://Assets/Icons/Resources/ore/iron_ore_128x128.svg
-	///       → res://Assets/Icons/Resources/ore/iron_ore
-	/// Fallback: strips extension only and logs a warning.
-	/// </summary>
-	public static string ExtractBasePath(string resourcePath)
-	{
-		if (string.IsNullOrEmpty(resourcePath))
-			return resourcePath ?? "";
+        _fileDialog = new FileDialog
+        {
+            FileMode = FileDialog.FileModeEnum.OpenFile,
+            Access = FileDialog.AccessEnum.Resources,
+            CurrentDir = "res://Materials/Icons/",
+            Filters = new[]
+            {
+                "*.tres ; Icon Wrapper (IconConfig)",
+                "*.svg, *.png ; Image (creates wrapper)",
+            },
+        };
+        _fileDialog.FileSelected += OnRawFileSelected;
+        AddChild(_fileDialog);
+    }
 
-		var match = SizeSuffixRegex.Match(resourcePath);
-		if (match.Success)
-		{
-			return resourcePath.Substring(0, match.Index);
-		}
+    // ========================================================================
+    // GRID
+    // ========================================================================
 
-		// Fallback: strip extension only
-		int dotIndex = resourcePath.LastIndexOf('.');
-		if (dotIndex > 0)
-		{
-			string fallback = resourcePath.Substring(0, dotIndex);
-			GameLogger.Warning(
-				$"Icon path '{resourcePath}' doesn't match size suffix pattern. " +
-				$"Stripping extension only, result: '{fallback}'");
-			return fallback;
-		}
+    private void Rebuild()
+    {
+        foreach (var c in _resultsBox.GetChildren()) c.QueueFree();
 
-		GameLogger.Warning(
-			$"Could not extract base path from '{resourcePath}'. " +
-			$"Using path as-is.");
-		return resourcePath;
-	}
+        string query = _search.Text?.Trim() ?? "";
+        var matches = new List<IconConfig>();
+        foreach (var icon in _icons)
+        {
+            string id = icon.Id.ToString();
+            if (query.Length == 0 || FuzzyMatch.TryMatch(query, id, out _))
+                matches.Add(icon);
+        }
+        matches.Sort((a, b) => string.Compare(a.Id.ToString(), b.Id.ToString(), StringComparison.Ordinal));
 
-	// ========================================================================
-	// CONFIRM / CANCEL
-	// ========================================================================
+        if (matches.Count == 0)
+        {
+            _resultsBox.AddChild(new Label
+            {
+                ThemeTypeVariation = "LabelHighContrast",
+                Text = _icons.Count == 0
+                    ? "No icons in manifest. Run Settings → Rebuild Asset Manifests."
+                    : "No icons match the search.",
+            });
+            return;
+        }
 
-	private void OnConfirmPressed()
-	{
-		if (_extractedBasePath != null)
-		{
-			EmitSignal(SignalName.IconSelected, _extractedBasePath);
-		}
-		Hide();
-		QueueFree();
-	}
+        var grid = new GridContainer { Columns = Columns, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _resultsBox.AddChild(grid);
+        foreach (var icon in matches) grid.AddChild(MakeCell(icon));
+    }
 
-	private void OnCancelPressed()
-	{
-		Hide();
-		QueueFree();
-	}
+    private Control MakeCell(IconConfig icon)
+    {
+        string id = icon.Id.ToString();
+        var btn = new Button
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(110, 96),
+            TooltipText = $"{id}\n{icon.ResourcePath}",
+        };
+        btn.Pressed += () => Confirm(icon.ResourcePath);
 
-	// ========================================================================
-	// PRIVATE HELPERS
-	// ========================================================================
+        var vb = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        vb.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        vb.AddChild(new TextureRect
+        {
+            Texture = icon.Texture ?? IconDataLoader.GetFallbackIcon(),
+            CustomMinimumSize = new Vector2(64, 64),
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SelfModulate = icon.Tint,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        vb.AddChild(new Label
+        {
+            ThemeTypeVariation = "LabelHighContrast",
+            Text = id,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            ClipText = true,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        btn.AddChild(vb);
+        return btn;
+    }
 
-	private void ResetState()
-	{
-		_selectedFilePath = null;
-		_extractedBasePath = null;
-		_previewRect.Texture = null;
-		_confirmButton.Disabled = true;
-	}
+    private void Confirm(string? resourcePath)
+    {
+        if (!string.IsNullOrEmpty(resourcePath))
+            EmitSignal(SignalName.IconSelected, resourcePath);
+        Hide();
+        QueueFree();
+    }
+
+    // ========================================================================
+    // BROWSE RAW (create-on-pick)
+    // ========================================================================
+
+    private void OnBrowsePressed()
+    {
+        _fileDialog.PopupCentered(new Vector2I(800, 600));
+    }
+
+    private void OnRawFileSelected(string path)
+    {
+        string? wrapperPath;
+        if (path.EndsWith(".tres", StringComparison.OrdinalIgnoreCase))
+        {
+            wrapperPath = path;
+        }
+        else
+        {
+            var texture = GD.Load<Texture2D>(path);
+            wrapperPath = CreateIconWrapper(path, texture);
+        }
+
+        // Anchor the (possibly new) wrapper so it survives export immediately.
+        if (!string.IsNullOrEmpty(wrapperPath))
+            AssetManifestBuilder.AddToManifest(GD.Load<IconConfig>(wrapperPath));
+
+        Confirm(wrapperPath);
+    }
+
+    /// <summary>
+    /// Creates an <c>IconConfig</c> <c>.tres</c> wrapper next to a raw image and
+    /// returns its path. Returns an existing wrapper untouched.
+    /// </summary>
+    private static string CreateIconWrapper(string imagePath, Texture2D? texture)
+    {
+        string tresPath = StripExtension(imagePath) + ".tres";
+        if (Godot.FileAccess.FileExists(tresPath))
+            return tresPath; // already wrapped
+
+        if (texture == null)
+        {
+            GameLogger.Warning($"Cannot wrap icon, texture failed to load: {imagePath}");
+            return tresPath;
+        }
+
+        var config = new IconConfig
+        {
+            Id = StripExtension(FileName(imagePath)),
+            Texture = texture,
+        };
+        var err = ResourceSaver.Save(config, tresPath);
+        if (err != Error.Ok)
+            GameLogger.Warning($"Failed to save icon wrapper '{tresPath}': {err}");
+        else
+            GameLogger.Info($"Created icon wrapper '{tresPath}'");
+        return tresPath;
+    }
+
+    private static string StripExtension(string path)
+    {
+        int dot = path.LastIndexOf('.');
+        return dot > path.LastIndexOf('/') ? path.Substring(0, dot) : path;
+    }
+
+    private static string FileName(string path)
+    {
+        int slash = path.LastIndexOf('/');
+        return slash >= 0 ? path.Substring(slash + 1) : path;
+    }
 }
 #endif

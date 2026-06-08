@@ -320,7 +320,7 @@ public partial class ResourceEditorModule : BaseDebugModule
 			MaxStackSize = 100f,
 			TransportWeight = 1.0f,
 			Tags = new HashSet<string>(),
-			IconBasePath = null,
+			IconResourcePath = null,
 			IconScale = 1.0f,
 			IconTint = Colors.White
 		};

@@ -5,7 +5,7 @@ recipes:
     category: agriculture
     work_required: 30
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - water: 5
     output_resources:
@@ -41,7 +41,7 @@ recipes:
     category: agriculture
     work_required: 30
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - water: 5
       - pesticide: 3
@@ -53,7 +53,7 @@ recipes:
     category: agriculture
     work_required: 35
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - water: 15
       - power: 4
@@ -65,6 +65,6 @@ recipes:
     category: agriculture
     work_required: 20
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
       - fish: 20

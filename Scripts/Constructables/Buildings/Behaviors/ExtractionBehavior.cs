@@ -1,11 +1,27 @@
 using System.Collections.Generic;
 using Godot;
 using Structures.Enums;
+using Structures.GameState;
 using Structures.Logistics;
 using Structures.Resources;
 using UtilityLibrary;
 
 namespace Constructables.Buildings.Behaviors;
+
+/// <summary>Whether an extraction slot produces at full rate (primary) or the reduced
+/// <see cref="ExtractionBehavior.SecondaryRateMultiplier"/> rate (secondary).</summary>
+public enum ExtractionSlotKind { Primary, Secondary }
+
+/// <summary>
+/// One player-assignable extraction slot. <see cref="ResourceId"/> is null when the slot
+/// is empty (produces nothing). The pickable pool is the behavior's
+/// <see cref="ExtractionBehavior.AvailableDeposits"/> (recipe-tag + tier gated).
+/// </summary>
+public sealed class ExtractionSlot
+{
+    public ExtractionSlotKind Kind { get; set; }
+    public string? ResourceId { get; set; }
+}
 
 /// <summary>
 /// Self-contained extraction cycle driver. Resolves concrete outputs from cell deposits
@@ -39,7 +55,16 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
 
     // ── Cycle state ─────────────────────────────────────────────────────────
 
-    public ManufacturingState State { get; private set; } = ManufacturingState.Idle;
+    private ManufacturingState _state = ManufacturingState.Idle;
+    public ManufacturingState State
+    {
+        get => _state;
+        private set
+        {
+            _state = value;
+            _owner?.SetProductionState(value);
+        }
+    }
     public float WorkProgress { get; private set; }
     public float WorkRequired { get; private set; }
     public Dictionary<string, float> ExpectedOutputs { get; private set; } = new();
@@ -61,6 +86,42 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
 
     /// <summary>Production speed multiplier read from YAML behavior config.</summary>
     public float ProductionSpeed { get; private set; } = 1.0f;
+
+    // ── Extraction slots ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Guards <see cref="_slots"/> against concurrent access: slot mutators
+    /// (<see cref="TryAssignSlot"/>/<see cref="ClearSlot"/>) run on the UI thread while
+    /// <see cref="StartCycle"/> reads slots on the ManufactureTickEngine thread.
+    /// </summary>
+    private readonly object _slotLock = new();
+
+    /// <summary>Primary slot count from YAML; -1 means "auto" (distinct output-tag count of the default recipe).</summary>
+    private int _primarySlotCount = -1;
+    private int _secondarySlotCount;
+
+    /// <summary>Per-cycle output multiplier applied to secondary slots. From YAML, default 0.5.</summary>
+    public float SecondaryRateMultiplier { get; private set; } = 0.5f;
+
+    private readonly List<ExtractionSlot> _slots = new();
+
+    /// <summary>
+    /// Read-only snapshot (deep copy) of the current slot assignments for UI display.
+    /// Mutating the returned objects has no effect on behavior state.
+    /// </summary>
+    public IReadOnlyList<ExtractionSlot> Slots
+    {
+        get
+        {
+            lock (_slotLock)
+            {
+                var copy = new List<ExtractionSlot>(_slots.Count);
+                foreach (var s in _slots)
+                    copy.Add(new ExtractionSlot { Kind = s.Kind, ResourceId = s.ResourceId });
+                return copy;
+            }
+        }
+    }
 
     // ── Current cycle recipe ────────────────────────────────────────────────
 
@@ -95,6 +156,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
     {
         _owner = owner;
         _maxResourceTier = owner.Definition?.MaxResourceTier ?? 0;
+        _owner.SetProductionState(_state);
     }
 
     public void Configure(Dictionary<string, object> config)
@@ -102,12 +164,21 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
         DefaultRecipe = BehaviorConfigHelper.ReadString(config, "default_recipe", null);
         _alternativeRecipes = BehaviorConfigHelper.ReadStringList(config, "alternative_recipes");
         ProductionSpeed = BehaviorConfigHelper.ReadFloat(config, "production_speed", 1.0f);
+        _primarySlotCount = BehaviorConfigHelper.ReadInt(config, "primary_slots", -1);
+        _secondarySlotCount = BehaviorConfigHelper.ReadInt(config, "secondary_slots", 0);
+        SecondaryRateMultiplier = BehaviorConfigHelper.ReadFloat(config, "secondary_rate_multiplier", 0.5f);
         _environmentalModifier = EnvironmentalModifier.FromConfig(config);
     }
 
     public void OnRegister()
     {
         RebuildAvailableDeposits();
+        lock (_slotLock)
+        {
+            EnsureSlotsAllocatedLocked();
+            ReconcileSlotsLocked();
+            AutoFillPrimarySlotsLocked();
+        }
         ResolveTagOutputs();
 
         if (_environmentalModifier == null)
@@ -133,7 +204,234 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
     public void OnRecipeChanged(string recipeId)
     {
         RebuildAvailableDeposits();
+        lock (_slotLock)
+        {
+            // Slot count is config-driven and fixed; only resource assignments reconcile.
+            ReconcileSlotsLocked();
+            AutoFillPrimarySlotsLocked();
+        }
         ResolveTagOutputs();
+    }
+
+    // ── Extraction slot management ───────────────────────────────────────────
+
+    /// <summary>
+    /// Allocates <see cref="_slots"/> on first registration. Primary count comes from YAML
+    /// (<c>primary_slots</c>); when absent (-1) it defaults to the distinct output-tag count of
+    /// the active/default recipe (min 1) so multi-tag extraction recipes keep producing every
+    /// tag. Secondary count comes from <c>secondary_slots</c> (default 0). Idempotent: a
+    /// previously allocated slot list (e.g. on recipe change) is left untouched to preserve
+    /// assignments. Caller must hold <see cref="_slotLock"/>.
+    /// </summary>
+    private void EnsureSlotsAllocatedLocked()
+    {
+        if (_slots.Count > 0)
+            return;
+
+        int primary = _primarySlotCount;
+        if (primary < 0)
+        {
+            primary = 1;
+            var recipe = LookupRecipe(_owner?.ActiveRecipeId ?? DefaultRecipe);
+            if (recipe != null)
+                primary = Mathf.Max(1, ExtractOutputTags(recipe).Count);
+        }
+        int secondary = Mathf.Max(0, _secondarySlotCount);
+
+        for (int i = 0; i < primary; i++)
+            _slots.Add(new ExtractionSlot { Kind = ExtractionSlotKind.Primary });
+        for (int i = 0; i < secondary; i++)
+            _slots.Add(new ExtractionSlot { Kind = ExtractionSlotKind.Secondary });
+    }
+
+    /// <summary>
+    /// Clears any slot whose assigned resource is no longer eligible (not in
+    /// <see cref="AvailableDeposits"/> after a deposit/recipe change). Caller holds the lock.
+    /// </summary>
+    private void ReconcileSlotsLocked()
+    {
+        foreach (var slot in _slots)
+            if (slot.ResourceId != null && !AvailableDeposits.ContainsKey(slot.ResourceId))
+                slot.ResourceId = null;
+    }
+
+    /// <summary>
+    /// Fills empty PRIMARY slots with the highest-abundance eligible resources, preferring
+    /// distinct resources across slots and allowing repeats once the eligible pool is
+    /// exhausted. Secondary slots and existing (user) assignments are left untouched.
+    /// Caller holds the lock.
+    /// </summary>
+    private void AutoFillPrimarySlotsLocked()
+    {
+        var ordered = OrderedEligibleResources();
+        if (ordered.Count == 0)
+            return;
+
+        var used = new HashSet<string>();
+        foreach (var s in _slots)
+            if (s.ResourceId != null)
+                used.Add(s.ResourceId);
+
+        int cursor = 0;
+        foreach (var slot in _slots)
+        {
+            if (slot.Kind != ExtractionSlotKind.Primary || slot.ResourceId != null)
+                continue;
+
+            string? pick = null;
+            for (int k = 0; k < ordered.Count; k++)
+            {
+                var cand = ordered[(cursor + k) % ordered.Count];
+                if (!used.Contains(cand))
+                {
+                    pick = cand;
+                    cursor = (cursor + k + 1) % ordered.Count;
+                    break;
+                }
+            }
+            if (pick == null)
+            {
+                pick = ordered[cursor % ordered.Count];
+                cursor++;
+            }
+
+            slot.ResourceId = pick;
+            used.Add(pick);
+            EnsureOutputSlotForResource(pick);
+        }
+    }
+
+    /// <summary>
+    /// Eligible resources (keys of <see cref="AvailableDeposits"/>) sorted by abundance
+    /// descending, ties broken alphabetically — the same ordering as <see cref="TryResolveOutput"/>.
+    /// </summary>
+    private List<string> OrderedEligibleResources()
+    {
+        var list = new List<string>(AvailableDeposits.Keys);
+        list.Sort((a, b) =>
+        {
+            int cmp = AvailableDeposits[b].CompareTo(AvailableDeposits[a]);
+            return cmp != 0 ? cmp : string.CompareOrdinal(a, b);
+        });
+        return list;
+    }
+
+    /// <summary>
+    /// Assigns <paramref name="resourceId"/> to slot <paramref name="slotIndex"/>. The resource
+    /// must be eligible (present in <see cref="AvailableDeposits"/>) and within the building's
+    /// max resource tier. The same resource may occupy multiple slots. Thread-safe.
+    /// Returns false when the index is out of range or the resource is ineligible.
+    /// </summary>
+    public bool TryAssignSlot(int slotIndex, string resourceId)
+    {
+        if (string.IsNullOrEmpty(resourceId))
+            return false;
+
+        lock (_slotLock)
+        {
+            if (slotIndex < 0 || slotIndex >= _slots.Count)
+                return false;
+            if (!AvailableDeposits.ContainsKey(resourceId))
+                return false;
+
+            var db = ResourceDatabase.Instance;
+            if (db != null && db.IsLoaded && db.TryGetResource(resourceId, out var def)
+                && def != null && def.ResourceTier > _maxResourceTier)
+                return false;
+
+            _slots[slotIndex].ResourceId = resourceId;
+            EnsureOutputSlotForResource(resourceId);
+            return true;
+        }
+    }
+
+    /// <summary>Empties slot <paramref name="slotIndex"/> (produces nothing). Thread-safe.</summary>
+    public void ClearSlot(int slotIndex)
+    {
+        lock (_slotLock)
+        {
+            if (slotIndex < 0 || slotIndex >= _slots.Count)
+                return;
+            _slots[slotIndex].ResourceId = null;
+        }
+    }
+
+    /// <summary>
+    /// Per-cycle output contribution of slot <paramref name="slotIndex"/> for UI display:
+    /// <c>baseValue × abundance × envScale × (primary ? 1 : SecondaryRateMultiplier)</c>.
+    /// Returns 0 for empty/out-of-range slots. Thread-safe.
+    /// </summary>
+    public float GetSlotRate(int slotIndex)
+    {
+        lock (_slotLock)
+        {
+            if (slotIndex < 0 || slotIndex >= _slots.Count)
+                return 0f;
+            var slot = _slots[slotIndex];
+            if (slot.ResourceId == null)
+                return 0f;
+            var recipe = LookupRecipe(_owner?.ActiveRecipeId ?? DefaultRecipe);
+            float baseVal = ResolveSlotBaseValue(slot.ResourceId, recipe);
+            if (baseVal < 0f)
+                return 0f;
+            float weight = AvailableDeposits.GetValueOrDefault(slot.ResourceId);
+            float rate = slot.Kind == ExtractionSlotKind.Primary ? 1f : SecondaryRateMultiplier;
+            return baseVal * weight * EnvScaleFactor * rate;
+        }
+    }
+
+    /// <summary>
+    /// Restores slot assignments from a save. Slot kinds/counts are re-applied from YAML at
+    /// <see cref="Configure"/>/<see cref="OnRegister"/> time; this maps saved resource ids onto
+    /// the existing slots by index where the kind matches, dropping resources no longer eligible.
+    /// A saved null clears an auto-filled slot (preserves an explicit player "clear"). Thread-safe.
+    /// </summary>
+    public void RestoreSlots(IReadOnlyList<(ExtractionSlotKind Kind, string? ResourceId)> saved)
+    {
+        if (saved == null)
+            return;
+        lock (_slotLock)
+        {
+            int n = Mathf.Min(saved.Count, _slots.Count);
+            for (int i = 0; i < n; i++)
+            {
+                if (_slots[i].Kind != saved[i].Kind)
+                    continue; // slot layout changed since save; leave auto-filled default
+                var res = saved[i].ResourceId;
+                if (res != null && AvailableDeposits.ContainsKey(res))
+                {
+                    _slots[i].ResourceId = res;
+                    EnsureOutputSlotForResource(res);
+                }
+                else
+                {
+                    _slots[i].ResourceId = null;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Base per-cycle amount for a resource: the value of the first <paramref name="recipe"/>
+    /// output tag the resource carries (fallback 1.0). Returns -1 when the resource/recipe/db is
+    /// unavailable.
+    /// </summary>
+    private float ResolveSlotBaseValue(string resourceId, RecipeDefinition? recipe)
+    {
+        if (recipe == null)
+            return -1f;
+        var db = ResourceDatabase.Instance;
+        if (db == null || !db.IsLoaded
+            || !db.TryGetResource(resourceId, out var rdef) || rdef?.Tags == null)
+            return -1f;
+        foreach (var output in recipe.OutputResources)
+        {
+            if (!RecipeDefinition.IsTagInput(output.Key))
+                continue;
+            if (rdef.Tags.Contains(RecipeDefinition.GetTagName(output.Key)))
+                return output.Value;
+        }
+        return 1f;
     }
 
     // ── Tag output resolution ────────────────────────────────────────────────
@@ -241,40 +539,42 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
 
         var db = ResourceDatabase.Instance;
 
-        // Populate ExpectedOutputs from pre-resolved tag outputs with abundance scaling.
+        // Tag-driven outputs come from the player-assigned extraction slots: each filled slot
+        // produces its chosen resource at baseValue × abundance × envScale × (primary ? 1 :
+        // secondaryRate). Slots sharing a resource sum into one output entry.
+        List<(string Resource, bool Primary)> filledSlots = new();
+        lock (_slotLock)
+        {
+            foreach (var slot in _slots)
+                if (slot.ResourceId != null)
+                    filledSlots.Add((slot.ResourceId, slot.Kind == ExtractionSlotKind.Primary));
+        }
+
+        foreach (var (resourceId, primary) in filledSlots)
+        {
+            float baseVal = ResolveSlotBaseValue(resourceId, recipe);
+            if (baseVal < 0f)
+                continue;
+            float weight = AvailableDeposits.GetValueOrDefault(resourceId);
+            float rate = primary ? 1f : SecondaryRateMultiplier;
+            float contribution = baseVal * weight * EnvScaleFactor * rate;
+            ExpectedOutputs[resourceId] = ExpectedOutputs.GetValueOrDefault(resourceId) + contribution;
+        }
+
+        // Literal (non-tag) outputs are not slot-driven: produced as-is, tier-gated.
         foreach (var output in recipe.OutputResources)
         {
-            if (output.Key == "power")
+            if (output.Key == "power" || RecipeDefinition.IsTagInput(output.Key))
                 continue;
 
-            if (RecipeDefinition.IsTagInput(output.Key))
+            if (db != null && db.IsLoaded && db.TryGetResource(output.Key, out var outDef) && outDef != null
+                && outDef.ResourceTier > _maxResourceTier)
             {
-                if (ResolvedTagOutputs.TryGetValue(output.Key, out var resourceId)
-                    && resourceId != null)
-                {
-                    float weight = AvailableDeposits.GetValueOrDefault(resourceId);
-                    ExpectedOutputs[resourceId] = output.Value * weight * EnvScaleFactor;
-                }
-                else
-                {
-                    GameLogger.Warning(
-                        $"ExtractionBehavior: tag output '{output.Key}' not pre-resolved on recipe '{recipe.RecipeId}'");
-                }
+                GameLogger.Warning(
+                    $"ExtractionBehavior: skipping literal output '{output.Key}' (tier {outDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
+                continue;
             }
-            else
-            {
-                // Literal output (non-tag): block if tier exceeds building max
-                if (db != null && db.IsLoaded && db.TryGetResource(output.Key, out var outDef) && outDef != null)
-                {
-                    if (outDef.ResourceTier > _maxResourceTier)
-                    {
-                        GameLogger.Warning(
-                            $"ExtractionBehavior: skipping literal output '{output.Key}' (tier {outDef.ResourceTier}) — exceeds building max tier {_maxResourceTier}");
-                        continue;
-                    }
-                }
-                ExpectedOutputs[output.Key] = output.Value * EnvScaleFactor;
-            }
+            ExpectedOutputs[output.Key] = ExpectedOutputs.GetValueOrDefault(output.Key) + output.Value * EnvScaleFactor;
         }
 
         // Conditional outputs: evaluate against the building's recipe context
@@ -290,6 +590,15 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                     continue;
                 AddConditionalExtractionOutput(co.Resource, co.Amount, db);
             }
+        }
+
+        // No outputs (all slots empty, no literal/conditional outputs fired) — nothing to do.
+        // Return to Idle instead of spinning a no-op Manufacturing cycle.
+        if (ExpectedOutputs.Count == 0)
+        {
+            ClearCycleState();
+            State = ManufacturingState.Idle;
+            return;
         }
 
         // Withdraw inputs from InputStorage, tracking pending for shortages.
@@ -596,29 +905,88 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
             return;
 
         foreach (var cell in _owner.OccupiedCells)
+            AccumulateDeposits(cell, outputTags, _maxResourceTier, db, AvailableDeposits);
+    }
+
+    /// <summary>
+    /// Adds the extractable deposits from <paramref name="cell"/> into <paramref name="into"/>.
+    /// A resource is extractable when it has positive abundance, its tier does not exceed
+    /// <paramref name="maxResourceTier"/>, and its tags contain at least one of
+    /// <paramref name="outputTags"/>. Shared by the live behavior and the placement preview so
+    /// the two cannot drift.
+    /// </summary>
+    private static void AccumulateDeposits(
+        VoronoiCell? cell,
+        HashSet<string> outputTags,
+        int maxResourceTier,
+        ResourceDatabase db,
+        Dictionary<string, float> into)
+    {
+        if (cell?.Resources == null) return;
+        foreach (var kvp in cell.Resources)
         {
-            if (cell?.Resources == null) continue;
-            foreach (var kvp in cell.Resources)
+            if (string.IsNullOrEmpty(kvp.Key) || kvp.Value <= 0f) continue;
+            if (!db.TryGetResource(kvp.Key, out var def) || def?.Tags == null) continue;
+            if (def.ResourceTier > maxResourceTier) continue;
+
+            // Include if the resource carries any of the recipe's output tags
+            bool matches = false;
+            foreach (var tag in outputTags)
             {
-                if (string.IsNullOrEmpty(kvp.Key) || kvp.Value <= 0f) continue;
-                if (!db.TryGetResource(kvp.Key, out var def) || def?.Tags == null) continue;
-                if (def.ResourceTier > _maxResourceTier) continue;
-
-                // Include if the resource carries any of the recipe's output tags
-                bool matches = false;
-                foreach (var tag in outputTags)
+                if (def.Tags.Contains(tag))
                 {
-                    if (def.Tags.Contains(tag))
-                    {
-                        matches = true;
-                        break;
-                    }
+                    matches = true;
+                    break;
                 }
-                if (!matches) continue;
-
-                AvailableDeposits[kvp.Key] = AvailableDeposits.GetValueOrDefault(kvp.Key) + kvp.Value;
             }
+            if (!matches) continue;
+
+            into[kvp.Key] = into.GetValueOrDefault(kvp.Key) + kvp.Value;
         }
+    }
+
+    /// <summary>
+    /// Computes the resources an extraction building defined by <paramref name="def"/> could
+    /// extract from <paramref name="cell"/>, abundance-descending (alpha tiebreak). Uses the
+    /// same recipe-tag + tier filtering as the live <see cref="RebuildAvailableDeposits"/>, so a
+    /// placement preview matches what the built building will actually be able to extract.
+    /// Returns an empty list when the building has no ExtractionBehavior, the database is
+    /// unavailable, the default recipe is missing, or nothing on the cell qualifies.
+    /// </summary>
+    public static List<KeyValuePair<string, float>> GetExtractableDeposits(
+        BuildingDefinition def, VoronoiCell cell)
+    {
+        var result = new List<KeyValuePair<string, float>>();
+        if (def == null || cell == null)
+            return result;
+
+        var db = ResourceDatabase.Instance;
+        if (db == null || !db.IsLoaded)
+            return result;
+
+        var entry = def.BehaviorEntries.Find(e => e.BehaviorId == "ExtractionBehavior");
+        if (entry == null)
+            return result;
+
+        var recipeId = BehaviorConfigHelper.ReadString(entry.Config, "default_recipe", null);
+        var recipe = LookupRecipe(recipeId);
+        if (recipe == null)
+            return result;
+
+        var outputTags = ExtractOutputTags(recipe);
+        if (outputTags.Count == 0)
+            return result;
+
+        var deposits = new Dictionary<string, float>();
+        AccumulateDeposits(cell, outputTags, def.MaxResourceTier, db, deposits);
+
+        result.AddRange(deposits);
+        result.Sort((a, b) =>
+        {
+            int cmp = b.Value.CompareTo(a.Value);
+            return cmp != 0 ? cmp : string.CompareOrdinal(a.Key, b.Key);
+        });
+        return result;
     }
 
     /// <summary>
@@ -684,13 +1052,15 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
 
         if (RecipeDefinition.IsTagInput(key))
         {
-            if (!ResolvedTagOutputs.TryGetValue(key, out var resourceId) || resourceId == null)
+            // Conditional tag outputs are not slot-split: resolve to the single highest-abundance
+            // eligible resource for the tag (deterministic), matching legacy conditional behavior.
+            if (!TryResolveOutput(RecipeDefinition.GetTagName(key), out var resourceId, out var weight)
+                || resourceId == null)
             {
                 GameLogger.Warning(
-                    $"ExtractionBehavior: conditional tag output '{key}' not pre-resolved on recipe '{_currentRecipe?.RecipeId}'");
+                    $"ExtractionBehavior: conditional tag output '{key}' could not be resolved on recipe '{_currentRecipe?.RecipeId}'");
                 return;
             }
-            float weight = AvailableDeposits.GetValueOrDefault(resourceId);
             float scaled = amount * weight * EnvScaleFactor;
             ExpectedOutputs[resourceId] = ExpectedOutputs.GetValueOrDefault(resourceId) + scaled;
             return;

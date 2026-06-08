@@ -211,7 +211,7 @@ public static class RecipeEditorYamlIO
         // Level 0: root keys "recipes:"
         // Level 1: list item prefix "- recipe_id: ..."
         // Level 2: list item properties "display_name: ..."
-        // Level 3: nested block properties "base_path: ..." (icon), slot keys
+        // Level 3: nested block properties "resource: ..." (icon), slot keys
         // Level 4: deep nested slots "- key: amount"
 
         sb.AppendLine("recipes:");
@@ -234,10 +234,10 @@ public static class RecipeEditorYamlIO
                 YamlIndent.AppendLine(sb, 2, $"tags: [{string.Join(", ", entry.Tags.OrderBy(t => t))}]");
             }
 
-            if (!string.IsNullOrEmpty(entry.IconBasePath))
+            if (!string.IsNullOrEmpty(entry.IconResourcePath))
             {
                 YamlIndent.AppendLine(sb, 2, "icon:");
-                YamlIndent.AppendLine(sb, 3, $"base_path: \"{entry.IconBasePath}\"");
+                YamlIndent.AppendLine(sb, 3, $"resource: \"{entry.IconResourcePath}\"");
                 if (!Mathf.IsEqualApprox(entry.IconScale, 1.0f))
                 {
                     YamlIndent.AppendLine(sb, 3, $"scale: {FormatFloat(entry.IconScale)}");

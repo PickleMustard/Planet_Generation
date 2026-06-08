@@ -55,6 +55,18 @@ public static class BuildingMapper
                 transfer.GetActiveTransfers().Select(t => t.Order),
                 transfer.GetAllSchedules());
 
+        var ext = b.GetBehavior<ExtractionBehavior>();
+        if (ext != null)
+        {
+            dto.ExtractionSlots = new List<ExtractionSlotDto>();
+            foreach (var slot in ext.Slots)
+                dto.ExtractionSlots.Add(new ExtractionSlotDto
+                {
+                    Kind = slot.Kind.ToString(),
+                    ResourceId = slot.ResourceId,
+                });
+        }
+
         return dto;
     }
 
@@ -105,12 +117,31 @@ public static class BuildingMapper
         foreach (var cell in building.OccupiedCells)
             cell.Building = building;
 
-        building.Register();
+        // Set the recipe before Register so recipe-aware behaviors (ExtractionBehavior's
+        // deposit/slot resolution) build against the saved recipe rather than the default.
         building.ActiveRecipeId = dto.ActiveRecipeId;
+        building.Register();
 
         building.InputStorage.RestoreContents(dto.InputStorage);
         building.OutputStorage.RestoreContents(dto.OutputStorage);
         building.BulkStorage.RestoreContents(dto.BulkStorage);
+
+        if (dto.ExtractionSlots != null)
+        {
+            var ext = building.GetBehavior<ExtractionBehavior>();
+            if (ext != null)
+            {
+                var slots = new List<(ExtractionSlotKind, string?)>(dto.ExtractionSlots.Count);
+                foreach (var s in dto.ExtractionSlots)
+                {
+                    var kind = s.Kind == nameof(ExtractionSlotKind.Secondary)
+                        ? ExtractionSlotKind.Secondary
+                        : ExtractionSlotKind.Primary;
+                    slots.Add((kind, s.ResourceId));
+                }
+                ext.RestoreSlots(slots);
+            }
+        }
 
         if (dto.Transfer != null)
         {

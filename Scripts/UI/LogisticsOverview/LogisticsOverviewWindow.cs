@@ -100,7 +100,6 @@ public partial class LogisticsOverviewWindow : Control
     {
         IsOpen = true;
         Visible = true;
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
 
         CollectUnits();
         RebuildList();
@@ -121,7 +120,6 @@ public partial class LogisticsOverviewWindow : Control
         _selectedUnit = null;
         UpdateViewInDepthEnabled();
 
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
         Visible = false;
 
         GameLogger.Info("[LogisticsOverviewWindow] Closed");

@@ -30,10 +30,10 @@ buildings:
       labels: ["Crop"]
       default: 1
     visual:
-      model_path: "res://Mesh/external/factory_a.glb"
+      model_resource: "res://Mesh/external/factory_a.glb.tres"
       shape_id: small_manufacturing
     icon:
-      base_path: "res://Materials/Icons/default_building"
+      resource: "res://Materials/Icons/default_building.tres"
 
   - id_name: fishmonger
     display_name: Fish Monger
@@ -60,6 +60,6 @@ buildings:
       - behavior_id: PowerConsumerBehavior
         base_draw: 1
     visual:
-      model_path: "res://Mesh/external/factory_e.glb"
+      model_resource: "res://Mesh/external/factory_e.glb.tres"
     icon:
-      base_path: "res://Materials/Icons/default_building"
+      resource: "res://Materials/Icons/default_building.tres"

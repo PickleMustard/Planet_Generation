@@ -24,6 +24,7 @@ public partial class PlanetBoardState : LimboState
         GameLogger.EnterFunction(nameof(_Enter), "PlanetBoardState");
 
         WorldInputController.Instance?.PushDisable();
+        WorldInputController.Instance?.PushCursorMode(Input.MouseModeEnum.Visible);
 
         var bb = Blackboard?.Top();
 
@@ -63,7 +64,7 @@ public partial class PlanetBoardState : LimboState
         }
 
         _currentBody = body;
-        _planetBoardWindow.Closed += OnPlanetBoardClosed;
+        _planetBoardWindow.WindowCloseRequested += OnPlanetBoardClosed;
         _planetBoardWindow.BackRequested += OnPlanetBoardBackRequested;
         _planetBoardWindow.OpenForBody(body, mode);
 
@@ -77,12 +78,13 @@ public partial class PlanetBoardState : LimboState
 
         if (_planetBoardWindow != null)
         {
-            _planetBoardWindow.Closed -= OnPlanetBoardClosed;
+            _planetBoardWindow.WindowCloseRequested -= OnPlanetBoardClosed;
             _planetBoardWindow.BackRequested -= OnPlanetBoardBackRequested;
             if (_planetBoardWindow.Visible)
                 _planetBoardWindow.Visible = false;
         }
 
+        WorldInputController.Instance?.PopCursorMode();
         WorldInputController.Instance?.PopDisable();
         _currentBody = null;
 

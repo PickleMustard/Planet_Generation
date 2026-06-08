@@ -265,10 +265,10 @@ public static class BiomeEditorYamlIO
             if (!first) sb.AppendLine();
             first = false;
             YamlIndent.AppendLine(sb, 1, $"- biome: {biome}");
-            YamlIndent.AppendLine(sb, 2, "resourceWeightModifiers:");
-            foreach (var kvp in entry.Weights.OrderBy(k => k.Key, StringComparer.Ordinal))
+            YamlIndent.AppendLine(sb, 2, "groupAvailability:");
+            foreach (var kvp in entry.Groups.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                YamlIndent.AppendLine(sb, 3, $"{kvp.Key}: {FormatFloat(kvp.Value)}");
+                YamlIndent.AppendLine(sb, 3, $"{kvp.Key}: {kvp.Value}");
             }
         }
         WriteText(BiomeEditorModel.BiomeResourcePath, sb.ToString());

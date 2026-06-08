@@ -1,0 +1,79 @@
+[gd_scene format=3 uid="uid://r2nfdh5bfhkh"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_n21xv"]
+[ext_resource type="Script" uid="uid://brs1selpopup7a" path="res://Scripts/UI/BuildingInfo/ResourceSelectionPopup.cs" id="1_ressel"]
+
+[node name="ResourceSelectionPopup" type="PanelContainer" node_paths=PackedStringArray("_resourceList", "_selectButton", "_cancelButton", "_emptyLabel")]
+visible = false
+top_level = true
+theme = ExtResource("1_n21xv")
+theme_type_variation = &"PaperPanel"
+script = ExtResource("1_ressel")
+_resourceList = NodePath("VBoxContainer/ScrollContainer/ResourceList")
+_selectButton = NodePath("VBoxContainer/ButtonBar/SelectButton")
+_cancelButton = NodePath("VBoxContainer/ButtonBar/CancelButton")
+_emptyLabel = NodePath("VBoxContainer/EmptyLabel")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
+theme_type_variation = &"LabelHand"
+text = "Select Resource"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EmptyLabel" type="Label" parent="VBoxContainer"]
+visible = false
+custom_minimum_size = Vector2(30, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
+text = "No extractable resources available on this cell."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
+
+[node name="ResourceList" type="ItemList" parent="VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_n21xv")
+auto_height = true
+
+[node name="ButtonBar" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
+alignment = 2
+
+[node name="SelectButton" type="Button" parent="VBoxContainer/ButtonBar"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
+theme_type_variation = &"ButtonPrimary"
+disabled = true
+text = "Select"
+
+[node name="CancelButton" type="Button" parent="VBoxContainer/ButtonBar"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme = ExtResource("1_n21xv")
+text = "Cancel"

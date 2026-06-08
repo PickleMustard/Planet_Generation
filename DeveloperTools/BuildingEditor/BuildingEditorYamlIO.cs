@@ -283,7 +283,7 @@ public static class BuildingEditorYamlIO
 
     private static void WriteVisual(StringBuilder sb, BuildingEditorModel.VisualEdit v)
     {
-        bool any = !string.IsNullOrEmpty(v.ModelPath)
+        bool any = !string.IsNullOrEmpty(v.ModelResourcePath)
                 || !string.IsNullOrEmpty(v.ModelMaterial)
                 || !string.IsNullOrEmpty(v.AnimationPath)
                 || !string.IsNullOrEmpty(v.AnimationName)
@@ -294,8 +294,8 @@ public static class BuildingEditorYamlIO
         if (!any) return;
 
         YamlIndent.AppendLine(sb, 2, "visual:");
-        if (!string.IsNullOrEmpty(v.ModelPath))
-            YamlIndent.AppendLine(sb, 3, $"model_path: \"{v.ModelPath}\"");
+        if (!string.IsNullOrEmpty(v.ModelResourcePath))
+            YamlIndent.AppendLine(sb, 3, $"model_resource: \"{v.ModelResourcePath}\"");
         if (!string.IsNullOrEmpty(v.ModelMaterial))
             YamlIndent.AppendLine(sb, 3, $"model_material: \"{v.ModelMaterial}\"");
         if (!string.IsNullOrEmpty(v.AnimationPath))
@@ -318,10 +318,10 @@ public static class BuildingEditorYamlIO
 
     private static void WriteIcon(StringBuilder sb, BuildingEditorModel.IconEdit icon)
     {
-        if (string.IsNullOrEmpty(icon.BasePath)) return;
+        if (string.IsNullOrEmpty(icon.ResourcePath)) return;
 
         YamlIndent.AppendLine(sb, 2, "icon:");
-        YamlIndent.AppendLine(sb, 3, $"base_path: \"{icon.BasePath}\"");
+        YamlIndent.AppendLine(sb, 3, $"resource: \"{icon.ResourcePath}\"");
         if (!Mathf.IsEqualApprox(icon.Scale, 1f))
             YamlIndent.AppendLine(sb, 3, $"scale: {FormatFloat(icon.Scale)}");
         if (icon.Tint != Colors.White)

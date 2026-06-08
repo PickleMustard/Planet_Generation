@@ -1,14 +1,15 @@
 stations:
-  - name: Ramshackle_Builder
+  - name: handmedown_constructor
+    description: A free orbital constructor. Your father gave it to you as a celebratory gift for your companies incorporation.
     station_type: Orbital_Architect
     construction_time: 0
     behaviors:
       - behavior_id: StorageHubBehavior
-        storage_capacity: "10"
+        storage_capacity: "3"
       - behavior_id: OrbitalConstructorBehavior
         work_budget_per_tick: "1.0"
         regular_slots: "1"
         overtime_slots: "0"
         overtime_cost_percent: "0.10"
     icon:
-      base_path: "res://Assets/Icons/Stations/architect/ramshackle_builder"
+      resource: "res://Materials/Icons/default_station.tres"

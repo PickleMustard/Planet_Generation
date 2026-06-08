@@ -16,4 +16,10 @@ public interface IBiomeAssigner
         float latitude = 0f);
 
     float CalculateMoisture(Continent continent, RandomNumberGenerator rng, float baseMoisture = 0.5f);
+
+    /// <summary>
+    /// Blends a per-cell [0,1] noise sample into the continent moisture baseline.
+    /// Returns the final per-cell moisture in [0,1].
+    /// </summary>
+    float CombineMoistureWithNoise(float baseMoisture, float noise01);
 }

@@ -23,4 +23,10 @@ public class DefaultBiomeAssigner : IBiomeAssigner
     {
         return BiomeAssigner.CalculateMoisture(continent, rng, baseMoisture);
     }
+
+    // Legacy fallback bodies keep the continent baseline (no per-cell noise blending).
+    public float CombineMoistureWithNoise(float baseMoisture, float noise01)
+    {
+        return baseMoisture;
+    }
 }

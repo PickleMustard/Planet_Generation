@@ -259,6 +259,25 @@ theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
 columns = 2
 
+[node name="ExtractionSlotsPane" type="VBoxContainer" parent="Layout" unique_id=311001001]
+visible = false
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_override_constants/separation = 4
+
+[node name="ExtractionHeader" type="Label" parent="Layout/ExtractionSlotsPane" unique_id=311001002]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_type_variation = &"LabelMono"
+text = "EXTRACTION SLOTS"
+
+[node name="ExtractionSlotsGrid" type="GridContainer" parent="Layout/ExtractionSlotsPane" unique_id=311001003]
+layout_mode = 2
+theme = ExtResource("1_r40mj")
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+columns = 2
+
 [node name="Bottom" type="HSplitContainer" parent="Layout" unique_id=22769606]
 layout_mode = 2
 size_flags_vertical = 3

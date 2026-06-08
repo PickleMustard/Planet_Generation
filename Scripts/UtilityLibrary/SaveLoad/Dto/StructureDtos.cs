@@ -41,6 +41,21 @@ public sealed class BuildingDto
 
     /// <summary>Null unless the building has a transfer-station behavior.</summary>
     public TransferBehaviorStateDto? Transfer { get; set; }
+
+    /// <summary>
+    /// Player-assigned extraction slot resources (save_version ≥ 8). Null for non-extraction
+    /// buildings and for older saves — a null list restores the auto-filled defaults. Slot counts
+    /// and rate come from YAML config, not the save; only resource assignments are persisted.
+    /// </summary>
+    public List<ExtractionSlotDto>? ExtractionSlots { get; set; }
+}
+
+/// <summary>One persisted extraction-slot assignment: kind (Primary/Secondary) + resource id
+/// (null = explicitly emptied by the player).</summary>
+public sealed class ExtractionSlotDto
+{
+    public string Kind { get; set; } = "Primary";
+    public string? ResourceId { get; set; }
 }
 
 public sealed class StationDto

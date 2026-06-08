@@ -22,8 +22,15 @@ uniform float pulse_max_alpha : hint_range(0.0, 1.0) = 0.4;
 
 // Placement preview. Per-cell highlight codes are uploaded as an R8 texture indexed
 // by VoronoiCell.Index. Codes:
-//   0 = none, 1 = footprint valid, 2 = footprint invalid,
-//   3 = new coverage, 4 = dominant existing grid, 5 = absorbed existing grid.
+//   0  = none
+//   1  = footprint valid
+//   2  = footprint invalid
+//   3  = building coverage range (yellow)
+//   >=16 = existing grid cell, encoded as 16 + slot*3 + pattern where
+//          slot (0..15)   selects the orange shade (distinguishes grids), and
+//          pattern (0/1/2) selects the diagonal-line overlay:
+//          0 = none, 1 = single diagonal (placement joins this grid),
+//          2 = X (placement would merge this grid with another).
 uniform sampler2D placement_cell_data : filter_nearest, repeat_disable;
 uniform ivec2 placement_data_size = ivec2(0, 0);
 uniform bool placement_data_active = false;
@@ -34,12 +41,16 @@ uniform vec4 valid_outline_color : source_color = vec4(0.0, 1.0, 0.0, 1.0);
 uniform vec4 invalid_fill_color : source_color = vec4(0.8, 0.0, 0.0, 0.3);
 uniform vec4 invalid_outline_color : source_color = vec4(1.0, 0.0, 0.0, 1.0);
 
-// Coverage colors (codes 3, 4, 5).
+// Building coverage color (code 3, yellow).
 uniform vec4 coverage_fill_color : source_color = vec4(1.0, 0.9, 0.0, 0.35);
+
+// Existing-grid colors (codes >= 16). grid_base_color is the brightest orange; each
+// grid slot scales its brightness so neighbouring grids read as distinct shades.
+uniform vec4 grid_base_color : source_color = vec4(1.0, 0.5, 0.0, 0.45);
 uniform vec4 coverage_outline_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
-uniform vec4 hatch_color : source_color = vec4(0.0, 0.0, 0.0, 0.7);
-uniform float hatch_spacing = 0.02;
-uniform float hatch_width : hint_range(0.0, 1.0) = 0.35;
+uniform vec4 hatch_color : source_color = vec4(0.0, 0.0, 0.0, 0.85);
+uniform float hatch_spacing = 0.04;
+uniform float hatch_width : hint_range(0.0, 1.0) = 0.18;
 
 // The Voronoi cell index for this fragment, passed from vertex stage.
 // Using flat interpolation ensures no blending of cell IDs across triangle
@@ -69,6 +80,18 @@ int sample_code(float cid) {
     return int(texelFetch(placement_cell_data, ivec2(x, y), 0).r * 255.0 + 0.5);
 }
 
+bool is_grid_code(int c) { return c >= 16; }
+int grid_slot(int c) { return (c - 16) / 3; }
+int grid_pattern(int c) { int g = c - 16; return g - (g / 3) * 3; }
+
+// Distinct orange shade per grid slot: scale the base orange's brightness by a
+// golden-ratio-spread factor so adjacent grids never share a shade.
+vec3 grid_shade(int slot) {
+    float h = fract(float(slot) * 0.61803399);
+    float v = 0.55 + 0.45 * h;
+    return grid_base_color.rgb * v;
+}
+
 void fragment() {
     float dcell_dx = dFdx(cell_id);
     float dcell_dy = dFdy(cell_id);
@@ -90,31 +113,41 @@ void fragment() {
                 ALBEDO = fc.rgb;
                 ALPHA = fc.a;
             }
-        } else if (code == 3 || code == 4 || code == 5) {
-            // Coverage cells.
-            vec3 albedo = coverage_fill_color.rgb;
-            float alpha = coverage_fill_color.a;
+        } else if (code == 3) {
+            // Building coverage range: yellow fill.
+            ALBEDO = coverage_fill_color.rgb;
+            ALPHA = coverage_fill_color.a;
+        } else if (is_grid_code(code)) {
+            // Existing grid cell: orange shade per slot, optional diagonal line(s).
+            int slot = grid_slot(code);
+            int pattern = grid_pattern(code);
+            vec3 albedo = grid_shade(slot);
+            float alpha = grid_base_color.a;
 
-            // Cross-hatch overlay for absorbed grids (code 5).
-            if (code == 5) {
-                // Two perpendicular stripe directions in world space produce a cross-hatch.
+            if (pattern != 0) {
+                // First stripe direction always present; the perpendicular second
+                // direction is added only for the X (pattern 2).
                 float h1 = abs(fract(dot(world_position, vec3(1.0, 0.7, 0.4)) / hatch_spacing) - 0.5);
-                float h2 = abs(fract(dot(world_position, vec3(-0.4, 0.7, 1.0)) / hatch_spacing) - 0.5);
                 float half_width = hatch_width * 0.5;
-                if (h1 < half_width || h2 < half_width) {
+                bool on_line = h1 < half_width;
+                if (pattern == 2) {
+                    float h2 = abs(fract(dot(world_position, vec3(-0.4, 0.7, 1.0)) / hatch_spacing) - 0.5);
+                    on_line = on_line || h2 < half_width;
+                }
+                if (on_line) {
                     albedo = mix(albedo, hatch_color.rgb, hatch_color.a);
                     alpha = max(alpha, hatch_color.a);
                 }
             }
 
-            // Outer perimeter for existing grids (codes 4 and 5): outline when at least
-            // one neighbor is outside the merged cluster.
-            if ((code == 4 || code == 5) && is_boundary) {
+            // Perimeter outline where a neighbor belongs to a different grid (or none),
+            // so adjacent grids of similar shade stay visually separated.
+            if (is_boundary) {
                 int nx_code = sample_code(cell_id - dcell_dx);
                 int ny_code = sample_code(cell_id - dcell_dy);
-                bool nx_outside = nx_code != 4 && nx_code != 5;
-                bool ny_outside = ny_code != 4 && ny_code != 5;
-                if (nx_outside || ny_outside) {
+                bool nx_diff = !is_grid_code(nx_code) || grid_slot(nx_code) != slot;
+                bool ny_diff = !is_grid_code(ny_code) || grid_slot(ny_code) != slot;
+                if (nx_diff || ny_diff) {
                     albedo = coverage_outline_color.rgb;
                     alpha = coverage_outline_color.a;
                 }

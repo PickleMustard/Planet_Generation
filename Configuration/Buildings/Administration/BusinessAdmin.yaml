@@ -18,4 +18,4 @@ buildings:
       adult: 100
       workstation: 50
     icon:
-      base_path: "res://Materials/Icons/default_building"
+      resource: "res://Materials/Icons/default_building.tres"

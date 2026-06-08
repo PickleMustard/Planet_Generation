@@ -4,7 +4,7 @@ recipes:
     category: commodities
     work_required: 10
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - tag:metal: 1
     output_resources:

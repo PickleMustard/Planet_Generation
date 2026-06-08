@@ -198,21 +198,20 @@ namespace UI
             templateList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             scrollContainer.AddChild(templateList);
 
-            // Scan for template files
-            var dir = DirAccess.Open("res://Configuration/SystemTemplate/");
-            if (dir != null)
+            // Scan for template files (export-safe: resolves remapped names).
+            var templateFiles = UtilityLibrary.DataLoading.BaseConfigLoader.GetYamlFilesInDir(
+                "res://Configuration/SystemTemplate/"
+            );
+            if (templateFiles.Count > 0)
             {
-                var files = DirAccess.GetFilesAt("res://Configuration/SystemTemplate/");
-                foreach (var file in files)
+                foreach (var filePath in templateFiles)
                 {
-                    if (!file.EndsWith(".yaml"))
-                        continue;
-
-                    var templateName = file.Replace(".yaml", "");
+                    var fileName = System.IO.Path.GetFileName(filePath);
+                    var templateName = fileName.Replace(".yaml", "").Replace(".yml", "");
                     var button = new Button();
                     button.Text = templateName;
                     button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-                    var capturedFile = file;
+                    var capturedFile = fileName;
                     button.Pressed += () => OnTemplateSelected(capturedFile);
                     templateList.AddChild(button);
                 }

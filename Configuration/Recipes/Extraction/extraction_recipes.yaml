@@ -4,7 +4,7 @@ recipes:
     category: extraction
     work_required: 10
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
       - tag:ore: 1
   - recipe_id: "clear_cutting"
@@ -13,6 +13,6 @@ recipes:
     category: extraction
     work_required: 5
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
-      - wood: 2
+      - tag:timber: 2

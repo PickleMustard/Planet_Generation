@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using Constructables;
 using Godot;
+using PlayerInteraction.Camera;
 using PlayerInteraction.CellSelection;
 using ProceduralGeneration.PlanetGeneration;
+using Structures.GameState;
 using UI.Components;
 using UtilityLibrary;
 
@@ -48,7 +50,7 @@ public partial class OrbitalBodyWindow : Control
 
     private IOrbitalBody? _currentBody;
     private Camera3D? _playerCamera;
-    private OrbitalBodyOrbitCamera? _orbitCamera;
+    private PlayerCameraController? _controller;
     private BillboardLabelManager? _billboardManager;
 
     private HashSet<int>? _currentBodyContinentIndices;
@@ -68,6 +70,14 @@ public partial class OrbitalBodyWindow : Control
 
     /// <summary>The body currently being inspected, or null.</summary>
     public IOrbitalBody? CurrentBody => _currentBody;
+
+    /// <summary>
+    /// The camera rendering the inspected body (the player camera, repositioned by
+    /// the orbit camera). Placement overlays use this directly instead of
+    /// <c>GetViewport().GetCamera3D()</c>, because the orbit camera never sets
+    /// <c>Camera3D.Current</c> — so <c>GetCamera3D()</c> can return null mid-flow.
+    /// </summary>
+    public Camera3D? PlayerCamera => _playerCamera;
 
     /// <summary>
     /// When true, the window ignores all input (drag / cell-select). Set by the
@@ -97,7 +107,6 @@ public partial class OrbitalBodyWindow : Control
         Instance = this;
         Visible = false;
 
-        _orbitCamera = GetNode<OrbitalBodyOrbitCamera>("OrbitalBodyOrbitCamera");
         //_billboardManager = new BillboardLabelManager();
         //AddChild(_billboardManager);
 
@@ -113,8 +122,8 @@ public partial class OrbitalBodyWindow : Control
         if (!IsOpen)
             return;
 
-        if (_compassRose != null && _orbitCamera != null)
-            _compassRose.RotationRadians = _orbitCamera.GetPlanetNorthScreenAngle();
+        if (_compassRose != null && _controller != null)
+            _compassRose.RotationRadians = _controller.GetFocusNorthScreenAngle();
     }
 
     /// <summary>
@@ -153,18 +162,19 @@ public partial class OrbitalBodyWindow : Control
     {
         _currentBody = body;
         _playerCamera = playerCamera;
+        _controller = playerCamera as PlayerCameraController;
         Visible = true;
         IsOpen = true;
         _ignoreNextRelease = true;
 
-        // Switch to visible cursor for UI interaction + drag
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
-
-        // Begin camera orbit
-        if (_orbitCamera != null)
+        // Reparent the camera under the body's anchor and frame it.
+        if (_controller != null && body is ISelectableBody selectable && body is Node3D bodyNode3D)
         {
-            _orbitCamera.ScreenOffset = ComputeCameraOffset();
-            _orbitCamera.BeginOrbit(playerCamera, body);
+            _controller.EnterFocus(
+                selectable.GetOrCreateCameraAnchor(),
+                bodyNode3D,
+                new OrbitalBodyFramingStrategy(body),
+                ComputeCameraOffset());
         }
 
         // Populate panels
@@ -189,6 +199,26 @@ public partial class OrbitalBodyWindow : Control
         GameLogger.Info($"[OrbitalBodyWindow] Opened for '{body.BodyName}'");
     }
 
+    /// <summary>
+    /// Re-establishes the orbital-body camera framing (anchor + screen offset)
+    /// after another mode borrowed the camera — e.g. returning from the top-down
+    /// station placement swoop. No-op when the window is closed.
+    /// </summary>
+    public void RefocusCamera()
+    {
+        if (!IsOpen || _controller == null || _currentBody == null)
+            return;
+
+        if (_currentBody is ISelectableBody selectable && _currentBody is Node3D bodyNode3D)
+        {
+            _controller.EnterFocus(
+                selectable.GetOrCreateCameraAnchor(),
+                bodyNode3D,
+                new OrbitalBodyFramingStrategy(_currentBody),
+                ComputeCameraOffset());
+        }
+    }
+
     public void HideWindow()
     {
         if (!IsOpen)
@@ -198,8 +228,10 @@ public partial class OrbitalBodyWindow : Control
 
         IsOpen = false;
 
-        // End camera orbit (smooth transition back)
-        _orbitCamera?.EndOrbit();
+        // End focus (smooth transition back; reinterpreted as retarget if
+        // another window opens this frame).
+        _controller?.ExitFocus();
+        _controller = null;
 
         // Clean up billboard labels
         _billboardManager?.Cleanup();
@@ -214,9 +246,6 @@ public partial class OrbitalBodyWindow : Control
         // Disconnect body signal
         if (_currentBody is Node bodyNode && IsInstanceValid(bodyNode))
             bodyNode.TreeExiting -= OnBodyExiting;
-
-        // Restore captured mouse
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
 
         _currentBody = null;
         _playerCamera = null;
@@ -253,7 +282,7 @@ public partial class OrbitalBodyWindow : Control
             if (mouseBtn.Pressed)
             {
                 // Start tracking for drag detection
-                _orbitCamera?.HandleDragInput(@event);
+                _controller?.HandleDragInput(@event);
                 GetViewport().SetInputAsHandled();
                 return;
             }
@@ -271,8 +300,8 @@ public partial class OrbitalBodyWindow : Control
 
                 // Release: if it was a drag, orbit camera already handled it.
                 // If it was a click (no drag), perform cell selection.
-                bool wasDrag = _orbitCamera?.IsDragging == true;
-                _orbitCamera?.HandleDragInput(@event);
+                bool wasDrag = _controller?.IsDragging == true;
+                _controller?.HandleDragInput(@event);
 
                 if (!wasDrag)
                     PerformCellSelection(mouseBtn.Position);
@@ -282,10 +311,10 @@ public partial class OrbitalBodyWindow : Control
             }
         }
 
-        // Forward mouse motion to orbit camera for drag rotation
+        // Forward mouse motion to the focus camera for drag rotation
         if (@event is InputEventMouseMotion)
         {
-            _orbitCamera?.HandleDragInput(@event);
+            _controller?.HandleDragInput(@event);
         }
     }
 
@@ -335,25 +364,18 @@ public partial class OrbitalBodyWindow : Control
         var faceIndex = (int)result["face_index"];
         var selectionResult = selectableBody.GetFaceFromIndex(faceIndex);
 
-        if (selectionResult?.Cell != null)
-        {
-            CellSelectionManager.Instance?.SelectCell(
-                selectionResult.Cell,
-                (Node3D)selectableBody
-            );
-        }
-        else
+        VoronoiCell? selectedCell = selectionResult?.Cell;
+        if (selectedCell == null)
         {
             // Fallback to octree method
             var position = (Vector3)result["position"];
-            var fallback = selectableBody.FindNearestCell(position);
-            if (fallback?.Cell != null)
-            {
-                CellSelectionManager.Instance?.SelectCell(
-                    fallback.Cell,
-                    (Node3D)selectableBody
-                );
-            }
+            selectedCell = selectableBody.FindNearestCell(position)?.Cell;
+        }
+
+        if (selectedCell != null)
+        {
+            CellSelectionManager.Instance?.SelectCell(selectedCell, (Node3D)selectableBody);
+            _detailsPanel?.ShowCellDetails(selectedCell);
         }
     }
 

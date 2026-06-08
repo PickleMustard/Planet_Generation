@@ -23,4 +23,4 @@ buildings:
     visual:
       shape_id: small_manufacturing
     icon:
-      base_path: "res://Materials/Icons/default_building"
+      resource: "res://Materials/Icons/default_building.tres"

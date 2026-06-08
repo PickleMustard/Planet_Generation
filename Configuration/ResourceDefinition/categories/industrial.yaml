@@ -6,7 +6,7 @@ resources:
     max_stack_size: 100
     tags: [woven]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: kevlar
     resource_tier: 2
     base_price: 3000
@@ -14,7 +14,7 @@ resources:
     max_stack_size: 100
     tags: [woven]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: ceramics
     resource_tier: 2
     base_price: 3000
@@ -22,7 +22,7 @@ resources:
     max_stack_size: 100
     tags: [processed]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: condensed_carbon
     resource_tier: 1
     base_price: 2000
@@ -30,7 +30,7 @@ resources:
     max_stack_size: 100
     tags: [processed]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: steel
     resource_tier: 1
     base_price: 2000
@@ -38,7 +38,7 @@ resources:
     max_stack_size: 100
     tags: [metal]
     icon:
-      base_path: "res://Materials/Icons/ingot"
+      resource: "res://Materials/Icons/ingot.tres"
   - id_name: fluid_barrel
     resource_tier: 1
     base_price: 2000
@@ -46,4 +46,4 @@ resources:
     max_stack_size: 50
     tags: [processed, storage]
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"

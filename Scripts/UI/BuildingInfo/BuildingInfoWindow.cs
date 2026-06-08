@@ -23,10 +23,12 @@ public partial class BuildingInfoWindow : Control
     [Export] private Button? _demolishButton;
     [Export] private BuildingInfoPanel? _panel;
     [Export] private RecipeSelectionPopup? _recipeSelectionPopup;
+    [Export] private ResourceSelectionPopup? _resourceSelectionPopup;
 
     private Building? _currentBuilding;
     private Building? _signalSubscribedBuilding;
     private RecipeDisplay? _connectedRecipeDisplay;
+    private BuildingPanelDetails? _connectedSlotPanel;
 
     [Signal]
     public delegate void WindowCloseRequestedEventHandler();
@@ -67,6 +69,14 @@ public partial class BuildingInfoWindow : Control
             _recipeSelectionPopup.Hide();
         }
 
+        if (_resourceSelectionPopup != null)
+        {
+            _resourceSelectionPopup.ResourceSlotSelected += OnResourceSlotSelected;
+            _resourceSelectionPopup.ResourceSlotCleared += OnResourceSlotCleared;
+            _resourceSelectionPopup.PopupCancelled += OnResourcePopupCancelled;
+            _resourceSelectionPopup.Hide();
+        }
+
         GameLogger.Info("BuildingInfoWindow initialized");
     }
 
@@ -77,7 +87,6 @@ public partial class BuildingInfoWindow : Control
         SubscribeToBuildingSignals(building);
 
         Show();
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
 
         _panel?.SetBuilding(building);
         ConnectRecipeDisplayInPanel();
@@ -129,6 +138,10 @@ public partial class BuildingInfoWindow : Control
         _connectedRecipeDisplay = FindRecipeDisplay(_panel);
         if (_connectedRecipeDisplay != null)
             _connectedRecipeDisplay.RecipeClicked += OnRecipeClicked;
+
+        _connectedSlotPanel = FindPanelDetails(_panel);
+        if (_connectedSlotPanel != null)
+            _connectedSlotPanel.ExtractionSlotClicked += OnExtractionSlotClicked;
     }
 
     private void DisconnectRecipeDisplay()
@@ -138,6 +151,22 @@ public partial class BuildingInfoWindow : Control
             _connectedRecipeDisplay.RecipeClicked -= OnRecipeClicked;
             _connectedRecipeDisplay = null;
         }
+        if (_connectedSlotPanel != null)
+        {
+            _connectedSlotPanel.ExtractionSlotClicked -= OnExtractionSlotClicked;
+            _connectedSlotPanel = null;
+        }
+    }
+
+    private static BuildingPanelDetails? FindPanelDetails(Node node)
+    {
+        if (node is BuildingPanelDetails bpd) return bpd;
+        foreach (var child in node.GetChildren())
+        {
+            var found = FindPanelDetails(child);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private static RecipeDisplay? FindRecipeDisplay(Node node)
@@ -154,18 +183,52 @@ public partial class BuildingInfoWindow : Control
     private void OnRecipeClicked()
     {
         if (_currentBuilding == null || _recipeSelectionPopup == null) return;
-        if (_currentBuilding.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>() != null)
-            return;
 
+        // Recipe swap is available for both manufacturing and extraction buildings: an
+        // extraction building's recipe defines its extractable tag domain.
         var mfg = _currentBuilding.GetBehavior<Constructables.Buildings.Behaviors.ManufacturingBehavior>();
-        if (mfg == null) return;
+        var ext = _currentBuilding.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>();
 
-        bool hasAny = !string.IsNullOrEmpty(mfg.DefaultRecipe)
-            || mfg.AlternativeRecipes.Count > 0;
+        bool hasAny =
+            (mfg != null && (!string.IsNullOrEmpty(mfg.DefaultRecipe) || mfg.AlternativeRecipes.Count > 0))
+            || (ext != null && (!string.IsNullOrEmpty(ext.DefaultRecipe) || ext.AlternativeRecipes.Count > 0));
         if (!hasAny) return;
 
         _recipeSelectionPopup.Populate(_currentBuilding);
         _recipeSelectionPopup.Show();
+    }
+
+    private void OnExtractionSlotClicked(int slotIndex)
+    {
+        if (_currentBuilding == null || _resourceSelectionPopup == null) return;
+        var ext = _currentBuilding.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>();
+        if (ext == null) return;
+
+        _resourceSelectionPopup.Populate(ext, slotIndex);
+        _resourceSelectionPopup.Show();
+    }
+
+    private void OnResourceSlotSelected(int slotIndex, string resourceId)
+    {
+        var ext = _currentBuilding?.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>();
+        ext?.TryAssignSlot(slotIndex, resourceId);
+        _resourceSelectionPopup?.Hide();
+        if (_currentBuilding != null) _panel?.SetBuilding(_currentBuilding);
+        ConnectRecipeDisplayInPanel();
+    }
+
+    private void OnResourceSlotCleared(int slotIndex)
+    {
+        var ext = _currentBuilding?.GetBehavior<Constructables.Buildings.Behaviors.ExtractionBehavior>();
+        ext?.ClearSlot(slotIndex);
+        _resourceSelectionPopup?.Hide();
+        if (_currentBuilding != null) _panel?.SetBuilding(_currentBuilding);
+        ConnectRecipeDisplayInPanel();
+    }
+
+    private void OnResourcePopupCancelled()
+    {
+        _resourceSelectionPopup?.Hide();
     }
 
     private void OnRecipeSelected(string recipeId)

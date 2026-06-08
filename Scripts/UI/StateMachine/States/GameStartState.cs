@@ -33,7 +33,6 @@ public partial class GameStartState : LimboState
     private LineEdit? _companyNameInput;
     private LineEdit? _systemNameInput;
     private Button? _confirmButton;
-    private Input.MouseModeEnum _previousMouseMode;
     private Building? _placedHq;
     private SystemData? _systemData;
     private bool _confirmed;
@@ -80,10 +79,9 @@ public partial class GameStartState : LimboState
         if (_dialog != null)
             _dialog.Visible = true;
 
-        _previousMouseMode = Input.MouseMode;
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
         GetTree().Paused = true;
         WorldInputController.Instance?.PushDisable();
+        WorldInputController.Instance?.PushCursorMode(Input.MouseModeEnum.Visible);
 
         GameLogger.ExitFunction(nameof(_Enter));
     }
@@ -97,7 +95,7 @@ public partial class GameStartState : LimboState
             _dialog.Visible = false;
 
         GetTree().Paused = false;
-        Input.SetMouseMode(_previousMouseMode);
+        WorldInputController.Instance?.PopCursorMode();
         WorldInputController.Instance?.PopDisable();
 
         if (!_confirmed && _placedHq != null)

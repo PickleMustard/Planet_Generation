@@ -12,7 +12,7 @@ namespace UI.StateMachine;
 /// Shows the window on Enter, hides on Exit.
 /// Translates window signals into HSM dispatch events.
 /// </summary>
-public partial class CellOverviewState : LimboState
+public partial class CellOverviewState : InGamePanelState
 {
     private CellInfo.VoronoiCellInfoWindow? _window;
 
@@ -38,14 +38,13 @@ public partial class CellOverviewState : LimboState
             return;
         }
 
-        _window.WindowCloseRequested += OnWindowCloseRequested;
-        _window.BackRequested += OnBackRequested;
+        _window.WindowCloseRequested += HandleClose;
+        _window.BackRequested += HandleBack;
         _window.BuildingDetailsRequested += OnBuildingDetailsRequested;
         _window.OrbitalBodyViewRequested += OnOrbitalBodyViewRequested;
 
         _window.ShowWindow(cell, body);
 
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
         GameLogger.Debug("CellOverviewState: Cell info window shown");
     }
 
@@ -55,8 +54,8 @@ public partial class CellOverviewState : LimboState
 
         if (_window != null)
         {
-            _window.WindowCloseRequested -= OnWindowCloseRequested;
-            _window.BackRequested -= OnBackRequested;
+            _window.WindowCloseRequested -= HandleClose;
+            _window.BackRequested -= HandleBack;
             _window.BuildingDetailsRequested -= OnBuildingDetailsRequested;
             _window.OrbitalBodyViewRequested -= OnOrbitalBodyViewRequested;
             _window.HideWindow();
@@ -66,48 +65,18 @@ public partial class CellOverviewState : LimboState
         _window = null;
     }
 
-    private void OnWindowCloseRequested()
-    {
-        GameLogger.Debug("CellOverviewState: Window close requested");
-        InteractionStack.Clear(Blackboard?.Top());
-        Dispatch("window_closed");
-    }
-
-    private void OnBackRequested()
-    {
-        var bb = Blackboard?.Top();
-        var returnEvent = InteractionStack.Pop(bb);
-        if (returnEvent == null || returnEvent == "window_closed")
-        {
-            InteractionStack.Clear(bb);
-            Dispatch("window_closed");
-            return;
-        }
-        Dispatch(returnEvent);
-    }
-
     private void OnBuildingDetailsRequested(Building building)
     {
         if (building == null) return;
 
         Blackboard?.Top()?.SetVar("SelectedBuilding", building);
-        var bb = Blackboard?.Top();
-        if (bb != null)
-            InteractionStack.Push(bb, "cell_selected",
-                InteractionStack.SnapshotVars(bb, "SelectedCell", "SelectedBody", "BodyType"));
-        Dispatch("building_details_opened");
+        PushAndNavigate("building_details_opened", "cell_selected",
+            "SelectedCell", "SelectedBody", "BodyType");
     }
 
     private void OnOrbitalBodyViewRequested()
     {
-        var bb = Blackboard?.Top();
-        if (bb == null)
-        {
-            Dispatch("window_closed");
-            return;
-        }
-        InteractionStack.Push(bb, "cell_selected",
-            InteractionStack.SnapshotVars(bb, "SelectedCell", "SelectedBody", "BodyType"));
-        Dispatch("orbital_body_selected");
+        PushAndNavigate("orbital_body_selected", "cell_selected",
+            "SelectedCell", "SelectedBody", "BodyType");
     }
 }

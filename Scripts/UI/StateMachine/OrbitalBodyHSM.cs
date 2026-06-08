@@ -97,7 +97,8 @@ public partial class OrbitalBodyHSM : LimboHsm
     {
         base._Enter();
         GameLogger.EnterFunction(nameof(_Enter), "OrbitalBodyHSM");
-        WorldInputController.Instance?.PushDisable();
+        // World-input suppression is owned by PlayerCameraController.EnterFocus /
+        // ExitFocus, so it covers all focus windows uniformly.
         GameLogger.ExitFunction(nameof(_Enter));
     }
 
@@ -105,7 +106,6 @@ public partial class OrbitalBodyHSM : LimboHsm
     {
         base._Exit();
         GameLogger.EnterFunction(nameof(_Exit), "OrbitalBodyHSM");
-        WorldInputController.Instance?.PopDisable();
         GameLogger.ExitFunction(nameof(_Exit));
     }
 }

@@ -58,7 +58,7 @@ public class RecipeEditorModel
         public List<OutputSlot> Outputs { get; set; } = new();
         public List<ConditionalOutputSlot> ConditionalOutputs { get; set; } = new();
         public HashSet<string> Tags { get; set; } = new();
-        public string? IconBasePath { get; set; }
+        public string? IconResourcePath { get; set; }
         public float IconScale { get; set; } = 1.0f;
         public Color IconTint { get; set; } = Colors.White;
         public string SourceFilePath { get; set; } = "";
@@ -217,8 +217,8 @@ public class RecipeEditorModel
             case "WorkRequired":
                 entry.WorkRequired = Convert.ToSingle(value);
                 break;
-            case "IconBasePath":
-                entry.IconBasePath = value?.ToString();
+            case "IconResourcePath":
+                entry.IconResourcePath = value?.ToString();
                 break;
             case "IconScale":
                 entry.IconScale = Convert.ToSingle(value);
@@ -544,10 +544,10 @@ public class RecipeEditorModel
                     }
                 }
 
-                if (!string.IsNullOrEmpty(entry.IconBasePath) && !entry.IconBasePath.StartsWith("res://"))
+                if (!string.IsNullOrEmpty(entry.IconResourcePath) && !entry.IconResourcePath.StartsWith("res://"))
                 {
                     errors.Add(
-                        $"Recipe '{entry.RecipeId}' has icon path not starting with res://: '{entry.IconBasePath}'");
+                        $"Recipe '{entry.RecipeId}' has icon path not starting with res://: '{entry.IconResourcePath}'");
                 }
             }
         }
@@ -597,7 +597,7 @@ public class RecipeEditorModel
             Category = def.Category ?? "",
             WorkRequired = def.WorkRequired,
             Tags = new HashSet<string>(def.Tags ?? new HashSet<string>()),
-            IconBasePath = def.Icon?.BasePath,
+            IconResourcePath = def.Icon?.ResourcePath,
             IconScale = def.Icon?.Scale ?? 1.0f,
             IconTint = def.Icon?.Tint ?? Colors.White,
             SourceFilePath = sourceFilePath,

@@ -185,6 +185,50 @@ public class InteractionStackTest
 		AssertThat(InteractionStack.Depth(_bb)).IsEqual(0);
 	}
 
+	// ───────── ResolveBack (shared back rule) ─────────
+	// ResolveBack is the single source of truth for "Back one level", used by
+	// InGamePanelState.HandleBack and GUIControllerHSM's PlanetBoard handlers.
+
+	[TestCase]
+	public void ResolveBack_OnEmptyStack_ReturnsWindowClosed()
+	{
+		var ev = InteractionStack.ResolveBack(_bb);
+		AssertThat(ev).IsEqual("window_closed");
+		AssertThat(InteractionStack.IsEmpty(_bb)).IsTrue();
+	}
+
+	[TestCase]
+	public void ResolveBack_WithRealReturnEvent_PopsAndRestoresSnapshot()
+	{
+		// Bottom sentinel + a real panel entry carrying a snapshot.
+		InteractionStack.Push(_bb, "window_closed", new Godot.Collections.Dictionary());
+		_bb.SetVar("SelectedBody", "Earth");
+		InteractionStack.Push(_bb, "back_to_orbital_body",
+			InteractionStack.SnapshotVars(_bb, "SelectedBody"));
+
+		// Simulate the leaving panel clearing the var before back.
+		_bb.SetVar("SelectedBody", default(Variant));
+
+		var ev = InteractionStack.ResolveBack(_bb);
+		AssertThat(ev).IsEqual("back_to_orbital_body");
+		AssertThat(_bb.GetVar("SelectedBody").AsString()).IsEqual("Earth");
+		// Only the consumed entry is popped; the sentinel remains.
+		AssertThat(InteractionStack.Depth(_bb)).IsEqual(1);
+	}
+
+	[TestCase]
+	public void ResolveBack_WithWindowClosedTop_ClearsAndReturnsWindowClosed()
+	{
+		// Deeper stack whose top returns to HUD: back should collapse to HUD,
+		// not leave the lower entries dangling.
+		InteractionStack.Push(_bb, "back_to_orbital_body", new Godot.Collections.Dictionary());
+		InteractionStack.Push(_bb, "window_closed", new Godot.Collections.Dictionary());
+
+		var ev = InteractionStack.ResolveBack(_bb);
+		AssertThat(ev).IsEqual("window_closed");
+		AssertThat(InteractionStack.IsEmpty(_bb)).IsTrue();
+	}
+
 	[TestCase]
 	public void CloseToHUD_ClearsStack()
 	{

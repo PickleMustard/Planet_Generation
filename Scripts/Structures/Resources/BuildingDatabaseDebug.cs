@@ -113,7 +113,7 @@ namespace Structures.Resources
 
                     var visualNode = buildingNode.AddChild("Visual");
                     visualNode
-                        .AddProperty("Model Path", building.Visual.ModelPath ?? "")
+                        .AddProperty("Model Path", building.Visual.ModelResourcePath ?? "")
                         .AddProperty("Scale", building.Visual.Scale)
                         .AddProperty("Rotation Offset", building.Visual.RotationOffset.ToString());
                 }

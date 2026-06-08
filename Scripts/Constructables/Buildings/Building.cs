@@ -54,6 +54,15 @@ public partial class Building : Resource, IConstructable, IManufactureTickable
 
     public bool PoweredOn { get; set; } = true;
 
+    /// <summary>
+    /// Canonical production state, mirrored from the active production behavior
+    /// (manufacturing / extraction). Power draw and other consumers read this rather
+    /// than reaching into a specific behavior type.
+    /// </summary>
+    public ManufacturingState ProductionState { get; private set; } = ManufacturingState.Idle;
+
+    internal void SetProductionState(ManufacturingState state) => ProductionState = state;
+
     // TODO: persist when save system lands
     public string? ActiveRecipeId { get; set; }
 

@@ -25,6 +25,7 @@ rockyPlanetSubtypes:
   - basicFuels
   - frozenVolatiles
   - industrialMaterials
+  - flora
   addResources: []
   removeResources: []
   baseResourceWeight: 1
@@ -34,6 +35,7 @@ rockyPlanetSubtypes:
   - preciousOres
   - basicFuels
   - industrialMaterials
+  - flora
   addResources: []
   removeResources: []
   baseResourceWeight: 1
@@ -43,6 +45,7 @@ rockyPlanetSubtypes:
   - preciousOres
   - basicFuels
   - industrialMaterials
+  - flora
   addResources: []
   removeResources: []
   baseResourceWeight: 0.8999999761581421
@@ -52,6 +55,7 @@ rockyPlanetSubtypes:
   - frozenVolatiles
   - basicFuels
   - industrialMaterials
+  - flora
   addResources: []
   removeResources: []
   baseResourceWeight: 0.6000000238418579

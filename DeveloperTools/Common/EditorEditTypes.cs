@@ -12,12 +12,12 @@ public sealed class EditorResourceAmount
 
 /// <summary>
 /// Editable 2D icon block, mirroring the <c>icon:</c> YAML section
-/// (base_path / scale / tint). Stores the raw base_path string so round-trips
-/// preserve exactly what was authored (no texture loading / fallback).
+/// (resource / scale / tint). Stores the <c>IconConfig</c> <c>.tres</c> path so
+/// round-trips preserve exactly what was authored (no texture loading / fallback).
 /// </summary>
 public sealed class EditorIcon
 {
-    public string? BasePath { get; set; }
+    public string? ResourcePath { get; set; }
     public float Scale { get; set; } = 1.0f;
     public Color Tint { get; set; } = Colors.White;
 }
@@ -28,7 +28,7 @@ public sealed class EditorIcon
 /// </summary>
 public sealed class EditorVisual
 {
-    public string? ModelPath { get; set; }
+    public string? ModelResourcePath { get; set; }
     public string? ModelMaterial { get; set; }
     public string? AnimationPath { get; set; }
     public float Scale { get; set; } = 1.0f;

@@ -8,9 +8,9 @@ namespace Structures.Resources;
 /// </summary>
 public class IconDefinition
 {
-    /// <summary>Base path for the icon file (without extension).</summary>
-    /// <example>res://Assets/Icons/Resources/ore/iron_ore</example>
-    public string? BasePath { get; set; }
+    /// <summary>Path to the icon wrapper resource (<c>IconConfig</c> <c>.tres</c>).</summary>
+    /// <example>res://Materials/Icons/ore.tres</example>
+    public string? ResourcePath { get; set; }
 
     /// <summary>The loaded icon texture.</summary>
     public Texture2D? Texture { get; set; }

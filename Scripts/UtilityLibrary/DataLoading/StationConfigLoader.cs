@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Structures.Enums;
+using Registries;
 using Structures.Logistics;
 using Structures.Resources;
 using Structures.Transfers;
@@ -96,7 +97,8 @@ public static class StationConfigLoader
     {
         var stations = new List<StationDefinition>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? yamlContent = BaseConfigLoader.ReadAllText(filePath);
+        if (yamlContent == null)
         {
             GD.PrintErr($"StationConfigLoader: File not found: {filePath}");
             return stations;
@@ -104,9 +106,6 @@ public static class StationConfigLoader
 
         try
         {
-            using var file = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string yamlContent = file.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
@@ -149,7 +148,8 @@ public static class StationConfigLoader
 
         _templateCategories = new List<StationTemplateCategory>();
 
-        if (!Godot.FileAccess.FileExists(StationTemplatesPath))
+        string? yamlContent = BaseConfigLoader.ReadAllText(StationTemplatesPath);
+        if (yamlContent == null)
         {
             GameLogger.Warning($"StationConfigLoader: Templates file not found: {StationTemplatesPath}");
             return _templateCategories;
@@ -157,9 +157,6 @@ public static class StationConfigLoader
 
         try
         {
-            using var file = Godot.FileAccess.Open(StationTemplatesPath, Godot.FileAccess.ModeFlags.Read);
-            string yamlContent = file.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
@@ -288,7 +285,7 @@ public static class StationConfigLoader
         if (iconDict == null)
             return new IconDefinition();
 
-        string? basePath = BaseConfigLoader.ReadString(iconDict, "base_path", "");
+        string? basePath = BaseConfigLoader.ReadString(iconDict, "resource", "");
         if (string.IsNullOrEmpty(basePath))
         {
             return new IconDefinition();
@@ -368,35 +365,43 @@ public static class StationConfigLoader
         if (visualDict == null)
             return visual;
 
-        string? modelPath = BaseConfigLoader.ReadString(visualDict, "model_path", "");
-        if (!string.IsNullOrEmpty(modelPath) && Godot.FileAccess.FileExists(modelPath))
+        string? modelPath = BaseConfigLoader.ReadString(visualDict, "model_resource", "");
+        if (!string.IsNullOrEmpty(modelPath))
         {
-            visual.ModelPath = modelPath;
+            visual.ModelResourcePath = modelPath;
             try
             {
-                visual.ModelPrototype = GD.Load<PackedScene>(modelPath);
+                var modelConfig = GD.Load<ModelConfig>(modelPath);
+                visual.ModelPrototype = modelConfig?.Model;
                 if (visual.ModelPrototype != null)
                 {
+                    // Wrapper supplies the defaults; explicit YAML keys below override them.
+                    visual.Scale = modelConfig!.Scale;
+                    visual.RotationOffset = modelConfig.RotationOffset;
                     GameLogger.Info($"StationConfigLoader: Loaded model prototype '{modelPath}'");
                     ModelsLoadedCount++;
                 }
                 else
                 {
-                    GameLogger.Error($"StationConfigLoader: Failed to load model at '{modelPath}'");
+                    GameLogger.Error($"StationConfigLoader: Failed to load model wrapper at '{modelPath}'");
                     ModelsFailedCount++;
                 }
             }
             catch (System.Exception ex)
             {
                 GameLogger.Error($"StationConfigLoader: Exception loading model '{modelPath}': {ex.Message}");
+                visual.ModelResourcePath = null;
                 ModelsFailedCount++;
             }
         }
 
         visual.ModelMaterial = BaseConfigLoader.ReadString(visualDict, "model_material", "");
         visual.AnimationPath = BaseConfigLoader.ReadString(visualDict, "animation_path", "");
-        visual.Scale = BaseConfigLoader.ReadFloat(visualDict, "scale", 1.0f);
-        visual.RotationOffset = BaseConfigLoader.ReadVector3(visualDict, "rotation_offset", Vector3.Zero);
+        // Wrapper defaults already applied above; only override when YAML sets the key.
+        if (visualDict.ContainsKey("scale"))
+            visual.Scale = BaseConfigLoader.ReadFloat(visualDict, "scale", visual.Scale);
+        if (visualDict.ContainsKey("rotation_offset"))
+            visual.RotationOffset = BaseConfigLoader.ReadVector3(visualDict, "rotation_offset", visual.RotationOffset);
         visual.ShapeId = BaseConfigLoader.ReadString(visualDict, "shape_id", "hexagon").Trim();
         if (string.IsNullOrEmpty(visual.ShapeId)) visual.ShapeId = "hexagon";
         visual.ShapeSize = BaseConfigLoader.ReadFloat(visualDict, "shape_size", 64f);

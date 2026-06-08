@@ -7,7 +7,7 @@ resources:
     configurable_values:
       burn_potential: 80
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: hydrogen
     resource_tier: 2
     base_price: 3000
@@ -16,7 +16,7 @@ resources:
     configurable_values:
       burn_potential: 40
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: tritium
     resource_tier: 3
     base_price: 4000
@@ -25,7 +25,7 @@ resources:
     configurable_values:
       burn_potential: 120
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: liquid_uranium
     resource_tier: 2
     base_price: 3000
@@ -34,7 +34,7 @@ resources:
     configurable_values:
       burn_potential: 85
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: antimatter
     resource_tier: 3
     base_price: 4000
@@ -44,7 +44,7 @@ resources:
     configurable_values:
       burn_potential: 200
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: methane
     resource_tier: 1
     base_price: 2000
@@ -55,7 +55,7 @@ resources:
     configurable_values:
       burn_potential: 30
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"
   - id_name: hydrazine
     resource_tier: 2
     base_price: 3000
@@ -65,4 +65,4 @@ resources:
     configurable_values:
       burn_potential: 50
     icon:
-      base_path: "res://Materials/Icons/default_item"
+      resource: "res://Materials/Icons/default_item.tres"

@@ -15,12 +15,6 @@ public static class BuildingShape2DLoader
 {
     public static BuildingShape2D? LoadShape(string filePath)
     {
-        if (!Godot.FileAccess.FileExists(filePath))
-        {
-            GD.PrintErr($"BuildingShape2DLoader: file not found: {filePath}");
-            return null;
-        }
-
         var validation = YamlValidator.ValidateBuildingShape2D(filePath);
         if (!validation.IsValid)
         {
@@ -30,11 +24,15 @@ public static class BuildingShape2DLoader
             return null;
         }
 
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
+        {
+            GD.PrintErr($"BuildingShape2DLoader: file not found: {filePath}");
+            return null;
+        }
+
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();

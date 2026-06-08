@@ -49,7 +49,7 @@ public partial class ResourceSlotItem : PanelContainer
             _amountLabel.Text = $"{slot.Quantity:F0}/{slot.Capacity:F0}";
         }
 
-        TooltipText = FormatResourceName(definition?.IdName ?? resourceId);
+        TooltipText = ResourceNameFormatter.Prettify(definition?.IdName ?? resourceId);
     }
 
     public void Clear()
@@ -86,24 +86,11 @@ public partial class ResourceSlotItem : PanelContainer
         return filter.Kind switch
         {
             SlotFilterKind.Any => "any",
-            SlotFilterKind.Resource => FormatResourceName(filter.ResourceId ?? ""),
-            SlotFilterKind.Category => FormatResourceName(filter.Category ?? ""),
+            SlotFilterKind.Resource => ResourceNameFormatter.Prettify(filter.ResourceId ?? ""),
+            SlotFilterKind.Category => ResourceNameFormatter.Prettify(filter.Category ?? ""),
             SlotFilterKind.MatterState => filter.State?.ToString() ?? "any",
             _ => "any",
         };
     }
 
-    private static string FormatResourceName(string id)
-    {
-        if (string.IsNullOrEmpty(id)) return "Unknown";
-        var words = id.Split('_');
-        for (int i = 0; i < words.Length; i++)
-        {
-            if (!string.IsNullOrEmpty(words[i]))
-            {
-                words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1).ToLowerInvariant();
-            }
-        }
-        return string.Join(" ", words);
-    }
 }

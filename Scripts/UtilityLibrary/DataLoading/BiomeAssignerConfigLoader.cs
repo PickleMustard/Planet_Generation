@@ -19,7 +19,8 @@ public static class BiomeAssignerConfigLoader
 
     public static BiomeAssignerConfig? Load(string filePath)
     {
-        if (!Godot.FileAccess.FileExists(filePath))
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
         {
             GameLogger.Error($"BiomeAssignerConfigLoader: file not found {filePath}");
             return null;
@@ -27,9 +28,6 @@ public static class BiomeAssignerConfigLoader
 
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();

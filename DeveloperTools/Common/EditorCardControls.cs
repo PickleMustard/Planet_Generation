@@ -106,15 +106,15 @@ public static class EditorCardControls
 
     // ── Icon ─────────────────────────────────────────────────────────────
 
-    /// <summary>Builds the "Icon" subsection (base_path / scale / tint).</summary>
+    /// <summary>Builds the "Icon" subsection (resource / scale / tint).</summary>
     public static void BuildIcon(Control parent, EditorIcon icon, Action onChanged)
     {
         parent.AddChild(Header("Icon", SectionIcon));
         var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         parent.AddChild(grid);
 
-        AddLineEdit(grid, "Base Path", icon.BasePath, s => { icon.BasePath = Nullify(s); onChanged(); },
-            "res:// path to the icon (without extension)");
+        AddLineEdit(grid, "Resource", icon.ResourcePath, s => { icon.ResourcePath = Nullify(s); onChanged(); },
+            "res:// path to the icon wrapper (IconConfig .tres)");
 
         grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Scale" });
         var scale = new SpinBox

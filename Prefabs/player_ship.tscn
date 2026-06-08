@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://6cu37byqa6it" path="res://Scripts/PlayerInteraction/ShipMovement.cs" id="1_bc0l8"]
 [ext_resource type="Script" uid="uid://ccfxuom517kn0" path="res://Scripts/PlayerInteraction/PlayerController.cs" id="3_2llaf"]
 [ext_resource type="ArrayMesh" uid="uid://ck1odkdr604ba" path="res://Mesh/player_ship.res" id="5_rool1"]
+[ext_resource type="Script" uid="uid://cpsslr8rvet1g" path="res://Scripts/PlayerInteraction/Camera/PlayerCameraController.cs" id="6_pcc"]
+[ext_resource type="Script" uid="uid://jnymh77guo1w" path="res://Scripts/PlayerInteraction/Camera/CameraState.cs" id="7_cst"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_nd1sr"]
 
@@ -18,9 +20,13 @@ top_level = true
 keep_aspect = 0
 current = true
 fov = 90.0
-frustum_offset = Vector2(-0.14, 0.035)
+size = 3.0
 near = 1.0
-far = 2000.0
+far = 8000.0
+script = ExtResource("6_pcc")
+
+[node name="CameraState" type="Node" parent="Camera3D" unique_id=2127372464]
+script = ExtResource("7_cst")
 
 [node name="Pointer" type="MeshInstance3D" parent="Camera3D" unique_id=1207942000]
 transform = Transform3D(1, 1.42109e-14, 0, 0, 1, -2.98023e-08, 0, 0, 1, 2.45018e-06, -4.17917, -31.0807)
@@ -38,7 +44,3 @@ transform = Transform3D(-1, 8.74228e-08, -3.82137e-15, 0, -4.37114e-08, -1, -8.7
 visible = false
 mesh = ExtResource("5_rool1")
 skeleton = NodePath("../..")
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1201711080]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.133972, -21.758)
-directional_shadow_mode = 0

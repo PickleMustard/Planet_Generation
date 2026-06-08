@@ -13,7 +13,7 @@ namespace UI.SystemBoard;
 /// edits), following the <c>OrbitalScheduleWindow</c> overlay pattern. Opened via
 /// <see cref="ShowWindow"/> from an existing window's button.
 /// </summary>
-public sealed partial class SystemOverviewWindow : Control
+public sealed partial class SystemOverviewWindow : Control, IOverlayPanel
 {
     public static SystemOverviewWindow? Instance { get; private set; }
 
@@ -76,7 +76,7 @@ public sealed partial class SystemOverviewWindow : Control
         header.AddChild(title);
 
         var close = new Button { Text = "✕" };
-        close.Pressed += HideWindow;
+        close.Pressed += RequestClose;
         header.AddChild(close);
         col.AddChild(header);
 
@@ -116,12 +116,17 @@ public sealed partial class SystemOverviewWindow : Control
         GameLogger.Info("[SystemOverviewWindow] Closed");
     }
 
+    /// <summary>This overlay has no inner stack, so Back is equivalent to Close.</summary>
+    public void RequestBack() => RequestClose();
+
+    public void RequestClose() => HideWindow();
+
     public override void _Input(InputEvent @event)
     {
         if (!Visible) return;
         if (@event is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
         {
-            HideWindow();
+            RequestClose();
             GetViewport().SetInputAsHandled();
         }
     }
@@ -129,6 +134,6 @@ public sealed partial class SystemOverviewWindow : Control
     private void OnBackdropInput(InputEvent @event)
     {
         if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-            HideWindow();
+            RequestClose();
     }
 }

@@ -5,7 +5,7 @@ recipes:
     category: smelting
     work_required: 10
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - tag:ore: 1
     output_resources:
@@ -16,7 +16,7 @@ recipes:
     category: smelting
     work_required: 8
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - condensed_carbon: 2
       - tag:ore: 1
@@ -28,7 +28,7 @@ recipes:
     category: smelting
     work_required: 4
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - silicon: 5
     output_resources:
@@ -36,9 +36,9 @@ recipes:
   - recipe_id: "concrete"
     display_name: "Concrete"
     category: smelting
-    work_required: 10
+    work_required: 15
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - gravel: 5
       - water: 2
@@ -49,7 +49,7 @@ recipes:
     category: smelting
     work_required: 10
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - clay: 10
     output_resources:

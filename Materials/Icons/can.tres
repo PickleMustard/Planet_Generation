@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="IconConfig" format=3 uid="uid://bd2uhqyhx4gca"]
+
+[ext_resource type="Script" uid="uid://bxu21dvkr4hkg" path="res://Scripts/Registries/IconConfig.cs" id="1"]
+[ext_resource type="Texture2D" uid="uid://dj5rxga7e4fki" path="res://Materials/Icons/can.png" id="2"]
+
+[resource]
+script = ExtResource("1")
+Id = &"can"
+Texture = ExtResource("2")
+metadata/_custom_type_script = "uid://bxu21dvkr4hkg"

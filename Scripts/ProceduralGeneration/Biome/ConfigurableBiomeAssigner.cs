@@ -12,6 +12,10 @@ namespace ProceduralGeneration.BiomeSystem;
 /// </summary>
 public class ConfigurableBiomeAssigner : IBiomeAssigner
 {
+    // Weight of the per-cell noise field vs the continent moisture baseline.
+    // Noise dominates so dry/wet patches (desert/forest/grassland) intermix within a continent.
+    private const float NOISE_WEIGHT = 0.6f;
+
     private readonly BiomeAssignerEntry _entry;
     private readonly string _fallbackBiomeId;
 
@@ -56,16 +60,19 @@ public class ConfigurableBiomeAssigner : IBiomeAssigner
 
             case MoistureMode.Whittaker:
             default:
-                float latitudeFactor = Mathf.Clamp(
-                    continent.averagedCenter.Y / (p.LatitudeFactorDivisor == 0f ? 1f : p.LatitudeFactorDivisor),
-                    0f, 1f);
-                float sizeFactor = continent.cells.Count
-                    / (p.SizeFactorDivisor == 0f ? 1f : p.SizeFactorDivisor);
+                // [0,1] baseline driven by NORMALIZED latitude: drier toward the poles.
+                // (p.MaxMoisture / p.SizeFactorDivisor / p.LatitudeFactorDivisor are no longer
+                //  used by this formula; kept on MoistureParams for config back-compat.)
+                float absLat = Mathf.Abs(continent.averagedCenter.Normalized().Y); // 0 eq .. 1 pole
                 float randomVariation = rng.RandfRange(p.RandomMin, p.RandomMax);
-                float denom = p.MaxMoisture == 0f ? 1f : p.MaxMoisture;
-                float numerator = baseMoisture + p.BaseOffset + latitudeFactor + sizeFactor
-                                  + randomVariation + p.ConstantOffset;
-                return p.MaxMoisture - numerator / denom;
+                float m = baseMoisture + p.BaseOffset + p.ConstantOffset
+                          + randomVariation - absLat * 0.4f;
+                return Mathf.Clamp(m, 0f, 1f);
         }
+    }
+
+    public float CombineMoistureWithNoise(float baseMoisture, float noise01)
+    {
+        return Mathf.Clamp(Mathf.Lerp(baseMoisture, noise01, NOISE_WEIGHT), 0f, 1f);
     }
 }

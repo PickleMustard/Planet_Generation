@@ -44,5 +44,7 @@ buildings:
         production_speed: 1
       - behavior_id: GameStartBehavior
     visual:
-      model_path: "res://Mesh/external/building-skyscraper-e.glb"
+      model_resource: "res://Mesh/external/building-skyscraper-e.glb.tres"
       scale: 2.06
+    icon:
+      resource: "res://Materials/Icons/default_building.tres"

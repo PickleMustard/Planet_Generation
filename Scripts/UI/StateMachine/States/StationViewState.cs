@@ -9,7 +9,7 @@ namespace UI.StateMachine.States;
 /// Main sub-state within StationHSM. Shows the StationWindow when entered,
 /// wires window signals for close and bespoke feature dispatching.
 /// </summary>
-public partial class StationViewState : LimboState
+public partial class StationViewState : InGamePanelState
 {
     private StationWindow.StationWindow? _window;
 
@@ -56,8 +56,8 @@ public partial class StationViewState : LimboState
             return;
         }
 
-        _window.WindowCloseRequested += OnWindowCloseRequested;
-        _window.BackRequested += OnBackRequested;
+        _window.WindowCloseRequested += HandleClose;
+        _window.BackRequested += HandleBack;
         _window.BuildingInspectRequested += OnBuildingInspectRequested;
 
         _window.ShowWindow(station, playerCamera);
@@ -72,8 +72,8 @@ public partial class StationViewState : LimboState
 
         if (_window != null)
         {
-            _window.WindowCloseRequested -= OnWindowCloseRequested;
-            _window.BackRequested -= OnBackRequested;
+            _window.WindowCloseRequested -= HandleClose;
+            _window.BackRequested -= HandleBack;
             _window.BuildingInspectRequested -= OnBuildingInspectRequested;
             _window.HideWindow();
         }
@@ -83,32 +83,11 @@ public partial class StationViewState : LimboState
         GameLogger.ExitFunction(nameof(_Exit));
     }
 
-    private void OnWindowCloseRequested()
-    {
-        Dispatch("window_closed");
-    }
-
-    private void OnBackRequested()
-    {
-        var bb = Blackboard?.Top();
-        var returnEvent = InteractionStack.Pop(bb);
-        if (returnEvent == null || returnEvent == "window_closed")
-        {
-            InteractionStack.Clear(bb);
-            Dispatch("window_closed");
-            return;
-        }
-        Dispatch(returnEvent);
-    }
-
     private void OnBuildingInspectRequested(Building building)
     {
         if (building == null) return;
         Blackboard?.Top()?.SetVar("SelectedBuilding", building);
-        var bb = Blackboard?.Top();
-        if (bb != null)
-            InteractionStack.Push(bb, "station_opened",
-                InteractionStack.SnapshotVars(bb, "SelectedStation", "SelectedBody"));
-        Dispatch("building_details_opened");
+        PushAndNavigate("building_details_opened", "station_opened",
+            "SelectedStation", "SelectedBody");
     }
 }

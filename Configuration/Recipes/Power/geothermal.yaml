@@ -5,7 +5,7 @@ recipes:
     category: power
     work_required: 10
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - water: 8
     output_resources:
@@ -16,7 +16,7 @@ recipes:
     category: power
     work_required: 20
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - adult: 20
     output_resources:
@@ -27,7 +27,7 @@ recipes:
     category: power
     work_required: 50
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - adult: 100
       - ignicite: 25

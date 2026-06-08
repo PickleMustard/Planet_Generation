@@ -327,8 +327,7 @@ public partial class StationSatellite : Node3D, IArtificialSatellite, IConstruct
             definition.RequiredResources
         );
 
-        float bodyRadius = _parentBody?.Radius ?? 1.0f;
-        Node3D? model = definition.Visual?.CreateModelInstance(bodyRadius);
+        Node3D? model = definition.Visual?.CreateModelInstance(scaleWithBody: false);
         InstallModel(model, definition.Name);
 
         // Wire behaviors from definition entries (config flows through IStationBehaviorConfigurable)

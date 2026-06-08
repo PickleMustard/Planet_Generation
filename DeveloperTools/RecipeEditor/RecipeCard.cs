@@ -313,10 +313,10 @@ public partial class RecipeCard : PanelContainer
     {
         if (_entry == null) return;
         Texture2D? texture = null;
-        if (!string.IsNullOrEmpty(_entry.IconBasePath))
+        if (!string.IsNullOrEmpty(_entry.IconResourcePath))
         {
             texture = IconDataLoader.LoadIconTexture(
-                _entry.IconBasePath, _entry.RecipeId);
+                _entry.IconResourcePath, _entry.RecipeId);
         }
         _iconRect.Texture = texture ?? IconDataLoader.GetFallbackIcon();
     }
@@ -350,7 +350,7 @@ public partial class RecipeCard : PanelContainer
     private void OnIconSelected(string basePath)
     {
         if (_model == null || _entry == null) return;
-        _model.UpdateRecipeField(_categoryName, _recipeIndex, "IconBasePath", basePath);
+        _model.UpdateRecipeField(_categoryName, _recipeIndex, "IconResourcePath", basePath);
         _entry = _model.Categories[_categoryName].Recipes[_recipeIndex];
         LoadIcon();
     }

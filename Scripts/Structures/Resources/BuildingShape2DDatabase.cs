@@ -63,7 +63,7 @@ namespace Structures.Resources
                 LoadProgress = 0.25f;
                 OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
 
-                var files = GetYamlFilesRecursive(basePath);
+                var files = BaseConfigLoader.GetYamlFilesRecursive(basePath);
 
                 _shapes.Clear();
                 foreach (var filePath in files)
@@ -150,21 +150,5 @@ namespace Structures.Resources
             }
         }
 
-        private static List<string> GetYamlFilesRecursive(string directory)
-        {
-            var files = new List<string>();
-            if (!DirAccess.DirExistsAbsolute(directory)) return files;
-
-            foreach (var file in DirAccess.GetFilesAt(directory))
-            {
-                if (file.EndsWith(".yaml") || file.EndsWith(".yml"))
-                    files.Add(directory + file);
-            }
-
-            foreach (var subdir in DirAccess.GetDirectoriesAt(directory))
-                files.AddRange(GetYamlFilesRecursive(directory + subdir + "/"));
-
-            return files;
-        }
     }
 }

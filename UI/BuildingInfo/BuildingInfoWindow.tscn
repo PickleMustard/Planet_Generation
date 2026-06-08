@@ -4,8 +4,9 @@
 [ext_resource type="PackedScene" uid="uid://sn5ksr7arjsu" path="res://UI/BuildingInfo/BuildingInfoPanel.tscn" id="2_panel"]
 [ext_resource type="PackedScene" uid="uid://bybc75cgcmlht" path="res://UI/BuildingInfo/RecipeSelectionPopup.tscn" id="3_recipe_popup"]
 [ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="4_paper_theme"]
+[ext_resource type="PackedScene" uid="uid://crs1selpopup8b" path="res://UI/BuildingInfo/ResourceSelectionPopup.tscn" id="5_resource_popup"]
 
-[node name="BuildingInfoWindow" type="Control" unique_id=1256387208 node_paths=PackedStringArray("_blockInput", "_closeButton", "_backButton", "_upgradeButton", "_reconfigureButton", "_planetBoardButton", "_demolishButton", "_panel", "_recipeSelectionPopup")]
+[node name="BuildingInfoWindow" type="Control" unique_id=1256387208 node_paths=PackedStringArray("_blockInput", "_closeButton", "_backButton", "_upgradeButton", "_reconfigureButton", "_planetBoardButton", "_demolishButton", "_panel", "_recipeSelectionPopup", "_resourceSelectionPopup")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -23,6 +24,7 @@ _planetBoardButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar
 _demolishButton = NodePath("PanelContainer/MarginContainer/MainVBox/ActionBar/DemolishButton")
 _panel = NodePath("PanelContainer/MarginContainer/MainVBox/BuildingInfoPanel")
 _recipeSelectionPopup = NodePath("RecipeSelectionPopup")
+_resourceSelectionPopup = NodePath("ResourceSelectionPopup")
 
 [node name="BlockInput" type="ColorRect" parent="." unique_id=685696116]
 layout_mode = 1
@@ -103,4 +105,7 @@ theme_type_variation = &"ButtonDanger"
 text = "⌫ Demolish"
 
 [node name="RecipeSelectionPopup" parent="." unique_id=440882457 instance=ExtResource("3_recipe_popup")]
+layout_mode = 0
+
+[node name="ResourceSelectionPopup" parent="." unique_id=440882458 instance=ExtResource("5_resource_popup")]
 layout_mode = 0

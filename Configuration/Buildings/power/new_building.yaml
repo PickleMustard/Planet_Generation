@@ -28,4 +28,4 @@ buildings:
           reference_atmosphere: "1.0"
           max_scale: "4.0"
     icon:
-      base_path: "res://Materials/Icons/default_building"
+      resource: "res://Materials/Icons/default_building.tres"

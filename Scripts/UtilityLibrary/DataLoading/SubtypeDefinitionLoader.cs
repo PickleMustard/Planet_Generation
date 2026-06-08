@@ -39,7 +39,7 @@ public static class SubtypeDefinitionLoader
         foreach (var (family, fileName) in _files)
         {
             string path = $"{dirPath}/{fileName}";
-            if (!Godot.FileAccess.FileExists(path))
+            if (!BaseConfigLoader.ResExists(path))
             {
                 GameLogger.Warning($"SubtypeDefinitionLoader: file not found {path} — skipping family {family}");
                 continue;
@@ -54,11 +54,15 @@ public static class SubtypeDefinitionLoader
 
     public static List<SubtypeDefinition>? LoadFile(string filePath, BodyFamily family)
     {
+        string? text = BaseConfigLoader.ReadAllText(filePath);
+        if (text == null)
+        {
+            GameLogger.Error($"SubtypeDefinitionLoader: file not found {filePath}");
+            return null;
+        }
+
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = f.GetAsText();
-
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();

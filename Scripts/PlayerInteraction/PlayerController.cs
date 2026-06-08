@@ -1,6 +1,7 @@
 using Constructables;
 using Godot;
 using Godot.Collections;
+using PlayerInteraction.Camera;
 using ProceduralGeneration.PlanetGeneration;
 using UI;
 using UtilityLibrary;
@@ -29,8 +30,10 @@ public partial class PlayerController : Node3D
     private Node3D? _parent;
     private Node3D? _pointerNode;
     private Camera3D? _camera;
+    private PlayerCameraController? _cameraController;
     private WorldInputController? _worldInput;
     private ShipMovement? _shipMovement;
+    private ShipCaptureController? _captureController;
 
     //Local Variables
     private Quaternion _defaultCameraRotation;
@@ -48,9 +51,16 @@ public partial class PlayerController : Node3D
     {
         _parent = GetParent() as Node3D;
         _camera = GetNode<Camera3D>("../Camera3D"); // Assuming camera is a child
+        _cameraController = _camera as PlayerCameraController;
         _pointerNode = GetNode<Node3D>("../Camera3D/Pointer");
         _shipMovement = GetParent() as ShipMovement;
         _decelerateFactor = Mathf.Log(DecelerationTime);
+        _captureController = new ShipCaptureController(GetTree());
+
+        // Integrate movement AFTER all body positions update this frame (NBodyCoordinator runs at
+        // -100; analytical bodies run at default 0). Otherwise the captured-frame sync delta would
+        // read stale body positions.
+        ProcessPriority = 50;
 
         Callable rayCastRequest = new Callable(this, "OnCastRay");
         SignalBus.Instance!.ConnectToSignal("RequestRayCast", rayCastRequest);
@@ -83,6 +93,15 @@ public partial class PlayerController : Node3D
         if (_parent == null || _camera == null)
             return;
 
+        // While the camera is focused/transitioning, the FSM owns its transform.
+        // Skip free-fly movement + look so the two don't fight.
+        if (_cameraController != null && !_cameraController.IsFreeFly)
+        {
+            // Drop capture so re-entry to free-fly re-initializes the body-sync delta cleanly.
+            _captureController?.ClearCapture();
+            return;
+        }
+
         float deltaTime = (float)delta;
         Vector3 worldDirection = _parent.Basis * _movementDirection;
         Vector3 worldVertical = _parent.Basis * _verticalMovement;
@@ -102,9 +121,13 @@ public partial class PlayerController : Node3D
             currentVelocity = currentVelocity.Normalized() * Mathf.Min(MaxSpeed, magnitude);
         }
 
-        // Set velocity for movement
-        _parent.GlobalPosition = _parent.GlobalPosition + currentVelocity * deltaTime;
-        _camera.GlobalPosition = _camera.GlobalPosition + currentVelocity * deltaTime;
+        // Resolve orbital capture + no-entry collision. Returns one world-space delta applied to
+        // BOTH the ship and the camera (camera is a top_level sibling, must stay rigidly coupled).
+        Vector3 finalDelta = _captureController != null
+            ? _captureController.Resolve(_parent.GlobalPosition, ref currentVelocity, deltaTime)
+            : currentVelocity * deltaTime;
+        _parent.GlobalPosition = _parent.GlobalPosition + finalDelta;
+        _camera.GlobalPosition = _camera.GlobalPosition + finalDelta;
 
         UpdateCamera();
     }

@@ -29,6 +29,7 @@ public static class SaveMigrator
         new V4ToV5Migration(),
         new V5ToV6Migration(),
         new V6ToV7Migration(),
+        new V7ToV8Migration(),
     };
 
     /// <summary>
@@ -135,4 +136,16 @@ public sealed class V6ToV7Migration : ISaveMigration
         dto.Company.QuarterOpeningBudget = dto.Company.Budget;
         return dto;
     }
+}
+
+/// <summary>
+/// v7 → v8: introduces player-assignable extraction slots. v7 saves have no
+/// <see cref="BuildingDto.ExtractionSlots"/>, so the absent list stays null and extraction
+/// buildings restore their auto-filled (highest-abundance) primary slots.
+/// </summary>
+public sealed class V7ToV8Migration : ISaveMigration
+{
+    public int From => 7;
+
+    public SaveFileDto Apply(SaveFileDto dto) => dto;
 }

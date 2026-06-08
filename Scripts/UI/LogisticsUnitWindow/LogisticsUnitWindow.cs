@@ -1,5 +1,6 @@
 using Constructables;
 using Godot;
+using PlayerInteraction.Camera;
 using UI.OrbitalScheduling;
 using UtilityLibrary;
 
@@ -7,8 +8,9 @@ namespace UI.LogisticsUnitWindow;
 
 /// <summary>
 /// Diegetic full-screen GUI window for inspecting a logistics unit (ship).
-/// The player camera is repurposed (via <see cref="LogisticsUnitOrbitCamera"/>)
-/// to frame the ship in the window's negative space; the cartouche sits upper-
+/// The player camera reparents under the unit's anchor (via the
+/// <see cref="PlayerInteraction.Camera.PlayerCameraController"/> focus state) to
+/// frame the ship in the window's negative space; the cartouche sits upper-
 /// left, the tab strip upper-right, and the info panel along the bottom.
 /// Opened by a direct ship click or via cross-window navigation.
 /// </summary>
@@ -31,11 +33,9 @@ public partial class LogisticsUnitWindow : Control
     [Export]
     private LogisticsUnitInfoPanel? _infoPanel;
 
-    [Export]
-    private LogisticsUnitOrbitCamera? _orbitCamera;
-
     private LogisticsUnit? _currentUnit;
     private Camera3D? _playerCamera;
+    private PlayerCameraController? _controller;
 
     // Orbital-schedule editor overlay (created lazily, child of this window).
     private OrbitalScheduleWindow? _scheduleWindow;
@@ -108,16 +108,15 @@ public partial class LogisticsUnitWindow : Control
 
         _currentUnit = unit;
         _playerCamera = playerCamera;
+        _controller = playerCamera as PlayerCameraController;
         IsOpen = true;
         Visible = true;
 
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
-
-        if (_orbitCamera != null && playerCamera != null)
-        {
-            _orbitCamera.ScreenOffset = ComputeCameraOffset();
-            _orbitCamera.BeginOrbit(playerCamera, unit);
-        }
+        _controller?.EnterFocus(
+            unit.GetOrCreateCameraAnchor(),
+            unit,
+            new LogisticsUnitFramingStrategy(unit),
+            ComputeCameraOffset());
 
         _cartouchePanel?.Populate(unit);
         _infoPanel?.Initialize(unit);
@@ -144,15 +143,14 @@ public partial class LogisticsUnitWindow : Control
         if (_editScheduleButton != null)
             _editScheduleButton.Visible = false;
 
-        _orbitCamera?.EndOrbit();
+        _controller?.ExitFocus();
+        _controller = null;
         _cartouchePanel?.Clear();
         _tabbedPanel?.Clear();
         _infoPanel?.Clear();
 
         if (_currentUnit is Node unitNode && IsInstanceValid(unitNode))
             unitNode.TreeExiting -= OnUnitExiting;
-
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
 
         _currentUnit = null;
         _playerCamera = null;

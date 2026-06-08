@@ -5,7 +5,7 @@ recipes:
     category: power
     work_required: 10
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - tritium: 2
       - water: 5
@@ -17,7 +17,7 @@ recipes:
     category: power
     work_required: 12
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - uranium: 1
       - water: 8
@@ -29,7 +29,7 @@ recipes:
     category: power
     work_required: 15
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - antimatter: 1
       - water: 5
@@ -40,6 +40,6 @@ recipes:
     category: power
     work_required: 1
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
       - power: 10

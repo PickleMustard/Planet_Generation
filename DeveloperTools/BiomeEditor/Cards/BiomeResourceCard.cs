@@ -9,11 +9,21 @@ using Structures.Enums;
 namespace DeveloperTools.BiomeEditor.Cards;
 
 /// <summary>
-/// Per-biome resource weight modifier editor. List of (resourceId, weight) rows
-/// plus an Add button that opens ResourceIdPickerPopup.
+/// Per-biome resource group availability editor. One row per known resource group with
+/// an OptionButton choosing None / Abundant / Frequent / Normal / Scarce / Rare.
+/// "None" removes the group from the biome (it will not generate there).
 /// </summary>
 public partial class BiomeResourceCard : PanelContainer
 {
+    private static readonly AvailabilityLevel[] Levels =
+    {
+        AvailabilityLevel.Abundant,
+        AvailabilityLevel.Frequent,
+        AvailabilityLevel.Normal,
+        AvailabilityLevel.Scarce,
+        AvailabilityLevel.Rare,
+    };
+
     private BiomeEditorModel _model = null!;
     private Biome.BiomeType _biome;
     private VBoxContainer _rowList = null!;
@@ -47,9 +57,6 @@ public partial class BiomeResourceCard : PanelContainer
         title.AddThemeFontSizeOverride("font_size", 14);
         title.AddThemeColorOverride("font_color", new Color(0.7f, 1f, 0.85f));
         header.AddChild(title);
-        var addBtn = new Button { Text = "+ Resource" };
-        addBtn.Pressed += OnAddResource;
-        header.AddChild(addBtn);
         root.AddChild(header);
 
         _rowList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -65,40 +72,37 @@ public partial class BiomeResourceCard : PanelContainer
     private void Refresh()
     {
         foreach (var c in _rowList.GetChildren()) c.QueueFree();
-        if (!_model.BiomeResources.TryGetValue(_biome, out var entry)) return;
-        foreach (var kvp in entry.Weights.OrderBy(k => k.Key, StringComparer.Ordinal))
+
+        _model.BiomeResources.TryGetValue(_biome, out var entry);
+
+        foreach (var group in _model.ResourceGroups.OrderBy(g => g.GroupName, StringComparer.Ordinal))
         {
-            string id = kvp.Key;
-            float weight = kvp.Value;
+            string groupName = group.GroupName;
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
-            var edit = new LineEdit
-            {
-                Text = weight.ToString("0.##", CultureInfo.InvariantCulture),
-                CustomMinimumSize = new Vector2(72, 0),
-            };
-            edit.TextSubmitted += s => Commit(id, s);
-            edit.FocusExited += () => Commit(id, edit.Text);
-            row.AddChild(edit);
-            var del = new Button { Text = "✕" };
-            del.Pressed += () => _model.RemoveBiomeResourceWeight(_biome, id);
-            row.AddChild(del);
+            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = groupName, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+
+            var opt = new OptionButton { CustomMinimumSize = new Vector2(110, 0) };
+            opt.AddItem("None", 0); // id 0 = None / not generated
+            for (int i = 0; i < Levels.Length; i++)
+                opt.AddItem(Levels[i].ToString(), i + 1);
+
+            int selected = 0;
+            if (entry != null && entry.Groups.TryGetValue(groupName, out var level))
+                selected = Array.IndexOf(Levels, level) + 1;
+            opt.Select(selected);
+
+            opt.ItemSelected += idx => OnLevelSelected(groupName, (int)idx);
+            row.AddChild(opt);
             _rowList.AddChild(row);
         }
     }
 
-    private void Commit(string id, string s)
+    private void OnLevelSelected(string groupName, int itemId)
     {
-        if (!float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) return;
-        _model.SetBiomeResourceWeight(_biome, id, v);
-    }
-
-    private void OnAddResource()
-    {
-        var popup = new ResourcePickerPopup();
-        popup.ResourcePicked += id => _model.SetBiomeResourceWeight(_biome, id, 1f);
-        GetTree().Root.AddChild(popup);
-        popup.PopupCentered();
+        if (itemId <= 0)
+            _model.RemoveBiomeGroup(_biome, groupName);
+        else
+            _model.SetBiomeGroupLevel(_biome, groupName, Levels[itemId - 1]);
     }
 }
 #endif

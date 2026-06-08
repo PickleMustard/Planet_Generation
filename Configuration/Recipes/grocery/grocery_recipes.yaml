@@ -5,7 +5,7 @@ recipes:
     category: grocery
     work_required: 5
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - can: 1
       - tag:unprocessed_food: 3

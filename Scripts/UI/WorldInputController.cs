@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace UI;
@@ -40,6 +41,52 @@ public partial class WorldInputController : Node
 
     public bool IsActive => _disableRefCount == 0;
 
+    // Gameplay cursor mode when no panel holds the stack. Owned by the middle-mouse
+    // toggle below; the stack restores to this when emptied.
+    private Input.MouseModeEnum _baseMouseMode = Input.MouseModeEnum.Captured;
+
+    // LIFO of cursor-mode requests from GUI panels. A panel pushes its desired mode
+    // on entry and pops on exit; the effective mode is the top of the stack, or the
+    // base mode when empty. This mirrors the GUI navigation return stack.
+    private readonly List<Input.MouseModeEnum> _cursorStack = new();
+
+    /// <summary>
+    /// Request a cursor mode while a GUI panel is open. Pair every call with
+    /// <see cref="PopCursorMode"/> in the panel's exit/hide.
+    /// </summary>
+    public void PushCursorMode(Input.MouseModeEnum mode)
+    {
+        _cursorStack.Add(mode);
+        ApplyEffectiveMouseMode();
+    }
+
+    /// <summary>
+    /// Release the cursor mode pushed by a GUI panel, restoring whatever was
+    /// effective before it (the panel underneath, or the gameplay base mode).
+    /// </summary>
+    public void PopCursorMode()
+    {
+        if (_cursorStack.Count > 0)
+            _cursorStack.RemoveAt(_cursorStack.Count - 1);
+        ApplyEffectiveMouseMode();
+    }
+
+    /// <summary>
+    /// Backstop for the no-panel HUD/idle state: drop any leaked cursor requests and
+    /// fall back to the gameplay base mode. Guards against a panel that failed to pop.
+    /// </summary>
+    public void ResetCursorMode()
+    {
+        _cursorStack.Clear();
+        ApplyEffectiveMouseMode();
+    }
+
+    private void ApplyEffectiveMouseMode()
+    {
+        var mode = _cursorStack.Count > 0 ? _cursorStack[^1] : _baseMouseMode;
+        Input.SetMouseMode(mode);
+    }
+
     public override void _EnterTree()
     {
         Instance = this;
@@ -54,7 +101,8 @@ public partial class WorldInputController : Node
 
     public override void _Ready()
     {
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
+        _baseMouseMode = Input.MouseModeEnum.Captured;
+        ApplyEffectiveMouseMode();
     }
 
     public void PushDisable()
@@ -89,11 +137,10 @@ public partial class WorldInputController : Node
             if (mouseEvent.ButtonIndex == MouseButton.Middle && mouseEvent.Pressed)
             {
                 _isMiddleMousePressed = !_isMiddleMousePressed;
-                Input.SetMouseMode(
-                    _isMiddleMousePressed
-                        ? Input.MouseModeEnum.Confined
-                        : Input.MouseModeEnum.Captured
-                );
+                _baseMouseMode = _isMiddleMousePressed
+                    ? Input.MouseModeEnum.Confined
+                    : Input.MouseModeEnum.Captured;
+                ApplyEffectiveMouseMode();
             }
         }
         else if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.IsEcho())

@@ -11,7 +11,7 @@ ships:
       Composites: 500
       Machinery: 400
     icon:
-      base_path: "res://Assets/Icons/Ships/transport/heavy_lifter"
+      resource: "res://Materials/Icons/default_ship.tres"
 
   - name: Massive_Hauler
     dry_mass: 100000
@@ -25,7 +25,7 @@ ships:
       Composites: 3000
       Machinery: 2000
     icon:
-      base_path: "res://Assets/Icons/Ships/transport/massive_hauler"
+      resource: "res://Materials/Icons/default_ship.tres"
 
   - name: Titan_Transport
     dry_mass: 500000
@@ -39,7 +39,7 @@ ships:
       Composites: 15000
       Machinery: 10000
     icon:
-      base_path: "res://Assets/Icons/Ships/transport/titan_transport"
+      resource: "res://Materials/Icons/default_ship.tres"
 
   - name: Orbital_Crane
     dry_mass: 250000
@@ -53,4 +53,4 @@ ships:
       Composites: 8000
       Machinery: 8000
     icon:
-      base_path: "res://Assets/Icons/Ships/transport/orbital_crane"
+      resource: "res://Materials/Icons/default_ship.tres"

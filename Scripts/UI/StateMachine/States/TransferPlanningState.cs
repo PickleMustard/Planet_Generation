@@ -13,7 +13,7 @@ namespace UI.StateMachine;
 /// selected continent. For per-building dispatch, prefer the HubPanelDetails
 /// "Manage Routes" entry point.
 /// </summary>
-public partial class TransferPlanningState : LimboState
+public partial class TransferPlanningState : InGamePanelState
 {
     private TransferPlanning.DispatchSlipsWindow? _window;
 
@@ -81,10 +81,9 @@ public partial class TransferPlanningState : LimboState
         }
 
         _window.WindowCloseRequested += OnWindowCloseRequested;
-        _window.HudCloseRequested += OnHudCloseRequested;
+        _window.HudCloseRequested += HandleClose;
         _window.ShowWindow(originBuilding, body, continent);
 
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
         GameLogger.Debug(
             $"TransferPlanningState: Window shown for hub '{originBuilding.Name}' (continent {continentIndex})"
         );
@@ -110,23 +109,22 @@ public partial class TransferPlanningState : LimboState
         if (_window != null)
         {
             _window.WindowCloseRequested -= OnWindowCloseRequested;
-            _window.HudCloseRequested -= OnHudCloseRequested;
+            _window.HudCloseRequested -= HandleClose;
             _window.HideWindow();
         }
 
         _window = null;
     }
 
+    /// <summary>
+    /// Back to building details. Intentionally does NOT clear or pop the
+    /// InteractionStack: the return is reached via a direct HSM transition
+    /// (<c>transfer_closed</c>), not a stack pop. HUD-close routes through the
+    /// inherited <see cref="InGamePanelState.HandleClose"/> instead.
+    /// </summary>
     private void OnWindowCloseRequested()
     {
         GameLogger.Debug("TransferPlanningState: Window close requested (back to building details)");
         Dispatch("transfer_closed");
-    }
-
-    private void OnHudCloseRequested()
-    {
-        GameLogger.Debug("TransferPlanningState: HUD close requested (return to HUD)");
-        InteractionStack.Clear(Blackboard?.Top());
-        Dispatch("window_closed");
     }
 }

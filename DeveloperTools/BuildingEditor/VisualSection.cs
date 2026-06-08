@@ -174,7 +174,7 @@ public partial class VisualSection : VBoxContainer
     private void RefreshControls()
     {
         if (_entry == null) return;
-        string mp = _entry.Visual.ModelPath ?? "";
+        string mp = _entry.Visual.ModelResourcePath ?? "";
         _modelPathButton.Text = string.IsNullOrEmpty(mp) ? "(none)" : mp;
         _modelPathButton.TooltipText = mp;
         _scaleSpin.SetValueNoSignal(_entry.Visual.Scale);
@@ -266,7 +266,7 @@ public partial class VisualSection : VBoxContainer
         AddChild(popup);
         popup.ModelSelected += path =>
         {
-            OnVisualEdited("ModelPath", path);
+            OnVisualEdited("ModelResourcePath", path);
             _modelPathButton.Text = path;
             _modelPathButton.TooltipText = path;
             ApplyToPreview();
@@ -278,7 +278,7 @@ public partial class VisualSection : VBoxContainer
 
     private void OnModelPathCleared()
     {
-        OnVisualEdited("ModelPath", "");
+        OnVisualEdited("ModelResourcePath", "");
         _modelPathButton.Text = "(none)";
         _modelPathButton.TooltipText = "";
         ApplyToPreview();
@@ -317,7 +317,7 @@ public partial class VisualSection : VBoxContainer
     {
         if (_entry == null) return;
         _preview.ApplyVisual(
-            _entry.Visual.ModelPath,
+            _entry.Visual.ModelResourcePath,
             _entry.Visual.Scale,
             _entry.Visual.RotationOffset,
             _entry.Visual.AnimationName);

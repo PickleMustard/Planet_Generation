@@ -131,23 +131,11 @@ public static class TemplateLoader
         }
 
         string basePath = "res://Configuration/names/";
-        string? resolvedPath = null;
 
-        // Try .yml extension first
-        string ymlPath = basePath + nameFileName + ".yml";
-        if (Godot.FileAccess.FileExists(ymlPath))
-        {
-            resolvedPath = ymlPath;
-        }
-        else
-        {
-            // Try .yaml extension
-            string yamlPath = basePath + nameFileName + ".yaml";
-            if (Godot.FileAccess.FileExists(yamlPath))
-            {
-                resolvedPath = yamlPath;
-            }
-        }
+        // Try .yml first, then .yaml (export-safe: resolves remapped names).
+        string? resolvedPath =
+            BaseConfigLoader.ResolveResPath(basePath + nameFileName + ".yml")
+            ?? BaseConfigLoader.ResolveResPath(basePath + nameFileName + ".yaml");
 
         if (resolvedPath == null)
         {
@@ -185,10 +173,6 @@ public static class TemplateLoader
         if (IsFullPath(pathOrName))
         {
             string path = NormalizePath(pathOrName);
-            if (Godot.FileAccess.FileExists(path))
-            {
-                return path;
-            }
             return TryWithExtensions(path);
         }
 
@@ -200,8 +184,9 @@ public static class TemplateLoader
                 candidatePath = directory.TrimEnd('/') + "/" + pathOrName;
             }
 
+            // TryWithExtensions returns an openable (remap-resolved) path or null.
             candidatePath = TryWithExtensions(candidatePath);
-            if (candidatePath != null && Godot.FileAccess.FileExists(candidatePath))
+            if (candidatePath != null)
             {
                 return candidatePath;
             }
@@ -239,36 +224,24 @@ public static class TemplateLoader
 
     private static string? TryWithExtensions(string path)
     {
-        if (Godot.FileAccess.FileExists(path))
+        // Direct hit + ".yaml"/".yml" append + ".remap" resolution.
+        string? resolved = BaseConfigLoader.ResolveResPath(path);
+        if (resolved != null)
         {
-            return path;
+            return resolved;
         }
 
-        string yamlPath = path + ".yaml";
-        if (Godot.FileAccess.FileExists(yamlPath))
-        {
-            return yamlPath;
-        }
-
-        string ymlPath = path + ".yml";
-        if (Godot.FileAccess.FileExists(ymlPath))
-        {
-            return ymlPath;
-        }
-
+        // Also try swapping an existing extension for .yaml/.yml.
         int lastDot = path.LastIndexOf('.');
         if (lastDot > 0)
         {
             string withoutExtension = path.Substring(0, lastDot);
-            yamlPath = withoutExtension + ".yaml";
-            if (Godot.FileAccess.FileExists(yamlPath))
+            resolved =
+                BaseConfigLoader.ResolveResPath(withoutExtension + ".yaml")
+                ?? BaseConfigLoader.ResolveResPath(withoutExtension + ".yml");
+            if (resolved != null)
             {
-                return yamlPath;
-            }
-            ymlPath = withoutExtension + ".yml";
-            if (Godot.FileAccess.FileExists(ymlPath))
-            {
-                return ymlPath;
+                return resolved;
             }
         }
 
@@ -277,12 +250,12 @@ public static class TemplateLoader
 
     private static string ReadFileContent(string path)
     {
-        using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
-        if (file == null)
+        string? text = BaseConfigLoader.ReadAllText(path);
+        if (text == null)
         {
             throw new FileNotFoundException($"Could not open file: {path}");
         }
-        return file.GetAsText();
+        return text;
     }
 
     private static Godot.Collections.Dictionary ParseYamlToJson(string yamlContent)

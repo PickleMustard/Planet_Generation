@@ -145,7 +145,7 @@ public static class ResourceEditorYamlIO
         // Level 0: root keys like "resources:"
         // Level 1: list item prefix "- id_name: ..."
         // Level 2: list item properties "resource_tier: ..."
-        // Level 3: nested block keys "base_path: ..." (icon sub-properties)
+        // Level 3: nested block keys "resource: ..." (icon sub-properties)
 
         sb.AppendLine("resources:");
 
@@ -183,11 +183,11 @@ public static class ResourceEditorYamlIO
                 }
             }
 
-            // icon section: omit if IconBasePath is null/empty
-            if (!string.IsNullOrEmpty(entry.IconBasePath))
+            // icon section: omit if IconResourcePath is null/empty
+            if (!string.IsNullOrEmpty(entry.IconResourcePath))
             {
                 YamlIndent.AppendLine(sb, 2, "icon:");
-                YamlIndent.AppendLine(sb, 3, $"base_path: \"{entry.IconBasePath}\"");
+                YamlIndent.AppendLine(sb, 3, $"resource: \"{entry.IconResourcePath}\"");
 
                 // scale: omit if default 1.0
                 if (!Mathf.IsEqualApprox(entry.IconScale, 1.0f))

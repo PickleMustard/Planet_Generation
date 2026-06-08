@@ -52,7 +52,7 @@ public class RecipeDefinition
 
     /// <summary>
     /// Visual representation for UI display.
-    /// Recipes must explicitly define an icon_base_path.
+    /// Recipes must explicitly define an icon resource (.tres).
     /// </summary>
     public IconDefinition Icon { get; set; } = new();
 

@@ -1,6 +1,7 @@
 using Constructables;
 using Godot;
 using Godot.Collections;
+using PlayerInteraction.Camera;
 using UI.Components;
 using UtilityLibrary;
 
@@ -35,13 +36,11 @@ public partial class StationWindow : Control
     private StationTabbedPanel? _tabbedPanel;
 
     [Export]
-    private StationOrbitCamera? _orbitCamera;
-
-    [Export]
     private FilterableSidebar? _sidebar;
 
     private StationSatellite? _currentStation;
     private Camera3D? _playerCamera;
+    private PlayerCameraController? _controller;
 
     // Right two-thirds is the interactive panel region; left third holds the
     // station view. Mirrors the negative-space pattern used by
@@ -111,16 +110,15 @@ public partial class StationWindow : Control
 
         _currentStation = station;
         _playerCamera = playerCamera;
+        _controller = playerCamera as PlayerCameraController;
         IsOpen = true;
         Visible = true;
 
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
-
-        if (_orbitCamera != null)
-        {
-            _orbitCamera.ScreenOffset = ComputeCameraOffset();
-            _orbitCamera.BeginOrbit(playerCamera, station);
-        }
+        _controller?.EnterFocus(
+            station.GetOrCreateCameraAnchor(),
+            station,
+            new StationFramingStrategy(station),
+            ComputeCameraOffset());
 
         _cartouchePanel?.Populate(station);
         _tabbedPanel?.Initialize(station);
@@ -145,14 +143,13 @@ public partial class StationWindow : Control
             _sidebar.Visible = false;
         }
 
-        _orbitCamera?.EndOrbit();
+        _controller?.ExitFocus();
+        _controller = null;
         _cartouchePanel?.Clear();
         _tabbedPanel?.Clear();
 
         if (_currentStation is Node stationNode && IsInstanceValid(stationNode))
             stationNode.TreeExiting -= OnStationExiting;
-
-        Input.SetMouseMode(Input.MouseModeEnum.Captured);
 
         _currentStation = null;
         _playerCamera = null;

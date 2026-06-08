@@ -165,6 +165,27 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     public float size = 5;
 
     /// <summary>
+    /// Tile count at or below which the mesh keeps its configured radius (scale 1.0x).
+    /// Lower anchor for normalized radius scaling.
+    /// </summary>
+    [Export]
+    public int RadiusScaleMinTiles = 500;
+
+    /// <summary>
+    /// Tile count at or above which the mesh reaches maximum radius boost.
+    /// Upper anchor for normalized radius scaling.
+    /// </summary>
+    [Export]
+    public int RadiusScaleMaxTiles = 10000;
+
+    /// <summary>
+    /// Fractional radius boost applied at <see cref="RadiusScaleMaxTiles"/> (0.5 = +50%).
+    /// Scaling never goes below configured radius, so meshes are never downscaled.
+    /// </summary>
+    [Export]
+    public float RadiusScaleMaxBoost = 0.5f;
+
+    /// <summary>
     /// Whether to project vertices onto a sphere for spherical mesh generation.
     /// When enabled, all vertices are normalized to create a perfect spherical shape.
     /// </summary>
@@ -491,8 +512,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
     /// Uploads per-cell highlight codes for the placement preview, replacing the
     /// previous fixed-size uniform arrays. The buffer is indexed by
     /// <c>VoronoiCell.Index</c>. Codes: 0 = none, 1 = footprint valid, 2 = footprint
-    /// invalid, 3 = new coverage, 4 = dominant existing grid, 5 = absorbed existing
-    /// grid (see <c>cell_selection_highlight.gdshader</c>).
+    /// invalid, 3 = building coverage range (yellow), and >= 16 = existing grid cell
+    /// encoded as <c>16 + slot*3 + pattern</c> (slot picks the orange shade, pattern
+    /// 0/1/2 picks none/single-diagonal/X line overlay). Values stay within R8 (max 63);
+    /// see <c>cell_selection_highlight.gdshader</c> and
+    /// <c>BuildingPlacementMode.GridCode</c>.
     /// </summary>
     public void SetPlacementHighlightData(byte[] perCellCode, int width, int height)
     {
@@ -1534,6 +1558,41 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
             }
         }
 
+        // Normalized radius scaling anchors (optional — defaults stand when absent)
+        if (meshParams.ContainsKey("radius_scale_min_tiles"))
+        {
+            try
+            {
+                RadiusScaleMinTiles = meshParams["radius_scale_min_tiles"].As<int>();
+            }
+            catch (Exception e)
+            {
+                GameLogger.Error($"Error in radius_scale_min_tiles: {e.Message}\n{e.StackTrace}");
+            }
+        }
+        if (meshParams.ContainsKey("radius_scale_max_tiles"))
+        {
+            try
+            {
+                RadiusScaleMaxTiles = meshParams["radius_scale_max_tiles"].As<int>();
+            }
+            catch (Exception e)
+            {
+                GameLogger.Error($"Error in radius_scale_max_tiles: {e.Message}\n{e.StackTrace}");
+            }
+        }
+        if (meshParams.ContainsKey("radius_scale_max_boost"))
+        {
+            try
+            {
+                RadiusScaleMaxBoost = meshParams["radius_scale_max_boost"].As<float>();
+            }
+            catch (Exception e)
+            {
+                GameLogger.Error($"Error in radius_scale_max_boost: {e.Message}\n{e.StackTrace}");
+            }
+        }
+
         // Base mesh settings
         if (meshParams.ContainsKey("subdivisions"))
         {
@@ -1861,6 +1920,11 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         return Continents![index];
     }
 
+    // Moisture noise-field tuning. Promote to per-subtype YAML config if designers need it.
+    private const int MOISTURE_NOISE_SALT = 0x6D01; // "moisture" salt for seed derivation
+    private const float MOISTURE_NOISE_FREQUENCY = 1.2f;
+    private const float MOISTURE_NOISE_SCALE = 2.0f;
+
     // Include all the helper methods from the original classes
     private void AssignBiomes(Dictionary<int, Continent> continents, List<VoronoiCell> cells)
     {
@@ -1870,19 +1934,28 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
                 ? BiomeAssignerFactory.GetAssigner(Classification)
                 : new DefaultBiomeAssigner();
 
+        // Per-cell moisture noise field, seeded from the body RNG so it is deterministic.
+        // Frequency/scale mirror the resource generator's patch constants.
+        var moistureField = NoiseHelpers.CreateSurfaceNoise(
+            unchecked((int)rand.Seed ^ MOISTURE_NOISE_SALT), MOISTURE_NOISE_FREQUENCY, octaves: 4);
+
         foreach (var continent in continents)
         {
             Continent c = continent.Value;
             c.averageMoisture = _biomeAssigner.CalculateMoisture(c, rand, 0.5f);
             foreach (var cell in c.cells)
             {
+                float noise01 = NoiseHelpers.Remap01(
+                    NoiseHelpers.SampleSphericalNoise(
+                        moistureField, cell.Center.Normalized(), MOISTURE_NOISE_SCALE));
+                float cellMoisture = _biomeAssigner.CombineMoistureWithNoise(c.averageMoisture, noise01);
                 foreach (Point p in cell.Points)
                 {
                     float latitude = p.Position.Normalized().Y;
                     p.Biome = _biomeAssigner.AssignBiome(
                         this,
                         p.Height,
-                        c.averageMoisture,
+                        cellMoisture,
                         latitude
                     );
                 }
@@ -2507,12 +2580,16 @@ public partial class UnifiedCelestialMesh : MeshInstance3D
         try
         {
             voronoiCellGeneration.GenerateVoronoiCells(this, oct);
-            float sizeMultiplier = 2.5f * StrDb!.VoronoiCells.Count / 10000f;
-            if (sizeMultiplier > 1.0f)
-            {
-                size *= sizeMultiplier;
-                oct.Grow(sizeMultiplier);
-            }
+            // Normalized radius scaling: few tiles -> configured radius (1.0x, never
+            // downscaled), many tiles -> up to +RadiusScaleMaxBoost. Anchored between
+            // RadiusScaleMinTiles and RadiusScaleMaxTiles.
+            int cellCount = StrDb!.VoronoiCells.Count;
+            float denom = Mathf.Max(1, RadiusScaleMaxTiles - RadiusScaleMinTiles);
+            float t = Mathf.Clamp((cellCount - RadiusScaleMinTiles) / denom, 0f, 1f);
+            float sizeMultiplier = Mathf.Lerp(1.0f, 1.0f + RadiusScaleMaxBoost, t);
+            size *= sizeMultiplier;
+            // Grow() expands the box by (1 + factor); pass the delta to match `size`.
+            oct.Grow(sizeMultiplier - 1.0f);
         }
         catch (Exception e)
         {

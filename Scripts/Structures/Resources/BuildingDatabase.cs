@@ -75,7 +75,7 @@ namespace Structures.Resources
                     );
                 }
 
-                var buildingFiles = GetYamlFilesRecursive(basePath);
+                var buildingFiles = BaseConfigLoader.GetYamlFilesRecursive(basePath);
                 if (buildingFiles.Count == 0)
                 {
                     GD.Print($"BuildingDatabase: No YAML files found in {basePath}");
@@ -217,33 +217,6 @@ namespace Structures.Resources
             {
                 throw new DatabaseNotLoadedException(DatabaseName);
             }
-        }
-
-        private List<string> GetYamlFilesRecursive(string directory)
-        {
-            var files = new List<string>();
-
-            if (!DirAccess.DirExistsAbsolute(directory))
-                return files;
-
-            // Get files in current directory
-            var currentFiles = DirAccess.GetFilesAt(directory);
-            foreach (var file in currentFiles)
-            {
-                if (file.EndsWith(".yaml"))
-                {
-                    files.Add(directory + file);
-                }
-            }
-
-            // Get subdirectories
-            var subdirs = DirAccess.GetDirectoriesAt(directory);
-            foreach (var subdir in subdirs)
-            {
-                files.AddRange(GetYamlFilesRecursive(directory + subdir + "/"));
-            }
-
-            return files;
         }
 
         public bool TryGetBuilding(string buildingId, out BuildingDefinition? building)

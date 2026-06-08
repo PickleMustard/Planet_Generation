@@ -43,10 +43,11 @@ assigners:
       - { biome: biome_deep_ocean, when: { height_below: 0.01 } }
       - { biome: biome_ocean, when: { height_below: 0.05 } }
       - { biome: biome_coastal, when: { height_below: 0.07 } }
-      - { biome: biome_desert, when: { height_below: 0.3, moisture_above: 0, moisture_below: 0.2 } }
-      - { biome: biome_forest, when: { height_above: 0.3, height_below: 0.45, moisture_above: 0.5, moisture_below: 0.7 } }
-      - { biome: biome_rainforest, when: { height_above: 0.07, height_below: 0.4, moisture_above: 0.6, abs_latitude_below: 0.2 } }
-      - { biome: biome_grassland, when: { height_above: 0.07, height_below: 0.3, moisture_above: 0.2, moisture_below: 0.5 } }
+      - { biome: biome_desert, when: { moisture_below: 0.2 } }
+      - { biome: biome_rainforest, when: { moisture_above: 0.6, abs_latitude_below: 0.25 } }
+      - { biome: biome_forest, when: { moisture_above: 0.5 } }
+      - { biome: biome_grassland, when: { moisture_above: 0.2 } }
+      - { biome: biome_grassland, when: {} }
 
   Tropical:
     moisture:

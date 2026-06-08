@@ -16,7 +16,7 @@ namespace UI.StateMachine.States;
 /// Also listens for BuildingInfoWindow.ManageRoutesRequested to transition to
 /// TransferPlanning.
 /// </summary>
-public partial class BuildingDetailsState : LimboState
+public partial class BuildingDetailsState : InGamePanelState
 {
     private BuildingInfoWindow? _window;
 
@@ -24,7 +24,6 @@ public partial class BuildingDetailsState : LimboState
     {
         base._Enter();
         GameLogger.EnterFunction(nameof(_Enter), "BuildingDetailsState");
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
 
         _window = BuildingInfoWindow.Instance;
         if (_window == null)
@@ -48,8 +47,8 @@ public partial class BuildingDetailsState : LimboState
             return;
         }
 
-        _window.WindowCloseRequested += OnWindowCloseRequested;
-        _window.BackRequested += OnBackRequested;
+        _window.WindowCloseRequested += HandleClose;
+        _window.BackRequested += HandleBack;
         _window.ManageRoutesRequested += OnManageRoutesRequested;
 
         _window.ShowWindow(building);
@@ -64,8 +63,8 @@ public partial class BuildingDetailsState : LimboState
 
         if (_window != null)
         {
-            _window.WindowCloseRequested -= OnWindowCloseRequested;
-            _window.BackRequested -= OnBackRequested;
+            _window.WindowCloseRequested -= HandleClose;
+            _window.BackRequested -= HandleBack;
             _window.ManageRoutesRequested -= OnManageRoutesRequested;
             _window.HideWindow();
             _window.Clear();
@@ -73,25 +72,6 @@ public partial class BuildingDetailsState : LimboState
         _window = null;
 
         GameLogger.ExitFunction(nameof(_Exit));
-    }
-
-    private void OnWindowCloseRequested()
-    {
-        InteractionStack.Clear(Blackboard?.Top());
-        Dispatch("window_closed");
-    }
-
-    private void OnBackRequested()
-    {
-        var bb = Blackboard?.Top();
-        var returnEvent = InteractionStack.Pop(bb);
-        if (returnEvent == null || returnEvent == "window_closed")
-        {
-            InteractionStack.Clear(bb);
-            Dispatch("window_closed");
-            return;
-        }
-        Dispatch(returnEvent);
     }
 
     private void OnManageRoutesRequested()
@@ -132,8 +112,7 @@ public partial class BuildingDetailsState : LimboState
             }
         }
 
-        InteractionStack.Push(bb, "transfer_closed",
-            InteractionStack.SnapshotVars(bb, "SelectedBuilding", "SelectedBody", "SelectedContinent", "SelectedContinentIndex"));
-        Dispatch("transfer_opened");
+        PushAndNavigate("transfer_opened", "transfer_closed",
+            "SelectedBuilding", "SelectedBody", "SelectedContinent", "SelectedContinentIndex");
     }
 }

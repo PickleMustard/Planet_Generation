@@ -224,10 +224,10 @@ public partial class ResourceCard : PanelContainer
 
         Texture2D? texture = null;
 
-        if (!string.IsNullOrEmpty(_entry.IconBasePath))
+        if (!string.IsNullOrEmpty(_entry.IconResourcePath))
         {
             texture = IconDataLoader.LoadIconTexture(
-                _entry.IconBasePath,
+                _entry.IconResourcePath,
                 _entry.IdName
             );
         }
@@ -273,7 +273,7 @@ public partial class ResourceCard : PanelContainer
         if (_model == null || _entry == null)
             return;
 
-        _model.UpdateResourceField(_categoryName, _resourceIndex, "IconBasePath", basePath);
+        _model.UpdateResourceField(_categoryName, _resourceIndex, "IconResourcePath", basePath);
         _entry = _model.Categories[_categoryName].Resources[_resourceIndex];
         LoadIcon();
     }

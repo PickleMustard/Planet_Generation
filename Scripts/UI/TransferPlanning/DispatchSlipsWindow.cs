@@ -170,7 +170,6 @@ public partial class DispatchSlipsWindow : Control
 
         SwitchView(ViewKind.Slips);
         Show();
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
         GameLogger.Info($"DispatchSlipsWindow shown for hub '{_originBuilding?.Name}' ({_originBuildingId[..System.Math.Min(8, _originBuildingId.Length)]})");
     }
 

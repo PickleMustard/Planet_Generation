@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="IconConfig" format=3 uid="uid://c2kvdc8oomakh"]
+
+[ext_resource type="Script" uid="uid://bxu21dvkr4hkg" path="res://Scripts/Registries/IconConfig.cs" id="1"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_ilwck"]
+load_path = "res://.godot/imported/ingot.png-2b6dc46e4e3ef068cb725689fce39191.ctex"
+
+[resource]
+script = ExtResource("1")
+Id = &"ingot"
+Texture = SubResource("CompressedTexture2D_ilwck")

@@ -33,10 +33,10 @@ public static class BiomeAssigner
 
     public static float CalculateMoisture(Continent continent, RandomNumberGenerator rng, float baseMoisture = 0.5f)
     {
-        float latitudeFactor = Mathf.Clamp(continent.averagedCenter.Y / 9f, 0f, 1f);
-        float sizeFactor = continent.cells.Count / 100f;
-        float randomVariation = rng.RandfRange(-0.4f, 0.2f);
-        float value = MAX_MOISTURE - (baseMoisture + latitudeFactor + sizeFactor + randomVariation) / MAX_MOISTURE;
-        return value;
+        // [0,1] baseline driven by NORMALIZED latitude: drier toward the poles.
+        float absLat = Mathf.Abs(continent.averagedCenter.Normalized().Y); // 0 eq .. 1 pole
+        float randomVariation = rng.RandfRange(-0.2f, 0.2f);
+        float value = baseMoisture + randomVariation - absLat * 0.4f;
+        return Mathf.Clamp(value, 0f, 1f);
     }
 }

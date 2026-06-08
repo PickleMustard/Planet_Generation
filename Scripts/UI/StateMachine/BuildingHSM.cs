@@ -39,7 +39,6 @@ public partial class BuildingHSM : LimboHsm
     public override void _Enter()
     {
         base._Enter();
-        Input.SetMouseMode(Input.MouseModeEnum.Visible);
         WorldInputController.Instance?.PushDisable();
     }
 

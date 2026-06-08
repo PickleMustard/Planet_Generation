@@ -5,6 +5,6 @@ recipes:
     category: pumping
     work_required: 2
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
       - water: 1

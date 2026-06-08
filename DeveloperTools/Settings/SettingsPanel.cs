@@ -136,6 +136,14 @@ public partial class SettingsPanel : BaseDebugModule
         reloadButton.Pressed += OnReloadPressed;
         _buttonContainer.AddChild(reloadButton);
 
+        var rebuildManifestsButton = new Button
+        {
+            Text = "Rebuild Asset Manifests",
+            TooltipText = "Rescan asset directories and rewrite the icon/model/audio export manifests"
+        };
+        rebuildManifestsButton.Pressed += OnRebuildManifestsPressed;
+        _buttonContainer.AddChild(rebuildManifestsButton);
+
         var spacer = new Control
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill
@@ -257,6 +265,14 @@ public partial class SettingsPanel : BaseDebugModule
     {
         // ProjectSettings auto-saves, no explicit save needed
         GameLogger.Info("Settings auto-saved to ProjectSettings");
+    }
+
+    private void OnRebuildManifestsPressed()
+    {
+        bool ok = DeveloperTools.Common.AssetManifestBuilder.RebuildAll();
+        GameLogger.Info(ok
+            ? "Asset manifests rebuilt successfully."
+            : "Asset manifest rebuild completed with errors — check the log.");
     }
 
     public override void OnModuleEnabled()

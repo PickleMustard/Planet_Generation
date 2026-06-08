@@ -13,7 +13,7 @@ namespace UI.StateMachine.States;
 /// "back_to_ships_overview" return so the details window's Back button returns
 /// here.
 /// </summary>
-public partial class ShipsOverviewState : LimboState
+public partial class ShipsOverviewState : InGamePanelState
 {
     private LogisticsOverviewWindow? _window;
 
@@ -32,7 +32,7 @@ public partial class ShipsOverviewState : LimboState
             return;
         }
 
-        _window.WindowCloseRequested += OnWindowCloseRequested;
+        _window.WindowCloseRequested += HandleClose;
         _window.LogisticsUnitInspectRequested += OnLogisticsUnitInspectRequested;
 
         _window.ShowWindow();
@@ -47,7 +47,7 @@ public partial class ShipsOverviewState : LimboState
 
         if (_window != null)
         {
-            _window.WindowCloseRequested -= OnWindowCloseRequested;
+            _window.WindowCloseRequested -= HandleClose;
             _window.LogisticsUnitInspectRequested -= OnLogisticsUnitInspectRequested;
             _window.HideWindow();
         }
@@ -57,22 +57,13 @@ public partial class ShipsOverviewState : LimboState
         GameLogger.ExitFunction(nameof(_Exit));
     }
 
-    private void OnWindowCloseRequested()
-    {
-        InteractionStack.Clear(Blackboard?.Top());
-        Dispatch("window_closed");
-    }
-
     private void OnLogisticsUnitInspectRequested(Node unitNode)
     {
         if (unitNode is not LogisticsUnit)
             return;
 
-        var bb = Blackboard?.Top();
-        bb?.SetVar("SelectedLogisticsUnit", unitNode);
-        if (bb != null)
-            InteractionStack.Push(bb, "back_to_ships_overview", new Godot.Collections.Dictionary());
-
-        Dispatch("logistics_unit_opened");
+        Blackboard?.Top()?.SetVar("SelectedLogisticsUnit", unitNode);
+        // No snapshot vars: the overview rebuilds its own list on re-entry.
+        PushAndNavigate("logistics_unit_opened", "back_to_ships_overview");
     }
 }

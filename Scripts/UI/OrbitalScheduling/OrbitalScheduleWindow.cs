@@ -15,7 +15,7 @@ namespace UI.OrbitalScheduling;
 /// list ↔ leg wizard). Edits a draft schedule held on the unit's executor so state
 /// survives closing/reopening; only valid schedules are allowed to start.
 /// </summary>
-public sealed partial class OrbitalScheduleWindow : Control
+public sealed partial class OrbitalScheduleWindow : Control, IOverlayPanel
 {
     public static OrbitalScheduleWindow? Instance { get; private set; }
 
@@ -80,7 +80,7 @@ public sealed partial class OrbitalScheduleWindow : Control
 
         _topBar = new TransferTopBar();
         _topBar.HudCloseRequested += RequestClose;
-        _topBar.BackRequested += OnBack;
+        _topBar.BackRequested += RequestBack;
         col.AddChild(_topBar);
 
         _viewHost = new Control
@@ -145,13 +145,17 @@ public sealed partial class OrbitalScheduleWindow : Control
             RequestClose();
     }
 
-    private void RequestClose()
+    public void RequestClose()
     {
         HideWindow();
         EmitSignal(SignalName.Closed);
     }
 
-    private void OnBack()
+    /// <summary>
+    /// Back one level: inside the leg wizard returns to the leg list; on the list
+    /// (no inner stack left) closes the overlay.
+    /// </summary>
+    public void RequestBack()
     {
         if (_inWizard) ShowList();
         else RequestClose();

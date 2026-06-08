@@ -1,0 +1,194 @@
+#if DEBUG
+using System.Collections.Generic;
+using Godot;
+using Registries;
+using UtilityLibrary;
+
+namespace DeveloperTools.Common;
+
+/// <summary>
+/// Developer utility that (re)builds the asset manifests — the export anchors that keep every
+/// <c>IconConfig</c>/<c>ModelConfig</c>/<c>AudioConfig</c> <c>.tres</c> wrapper in the build even
+/// though YAML only references them by string path. <see cref="RebuildAll"/> scans the asset
+/// directories and rewrites the manifests from scratch; <see cref="AddToManifest"/> incrementally
+/// anchors a single freshly-wrapped asset (create-on-pick) without a full rescan.
+///
+/// Completeness is critical: any wrapper absent from its manifest is still stripped on export.
+/// Run <see cref="RebuildAll"/> before exporting as the safety net.
+/// </summary>
+public static class AssetManifestBuilder
+{
+    private const string IconRoot = "res://Materials/Icons";
+    private const string ModelRoot = "res://Mesh";
+    private const string AudioRoot = "res://Audio";
+
+    /// <summary>
+    /// Rescans every asset directory and rewrites all three manifests. Returns true if all
+    /// manifests saved successfully.
+    /// </summary>
+    public static bool RebuildAll()
+    {
+        bool ok = true;
+        ok &= RebuildIconManifest();
+        ok &= RebuildModelManifest();
+        ok &= RebuildAudioManifest();
+        return ok;
+    }
+
+    public static bool RebuildIconManifest()
+    {
+        var wrappers = ScanWrappers<IconConfig>(IconRoot);
+        var manifest = new IconManifest();
+        foreach (var w in wrappers) manifest.Icons.Add(w);
+        return SaveManifest(manifest, AssetManifests.IconManifestPath, "icon", manifest.Icons.Count);
+    }
+
+    public static bool RebuildModelManifest()
+    {
+        var wrappers = ScanWrappers<ModelConfig>(ModelRoot);
+        var manifest = new ModelManifest();
+        foreach (var w in wrappers) manifest.Models.Add(w);
+        return SaveManifest(manifest, AssetManifests.ModelManifestPath, "model", manifest.Models.Count);
+    }
+
+    public static bool RebuildAudioManifest()
+    {
+        var wrappers = ScanWrappers<AudioConfig>(AudioRoot);
+        var manifest = new AudioManifest();
+        foreach (var w in wrappers) manifest.Audio.Add(w);
+        return SaveManifest(manifest, AssetManifests.AudioManifestPath, "audio", manifest.Audio.Count);
+    }
+
+    /// <summary>
+    /// Anchors a single wrapper into its manifest if not already present, then re-saves. Used by
+    /// the create-on-pick flow so newly-wrapped assets survive the next export without a rebuild.
+    /// </summary>
+    public static void AddToManifest(Resource? wrapper)
+    {
+        switch (wrapper)
+        {
+            case IconConfig icon:
+            {
+                var m = LoadOrCreate<IconManifest>(AssetManifests.IconManifestPath);
+                if (!ContainsPath(m.Icons, icon))
+                {
+                    m.Icons.Add(icon);
+                    SaveManifest(m, AssetManifests.IconManifestPath, "icon", m.Icons.Count);
+                }
+                break;
+            }
+            case ModelConfig model:
+            {
+                var m = LoadOrCreate<ModelManifest>(AssetManifests.ModelManifestPath);
+                if (!ContainsPath(m.Models, model))
+                {
+                    m.Models.Add(model);
+                    SaveManifest(m, AssetManifests.ModelManifestPath, "model", m.Models.Count);
+                }
+                break;
+            }
+            case AudioConfig audio:
+            {
+                var m = LoadOrCreate<AudioManifest>(AssetManifests.AudioManifestPath);
+                if (!ContainsPath(m.Audio, audio))
+                {
+                    m.Audio.Add(audio);
+                    SaveManifest(m, AssetManifests.AudioManifestPath, "audio", m.Audio.Count);
+                }
+                break;
+            }
+            default:
+                GameLogger.Warning($"AssetManifestBuilder: cannot anchor unknown wrapper type '{wrapper?.GetType().Name ?? "null"}'");
+                break;
+        }
+    }
+
+    // ── Scanning ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Recursively collects every <c>.tres</c> under <paramref name="root"/> that loads as
+    /// <typeparamref name="T"/>, sorted by resource path for stable manifest diffs.
+    /// </summary>
+    private static List<T> ScanWrappers<T>(string root) where T : Resource
+    {
+        var paths = new List<string>();
+        CollectTres(root, paths);
+        paths.Sort(System.StringComparer.Ordinal);
+
+        var result = new List<T>();
+        foreach (var path in paths)
+        {
+            var res = ResourceLoader.Load(path);
+            if (res is T typed)
+                result.Add(typed);
+        }
+        return result;
+    }
+
+    private static void CollectTres(string dir, List<string> outPaths)
+    {
+        using var da = DirAccess.Open(dir);
+        if (da == null)
+            return; // directory absent (e.g. no audio yet) — nothing to anchor
+
+        da.ListDirBegin();
+        for (string name = da.GetNext(); name != ""; name = da.GetNext())
+        {
+            if (name is "." or "..")
+                continue;
+
+            string child = dir.EndsWith("/") ? dir + name : dir + "/" + name;
+            if (da.CurrentIsDir())
+                CollectTres(child, outPaths);
+            else if (name.EndsWith(".tres", System.StringComparison.OrdinalIgnoreCase))
+                outPaths.Add(child);
+        }
+        da.ListDirEnd();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+
+    private static bool ContainsPath(IEnumerable<Resource> items, Resource candidate)
+    {
+        foreach (var item in items)
+            if (item != null && item.ResourcePath == candidate.ResourcePath)
+                return true;
+        return false;
+    }
+
+    private static T LoadOrCreate<T>(string path) where T : Resource, new()
+    {
+        // NOTE: Do NOT use FileAccess.FileExists() here. Exported builds remap
+        // resource paths and FileAccess.FileExists returns false for the original
+        // path, even though ResourceLoader.Load can still resolve it.
+        try
+        {
+            var existing = ResourceLoader.Load(path);
+            if (existing is T typed)
+                return typed;
+        }
+        catch (System.Exception ex)
+        {
+            GameLogger.Warning($"AssetManifestBuilder: could not load existing manifest at '{path}': {ex.Message}");
+        }
+        return new T();
+    }
+
+    private static bool SaveManifest(Resource manifest, string path, string label, int count)
+    {
+        string dir = path.Substring(0, path.LastIndexOf('/'));
+        if (!DirAccess.DirExistsAbsolute(dir))
+            DirAccess.MakeDirRecursiveAbsolute(dir);
+
+        var err = ResourceSaver.Save(manifest, path);
+        if (err != Error.Ok)
+        {
+            GameLogger.Error($"AssetManifestBuilder: failed to save {label} manifest '{path}': {err}");
+            return false;
+        }
+
+        GameLogger.Info($"AssetManifestBuilder: wrote {count} {label} wrapper(s) to '{path}'");
+        return true;
+    }
+}
+#endif

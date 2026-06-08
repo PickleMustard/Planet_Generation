@@ -15,12 +15,6 @@ public static class RecipeConfigLoader
     {
         var definitions = new List<RecipeDefinition>();
 
-        if (!Godot.FileAccess.FileExists(filePath))
-        {
-            GD.PrintErr($"Recipe definition file not found: {filePath}");
-            return definitions;
-        }
-
         var validation = YamlValidator.ValidateRecipeDefinition(filePath);
         if (!validation.IsValid)
         {
@@ -34,10 +28,16 @@ public static class RecipeConfigLoader
             }
         }
 
+        string? rawText = BaseConfigLoader.ReadAllText(filePath);
+        if (rawText == null)
+        {
+            GD.PrintErr($"Recipe definition file not found: {filePath}");
+            return definitions;
+        }
+
         try
         {
-            using var f = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
-            string text = RecipeYamlPreprocessor.Preprocess(f.GetAsText()).Text;
+            string text = RecipeYamlPreprocessor.Preprocess(rawText).Text;
 
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -312,11 +312,11 @@ public static class RecipeConfigLoader
         if (iconDict == null)
             return new IconDefinition();
 
-        // Get base_path (required)
-        string? basePath = ReadString(iconDict, "base_path", "");
+        // Get wrapper resource path (required)
+        string? basePath = ReadString(iconDict, "resource", "");
         if (string.IsNullOrEmpty(basePath))
         {
-            GameLogger.Warning($"Icon section missing base_path for {context}");
+            GameLogger.Warning($"Icon section missing resource for {context}");
             return new IconDefinition();
         }
 

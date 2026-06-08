@@ -106,7 +106,7 @@ public partial class IconSection : VBoxContainer
     private void RefreshControls()
     {
         if (_entry == null) return;
-        _basePathLabel.Text = _entry.Icon.BasePath ?? "";
+        _basePathLabel.Text = _entry.Icon.ResourcePath ?? "";
         _scaleSpin.SetValueNoSignal(_entry.Icon.Scale);
         _tintButton.Color = _entry.Icon.Tint;
         LoadIcon();
@@ -116,10 +116,10 @@ public partial class IconSection : VBoxContainer
     {
         if (_entry == null) return;
         Texture2D? texture = null;
-        if (!string.IsNullOrEmpty(_entry.Icon.BasePath))
+        if (!string.IsNullOrEmpty(_entry.Icon.ResourcePath))
         {
             texture = IconDataLoader.LoadIconTexture(
-                _entry.Icon.BasePath, _entry.IdName);
+                _entry.Icon.ResourcePath, _entry.IdName);
         }
         _iconRect.Texture = texture ?? IconDataLoader.GetFallbackIcon();
     }
@@ -146,14 +146,14 @@ public partial class IconSection : VBoxContainer
 
     private void OnIconSelected(string basePath)
     {
-        OnIconEdited("BasePath", basePath);
+        OnIconEdited("ResourcePath", basePath);
         _basePathLabel.Text = basePath;
         LoadIcon();
     }
 
     private void OnClearPressed()
     {
-        OnIconEdited("BasePath", "");
+        OnIconEdited("ResourcePath", "");
         _basePathLabel.Text = "";
         LoadIcon();
     }

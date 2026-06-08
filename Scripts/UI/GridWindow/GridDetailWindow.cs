@@ -3,6 +3,7 @@ using Constructables;
 using Constructables.Buildings.Behaviors;
 using Constructables.Power;
 using Godot;
+using UI;
 using UI.Components;
 using UtilityLibrary;
 
@@ -17,7 +18,7 @@ namespace UI.GridWindow;
 /// Polls the grid every 10 physics ticks for live values and rebuilds the line chart
 /// from a snapshot of <see cref="GridStatistics.GetHistorySnapshot"/>.
 /// </summary>
-public partial class GridDetailWindow : Control
+public partial class GridDetailWindow : Control, IOverlayPanel
 {
     public static GridDetailWindow? Instance { get; private set; }
 
@@ -67,6 +68,9 @@ public partial class GridDetailWindow : Control
     {
         _grid = grid;
         IsOpen = true;
+        // Render on top of any active HSM panel: move to the end of the parent's
+        // child list so tree order places this overlay last (frontmost).
+        GetParent()?.MoveChild(this, -1);
         Visible = true;
         _refreshCounter = 0;
         Refresh();
@@ -81,6 +85,12 @@ public partial class GridDetailWindow : Control
         _grid = null;
         GameLogger.Info("[GridDetailWindow] Closed");
     }
+
+    /// <summary>Back one level. No inner stack, so equivalent to <see cref="RequestClose"/>.</summary>
+    public void RequestBack() => HideWindow();
+
+    /// <summary>Close the overlay entirely.</summary>
+    public void RequestClose() => HideWindow();
 
     public override void _PhysicsProcess(double delta)
     {
@@ -98,7 +108,7 @@ public partial class GridDetailWindow : Control
         if (!IsOpen) return;
         if (@event is InputEventKey k && k.Pressed && k.Keycode == Key.Escape)
         {
-            HideWindow();
+            RequestClose();
             GetViewport().SetInputAsHandled();
         }
     }
@@ -147,7 +157,7 @@ public partial class GridDetailWindow : Control
         headerRow.AddChild(_statusPill);
 
         var closeBtn = new Button { Text = "X", CustomMinimumSize = new Vector2(28, 28) };
-        closeBtn.Pressed += HideWindow;
+        closeBtn.Pressed += RequestClose;
         headerRow.AddChild(closeBtn);
 
         vbox.AddChild(new HSeparator());

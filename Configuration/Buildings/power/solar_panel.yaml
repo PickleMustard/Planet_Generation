@@ -1,0 +1,25 @@
+buildings:
+  - id_name: solar_panel
+    display_name: Solar Panel
+    description: A mechanical plant. Turns sun into electricity
+    category: power
+    max_resource_tier: 2
+    work_required: 30
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      concrete: 20
+      capacitor: 8
+      solar_cell: 10
+    behaviors:
+      - behavior_id: PowerProducerBehavior
+        grid_radius: 2
+        is_renewable: true
+        default_recipe: "solar_tracking"
+        production_speed: 1
+    icon:
+      resource: "res://Materials/Icons/default_building.tres"

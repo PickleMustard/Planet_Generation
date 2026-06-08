@@ -4,7 +4,7 @@ recipes:
     category: machining
     work_required: 20
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - steel: 3
     output_resources:
@@ -14,7 +14,7 @@ recipes:
     category: machining
     work_required: 10
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - copper: 1
     output_resources:

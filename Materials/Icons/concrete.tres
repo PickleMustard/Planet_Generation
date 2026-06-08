@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="IconConfig" format=3]
+
+[ext_resource type="Script" uid="uid://bxu21dvkr4hkg" path="res://Scripts/Registries/IconConfig.cs" id="1"]
+[ext_resource type="Texture2D" uid="uid://btyn2s8a0gpy2" path="res://Materials/Icons/concrete.png" id="2"]
+
+[resource]
+script = ExtResource("1")
+Id = &"concrete"
+Texture = ExtResource("2")
+metadata/_custom_type_script = "uid://bxu21dvkr4hkg"

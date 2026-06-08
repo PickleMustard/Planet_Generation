@@ -1,22 +1,25 @@
 stations:
-  - name: Small_Shipyard
+  - name: small_vaccdock
+    description: The smallest available commercial ship docks. They're about as barebones as they go. No gravity, no atmosphere, little capacity.
     station_type: Shipyard
-    construction_time: 60
+    construction_time: 120
     behaviors:
       - behavior_id: StorageHubBehavior
-        storage_capacity: "20"
+        storage_capacity: "8"
       - behavior_id: ShipyardBehavior
         max_parallel_ship_builds: "1"
         work_per_tick: "1"
     required_resources:
-      iron: 5
-      aluminum: 5
+      aluminum: 40
+      steel: 20
+      solar_cell: 5
     icon:
-      base_path: "res://Assets/Icons/Stations/shipyard/small_shipyard"
+      resource: "res://Materials/Icons/default_station.tres"
 
-  - name: Large_Shipyard
+  - name: triple_vaccdock
+    description: A marked improvement over the small vaccdock, the improved infrastructure allows more and bigger ships to be constructed. Worker safety was a priority in its design, cutting mortalities by 5% from its predecessor.
     station_type: Shipyard
-    construction_time: 150
+    construction_time: 240
     behaviors:
       - behavior_id: StorageHubBehavior
         storage_capacity: "20"
@@ -24,9 +27,9 @@ stations:
         max_parallel_ship_builds: "3"
         work_per_tick: "1"
     required_resources:
-      Steel: 5000
-      Electronics: 1500
-      Machinery: 1000
-      Composites: 500
+      ceramics: 200
+      solar_cell: 50
+      tungsten: 200
+      titanium: 200
     icon:
-      base_path: "res://Assets/Icons/Stations/shipyard/large_shipyard"
+      resource: "res://Materials/Icons/default_station.tres"

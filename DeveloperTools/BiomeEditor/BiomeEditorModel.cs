@@ -39,7 +39,7 @@ public class BiomeEditorModel
     public class BiomeResourceEdit
     {
         public Biome.BiomeType Biome { get; set; }
-        public Dictionary<string, float> Weights { get; set; } = new(StringComparer.Ordinal);
+        public Dictionary<string, AvailabilityLevel> Groups { get; set; } = new(StringComparer.Ordinal);
         public bool IsDirty { get; set; }
     }
 
@@ -282,7 +282,7 @@ public class BiomeEditorModel
             BiomeResources[entry.Biome] = new BiomeResourceEdit
             {
                 Biome = entry.Biome,
-                Weights = new Dictionary<string, float>(entry.ResourceWeightModifiers, StringComparer.Ordinal),
+                Groups = new Dictionary<string, AvailabilityLevel>(entry.GroupAvailability, StringComparer.Ordinal),
             };
         }
     }
@@ -453,23 +453,23 @@ public class BiomeEditorModel
         AssignerChanged?.Invoke(subtype);
     }
 
-    public void SetBiomeResourceWeight(Biome.BiomeType biome, string resourceId, float value)
+    public void SetBiomeGroupLevel(Biome.BiomeType biome, string groupName, AvailabilityLevel level)
     {
-        if (string.IsNullOrEmpty(resourceId)) return;
+        if (string.IsNullOrEmpty(groupName)) return;
         if (!BiomeResources.TryGetValue(biome, out var edit))
         {
             edit = new BiomeResourceEdit { Biome = biome };
             BiomeResources[biome] = edit;
         }
-        edit.Weights[resourceId] = value;
+        edit.Groups[groupName] = level;
         edit.IsDirty = true;
         BiomeWeightsChanged?.Invoke(biome);
     }
 
-    public void RemoveBiomeResourceWeight(Biome.BiomeType biome, string resourceId)
+    public void RemoveBiomeGroup(Biome.BiomeType biome, string groupName)
     {
         if (!BiomeResources.TryGetValue(biome, out var edit)) return;
-        if (edit.Weights.Remove(resourceId))
+        if (edit.Groups.Remove(groupName))
         {
             edit.IsDirty = true;
             BiomeWeightsChanged?.Invoke(biome);

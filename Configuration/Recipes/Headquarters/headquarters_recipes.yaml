@@ -5,7 +5,7 @@ recipes:
     category: headquarters
     work_required: 1
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
       - concrete: 2
       - iron: 1
@@ -16,7 +16,7 @@ recipes:
     category: headquarters
     work_required: 1
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
       - power: 40
   - recipe_id: "hq_extraction_focus"
@@ -25,7 +25,7 @@ recipes:
     category: headquarters
     work_required: 2
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - power: 5
     output_resources:
@@ -38,7 +38,7 @@ recipes:
     category: headquarters
     work_required: 2
     icon:
-      base_path: "res://Materials/Icons/default_recipe"
+      resource: "res://Materials/Icons/default_recipe.tres"
     input_resources:
       - power: 8
       - clay: 10

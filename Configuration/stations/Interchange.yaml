@@ -1,0 +1,12 @@
+stations:
+  - name: wayward_station
+    description: Small economies can barely afford to put things in orbit. This small storage station was the Hartsfeld Corporations answer.
+    station_type: Interchange
+    construction_time: 100
+    behaviors:
+      - behavior_id: StorageHubBehavior
+        storage_capacity: "20"
+    required_resources:
+      aluminum: 20
+      solar_cell: 5
+      glass: 10

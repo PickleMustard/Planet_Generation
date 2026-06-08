@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://cf6xfr162f71d"]
 
 [ext_resource type="Script" uid="uid://b5jg0uvoduw3y" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyWindow.cs" id="1_window"]
-[ext_resource type="Script" uid="uid://u0wcdcuqic8n" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyOrbitCamera.cs" id="2_orbitcam"]
 [ext_resource type="PackedScene" uid="uid://cw17748doqih4" path="res://UI/OrbitalBodyWindow/OrbitalBodyHeaderPanel.tscn" id="3_header"]
 [ext_resource type="Script" uid="uid://8gjsathfdvst" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyTabbedPanel.cs" id="4_tabbed"]
 [ext_resource type="Script" uid="uid://b4q5dkcyk45fp" path="res://Scripts/UI/OrbitalBodyWindow/OrbitalBodyDetailsPanel.cs" id="5_details"]
@@ -28,9 +27,6 @@ _tabbedPanel = NodePath("TabbedPanel")
 _detailsPanel = NodePath("DetailsPanel")
 _compassRose = NodePath("CompassRose")
 _reticleOverlay = NodePath("ReticleOverlay")
-
-[node name="OrbitalBodyOrbitCamera" type="Node" parent="." unique_id=1781861843]
-script = ExtResource("2_orbitcam")
 
 [node name="ReticleOverlay" parent="." unique_id=916238545 instance=ExtResource("8_reticle")]
 anchors_preset = 0

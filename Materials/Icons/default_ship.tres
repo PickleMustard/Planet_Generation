@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="IconConfig" format=3 uid="uid://bgwk4dosxa5fv"]
+
+[ext_resource type="Script" uid="uid://bxu21dvkr4hkg" path="res://Scripts/Registries/IconConfig.cs" id="1"]
+[ext_resource type="Texture2D" uid="uid://d21t03oktsqh0" path="res://Materials/Icons/default_ship.png" id="2"]
+
+[resource]
+script = ExtResource("1")
+Id = &"default_ship"
+Texture = ExtResource("2")
+metadata/_custom_type_script = "uid://bxu21dvkr4hkg"

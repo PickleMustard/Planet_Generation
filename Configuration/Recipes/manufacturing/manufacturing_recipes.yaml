@@ -1,0 +1,12 @@
+recipes:
+  - recipe_id: "solar_cells_base"
+    display_name: "Laminate Solar Cells"
+    description: low tier solar cell production
+    category: manufacturing
+    work_required: 20
+    input_resources:
+      - copper: 5
+      - silicon: 5
+      - low_voltage_wire: 2
+    output_resources:
+      - solar_cell: 2

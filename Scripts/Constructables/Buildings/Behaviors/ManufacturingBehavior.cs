@@ -22,7 +22,16 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
 
     public Building? Owner => _owner;
 
-    public ManufacturingState State { get; private set; } = ManufacturingState.Idle;
+    private ManufacturingState _state = ManufacturingState.Idle;
+    public ManufacturingState State
+    {
+        get => _state;
+        private set
+        {
+            _state = value;
+            _owner?.SetProductionState(value);
+        }
+    }
     public float WorkProgress { get; private set; }
     public float WorkRequired { get; private set; }
 
@@ -86,6 +95,7 @@ public partial class ManufacturingBehavior : RefCounted, IBuildingBehavior, IBeh
     {
         _owner = owner;
         _maxResourceTier = owner.Definition?.MaxResourceTier ?? 0;
+        _owner.SetProductionState(_state);
     }
 
     public void OnRegister()
