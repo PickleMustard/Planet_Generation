@@ -1,0 +1,284 @@
+[gd_scene format=3 uid="uid://cxddfviajwo5q"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/TransferPlanning/ManifestEditorView.cs" id="2_script"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/StepIndicator.cs" id="3_steps"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/LedgerColumnHead.cs" id="4_head"]
+[ext_resource type="PackedScene" path="res://UI/Wireframe/ScaleStrip.tscn" id="5_scale"]
+[ext_resource type="PackedScene" path="res://UI/Wireframe/TransferActionBar.tscn" id="6_actionbar"]
+
+[sub_resource type="StyleBoxFlat" id="paper_panel"]
+bg_color = Color(1, 1, 1, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.165, 0.145, 0.125, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="paper_panel_margins"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(1, 1, 1, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.165, 0.145, 0.125, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="ManifestEditorView" type="Control" node_paths=PackedStringArray("_steps", "_destLabel", "_modeRecurringBtn", "_modeOneTimeBtn", "_unitTonnageBtn", "_unitPercentBtn", "_itemSummary", "_manifestPanel", "_manifestHead", "_manifestRows", "_conditionPanel", "_conditionDropdown", "_conditionDescription", "_watchedExtras", "_scale", "_stockpileList", "_actionBar")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+_steps = NodePath("Col/StepBar/StepRow/Steps")
+_destLabel = NodePath("Col/StepBar/StepRow/DestLabel")
+_modeRecurringBtn = NodePath("Col/Split/LeftMargin/Box/ModeRow/ModeRecurringBtn")
+_modeOneTimeBtn = NodePath("Col/Split/LeftMargin/Box/ModeRow/ModeOneTimeBtn")
+_unitTonnageBtn = NodePath("Col/Split/LeftMargin/Box/UnitRow/UnitTonnageBtn")
+_unitPercentBtn = NodePath("Col/Split/LeftMargin/Box/UnitRow/UnitPercentBtn")
+_itemSummary = NodePath("Col/Split/LeftMargin/Box/TitleRow/ItemSummary")
+_manifestPanel = NodePath("Col/Split/LeftMargin/Box/ManifestPanel")
+_manifestHead = NodePath("Col/Split/LeftMargin/Box/ManifestPanel/ManifestCol/ManifestHead")
+_manifestRows = NodePath("Col/Split/LeftMargin/Box/ManifestPanel/ManifestCol/Scroll/ManifestRows")
+_conditionPanel = NodePath("Col/Split/LeftMargin/Box/ConditionPanel")
+_conditionDropdown = NodePath("Col/Split/LeftMargin/Box/ConditionPanel/Stack/Row/ConditionDropdown")
+_conditionDescription = NodePath("Col/Split/LeftMargin/Box/ConditionPanel/Stack/Description/ConditionDescription")
+_watchedExtras = NodePath("Col/Split/LeftMargin/Box/ConditionPanel/Stack/Description/WatchedExtras")
+_scale = NodePath("Col/Split/LeftMargin/Box/Scale")
+_stockpileList = NodePath("Col/Split/RightMargin/RightCol/StockScroll/StockpileList")
+_actionBar = NodePath("Col/ActionBar")
+
+[node name="Col" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="StepBar" type="MarginContainer" parent="Col"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 6
+
+[node name="StepRow" type="HBoxContainer" parent="Col/StepBar"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Steps" type="HBoxContainer" parent="Col/StepBar/StepRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("3_steps")
+
+[node name="DestLabel" type="Label" parent="Col/StepBar/StepRow"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+text = "DEST · —"
+
+[node name="Split" type="HSplitContainer" parent="Col"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = -320
+collapsed = true
+
+[node name="LeftMargin" type="MarginContainer" parent="Col/Split"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="Box" type="VBoxContainer" parent="Col/Split/LeftMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ModeRow" type="HBoxContainer" parent="Col/Split/LeftMargin/Box"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ModeKicker" type="Label" parent="Col/Split/LeftMargin/Box/ModeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+text = "TRANSFER TYPE"
+
+[node name="ModeRecurringBtn" type="Button" parent="Col/Split/LeftMargin/Box/ModeRow"]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Recurring Schedule"
+
+[node name="ModeOneTimeBtn" type="Button" parent="Col/Split/LeftMargin/Box/ModeRow"]
+layout_mode = 2
+toggle_mode = true
+text = "One-Time Order"
+
+[node name="UnitRow" type="HBoxContainer" parent="Col/Split/LeftMargin/Box"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="UnitKicker" type="Label" parent="Col/Split/LeftMargin/Box/UnitRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+text = "EDIT BY"
+
+[node name="UnitTonnageBtn" type="Button" parent="Col/Split/LeftMargin/Box/UnitRow"]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Tonnage"
+
+[node name="UnitPercentBtn" type="Button" parent="Col/Split/LeftMargin/Box/UnitRow"]
+layout_mode = 2
+toggle_mode = true
+text = "Percent"
+
+[node name="TitleRow" type="HBoxContainer" parent="Col/Split/LeftMargin/Box"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Col/Split/LeftMargin/Box/TitleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 24
+text = "Cargo Manifest"
+
+[node name="ItemSummary" type="Label" parent="Col/Split/LeftMargin/Box/TitleRow"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 12
+
+[node name="ManifestPanel" type="PanelContainer" parent="Col/Split/LeftMargin/Box"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="ManifestCol" type="VBoxContainer" parent="Col/Split/LeftMargin/Box/ManifestPanel"]
+layout_mode = 2
+
+[node name="ManifestHead" type="PanelContainer" parent="Col/Split/LeftMargin/Box/ManifestPanel/ManifestCol"]
+layout_mode = 2
+script = ExtResource("4_head")
+
+[node name="Scroll" type="ScrollContainer" parent="Col/Split/LeftMargin/Box/ManifestPanel/ManifestCol"]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="ManifestRows" type="VBoxContainer" parent="Col/Split/LeftMargin/Box/ManifestPanel/ManifestCol/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="ConditionPanel" type="PanelContainer" parent="Col/Split/LeftMargin/Box"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("paper_panel_margins")
+
+[node name="Stack" type="VBoxContainer" parent="Col/Split/LeftMargin/Box/ConditionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Row" type="HBoxContainer" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LabelStack" type="VBoxContainer" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="LabelKicker" type="Label" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack/Row/LabelStack"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "DISPATCH WHEN"
+
+[node name="LabelValue" type="Label" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack/Row/LabelStack"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 18
+text = "Condition"
+
+[node name="ConditionDropdown" type="OptionButton" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Description" type="VBoxContainer" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ConditionDescription" type="Label" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack/Description"]
+layout_mode = 2
+theme_type_variation = &"LabelSub"
+theme_override_font_sizes/font_size = 13
+
+[node name="WatchedExtras" type="VBoxContainer" parent="Col/Split/LeftMargin/Box/ConditionPanel/Stack/Description"]
+visible = false
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="Col/Split/LeftMargin/Box"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Scale" parent="Col/Split/LeftMargin/Box" instance=ExtResource("5_scale")]
+layout_mode = 2
+
+[node name="RightMargin" type="MarginContainer" parent="Col/Split"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="RightCol" type="VBoxContainer" parent="Col/Split/RightMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="StockTitle" type="Label" parent="Col/Split/RightMargin/RightCol"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 22
+text = "Stockpile"
+
+[node name="StockHint" type="Label" parent="Col/Split/RightMargin/RightCol"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+text = "DRAG INTO MANIFEST"
+
+[node name="StockScroll" type="ScrollContainer" parent="Col/Split/RightMargin/RightCol"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StockpileList" type="VBoxContainer" parent="Col/Split/RightMargin/RightCol/StockScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="ActionBar" parent="Col" instance=ExtResource("6_actionbar")]
+layout_mode = 2

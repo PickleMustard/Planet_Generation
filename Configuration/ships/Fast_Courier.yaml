@@ -8,6 +8,8 @@ ships:
     required_resources:
       Steel: 50
       Electronics: 30
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"
 
@@ -20,6 +22,8 @@ ships:
     required_resources:
       Steel: 100
       Electronics: 60
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"
 
@@ -33,6 +37,8 @@ ships:
       Steel: 200
       Electronics: 100
       Composites: 50
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"
 
@@ -46,5 +52,7 @@ ships:
       Steel: 400
       Electronics: 200
       Composites: 100
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"

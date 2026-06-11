@@ -46,19 +46,38 @@ public sealed partial class LegWizardView : Control
     private int _step;
     private const int StepCount = 5;
 
-    private StepIndicator? _steps;
-    private Control? _content;
-    private Label? _originLabel;
+    [Export] private StepIndicator? _steps;
+    [Export] private Control? _content;
+    [Export] private Label? _originLabel;
+    [Export] private TransferActionBar? _actionBar;
     private Button? _backBtn;
     private Button? _nextBtn;
 
     private UI.SystemBoard.SystemBoardView? _board;
     private Label? _destLabel;
 
+    private static PackedScene? _scene;
+
+    public static LegWizardView Create()
+    {
+        _scene ??= GD.Load<PackedScene>("res://UI/OrbitalScheduling/LegWizardView.tscn");
+        return _scene.Instantiate<LegWizardView>();
+    }
+
     public override void _Ready()
     {
-        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        BuildLayout();
+        if (_actionBar == null) return;
+        var cancel = new Button { Text = "Cancel" };
+        cancel.Pressed += () => EmitSignal(SignalName.Cancelled);
+        _actionBar.LeftSlot.AddChild(cancel);
+
+        _backBtn = new Button { Text = "← Back" };
+        _backBtn.Pressed += OnBack;
+        _actionBar.RightSlot.AddChild(_backBtn);
+
+        _nextBtn = new Button { Text = "Next →", ThemeTypeVariation = "ButtonPrimary" };
+        _nextBtn.Pressed += OnNext;
+        _actionBar.RightSlot.AddChild(_nextBtn);
     }
 
     /// <summary>Binds the wizard. legIndex &lt; 0 starts a new (appended) leg.</summary>
@@ -112,56 +131,6 @@ public sealed partial class LegWizardView : Control
     }
 
     // ───────── Layout ─────────
-
-    private void BuildLayout()
-    {
-        var col = new VBoxContainer();
-        col.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        col.AddThemeConstantOverride("separation", 0);
-        AddChild(col);
-
-        var stepBar = new MarginContainer();
-        stepBar.AddThemeConstantOverride("margin_left", 18);
-        stepBar.AddThemeConstantOverride("margin_right", 18);
-        stepBar.AddThemeConstantOverride("margin_top", 8);
-        stepBar.AddThemeConstantOverride("margin_bottom", 8);
-        col.AddChild(stepBar);
-        var stepRow = new HBoxContainer();
-        stepRow.AddThemeConstantOverride("separation", 14);
-        stepBar.AddChild(stepRow);
-        _steps = new StepIndicator { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        stepRow.AddChild(_steps);
-        _originLabel = new Label { Text = "ORIGIN · —", ThemeTypeVariation = "LabelMono" };
-        _originLabel.AddThemeFontSizeOverride("font_size", 10);
-        _originLabel.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        stepRow.AddChild(_originLabel);
-
-        _content = new MarginContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        ((MarginContainer)_content).AddThemeConstantOverride("margin_left", 18);
-        ((MarginContainer)_content).AddThemeConstantOverride("margin_right", 18);
-        ((MarginContainer)_content).AddThemeConstantOverride("margin_top", 6);
-        ((MarginContainer)_content).AddThemeConstantOverride("margin_bottom", 6);
-        col.AddChild(_content);
-
-        var actionBar = new TransferActionBar();
-        col.AddChild(actionBar);
-
-        var cancel = new Button { Text = "Cancel" };
-        cancel.Pressed += () => EmitSignal(SignalName.Cancelled);
-        actionBar.LeftSlot.AddChild(cancel);
-
-        _backBtn = new Button { Text = "← Back" };
-        _backBtn.Pressed += OnBack;
-        actionBar.RightSlot.AddChild(_backBtn);
-
-        _nextBtn = new Button { Text = "Next →", ThemeTypeVariation = "ButtonPrimary" };
-        _nextBtn.Pressed += OnNext;
-        actionBar.RightSlot.AddChild(_nextBtn);
-    }
 
     private void RefreshStep()
     {

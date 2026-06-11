@@ -52,6 +52,9 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
 
     private PackedScene? _resourceSlotItemScene;
     private PackedScene? _resourceRateItemScene;
+    private PackedScene? _nodePortRowScene;
+
+    private static readonly Color PortEmptyMuted = new(0.7f, 0.7f, 0.7f);
 
     private static readonly Color StateDotIdle = new(0.55f, 0.55f, 0.6f);
     private static readonly Color StateDotRun = new(0.29f, 0.65f, 0.32f);
@@ -103,6 +106,7 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
 
         _resourceSlotItemScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/ResourceSlotItem.tscn");
         _resourceRateItemScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/ResourceRateItem.tscn");
+        _nodePortRowScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/NodePortRow.tscn");
     }
 
     protected override void UpdateDisplay()
@@ -398,37 +402,25 @@ public partial class BuildingPanelDetails : BaseBuildingDetails
     private void UpdateNodesList()
     {
         ClearChildren(_nodesList);
-        if (_nodesList == null || _building == null) return;
+        if (_nodesList == null || _building == null || _nodePortRowScene == null) return;
 
         foreach (var node in _building.Nodes)
         {
-            var row = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddThemeConstantOverride("separation", 2);
+            var row = _nodePortRowScene.Instantiate<VBoxContainer>();
+            row.GetNode<Label>("HeadLabel").Text = $"{node.Kind} · side {node.SideIndex}.{node.SlotIndex}";
 
-            var head = new Label { Text = $"{node.Kind} · side {node.SideIndex}.{node.SlotIndex}" };
-            row.AddChild(head);
-
+            var detail = row.GetNode<Label>("DetailLabel");
             var link = node.Link;
             if (link == null)
             {
-                var lbl = new Label
-                {
-                    Text = "  — empty port —",
-                    Modulate = new Color(0.7f, 0.7f, 0.7f),
-                };
-                row.AddChild(lbl);
+                detail.Text = "  — empty port —";
+                detail.Modulate = PortEmptyMuted;
             }
             else
             {
                 var other = ReferenceEquals(link.Source, node) ? link.Target : link.Source;
                 string otherName = other?.Owner?.Name ?? "(unknown)";
-                int inFlight = link.InFlight.Count;
-                int slotCap = link.Profile?.SlotCapacity ?? 0;
-                var lbl = new Label
-                {
-                    Text = $"  → {otherName}  ·  in-flight {inFlight}/{slotCap}",
-                };
-                row.AddChild(lbl);
+                detail.Text = $"  → {otherName}  ·  in-flight {link.InFlight.Count}/{link.Profile?.SlotCapacity ?? 0}";
             }
             _nodesList.AddChild(row);
         }

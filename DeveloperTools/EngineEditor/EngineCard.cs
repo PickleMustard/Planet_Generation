@@ -6,8 +6,10 @@ namespace DeveloperTools.EngineEditor;
 
 /// <summary>
 /// Per-engine editing card: name, specific_impulse, thrust, and description.
-/// Built programmatically. Edits mutate the model entry in place and flag it
-/// dirty; reorder/delete emit <see cref="CardsNeedRebuild"/>.
+/// Layout lives in <c>EngineCard.tscn</c>; this script binds values and wires
+/// edits to the model. Instantiate via <see cref="Create"/>. Edits mutate the
+/// model entry in place and flag it dirty; reorder/delete emit
+/// <see cref="CardsNeedRebuild"/>.
 /// </summary>
 public partial class EngineCard : PanelContainer
 {
@@ -19,8 +21,23 @@ public partial class EngineCard : PanelContainer
     private int _engineIndex;
     private EngineEditorModel.EngineEditEntry _entry = null!;
 
-    private Button _moveUpButton = null!;
-    private Button _moveDownButton = null!;
+    [Export] private LineEdit _nameEdit = null!;
+    [Export] private Button _moveUpButton = null!;
+    [Export] private Button _moveDownButton = null!;
+    [Export] private SpinBox _ispSpin = null!;
+    [Export] private SpinBox _thrustSpin = null!;
+    [Export] private TextEdit _descriptionEdit = null!;
+
+    private static PackedScene? _scene;
+
+    public static EngineCard Create(EngineEditorModel model, string categoryName, int engineIndex,
+        EngineEditorModel.EngineEditEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/EngineEditor/EngineCard.tscn");
+        var card = _scene.Instantiate<EngineCard>();
+        card.Initialize(model, categoryName, engineIndex, entry);
+        return card;
+    }
 
     public void Initialize(EngineEditorModel model, string categoryName, int engineIndex,
         EngineEditorModel.EngineEditEntry entry)
@@ -37,81 +54,19 @@ public partial class EngineCard : PanelContainer
     public override void _Ready()
     {
         base._Ready();
-        BuildLayout();
+        _nameEdit.Text = _entry.Name;
+        _ispSpin.Value = _entry.SpecificImpulse;
+        _thrustSpin.Value = _entry.Thrust;
+        _descriptionEdit.Text = _entry.Description;
+        UpdateMoveButtons();
     }
 
     private void MarkDirty() => _model.MarkDirty(_categoryName, _engineIndex);
 
-    private void BuildLayout()
-    {
-        AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color(0.16f, 0.16f, 0.19f),
-            BorderWidthLeft = 1, BorderWidthTop = 1, BorderWidthRight = 1, BorderWidthBottom = 1,
-            BorderColor = new Color(0.3f, 0.3f, 0.35f),
-            ContentMarginLeft = 8, ContentMarginTop = 6, ContentMarginRight = 8, ContentMarginBottom = 6,
-            CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3,
-            CornerRadiusBottomRight = 3, CornerRadiusBottomLeft = 3
-        });
-
-        var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        AddChild(root);
-
-        var header = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(header);
-        var nameEdit = new LineEdit
-        {
-            Text = _entry.Name, PlaceholderText = "name", SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        nameEdit.TextChanged += t => { _entry.Name = t; MarkDirty(); };
-        header.AddChild(nameEdit);
-        var actions = new VBoxContainer();
-        _moveUpButton = new Button { Text = "▲", TooltipText = "Move up" };
-        _moveUpButton.Pressed += OnMoveUp;
-        actions.AddChild(_moveUpButton);
-        _moveDownButton = new Button { Text = "▼", TooltipText = "Move down" };
-        _moveDownButton.Pressed += OnMoveDown;
-        actions.AddChild(_moveDownButton);
-        var deleteButton = new Button { Text = "✕", TooltipText = "Delete engine" };
-        deleteButton.Pressed += OnDelete;
-        actions.AddChild(deleteButton);
-        header.AddChild(actions);
-
-        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(grid);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Specific Impulse (s)" });
-        var isp = new SpinBox
-        {
-            MinValue = 0, MaxValue = 1000000, Step = 1, AllowGreater = true,
-            Value = _entry.SpecificImpulse, SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        isp.ValueChanged += v => { _entry.SpecificImpulse = (float)v; MarkDirty(); };
-        grid.AddChild(isp);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Thrust (N)" });
-        var thrust = new SpinBox
-        {
-            MinValue = 0, MaxValue = 100000000, Step = 1, AllowGreater = true,
-            Value = _entry.Thrust, SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        thrust.ValueChanged += v => { _entry.Thrust = (float)v; MarkDirty(); };
-        grid.AddChild(thrust);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
-        var description = new TextEdit
-        {
-            Text = _entry.Description,
-            PlaceholderText = "Engine description",
-            CustomMinimumSize = new Vector2(0, 50),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            WrapMode = TextEdit.LineWrappingMode.Boundary
-        };
-        description.TextChanged += () => { _entry.Description = description.Text; MarkDirty(); };
-        grid.AddChild(description);
-
-        UpdateMoveButtons();
-    }
+    private void OnNameChanged(string text) { _entry.Name = text; MarkDirty(); }
+    private void OnIspChanged(double value) { _entry.SpecificImpulse = (float)value; MarkDirty(); }
+    private void OnThrustChanged(double value) { _entry.Thrust = (float)value; MarkDirty(); }
+    private void OnDescriptionChanged() { _entry.Description = _descriptionEdit.Text; MarkDirty(); }
 
     private void UpdateMoveButtons()
     {

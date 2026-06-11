@@ -488,10 +488,9 @@ public partial class IndividualPlanetGenerator : Control
         var bodyType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), typeStr);
         string name = (string)bodyParams["name"];
 
-        // Select subtype
+        // Select subtype from the body's per-body subtype / subtype_weights.
         var rng = Randomizer.GetRandomNumberGenerator();
-        var auManager = new AUProbabilityManager(rng);
-        BodyClassification classification = auManager.SelectClassification(bodyType, 0f);
+        BodyClassification classification = SubtypeResolver.Resolve(bodyParams, bodyType, rng);
 
         // Build the celestial body
         var mesh = new UnifiedCelestialMesh();

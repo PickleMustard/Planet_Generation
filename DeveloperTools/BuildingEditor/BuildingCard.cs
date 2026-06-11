@@ -21,38 +21,52 @@ public partial class BuildingCard : PanelContainer
     private int _buildingIndex;
     private BuildingEditorModel.BuildingEditEntry? _entry;
 
-    private LineEdit _idNameEdit = null!;
-    private LineEdit _displayNameEdit = null!;
-    private TextEdit _descriptionEdit = null!;
-    private LineEdit _categoryEdit = null!;
-    private SpinBox _maxResourceTierSpin = null!;
-    private SpinBox _workRequiredSpin = null!;
-    private SpinBox _buildingLimitSpin = null!;
-    private CheckBox _demolishableCheck = null!;
-    private LineEdit _linkProfileEdit = null!;
-    private LineEdit _allowedRecipeCategoryEdit = null!;
+    [Export] private LineEdit _idNameEdit = null!;
+    [Export] private LineEdit _displayNameEdit = null!;
+    [Export] private TextEdit _descriptionEdit = null!;
+    [Export] private LineEdit _categoryEdit = null!;
+    [Export] private SpinBox _maxResourceTierSpin = null!;
+    [Export] private SpinBox _workRequiredSpin = null!;
+    [Export] private SpinBox _buildingLimitSpin = null!;
+    [Export] private CheckBox _demolishableCheck = null!;
+    [Export] private LineEdit _linkProfileEdit = null!;
+    [Export] private LineEdit _allowedRecipeCategoryEdit = null!;
 
-    private VBoxContainer _requiredResourcesContainer = null!;
-    private Button _addRequiredResourceButton = null!;
+    [Export] private VBoxContainer _requiredResourcesContainer = null!;
+    [Export] private Button _addRequiredResourceButton = null!;
 
-    private VBoxContainer _placementContainer = null!;
-    private VBoxContainer _behaviorsContainer = null!;
-    private Button _addBehaviorButton = null!;
-    private VBoxContainer _visualContainer = null!;
-    private VBoxContainer _iconContainer = null!;
+    [Export] private VBoxContainer _placementContainer = null!;
+    [Export] private VBoxContainer _behaviorsContainer = null!;
+    [Export] private Button _addBehaviorButton = null!;
+    [Export] private VBoxContainer _visualContainer = null!;
+    [Export] private VBoxContainer _iconContainer = null!;
 
-    private CheckBox _specifierEnabledCheck = null!;
-    private Button _addSpecifierButton = null!;
-    private VBoxContainer _specifierRowsContainer = null!;
+    [Export] private CheckBox _specifierEnabledCheck = null!;
+    [Export] private Button _addSpecifierButton = null!;
+    [Export] private VBoxContainer _specifierRowsContainer = null!;
     private ButtonGroup? _specifierDefaultGroup;
 
-    private Button _moveUpButton = null!;
-    private Button _moveDownButton = null!;
-    private Button _deleteButton = null!;
+    [Export] private Button _moveUpButton = null!;
+    [Export] private Button _moveDownButton = null!;
+    [Export] private Button _deleteButton = null!;
 
     private PlacementRequirementsSection? _placementSection;
     private VisualSection? _visualSection;
     private IconSection? _iconSection;
+
+    private static PackedScene? _scene;
+
+    public static BuildingCard Create(
+        BuildingEditorModel model,
+        string categoryName,
+        int buildingIndex,
+        BuildingEditorModel.BuildingEditEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/BuildingCard.tscn");
+        var card = _scene.Instantiate<BuildingCard>();
+        card.Initialize(model, categoryName, buildingIndex, entry);
+        return card;
+    }
 
     public void Initialize(
         BuildingEditorModel model,
@@ -72,223 +86,26 @@ public partial class BuildingCard : PanelContainer
     public override void _Ready()
     {
         base._Ready();
-        BuildLayout();
-        RefreshControls();
-    }
-
-    private void BuildLayout()
-    {
-        var styleBox = new StyleBoxFlat
-        {
-            BgColor = new Color(0.16f, 0.16f, 0.19f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            BorderColor = new Color(0.3f, 0.3f, 0.35f),
-            ContentMarginLeft = 8,
-            ContentMarginTop = 6,
-            ContentMarginRight = 8,
-            ContentMarginBottom = 6,
-            CornerRadiusTopLeft = 3,
-            CornerRadiusTopRight = 3,
-            CornerRadiusBottomRight = 3,
-            CornerRadiusBottomLeft = 3
-        };
-        AddThemeStyleboxOverride("panel", styleBox);
-
-        var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        AddChild(root);
-
-        // ── Header row ──────────────────────────────────────────────────
-        var header = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(header);
-
-        var headerFields = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        header.AddChild(headerFields);
-
-        _idNameEdit = new LineEdit
-        {
-            PlaceholderText = "id_name",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _idNameEdit.TextChanged += t => OnFieldEdited("IdName", t);
-        headerFields.AddChild(_idNameEdit);
-
-        _displayNameEdit = new LineEdit
-        {
-            PlaceholderText = "Display Name",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _displayNameEdit.TextChanged += t => OnFieldEdited("DisplayName", t);
-        headerFields.AddChild(_displayNameEdit);
-
-        var actions = new VBoxContainer();
-        _moveUpButton = new Button { Text = "▲", TooltipText = "Move up" };
-        _moveUpButton.Pressed += OnMoveUpPressed;
-        actions.AddChild(_moveUpButton);
-
-        _moveDownButton = new Button { Text = "▼", TooltipText = "Move down" };
-        _moveDownButton.Pressed += OnMoveDownPressed;
-        actions.AddChild(_moveDownButton);
-
-        _deleteButton = new Button { Text = "✕", TooltipText = "Delete building" };
-        _deleteButton.Pressed += OnDeletePressed;
-        actions.AddChild(_deleteButton);
-        header.AddChild(actions);
-
-        // ── Scalar grid ─────────────────────────────────────────────────
-        var fields = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(fields);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Category" });
-        _categoryEdit = new LineEdit
-        {
-            PlaceholderText = "power / extraction / agriculture / ...",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _categoryEdit.TextChanged += t => OnFieldEdited("Category", t);
-        fields.AddChild(_categoryEdit);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
-        _descriptionEdit = new TextEdit
-        {
-            PlaceholderText = "Building description",
-            CustomMinimumSize = new Vector2(0, 60),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            WrapMode = TextEdit.LineWrappingMode.Boundary
-        };
         _descriptionEdit.TextChanged += () => OnFieldEdited("Description", _descriptionEdit.Text);
-        fields.AddChild(_descriptionEdit);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Max Resource Tier" });
-        _maxResourceTierSpin = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 10,
-            Step = 1,
-            TooltipText = "Maximum resource tier this building can interact with",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _maxResourceTierSpin.ValueChanged += v => OnFieldEdited("MaxResourceTier", (int)v);
-        fields.AddChild(_maxResourceTierSpin);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Work Required" });
-        _workRequiredSpin = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 100000,
-            Step = 0.5f,
-            AllowGreater = true,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _workRequiredSpin.ValueChanged += v => OnFieldEdited("WorkRequired", (float)v);
-        fields.AddChild(_workRequiredSpin);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Build Limit" });
-        _buildingLimitSpin = new SpinBox
-        {
-            MinValue = -1,
-            MaxValue = 1000000,
-            Step = 1,
-            AllowGreater = true,
-            TooltipText = "-1 = no limit",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _buildingLimitSpin.ValueChanged += v => OnFieldEdited("BuildingLimit", (int)v);
-        fields.AddChild(_buildingLimitSpin);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Demolishable" });
-        _demolishableCheck = new CheckBox();
         _demolishableCheck.Toggled += b => OnFieldEdited("Demolishable", b);
-        fields.AddChild(_demolishableCheck);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Link Profile" });
-        _linkProfileEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _linkProfileEdit.TextChanged += t => OnFieldEdited("LinkProfile", t);
-        fields.AddChild(_linkProfileEdit);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Allowed Recipe Cat." });
-        _allowedRecipeCategoryEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _allowedRecipeCategoryEdit.TextChanged += t => OnFieldEdited("AllowedRecipeCategory", t);
-        fields.AddChild(_allowedRecipeCategoryEdit);
 
-        // ── Required Resources subsection ───────────────────────────────
-        var reqHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var reqLabel = new Label
-        {
-            Text = "Required Resources",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        reqLabel.AddThemeColorOverride("font_color", new Color(1.0f, 0.85f, 0.6f));
-        reqHeader.AddChild(reqLabel);
-        _addRequiredResourceButton = new Button { Text = "+ Required Resource" };
         _addRequiredResourceButton.Pressed += OnAddRequiredResourcePressed;
-        reqHeader.AddChild(_addRequiredResourceButton);
-        root.AddChild(reqHeader);
-
-        _requiredResourcesContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_requiredResourcesContainer);
-
-        // ── Placement Requirements subsection ───────────────────────────
-        var placementLabel = new Label { Text = "Placement Requirements" };
-        placementLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.9f, 1.0f));
-        root.AddChild(placementLabel);
-        _placementContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_placementContainer);
-
-        // ── Behaviors subsection ────────────────────────────────────────
-        var behHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var behLabel = new Label
-        {
-            Text = "Behaviors",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        behLabel.AddThemeColorOverride("font_color", new Color(1.0f, 0.7f, 0.9f));
-        behHeader.AddChild(behLabel);
-        _addBehaviorButton = new Button { Text = "+ Behavior" };
         _addBehaviorButton.Pressed += OnAddBehaviorPressed;
-        behHeader.AddChild(_addBehaviorButton);
-        root.AddChild(behHeader);
-        _behaviorsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_behaviorsContainer);
-
-        // ── Specifier subsection ────────────────────────────────────────
-        var specHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var specLabel = new Label
-        {
-            Text = "Specifier",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            TooltipText = "Per-instance integer exposed to recipe conditional outputs as 'specifier'. Player picks one at construction."
-        };
-        specLabel.AddThemeColorOverride("font_color", new Color(1.0f, 0.9f, 0.6f));
-        specHeader.AddChild(specLabel);
-
-        _specifierEnabledCheck = new CheckBox { Text = "Enabled" };
         _specifierEnabledCheck.Toggled += OnSpecifierEnabledToggled;
-        specHeader.AddChild(_specifierEnabledCheck);
-
-        _addSpecifierButton = new Button { Text = "+ Choice" };
         _addSpecifierButton.Pressed += OnAddSpecifierPressed;
-        specHeader.AddChild(_addSpecifierButton);
-        root.AddChild(specHeader);
+        _moveUpButton.Pressed += OnMoveUpPressed;
+        _moveDownButton.Pressed += OnMoveDownPressed;
+        _deleteButton.Pressed += OnDeletePressed;
 
-        _specifierRowsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_specifierRowsContainer);
-
-        // ── Visual subsection ───────────────────────────────────────────
-        var visualLabel = new Label { Text = "Visual" };
-        visualLabel.AddThemeColorOverride("font_color", new Color(0.7f, 1.0f, 0.7f));
-        root.AddChild(visualLabel);
-        _visualContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_visualContainer);
-
-        // ── Icon subsection ─────────────────────────────────────────────
-        var iconLabel = new Label { Text = "Icon" };
-        iconLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.7f));
-        root.AddChild(iconLabel);
-        _iconContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_iconContainer);
+        RefreshControls();
     }
 
     private void RefreshControls()
@@ -330,8 +147,7 @@ public partial class BuildingCard : PanelContainer
         if (_entry == null || _model == null) return;
         for (int i = 0; i < _entry.RequiredResources.Count; i++)
         {
-            var row = new RequiredResourceRow();
-            row.Configure(i, _entry.RequiredResources[i]);
+            var row = RequiredResourceRow.Create(i, _entry.RequiredResources[i]);
             row.SlotChanged += OnRequiredResourceChanged;
             row.SlotDeleted += OnRequiredResourceDeleted;
             _requiredResourcesContainer.AddChild(row);
@@ -343,8 +159,7 @@ public partial class BuildingCard : PanelContainer
         foreach (var c in _placementContainer.GetChildren()) c.QueueFree();
         _placementSection = null;
         if (_entry == null || _model == null) return;
-        _placementSection = new PlacementRequirementsSection();
-        _placementSection.Initialize(_model, _categoryName, _buildingIndex, _entry);
+        _placementSection = PlacementRequirementsSection.Create(_model, _categoryName, _buildingIndex, _entry);
         _placementContainer.AddChild(_placementSection);
     }
 
@@ -354,8 +169,7 @@ public partial class BuildingCard : PanelContainer
         if (_entry == null || _model == null) return;
         for (int i = 0; i < _entry.Behaviors.Count; i++)
         {
-            var row = new BehaviorRow();
-            row.Initialize(_model, _categoryName, _buildingIndex, i, _entry.Behaviors[i]);
+            var row = BehaviorRow.Create(_model, _categoryName, _buildingIndex, i, _entry.Behaviors[i]);
             row.RowDeleted += OnBehaviorRowDeleted;
             _behaviorsContainer.AddChild(row);
         }
@@ -366,8 +180,7 @@ public partial class BuildingCard : PanelContainer
         foreach (var c in _visualContainer.GetChildren()) c.QueueFree();
         _visualSection = null;
         if (_entry == null || _model == null) return;
-        _visualSection = new VisualSection();
-        _visualSection.Initialize(_model, _categoryName, _buildingIndex, _entry);
+        _visualSection = VisualSection.Create(_model, _categoryName, _buildingIndex, _entry);
         _visualContainer.AddChild(_visualSection);
     }
 
@@ -376,8 +189,7 @@ public partial class BuildingCard : PanelContainer
         foreach (var c in _iconContainer.GetChildren()) c.QueueFree();
         _iconSection = null;
         if (_entry == null || _model == null) return;
-        _iconSection = new IconSection();
-        _iconSection.Initialize(_model, _categoryName, _buildingIndex, _entry);
+        _iconSection = IconSection.Create(_model, _categoryName, _buildingIndex, _entry);
         _iconContainer.AddChild(_iconSection);
     }
 
@@ -396,8 +208,7 @@ public partial class BuildingCard : PanelContainer
         for (int i = 0; i < _entry.SpecifierEntries.Count; i++)
         {
             var slot = _entry.SpecifierEntries[i];
-            var row = new SpecifierRow();
-            row.Configure(i, slot, slot.Value == _entry.SpecifierDefault, _specifierDefaultGroup);
+            var row = SpecifierRow.Create(i, slot, slot.Value == _entry.SpecifierDefault, _specifierDefaultGroup);
             row.RowChanged += OnSpecifierRowChanged;
             row.DefaultSelected += OnSpecifierDefaultSelected;
             row.RowDeleted += OnSpecifierRowDeleted;

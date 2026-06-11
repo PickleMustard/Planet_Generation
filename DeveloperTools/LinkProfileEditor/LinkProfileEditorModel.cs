@@ -24,6 +24,8 @@ public class LinkProfileEditorModel
         public int BundleTime { get; set; }
         public int SlotCapacity { get; set; }
         public StateOfMatter StateOfMatter { get; set; } = StateOfMatter.Solid;
+        public float ConstructionWork { get; set; }
+        public Dictionary<string, int> CostPerDistance { get; set; } = new();
         public bool IsNew { get; set; }
         public bool IsDirty { get; set; }
     }
@@ -56,6 +58,8 @@ public class LinkProfileEditorModel
                 BundleTime = profile.BundleTime,
                 SlotCapacity = profile.SlotCapacity,
                 StateOfMatter = profile.StateOfMatter,
+                ConstructionWork = profile.ConstructionWork,
+                CostPerDistance = new Dictionary<string, int>(profile.CostPerDistance),
                 IsNew = false,
                 IsDirty = false,
             });
@@ -74,6 +78,8 @@ public class LinkProfileEditorModel
             BundleTime = 5,
             SlotCapacity = 3,
             StateOfMatter = StateOfMatter.Solid,
+            ConstructionWork = 50,
+            CostPerDistance = new Dictionary<string, int>(),
             IsNew = true,
             IsDirty = false,
         };
@@ -114,6 +120,15 @@ public class LinkProfileEditorModel
                 errors.Add($"Profile '{e.IdName}' has slot_capacity < 1.");
             if (!Enum.IsDefined(typeof(StateOfMatter), e.StateOfMatter))
                 errors.Add($"Profile '{e.IdName}' has invalid state_of_matter.");
+            if (e.ConstructionWork < 0f)
+                errors.Add($"Profile '{e.IdName}' has negative construction_work.");
+            foreach (var kvp in e.CostPerDistance)
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Key))
+                    errors.Add($"Profile '{e.IdName}' has a cost_per_distance entry with empty resource.");
+                if (kvp.Value < 1)
+                    errors.Add($"Profile '{e.IdName}' cost_per_distance '{kvp.Key}' has amount < 1.");
+            }
         }
 
         return errors;

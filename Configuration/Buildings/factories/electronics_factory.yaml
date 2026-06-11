@@ -1,0 +1,28 @@
+buildings:
+  - id_name: electronics_factory
+    display_name: Electronics Factory
+    category: factories
+    max_resource_tier: 3
+    work_required: 200
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      concrete: 180
+      rebar: 80
+      low_voltage_wire: 100
+      steel: 200
+    behaviors:
+      - behavior_id: ManufacturingBehavior
+        default_recipe: "solar_cells_base"
+        alternative_recipes: []
+        production_speed: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 20
+    visual:
+      model_resource: "res://Mesh/external/factory_a.glb.tres"
+    icon:
+      resource: "res://Materials/Icons/default_building.tres"

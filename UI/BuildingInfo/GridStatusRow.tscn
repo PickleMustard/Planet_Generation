@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://d4l1thwup73iu"]
+
+[node name="GridStatusRow" type="HBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Dot" type="ColorRect" parent="."]
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="NameLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Building"
+
+[node name="ValueLabel" type="Label" parent="."]
+layout_mode = 2
+text = "—"

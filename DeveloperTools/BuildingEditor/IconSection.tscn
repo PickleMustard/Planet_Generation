@@ -1,0 +1,69 @@
+[gd_scene format=3 uid="uid://dmobs2eubwkuy"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BuildingEditor/IconSection.cs" id="1_sec"]
+
+[node name="IconSection" type="VBoxContainer" node_paths=PackedStringArray("_iconRect", "_basePathLabel", "_scaleSpin", "_tintButton")]
+size_flags_horizontal = 3
+script = ExtResource("1_sec")
+_iconRect = NodePath("Grid/IconRow/IconRect")
+_basePathLabel = NodePath("Grid/IconRow/BasePathLabel")
+_scaleSpin = NodePath("Grid/ScaleSpin")
+_tintButton = NodePath("Grid/TintButton")
+
+[node name="Grid" type="GridContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="IconLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Icon"
+
+[node name="IconRow" type="HBoxContainer" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IconRect" type="TextureRect" parent="Grid/IconRow"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+tooltip_text = "Click to choose icon"
+expand_mode = 3
+stretch_mode = 5
+
+[node name="BasePathLabel" type="LineEdit" parent="Grid/IconRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "(no icon)"
+editable = false
+
+[node name="ClearButton" type="Button" parent="Grid/IconRow"]
+layout_mode = 2
+tooltip_text = "Clear icon"
+text = "✕"
+
+[node name="ScaleLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Scale"
+
+[node name="ScaleSpin" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 10.0
+step = 0.05
+allow_greater = true
+
+[node name="TintLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Tint"
+
+[node name="TintButton" type="ColorPickerButton" parent="Grid"]
+custom_minimum_size = Vector2(120, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="gui_input" from="Grid/IconRow/IconRect" to="." method="OnIconInput"]
+[connection signal="pressed" from="Grid/IconRow/ClearButton" to="." method="OnClearPressed"]

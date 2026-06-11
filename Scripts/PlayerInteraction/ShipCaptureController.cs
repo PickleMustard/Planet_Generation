@@ -44,6 +44,12 @@ public class ShipCaptureController
     /// <summary>The body the ship is currently captured by, or null.</summary>
     public CelestialBody? CapturedBody => _capturedBody;
 
+    /// <summary>
+    /// True when the most recent <see cref="Resolve"/> hard-clamped the ship against a body's
+    /// no-entry shell (i.e. it hit the surface this frame). Reset at the start of every call.
+    /// </summary>
+    public bool CollidedThisFrame { get; private set; }
+
     public ShipCaptureController(SceneTree tree)
     {
         _tree = tree;
@@ -59,6 +65,7 @@ public class ShipCaptureController
     /// </summary>
     public Vector3 Resolve(Vector3 shipPos, ref Vector3 velocity, float deltaTime)
     {
+        CollidedThisFrame = false;
         MaybeRefreshCache();
 
         CelestialBody? body = FindGoverningBody(shipPos);
@@ -106,7 +113,9 @@ public class ShipCaptureController
 
         // --- assemble + hard clamp against the no-entry shell ---
         Vector3 finalDelta = velocity * deltaTime + bodyDelta;
+        Vector3 preClampDelta = finalDelta;
         (finalDelta, velocity) = ClampNoEntry(shipPos, finalDelta, bodyPos, body.NoEntryRadius, velocity);
+        CollidedThisFrame = finalDelta != preClampDelta;
         return finalDelta;
     }
 

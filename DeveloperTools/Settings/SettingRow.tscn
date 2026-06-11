@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://wnidbeg4jaiq"]
+
+[ext_resource type="Script" path="res://DeveloperTools/Settings/SettingRow.cs" id="1_script"]
+
+[node name="SettingRow" type="HBoxContainer" node_paths=PackedStringArray("_nameLabel", "_valueSlot", "_valueLabel", "_resetButton", "_restartWarning")]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+script = ExtResource("1_script")
+_nameLabel = NodePath("NameLabel")
+_valueSlot = NodePath("ValueSlot")
+_valueLabel = NodePath("ValueLabel")
+_resetButton = NodePath("ResetButton")
+_restartWarning = NodePath("RestartWarning")
+
+[node name="NameLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 1
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+text = "Setting"
+vertical_alignment = 1
+
+[node name="ValueSlot" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ValueLabel" type="Label" parent="."]
+visible = false
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.8, 0.6, 1)
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="ResetButton" type="Button" parent="."]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "R"
+tooltip_text = "Reset to default"
+
+[node name="RestartWarning" type="Label" parent="."]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+text = "⚠"
+tooltip_text = "Requires restart to take effect"
+vertical_alignment = 1

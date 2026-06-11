@@ -21,3 +21,5 @@ buildings:
         production_speed: 1
       - behavior_id: PowerConsumerBehavior
         base_draw: 5
+    icon:
+      resource: "res://Materials/Icons/default_building.tres"

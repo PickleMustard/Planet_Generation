@@ -72,6 +72,16 @@ public static class LinkProfileEditorYamlIO
             YamlIndent.AppendLine(sb, 2, $"bundle_time: {e.BundleTime}");
             YamlIndent.AppendLine(sb, 2, $"slot_capacity: {e.SlotCapacity}");
             YamlIndent.AppendLine(sb, 2, $"state_of_matter: {e.StateOfMatter.ToString().ToLowerInvariant()}");
+            YamlIndent.AppendLine(sb, 2, $"construction_work: {FormatFloat(e.ConstructionWork)}");
+            if (e.CostPerDistance.Count > 0)
+            {
+                YamlIndent.AppendLine(sb, 2, "cost_per_distance:");
+                foreach (var kvp in e.CostPerDistance)
+                {
+                    YamlIndent.AppendLine(sb, 3, $"- resource: {kvp.Key}");
+                    YamlIndent.AppendLine(sb, 4, $"amount: {kvp.Value}");
+                }
+            }
         }
 
         return sb.ToString();

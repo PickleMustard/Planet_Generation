@@ -1,5 +1,4 @@
 using Godot;
-using UI.Wireframe;
 
 namespace UI.Components;
 
@@ -22,33 +21,20 @@ public partial class SidebarListItem : PanelContainer
     private const float HOVER_ALPHA = 0.12f;
     private const float HOVER_FADE = 0.12f;
 
-    private readonly string _id;
-    private readonly ColorRect _hoverOverlay;
-    private readonly HBoxContainer _content;
+    private string _id = "";
+    [Export] private ColorRect _hoverOverlay = null!;
+    [Export] private HBoxContainer _content = null!;
     private Tween? _hoverTween;
 
-    public SidebarListItem(string id)
+    private static PackedScene? _scene;
+
+    /// <summary>Instantiates the row scene with the given activation id.</summary>
+    public static SidebarListItem Create(string id)
     {
-        _id = id;
-
-        MouseFilter = MouseFilterEnum.Stop;
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        CustomMinimumSize = new Vector2(0, 28);
-
-        // Strip the theme panel so only our hover overlay paints a background,
-        // and so children fill the full rect (StyleBoxEmpty has no margins).
-        AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-
-        _hoverOverlay = new ColorRect
-        {
-            Color = new Color(WireColors.Ink.R, WireColors.Ink.G, WireColors.Ink.B, 0f),
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        AddChild(_hoverOverlay);
-
-        _content = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        _content.AddThemeConstantOverride("separation", 8);
-        AddChild(_content);
+        _scene ??= GD.Load<PackedScene>("res://UI/Components/SidebarListItem.tscn");
+        var item = _scene.Instantiate<SidebarListItem>();
+        item._id = id;
+        return item;
     }
 
     public override void _Ready()

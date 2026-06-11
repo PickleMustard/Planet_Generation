@@ -27,6 +27,9 @@ public partial class ShipyardSlotCard : VBoxContainer
     private LogisticsUnit? _ship;
     private ShipyardBehavior? _shipyard;
 
+    private static readonly PackedScene ResourceRowScene =
+        GD.Load<PackedScene>("res://UI/StationWindow/ShipyardResourceRow.tscn");
+
     public override void _Ready()
     {
         if (_pauseButton != null)
@@ -140,27 +143,11 @@ public partial class ShipyardSlotCard : VBoxContainer
 
     private HBoxContainer CreateResourceRow(string resName, int delivered, int required)
     {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 4);
-
-        var label = new Label
-        {
-            Text = $"{resName} {delivered}/{required}",
-            CustomMinimumSize = new Vector2(120, 0),
-        };
-        label.AddThemeFontSizeOverride("font_size", 11);
-        row.AddChild(label);
-
-        var miniBar = new ProgressBar
-        {
-            MinValue = 0,
-            MaxValue = required,
-            Value = delivered,
-            CustomMinimumSize = new Vector2(50, 12),
-            ShowPercentage = false,
-        };
-        row.AddChild(miniBar);
-
+        var row = ResourceRowScene.Instantiate<HBoxContainer>();
+        row.GetNode<Label>("NameLabel").Text = $"{resName} {delivered}/{required}";
+        var miniBar = row.GetNode<ProgressBar>("MiniBar");
+        miniBar.MaxValue = required;
+        miniBar.Value = delivered;
         return row;
     }
 

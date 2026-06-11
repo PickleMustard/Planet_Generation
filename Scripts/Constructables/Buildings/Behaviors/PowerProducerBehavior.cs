@@ -1,9 +1,13 @@
 using System.Collections.Generic;
+using System.Linq;
 using Constructables.Power;
 using Godot;
+using ProceduralGeneration;
 using Structures.Enums;
+using Structures.GameState;
 using Structures.Resources;
 using UtilityLibrary;
+using UtilityLibrary.GameMath.Orbital;
 
 namespace Constructables.Buildings.Behaviors;
 
@@ -166,6 +170,70 @@ public partial class PowerProducerBehavior : RefCounted, IBuildingBehavior, IGri
         DefaultRecipe = BehaviorConfigHelper.ReadString(config, "default_recipe", null);
         ProductionSpeed = BehaviorConfigHelper.ReadFloat(config, "production_speed", 1.0f);
         _environmentalModifier = EnvironmentalModifier.FromConfig(config);
+    }
+
+    /// <summary>
+    /// Placement-preview snapshot of what a power producer would generate on a given body,
+    /// computed statically from the building definition (no live <see cref="Building"/> exists
+    /// during placement). Mirrors <see cref="ExtractionBehavior.GetExtractableDeposits"/>.
+    /// </summary>
+    public readonly struct PowerPreview
+    {
+        public readonly float Rated;       // recipe power before scaling
+        public readonly float Scale;       // env factor (1.0 when no modifier)
+        public readonly float Effective;   // Rated * Scale
+        public readonly EnvironmentalModifier.ModifierType ModifierType;
+        public readonly float Atmosphere;  // body atmosphere (for the why-line)
+        public readonly float DistanceAU;  // body distance to star in AU (for the why-line)
+        public readonly bool HasOutput;    // false when no PowerProducerBehavior / no recipe power
+
+        public PowerPreview(
+            float rated, float scale, EnvironmentalModifier.ModifierType modifierType,
+            float atmosphere, float distanceAU, bool hasOutput)
+        {
+            Rated = rated;
+            Scale = scale;
+            Effective = rated * scale;
+            ModifierType = modifierType;
+            Atmosphere = atmosphere;
+            DistanceAU = distanceAU;
+            HasOutput = hasOutput;
+        }
+    }
+
+    /// <summary>
+    /// Computes the power a producer would generate if placed on <paramref name="body"/> over
+    /// <paramref name="cells"/>, including any environmental scaling. Returns a preview with
+    /// <see cref="PowerPreview.HasOutput"/> false when the definition has no PowerProducerBehavior
+    /// or its recipe declares no <c>power</c> output.
+    /// </summary>
+    public static PowerPreview GetPlacementPreview(
+        BuildingDefinition def, IOrbitalBody? body, IReadOnlyList<VoronoiCell>? cells)
+    {
+        var entry = def?.BehaviorEntries
+            .FirstOrDefault(e => e.BehaviorId == "PowerProducerBehavior");
+        if (entry == null)
+            return default;
+
+        string? recipeId = BehaviorConfigHelper.ReadString(entry.Config, "default_recipe", null);
+        float rated = 0f;
+        if (!string.IsNullOrEmpty(recipeId)
+            && RecipeDatabase.Instance != null
+            && RecipeDatabase.Instance.TryGetRecipe(recipeId, out var recipe))
+        {
+            rated = recipe.OutputResources.TryGetValue("power", out var p) ? p : 0f;
+        }
+
+        var mod = EnvironmentalModifier.FromConfig(entry.Config);
+        float scale = mod?.ComputeFactor(body, cells) ?? 1f;
+        var modType = mod?.Type ?? EnvironmentalModifier.ModifierType.None;
+
+        float atmosphere = body?.Atmosphere ?? 0f;
+        float distanceAU = body != null
+            ? OrbitalMath.ConvertUnitsToAU(body.DistanceToParentStar())
+            : 0f;
+
+        return new PowerPreview(rated, scale, modType, atmosphere, distanceAU, rated > 0f);
     }
 
     private float ResolveRecipePower()

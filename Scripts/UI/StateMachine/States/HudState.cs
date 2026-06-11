@@ -2,6 +2,7 @@ using Godot;
 using Godot.Collections;
 using PlayerInteraction.CellSelection;
 using Structures.GameState;
+using UI;
 using UI.StateMachine;
 using UtilityLibrary;
 
@@ -38,6 +39,7 @@ public partial class HudState : LimboState
 
     public void ShipsOverviewButtonPressed()
     {
+        AudioBus.Instance?.Play(MainGameUI.Instance?.GuiClick);
         InteractionStack.Push(Blackboard.Top(), "window_closed", new Godot.Collections.Dictionary());
         Dispatch("ships_overview_opened");
     }

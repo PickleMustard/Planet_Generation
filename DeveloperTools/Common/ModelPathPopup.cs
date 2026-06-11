@@ -23,18 +23,28 @@ public partial class ModelPathPopup : PopupPanel
 
     private readonly List<ModelConfig> _models = new();
 
-    private LineEdit _search = null!;
-    private VBoxContainer _resultsBox = null!;
-    private FileDialog _fileDialog = null!;
+    [Export] private LineEdit _search = null!;
+    [Export] private VBoxContainer _resultsBox = null!;
+    [Export] private FileDialog _fileDialog = null!;
+
+    private static PackedScene? _scene;
+
+    /// <summary>Instantiates the popup scene. Add it to the tree, then PopupCentered.</summary>
+    public static ModelPathPopup Create()
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/Common/ModelPathPopup.tscn");
+        return _scene.Instantiate<ModelPathPopup>();
+    }
 
     public override void _Ready()
     {
         base._Ready();
-        Size = new Vector2I(480, 480);
         LoadManifest();
-        BuildLayout();
         Rebuild();
     }
+
+    private void OnSearchChanged(string _) => Rebuild();
+    private void OnCancelPressed() { Hide(); QueueFree(); }
 
     private void LoadManifest()
     {
@@ -50,64 +60,6 @@ public partial class ModelPathPopup : PopupPanel
         foreach (var model in manifest.Models)
             if (model != null)
                 _models.Add(model);
-    }
-
-    private void BuildLayout()
-    {
-        var root = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        AddChild(root);
-
-        root.AddChild(new Label
-        {
-            ThemeTypeVariation = "LabelHighContrast",
-            Text = "Select Model",
-            HorizontalAlignment = HorizontalAlignment.Center,
-        });
-
-        _search = new LineEdit
-        {
-            PlaceholderText = "Search models…",
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
-        _search.TextChanged += _ => Rebuild();
-        root.AddChild(_search);
-
-        var scroll = new ScrollContainer
-        {
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
-        root.AddChild(scroll);
-        _resultsBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        scroll.AddChild(_resultsBox);
-
-        var actions = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        root.AddChild(actions);
-
-        var browse = new Button { Text = "Browse raw…", TooltipText = "Wrap a loose .glb/.gltf/.tscn into a ModelConfig and anchor it" };
-        browse.Pressed += OnBrowsePressed;
-        actions.AddChild(browse);
-
-        actions.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-
-        var cancel = new Button { Text = "Cancel" };
-        cancel.Pressed += () => { Hide(); QueueFree(); };
-        actions.AddChild(cancel);
-
-        _fileDialog = new FileDialog
-        {
-            FileMode = FileDialog.FileModeEnum.OpenFile,
-            Access = FileDialog.AccessEnum.Resources,
-            CurrentDir = "res://Mesh/external/",
-            Filters = new[]
-            {
-                "*.tres ; Model Wrapper (ModelConfig)",
-                "*.glb, *.gltf, *.tscn ; Model (creates wrapper)",
-            },
-        };
-        _fileDialog.FileSelected += OnRawFileSelected;
-        AddChild(_fileDialog);
     }
 
     private void Rebuild()

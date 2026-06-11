@@ -1,0 +1,22 @@
+buildings:
+  - id_name: shoveler
+    display_name: Shoveler
+    category: extraction
+    max_resource_tier: 1
+    work_required: 100
+    placement_requirements:
+      biomes: ["*"]
+      min_elevation: 0
+      max_elevation: 1
+      max_slope: 45
+      cell_count: 1
+    required_resources:
+      concrete: 5
+    behaviors:
+      - behavior_id: ExtractionBehavior
+        default_recipe: "dirt_shoveling"
+        alternative_recipes: []
+        production_speed: 1
+        primary_slots: 1
+      - behavior_id: PowerConsumerBehavior
+        base_draw: 1

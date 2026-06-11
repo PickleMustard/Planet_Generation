@@ -16,3 +16,11 @@ recipes:
       resource: "res://Materials/Icons/default_recipe.tres"
     output_resources:
       - tag:timber: 2
+  - recipe_id: "dirt_shoveling"
+    display_name: "Dirt Shoveling"
+    category: extraction
+    work_required: 4
+    icon:
+      resource: "res://Materials/Icons/default_recipe.tres"
+    output_resources:
+      - tag:earth: 1

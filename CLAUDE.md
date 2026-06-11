@@ -107,6 +107,29 @@ Background work is queued as `WorkPackage` objects built with the fluent `WorkPa
 - **IConfigurable** — exposes object settings to `RuntimeSettings`
 - **Two-Pass Generation** — base mesh first, then Voronoi/tectonics overlay
 
+### GUI Authoring Convention (layout in `.tscn`, logic in `.cs`)
+
+All NEW UI panels MUST separate layout from logic. Do NOT build Control trees in C#
+(`new VBoxContainer()` + `AddChild`) for static layout.
+
+- **Layout** lives in a `.tscn` under `UI/<area>/` (in-game) or colocated in
+  `DeveloperTools/<area>/` (debug editors). The script lives under `Scripts/UI/<area>/`
+  (in-game) and references nodes through `[Export]` fields. The `.tscn` root declares
+  `node_paths=PackedStringArray(...)` and assigns each export a `NodePath(...)`.
+  Reference: `UI/BuildingInfo/BuildingInfoWindow.tscn` + `Scripts/UI/BuildingInfo/BuildingInfoWindow.cs`.
+- **Per-item cards** use a `static Create(...)` PackedScene factory (`GD.Load<PackedScene>` →
+  `Instantiate<T>()` → `Initialize()`), never `new <Card>()` — a `new`'d instance has null
+  `[Export]` fields. Reference: `DeveloperTools/ShipEditor/ShipCard.cs`.
+- **Per-data-item rows** get their own small item `.tscn` instantiated + `Bind()`-ed in a loop.
+  Shared in-game rows already exist: `UI/Components/DetailRow.tscn` (via `DetailRowBuilder`),
+  `UI/Components/ResourceCostRow.tscn`, `UI/Components/LabeledFieldRow.tscn`. Reference:
+  `UI/SatelliteItem.tscn`.
+- **Styling** (colors, fonts, styleboxes) comes from `UI/Theme/wireframe_paper/wireframe_paper.tres`
+  via `theme_type_variation` (set in the `.tscn`, or `ThemeTypeVariation` in code for dynamic
+  rows). Do NOT call `AddThemeColorOverride`/`AddThemeStyleboxOverride`/`AddThemeFontSizeOverride`
+  for static styling, and do NOT use `WireColors` constants for theme overrides — those are
+  reserved for custom `_Draw()` / `Modulate` / `ColorRect.Color` only.
+
 ## Code Style
 
 | Element | Convention |

@@ -3,13 +3,23 @@ link_profiles:
     tier: 0
     transport_speed: 0.02
     package_size: 10
-    bundle_time: 5
+    bundle_time: 120
     slot_capacity: 3
     state_of_matter: solid
+    construction_work: 50
+    cost_per_distance:
+      - resource: iron
+        amount: 2
   - id_name: pipe
     tier: 1
     transport_speed: 0.05
     package_size: 50
-    bundle_time: 0
+    bundle_time: 120
     slot_capacity: 5
     state_of_matter: fluid
+    construction_work: 80
+    cost_per_distance:
+      - resource: glass
+        amount: 2
+      - resource: steel
+        amount: 2

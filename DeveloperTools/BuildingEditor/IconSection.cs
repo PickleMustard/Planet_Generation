@@ -18,13 +18,26 @@ public partial class IconSection : VBoxContainer
     private int _buildingIndex;
     private BuildingEditorModel.BuildingEditEntry? _entry;
 
-    private TextureRect _iconRect = null!;
-    private LineEdit _basePathLabel = null!;
-    private Button _clearButton = null!;
-    private SpinBox _scaleSpin = null!;
-    private ColorPickerButton _tintButton = null!;
+    [Export] private TextureRect _iconRect = null!;
+    [Export] private LineEdit _basePathLabel = null!;
+    [Export] private SpinBox _scaleSpin = null!;
+    [Export] private ColorPickerButton _tintButton = null!;
 
     private PackedScene? _iconPickerScene;
+
+    private static PackedScene? _scene;
+
+    public static IconSection Create(
+        BuildingEditorModel model,
+        string categoryName,
+        int buildingIndex,
+        BuildingEditorModel.BuildingEditEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/IconSection.tscn");
+        var section = _scene.Instantiate<IconSection>();
+        section.Initialize(model, categoryName, buildingIndex, entry);
+        return section;
+    }
 
     public void Initialize(
         BuildingEditorModel model,
@@ -43,64 +56,11 @@ public partial class IconSection : VBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _iconPickerScene = GD.Load<PackedScene>(
             "res://DeveloperTools/ResourceEditor/IconPickerPopup.tscn");
-        BuildLayout();
-        RefreshControls();
-    }
-
-    private void BuildLayout()
-    {
-        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        AddChild(grid);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Icon" });
-
-        var iconRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _iconRect = new TextureRect
-        {
-            CustomMinimumSize = new Vector2(64, 64),
-            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            TooltipText = "Click to choose icon"
-        };
-        _iconRect.GuiInput += OnIconInput;
-        iconRow.AddChild(_iconRect);
-
-        _basePathLabel = new LineEdit
-        {
-            Editable = false,
-            PlaceholderText = "(no icon)",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        iconRow.AddChild(_basePathLabel);
-
-        _clearButton = new Button { Text = "✕", TooltipText = "Clear icon" };
-        _clearButton.Pressed += OnClearPressed;
-        iconRow.AddChild(_clearButton);
-        grid.AddChild(iconRow);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Scale" });
-        _scaleSpin = new SpinBox
-        {
-            MinValue = 0.1,
-            MaxValue = 10,
-            Step = 0.05,
-            AllowGreater = true,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _scaleSpin.ValueChanged += v => OnIconEdited("Scale", (float)v);
-        grid.AddChild(_scaleSpin);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Tint" });
-        _tintButton = new ColorPickerButton
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(120, 24)
-        };
         _tintButton.ColorChanged += c => OnIconEdited("Tint", c);
-        grid.AddChild(_tintButton);
+        RefreshControls();
     }
 
     private void RefreshControls()

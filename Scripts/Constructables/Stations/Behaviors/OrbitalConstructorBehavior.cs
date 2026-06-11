@@ -24,7 +24,12 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
 {
     public sealed class SlotRecord
     {
-        public Building? Building;
+        /// <summary>
+        /// The thing being built in this slot — a <see cref="Constructables.Building"/> or a
+        /// <see cref="Structures.Logistics.LinkConstructionJob"/>. Named "Building" for historical
+        /// reasons; typed as the general construction surface so links share architect slots.
+        /// </summary>
+        public IArchitectConstructable? Building;
         public Dictionary<string, int>? BaseRequiredResources;
         public float LastAppliedMultiplier = 1.0f;
         public bool IsRetiring;
@@ -64,7 +69,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
 
     private readonly List<SlotRecord> _regularSlots = new();
     private readonly List<SlotRecord> _overtimeSlots = new();
-    private readonly List<Building> _queue = new();
+    private readonly List<IArchitectConstructable> _queue = new();
     private bool _isTickRegistered;
     private bool _firstTickLogged;
     private float _progressEmitTimer;
@@ -86,7 +91,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
 
     public IReadOnlyList<SlotRecord> RegularSlots => _regularSlots;
     public IReadOnlyList<SlotRecord> OvertimeSlots => _overtimeSlots;
-    public IReadOnlyList<Building> Queue => _queue;
+    public IReadOnlyList<IArchitectConstructable> Queue => _queue;
 
     public void OnAttach(StationSatellite owner) => _owner = owner;
 
@@ -147,7 +152,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
     /// up to the configured target. Returns true if assigned to a slot (resource multiplier
     /// applied), false if queued.
     /// </summary>
-    public bool AssignBuilding(Building building)
+    public bool AssignBuilding(IArchitectConstructable building)
     {
         if (building == null) return false;
         if (ContainsBuilding(building)) return true;
@@ -175,7 +180,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
     /// requiredResources are restored to base. Promotes a queued building into any freed slot.
     /// Marked-retiring overtime slots are removed instead of refilled.
     /// </summary>
-    public bool RemoveBuilding(Building building)
+    public bool RemoveBuilding(IArchitectConstructable building)
     {
         for (int i = 0; i < _regularSlots.Count; i++)
         {
@@ -213,7 +218,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
     /// building's base required-resources before reassignment so <paramref name="target"/>'s
     /// own overtime occupancy drives the new multiplier.
     /// </summary>
-    public bool TransferBuildingTo(OrbitalConstructorBehavior target, Building building)
+    public bool TransferBuildingTo(OrbitalConstructorBehavior target, IArchitectConstructable building)
     {
         if (target == null || target == this || building == null) return false;
         if (!ContainsBuilding(building)) return false;
@@ -338,7 +343,11 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
                 ClearSlot(slot);
                 if (retiring)
                     slots.RemoveAt(i);
-                ConstructionManager.Instance?.NotifyConstructionComplete(building);
+                // Buildings/stations route their finalization through ConstructionManager; link
+                // jobs (and any non-IConstructable) handle their own completion side-effects
+                // inside UpdateProgress (e.g. activating the link), so only notify the former.
+                if (building is IConstructable constructable)
+                    ConstructionManager.Instance?.NotifyConstructionComplete(constructable);
                 GameLogger.Info(
                     $"OrbitalConstructorBehavior {_owner?.Name}: '{building.Name}' construction complete"
                 );
@@ -389,7 +398,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
         return FindEmptyOvertimeSlot() != null;
     }
 
-    private void FillSlot(SlotRecord slot, Building building)
+    private void FillSlot(SlotRecord slot, IArchitectConstructable building)
     {
         slot.Building = building;
         building.ConstructingStation = _owner;
@@ -418,7 +427,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
         slot.LastAppliedMultiplier = 1.0f;
     }
 
-    private void TryDeliverFromStation(Building building)
+    private void TryDeliverFromStation(IArchitectConstructable building)
     {
         if (_owner == null) return;
         var required = building.SnapshotRequiredResources();
@@ -447,7 +456,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
         }
     }
 
-    private bool ContainsBuilding(Building building)
+    private bool ContainsBuilding(IArchitectConstructable building)
     {
         foreach (var s in _regularSlots) if (s.Building == building) return true;
         foreach (var s in _overtimeSlots) if (s.Building == building) return true;
@@ -486,7 +495,7 @@ public partial class OrbitalConstructorBehavior : RefCounted, IStationBehavior, 
     }
 
     private static void ApplyMultiplier(
-        Building building,
+        IArchitectConstructable building,
         Dictionary<string, int> baseRequired,
         float multiplier)
     {

@@ -2,6 +2,15 @@ using Godot;
 
 namespace UI.Wireframe;
 
+/// <summary>
+/// Runtime-draw / <c>Modulate</c> palette for the wireframe-paper look. These
+/// constants mirror colors defined in <c>UI/Theme/wireframe_paper/wireframe_paper.tres</c>.
+/// Use them ONLY for custom <c>_Draw()</c> painters, <c>Modulate</c>, and
+/// <c>ColorRect.Color</c> — i.e. visuals chosen at runtime that cannot be a
+/// static theme entry. Do NOT use them for theme overrides on Labels/Buttons:
+/// set <c>theme_type_variation</c> in the .tscn instead (LabelOk/LabelWarn/
+/// LabelAlert/LabelKey/LabelMono/PillOrange/...).
+/// </summary>
 public static class WireColors
 {
     public static readonly Color Paper = new(0.957f, 0.941f, 0.902f, 1f);

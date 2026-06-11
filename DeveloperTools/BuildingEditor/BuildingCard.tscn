@@ -1,0 +1,261 @@
+[gd_scene format=3 uid="uid://bq4v4tybvfoxk"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BuildingEditor/BuildingCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="card_bg"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.16, 0.16, 0.19, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.35, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="BuildingCard" type="PanelContainer" node_paths=PackedStringArray("_idNameEdit", "_displayNameEdit", "_descriptionEdit", "_categoryEdit", "_maxResourceTierSpin", "_workRequiredSpin", "_buildingLimitSpin", "_demolishableCheck", "_linkProfileEdit", "_allowedRecipeCategoryEdit", "_requiredResourcesContainer", "_addRequiredResourceButton", "_placementContainer", "_behaviorsContainer", "_addBehaviorButton", "_visualContainer", "_iconContainer", "_specifierEnabledCheck", "_addSpecifierButton", "_specifierRowsContainer", "_moveUpButton", "_moveDownButton", "_deleteButton")]
+theme_override_styles/panel = SubResource("card_bg")
+script = ExtResource("1_card")
+_idNameEdit = NodePath("Root/Header/HeaderFields/IdNameEdit")
+_displayNameEdit = NodePath("Root/Header/HeaderFields/DisplayNameEdit")
+_descriptionEdit = NodePath("Root/Fields/DescriptionEdit")
+_categoryEdit = NodePath("Root/Fields/CategoryEdit")
+_maxResourceTierSpin = NodePath("Root/Fields/MaxResourceTierSpin")
+_workRequiredSpin = NodePath("Root/Fields/WorkRequiredSpin")
+_buildingLimitSpin = NodePath("Root/Fields/BuildingLimitSpin")
+_demolishableCheck = NodePath("Root/Fields/DemolishableCheck")
+_linkProfileEdit = NodePath("Root/Fields/LinkProfileEdit")
+_allowedRecipeCategoryEdit = NodePath("Root/Fields/AllowedRecipeCategoryEdit")
+_requiredResourcesContainer = NodePath("Root/RequiredResourcesContainer")
+_addRequiredResourceButton = NodePath("Root/ReqHeader/AddRequiredResourceButton")
+_placementContainer = NodePath("Root/PlacementContainer")
+_behaviorsContainer = NodePath("Root/BehaviorsContainer")
+_addBehaviorButton = NodePath("Root/BehHeader/AddBehaviorButton")
+_visualContainer = NodePath("Root/VisualContainer")
+_iconContainer = NodePath("Root/IconContainer")
+_specifierEnabledCheck = NodePath("Root/SpecHeader/SpecifierEnabledCheck")
+_addSpecifierButton = NodePath("Root/SpecHeader/AddSpecifierButton")
+_specifierRowsContainer = NodePath("Root/SpecifierRowsContainer")
+_moveUpButton = NodePath("Root/Header/Actions/MoveUpButton")
+_moveDownButton = NodePath("Root/Header/Actions/MoveDownButton")
+_deleteButton = NodePath("Root/Header/Actions/DeleteButton")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderFields" type="VBoxContainer" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IdNameEdit" type="LineEdit" parent="Root/Header/HeaderFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "id_name"
+
+[node name="DisplayNameEdit" type="LineEdit" parent="Root/Header/HeaderFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Display Name"
+
+[node name="Actions" type="VBoxContainer" parent="Root/Header"]
+layout_mode = 2
+
+[node name="MoveUpButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Move up"
+text = "▲"
+
+[node name="MoveDownButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Move down"
+text = "▼"
+
+[node name="DeleteButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Delete building"
+text = "✕"
+
+[node name="Fields" type="GridContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="CategoryLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Category"
+
+[node name="CategoryEdit" type="LineEdit" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "power / extraction / agriculture / ..."
+
+[node name="DescriptionLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Description"
+
+[node name="DescriptionEdit" type="TextEdit" parent="Root/Fields"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Building description"
+wrap_mode = 1
+
+[node name="MaxResourceTierLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Max Resource Tier"
+
+[node name="MaxResourceTierSpin" type="SpinBox" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 10.0
+tooltip_text = "Maximum resource tier this building can interact with"
+
+[node name="WorkRequiredLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Work Required"
+
+[node name="WorkRequiredSpin" type="SpinBox" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100000.0
+step = 0.5
+allow_greater = true
+
+[node name="BuildLimitLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Build Limit"
+
+[node name="BuildingLimitSpin" type="SpinBox" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -1.0
+max_value = 1e+06
+allow_greater = true
+tooltip_text = "-1 = no limit"
+
+[node name="DemolishableLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Demolishable"
+
+[node name="DemolishableCheck" type="CheckBox" parent="Root/Fields"]
+layout_mode = 2
+
+[node name="LinkProfileLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Link Profile"
+
+[node name="LinkProfileEdit" type="LineEdit" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AllowedRecipeCatLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Allowed Recipe Cat."
+
+[node name="AllowedRecipeCategoryEdit" type="LineEdit" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ReqHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ReqLabel" type="Label" parent="Root/ReqHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.85, 0.6, 1)
+text = "Required Resources"
+
+[node name="AddRequiredResourceButton" type="Button" parent="Root/ReqHeader"]
+layout_mode = 2
+text = "+ Required Resource"
+
+[node name="RequiredResourcesContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlacementLabel" type="Label" parent="Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.9, 1, 1)
+text = "Placement Requirements"
+
+[node name="PlacementContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BehHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BehLabel" type="Label" parent="Root/BehHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.7, 0.9, 1)
+text = "Behaviors"
+
+[node name="AddBehaviorButton" type="Button" parent="Root/BehHeader"]
+layout_mode = 2
+text = "+ Behavior"
+
+[node name="BehaviorsContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SpecHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SpecLabel" type="Label" parent="Root/SpecHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.9, 0.6, 1)
+tooltip_text = "Per-instance integer exposed to recipe conditional outputs as 'specifier'. Player picks one at construction."
+text = "Specifier"
+
+[node name="SpecifierEnabledCheck" type="CheckBox" parent="Root/SpecHeader"]
+layout_mode = 2
+text = "Enabled"
+
+[node name="AddSpecifierButton" type="Button" parent="Root/SpecHeader"]
+layout_mode = 2
+text = "+ Choice"
+
+[node name="SpecifierRowsContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VisualLabel" type="Label" parent="Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 1, 0.7, 1)
+text = "Visual"
+
+[node name="VisualContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IconLabel" type="Label" parent="Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.7, 1)
+text = "Icon"
+
+[node name="IconContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3

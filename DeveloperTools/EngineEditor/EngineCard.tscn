@@ -1,0 +1,107 @@
+[gd_scene format=3 uid="uid://6oxgy30vy57a"]
+
+[ext_resource type="Script" path="res://DeveloperTools/EngineEditor/EngineCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.16, 0.16, 0.19, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.35, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="EngineCard" type="PanelContainer" node_paths=PackedStringArray("_nameEdit", "_moveUpButton", "_moveDownButton", "_ispSpin", "_thrustSpin", "_descriptionEdit")]
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("1_card")
+_nameEdit = NodePath("Root/Header/NameEdit")
+_moveUpButton = NodePath("Root/Header/Actions/MoveUpButton")
+_moveDownButton = NodePath("Root/Header/Actions/MoveDownButton")
+_ispSpin = NodePath("Root/Grid/IspSpin")
+_thrustSpin = NodePath("Root/Grid/ThrustSpin")
+_descriptionEdit = NodePath("Root/Grid/DescriptionEdit")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NameEdit" type="LineEdit" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "name"
+
+[node name="Actions" type="VBoxContainer" parent="Root/Header"]
+layout_mode = 2
+
+[node name="MoveUpButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Move up"
+text = "▲"
+
+[node name="MoveDownButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Move down"
+text = "▼"
+
+[node name="DeleteButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Delete engine"
+text = "✕"
+
+[node name="Grid" type="GridContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="IspLabel" type="Label" parent="Root/Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Specific Impulse (s)"
+
+[node name="IspSpin" type="SpinBox" parent="Root/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1e+06
+allow_greater = true
+
+[node name="ThrustLabel" type="Label" parent="Root/Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Thrust (N)"
+
+[node name="ThrustSpin" type="SpinBox" parent="Root/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1e+08
+allow_greater = true
+
+[node name="DescriptionLabel" type="Label" parent="Root/Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Description"
+
+[node name="DescriptionEdit" type="TextEdit" parent="Root/Grid"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Engine description"
+wrap_mode = 1
+
+[connection signal="text_changed" from="Root/Header/NameEdit" to="." method="OnNameChanged"]
+[connection signal="pressed" from="Root/Header/Actions/MoveUpButton" to="." method="OnMoveUp"]
+[connection signal="pressed" from="Root/Header/Actions/MoveDownButton" to="." method="OnMoveDown"]
+[connection signal="pressed" from="Root/Header/Actions/DeleteButton" to="." method="OnDelete"]
+[connection signal="value_changed" from="Root/Grid/IspSpin" to="." method="OnIspChanged"]
+[connection signal="value_changed" from="Root/Grid/ThrustSpin" to="." method="OnThrustChanged"]
+[connection signal="text_changed" from="Root/Grid/DescriptionEdit" to="." method="OnDescriptionChanged"]

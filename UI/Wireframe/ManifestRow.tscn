@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://bpb8sixupioge"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+
+[node name="ManifestRow" type="HBoxContainer"]
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 6
+
+[node name="Icon" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_font_sizes/font_size = 10
+text = "[ ]"
+
+[node name="NameLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 14
+text = "—"
+
+[node name="Qty" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_font_sizes/font_size = 12
+text = "×0"

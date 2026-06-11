@@ -3,6 +3,7 @@ using Godot;
 using Godot.Collections;
 using PlayerInteraction.Camera;
 using ProceduralGeneration.PlanetGeneration;
+using Registries;
 using UI;
 using UtilityLibrary;
 
@@ -26,6 +27,16 @@ public partial class PlayerController : Node3D
     [Export]
     public float CameraSnapSpeed { get; set; } = 5.0f;
 
+    // Configured-in-editor sound effects (point each Clip at a res://Audio clip).
+    [Export]
+    public SoundEffect? BoostSfx { get; set; }
+
+    [Export]
+    public SoundEffect? CaptureSfx { get; set; }
+
+    [Export]
+    public SoundEffect? EngineSfx { get; set; }
+
     //Scene Objects
     private Node3D? _parent;
     private Node3D? _pointerNode;
@@ -46,6 +57,7 @@ public partial class PlayerController : Node3D
 
     private bool _isRightMousePressed = false;
     private float _decelerateFactor;
+    private bool _engineActive;
 
     public override void _Ready()
     {
@@ -93,25 +105,41 @@ public partial class PlayerController : Node3D
         if (_parent == null || _camera == null)
             return;
 
-        // While the camera is focused/transitioning, the FSM owns its transform.
-        // Skip free-fly movement + look so the two don't fight.
-        if (_cameraController != null && !_cameraController.IsFreeFly)
+        float deltaTime = (float)delta;
+
+        // The ship accepts movement input only while it owns the camera (free-fly) AND no GUI
+        // panel holds the input stack. While focused/transitioning the camera FSM owns the camera
+        // transform; while a menu is open WorldInput is disabled. In BOTH cases we drop input —
+        // but the passive physics below (velocity bleed-off + captured-body frame sync) MUST keep
+        // running so the ship still decelerates and rides along with its body while a menu is open.
+        bool freeFly = _cameraController == null || _cameraController.IsFreeFly;
+        bool acceptInput = freeFly && (_worldInput?.IsActive ?? true);
+
+        Vector3 movementDirection = acceptInput ? _movementDirection : Vector3.Zero;
+        Vector3 verticalMovement = acceptInput ? _verticalMovement : Vector3.Zero;
+
+        // Engine loop: start when the ship has thrust input, stop when it goes idle.
+        bool wantEngine = movementDirection.Length() > 0 || verticalMovement.Length() > 0;
+        if (wantEngine && !_engineActive)
         {
-            // Drop capture so re-entry to free-fly re-initializes the body-sync delta cleanly.
-            _captureController?.ClearCapture();
-            return;
+            _engineActive = true;
+            AudioBus.Instance?.StartLoop(EngineSfx);
+        }
+        else if (!wantEngine && _engineActive)
+        {
+            _engineActive = false;
+            AudioBus.Instance?.StopLoop(EngineSfx);
         }
 
-        float deltaTime = (float)delta;
-        Vector3 worldDirection = _parent.Basis * _movementDirection;
-        Vector3 worldVertical = _parent.Basis * _verticalMovement;
+        Vector3 worldDirection = _parent.Basis * movementDirection;
+        Vector3 worldVertical = _parent.Basis * verticalMovement;
         // Strafe in any direction
         Vector3 accelerationVector = worldDirection * Acceleration;
 
         // Cap at max speed
 
         // Add vertical component to velocity
-        if (_movementDirection.Length() <= 0)
+        if (movementDirection.Length() <= 0)
             currentVelocity = currentVelocity.MoveToward(Vector3.Zero, _decelerateFactor);
         else
         {
@@ -122,14 +150,28 @@ public partial class PlayerController : Node3D
         }
 
         // Resolve orbital capture + no-entry collision. Returns one world-space delta applied to
-        // BOTH the ship and the camera (camera is a top_level sibling, must stay rigidly coupled).
+        // the ship every frame (and the camera too while it's rigidly coupled in free-fly).
+        var prevCaptured = _captureController?.CapturedBody;
         Vector3 finalDelta = _captureController != null
             ? _captureController.Resolve(_parent.GlobalPosition, ref currentVelocity, deltaTime)
             : currentVelocity * deltaTime;
         _parent.GlobalPosition = _parent.GlobalPosition + finalDelta;
-        _camera.GlobalPosition = _camera.GlobalPosition + finalDelta;
 
-        UpdateCamera();
+        // One capture sound covers both entering a body's capture frame and hitting its no-entry shell.
+        if (_captureController != null
+            && ((prevCaptured == null && _captureController.CapturedBody != null)
+                || _captureController.CollidedThisFrame))
+        {
+            AudioBus.Instance?.Play(CaptureSfx);
+        }
+
+        // While focused, the camera FSM owns the camera transform + look — don't fight it.
+        // Only the ship moves (decel + body-follow); the camera stays under FSM control.
+        if (freeFly)
+        {
+            _camera.GlobalPosition = _camera.GlobalPosition + finalDelta;
+            UpdateCamera();
+        }
     }
 
     private void OnCastRay()
@@ -245,6 +287,7 @@ public partial class PlayerController : Node3D
         if (accelerate)
         {
             Acceleration *= 2.0f; // Example boost
+            AudioBus.Instance?.Play(BoostSfx);
         }
         else
         {

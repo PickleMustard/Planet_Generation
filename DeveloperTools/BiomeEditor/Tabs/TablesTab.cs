@@ -110,9 +110,8 @@ public partial class TablesTab : Control
             case "Biomes":
                 foreach (var id in _model.Biomes.Keys.OrderBy(k => k, StringComparer.Ordinal))
                 {
-                    var card = new BiomeCard();
+                    var card = BiomeCard.Create(_model, id);
                     _cardContainer.AddChild(card);
-                    card.Initialize(_model, id);
                 }
                 var addBiomeBtn = new Button { Text = "+ Add Biome" };
                 addBiomeBtn.Pressed += OnNewBiome;
@@ -132,9 +131,8 @@ public partial class TablesTab : Control
                     _cardContainer.AddChild(header);
                     foreach (var s in subs)
                     {
-                        var card = new SubtypeCard();
+                        var card = SubtypeCard.Create(_model, s.Id);
                         _cardContainer.AddChild(card);
-                        card.Initialize(_model, s.Id);
                     }
                 }
                 var addSubBtn = new Button { Text = "+ Add Subtype" };

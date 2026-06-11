@@ -5,7 +5,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, material:iron]
+    tags: [ore, material:iron]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: copper_ore
@@ -14,7 +14,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, conductive, material:copper]
+    tags: [ore, material:copper]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: gold_ore
@@ -23,7 +23,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, valuables, conductive, material:gold]
+    tags: [ore, material:gold]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: water_ice
@@ -41,7 +41,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, radioactive, material:uranium]
+    tags: [ore, material:uranium]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: platinum_ore
@@ -50,7 +50,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, valuables, high_metal, material:platinum]
+    tags: [ore, material:platinum]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: cobalt_ore
@@ -59,7 +59,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, valuables, high_metal, material:cobalt]
+    tags: [ore, material:cobalt]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: nickel_ore
@@ -68,7 +68,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, high_metal, material:nickel]
+    tags: [ore, material:nickel]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: lithium_ore
@@ -77,7 +77,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metallic, radioactive, conductive, material:lithium]
+    tags: [ore, material:lithium]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: loadstone_ore
@@ -86,7 +86,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, valuabes, supernatural, material:loadstone]
+    tags: [ore, material:loadstone]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: bauxite_ore
@@ -95,7 +95,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [ore, metal, material:aluminum]
+    tags: [ore, material:aluminum]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: titanium_ore
@@ -104,16 +104,16 @@ resources:
     state_of_matter: solid
     max_stack_size: 499
     transport_weight: 2.5
-    tags: [material:titanium, metal, ore]
+    tags: [material:titanium, ore]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: tungsten_ore
     resource_tier: 2
     base_price: 3000
     state_of_matter: solid
-    max_stack_size: 500
+    max_stack_size: 499
     transport_weight: 2.5
-    tags: [material:tungsten, metal, ore]
+    tags: [material:tungsten, ore]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: silver_ore
@@ -122,7 +122,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.4
-    tags: [material:silver, metal, ore]
+    tags: [material:silver, ore]
     icon:
       resource: "res://Materials/Icons/ore.tres"
   - id_name: lead_ore
@@ -131,6 +131,6 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 2.5
-    tags: [material:lead, metal, ore]
+    tags: [material:lead, ore]
     icon:
       resource: "res://Materials/Icons/ore.tres"

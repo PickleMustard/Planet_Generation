@@ -1,0 +1,148 @@
+[gd_scene format=3 uid="uid://d0ay36j4sxdkw"]
+
+[ext_resource type="Script" path="res://DeveloperTools/Common/EditorVisualSection.cs" id="1_sec"]
+[ext_resource type="Script" path="res://DeveloperTools/Common/ModelPreviewPane.cs" id="2_preview"]
+
+[node name="EditorVisualSection" type="VBoxContainer" node_paths=PackedStringArray("_modelPathButton", "_modelPathClearButton", "_materialEdit", "_scaleSpin", "_rotX", "_rotY", "_rotZ", "_animationButton", "_shapeButton", "_shapeSizeSpin", "_shapeSummaryLabel", "_preview")]
+size_flags_horizontal = 3
+script = ExtResource("1_sec")
+_modelPathButton = NodePath("Grid/ModelRow/ModelPathButton")
+_modelPathClearButton = NodePath("Grid/ModelRow/ModelPathClearButton")
+_materialEdit = NodePath("Grid/MaterialEdit")
+_scaleSpin = NodePath("Grid/ScaleSpin")
+_rotX = NodePath("Grid/RotRow/RotX")
+_rotY = NodePath("Grid/RotRow/RotY")
+_rotZ = NodePath("Grid/RotRow/RotZ")
+_animationButton = NodePath("Grid/AnimationButton")
+_shapeButton = NodePath("Grid/ShapeButton")
+_shapeSizeSpin = NodePath("Grid/ShapeSizeSpin")
+_shapeSummaryLabel = NodePath("Grid/ShapeSummaryLabel")
+_preview = NodePath("Preview")
+
+[node name="Header" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 1, 0.7, 1)
+text = "Visual"
+
+[node name="Grid" type="GridContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="ModelPathLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Model Path"
+
+[node name="ModelRow" type="HBoxContainer" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ModelPathButton" type="Button" parent="Grid/ModelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+text = "(none)"
+
+[node name="ModelPathClearButton" type="Button" parent="Grid/ModelRow"]
+layout_mode = 2
+tooltip_text = "Clear model path"
+text = "✕"
+
+[node name="MaterialLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Model Material"
+
+[node name="MaterialEdit" type="LineEdit" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "res:// path to a material override (optional)"
+
+[node name="ScaleLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Scale"
+
+[node name="ScaleSpin" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.01
+max_value = 1000.0
+step = 0.05
+allow_greater = true
+
+[node name="RotLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Rotation Offset (deg)"
+
+[node name="RotRow" type="HBoxContainer" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RotX" type="SpinBox" parent="Grid/RotRow"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+allow_greater = true
+
+[node name="RotY" type="SpinBox" parent="Grid/RotRow"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+allow_greater = true
+
+[node name="RotZ" type="SpinBox" parent="Grid/RotRow"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+allow_greater = true
+
+[node name="AnimationLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Animation"
+
+[node name="AnimationButton" type="OptionButton" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ShapeLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Shape (2D Board)"
+
+[node name="ShapeButton" type="OptionButton" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ShapeSizeLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Shape Size (px)"
+
+[node name="ShapeSizeSpin" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 8.0
+max_value = 512.0
+allow_greater = true
+
+[node name="ShapeSlotsLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Shape Slots"
+
+[node name="ShapeSummaryLabel" type="Label" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHighContrast"
+autowrap_mode = 3
+
+[node name="Preview" type="SubViewportContainer" parent="."]
+layout_mode = 2
+script = ExtResource("2_preview")

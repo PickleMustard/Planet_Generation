@@ -1,0 +1,230 @@
+[gd_scene format=3 uid="uid://dp4gej2jnceqy"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/SlipCard.cs" id="2_script"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/PaperBackground.cs" id="3_bg"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/PerforatedEdge.cs" id="4_perf"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/StateDot.cs" id="5_dot"]
+[ext_resource type="PackedScene" uid="uid://c8f0r1xwnxg6y" path="res://UI/Components/LabeledFieldRow.tscn" id="6_tofield"]
+
+[node name="SlipCard" type="PanelContainer" node_paths=PackedStringArray("_slipNumberLabel", "_badgeLabel", "_slotLabel", "_toRow", "_manifestList", "_conditionLabel", "_watchedRow", "_footerLabel", "_stateDot", "_stateLabel", "_progressBar", "_progressLabel", "_editButton", "_deleteButton", "_margin", "_dragRail", "_slotNum")]
+theme = ExtResource("1_theme")
+theme_type_variation = &"SlipCard"
+script = ExtResource("2_script")
+_slipNumberLabel = NodePath("Margin/Col/HeaderRow/HeaderCol/NumberRow/SlipNumber")
+_badgeLabel = NodePath("Margin/Col/HeaderRow/HeaderCol/NumberRow/Badge")
+_slotLabel = NodePath("Margin/Col/HeaderRow/SlotLabel")
+_toRow = NodePath("Margin/Col/ToRow")
+_manifestList = NodePath("Margin/Col/ManifestRow/ManifestList")
+_conditionLabel = NodePath("Margin/Col/ConditionRow/ConditionLabel")
+_watchedRow = NodePath("Margin/Col/ConditionRow/WatchedRow")
+_footerLabel = NodePath("Margin/Col/FooterRow/FooterLabel")
+_stateDot = NodePath("Margin/Col/FooterRow/StateDot")
+_stateLabel = NodePath("Margin/Col/FooterRow/StateLabel")
+_progressBar = NodePath("Margin/Col/ProgressRow/ProgressBar")
+_progressLabel = NodePath("Margin/Col/ProgressRow/ProgressLabel")
+_editButton = NodePath("Margin/Col/HeaderRow/Actions/EditButton")
+_deleteButton = NodePath("Margin/Col/HeaderRow/Actions/DeleteButton")
+_margin = NodePath("Margin")
+_dragRail = NodePath("DragRail")
+_slotNum = NodePath("DragRail/SlotStack/SlotNumber")
+
+[node name="Bg" type="Control" parent="."]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("3_bg")
+DrawRuledLines = true
+RuleSpacing = 24.0
+BaseColor = Color(1, 1, 1, 0.5)
+
+[node name="Perf" type="Control" parent="."]
+layout_mode = 2
+anchor_right = 1.0
+offset_top = -2.0
+offset_bottom = 4.0
+script = ExtResource("4_perf")
+
+[node name="DragRail" type="Control" parent="."]
+visible = false
+layout_mode = 2
+anchor_bottom = 1.0
+offset_right = 26.0
+mouse_filter = 2
+
+[node name="Rail" type="ColorRect" parent="DragRail"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.769, 0.329, 0.102, 0.06)
+
+[node name="SlotStack" type="VBoxContainer" parent="DragRail"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+alignment = 1
+
+[node name="SlotNumber" type="Label" parent="DragRail/SlotStack"]
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.769, 0.329, 0.102, 1)
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+
+[node name="Handle" type="Label" parent="DragRail/SlotStack"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 16
+text = "≡"
+horizontal_alignment = 1
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Col" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="HeaderRow" type="HBoxContainer" parent="Margin/Col"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HeaderCol" type="VBoxContainer" parent="Margin/Col/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DispatchKicker" type="Label" parent="Margin/Col/HeaderRow/HeaderCol"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "DISPATCH SLIP · No."
+
+[node name="NumberRow" type="HBoxContainer" parent="Margin/Col/HeaderRow/HeaderCol"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SlipNumber" type="Label" parent="Margin/Col/HeaderRow/HeaderCol/NumberRow"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 22
+text = "RT-001"
+
+[node name="Badge" type="Label" parent="Margin/Col/HeaderRow/HeaderCol/NumberRow"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.769, 0.329, 0.102, 1)
+theme_override_font_sizes/font_size = 9
+text = "ONE-TIME"
+
+[node name="SlotLabel" type="Label" parent="Margin/Col/HeaderRow"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "PRIORITY #1"
+horizontal_alignment = 2
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Col/HeaderRow"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="EditButton" type="Button" parent="Margin/Col/HeaderRow/Actions"]
+layout_mode = 2
+tooltip_text = "Edit slip"
+text = "🔨"
+
+[node name="DeleteButton" type="Button" parent="Margin/Col/HeaderRow/Actions"]
+layout_mode = 2
+theme_type_variation = &"ButtonDanger"
+tooltip_text = "Delete slip"
+text = "✕"
+
+[node name="ToRow" parent="Margin/Col" index="1" instance=ExtResource("6_tofield")]
+layout_mode = 2
+
+[node name="ManifestRow" type="HBoxContainer" parent="Margin/Col"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ManifestKicker" type="Label" parent="Margin/Col/ManifestRow"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "MANIFEST"
+
+[node name="ManifestList" type="VBoxContainer" parent="Margin/Col/ManifestRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="ConditionRow" type="HBoxContainer" parent="Margin/Col"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ConditionKicker" type="Label" parent="Margin/Col/ConditionRow"]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "WHEN"
+
+[node name="ConditionLabel" type="Label" parent="Margin/Col/ConditionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 15
+
+[node name="WatchedRow" type="HBoxContainer" parent="Margin/Col/ConditionRow"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FooterSep" type="HSeparator" parent="Margin/Col"]
+layout_mode = 2
+
+[node name="FooterRow" type="HBoxContainer" parent="Margin/Col"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FooterLabel" type="Label" parent="Margin/Col/FooterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+
+[node name="StateDot" type="Control" parent="Margin/Col/FooterRow"]
+layout_mode = 2
+script = ExtResource("5_dot")
+Radius = 4.0
+
+[node name="StateLabel" type="Label" parent="Margin/Col/FooterRow"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 13
+
+[node name="ProgressRow" type="HBoxContainer" parent="Margin/Col"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ProgressBar" type="ProgressBar" parent="Margin/Col/ProgressRow"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.001
+show_percentage = false
+
+[node name="ProgressLabel" type="Label" parent="Margin/Col/ProgressRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+horizontal_alignment = 2
+
+[connection signal="pressed" from="Margin/Col/HeaderRow/Actions/EditButton" to="." method="OnEditPressed"]
+[connection signal="pressed" from="Margin/Col/HeaderRow/Actions/DeleteButton" to="." method="OnDeletePressed"]

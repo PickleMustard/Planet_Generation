@@ -264,21 +264,16 @@ public partial class SystemGenerator : Node
         float mass = (float)templateDict["mass"];
         String type = (String)body["type"];
 
-        // Calculate AU distance and select subtype
+        // Cumulative distance from the system center, retained for resource/mesh-param lookups.
         float distanceAU = OrbitalDistanceCalculator.CalculateDistanceFromStarAU(body);
         var bodyType = (OrbitalBodyType)
             Enum.Parse(typeof(OrbitalBodyType), (String)body["type"]);
 
         String name = (String)body["name"];
 
+        // Subtype is authored per body in the system template (subtype / subtype_weights).
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        var auManager = new AUProbabilityManager(rng);
-        BodyClassification? manualClassification = ResolveSubtypeOverride(body, bodyType, auManager);
-        BodyClassification classification = auManager.SelectClassification(
-            bodyType,
-            distanceAU,
-            manualOverride: manualClassification
-        );
+        BodyClassification classification = SubtypeResolver.Resolve(body, bodyType, rng);
 
         var mesh = new UnifiedCelestialMesh();
         var celBodyBuilder = new CelestialBody.Builder();
@@ -390,15 +385,10 @@ public partial class SystemGenerator : Node
         var bodyType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), type);
         String name = (String)body["name"];
 
-        // Select subtype for dominant body (stars, black holes, neutron stars)
+        // Select subtype for dominant body (stars, black holes, neutron stars) from its
+        // per-body subtype / subtype_weights in the system template.
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        var auManager = new AUProbabilityManager(rng);
-        BodyClassification? manualClassification = ResolveSubtypeOverride(body, bodyType, auManager);
-        BodyClassification classification = auManager.SelectClassification(
-            bodyType,
-            0f,
-            manualOverride: manualClassification
-        );
+        BodyClassification classification = SubtypeResolver.Resolve(body, bodyType, rng);
 
         var mesh = new UnifiedCelestialMesh();
         CelestialBody.Builder celBodyBuilder = new CelestialBody.Builder();
@@ -429,68 +419,6 @@ public partial class SystemGenerator : Node
                 OnBodyGenerationFailed(failedBody, error, celBody, isDominant: true)
         );
     }
-
-    /// <summary>
-    /// Phase 7: resolves an explicit subtype override from SystemTemplate yaml. Priority:
-    /// (1) inline <c>subtype: subtype_xxx</c> string → typed BodyClassification;
-    /// (2) inline <c>subtype_weights</c> map → roll a subtype id, then map to classification.
-    /// Returns null when neither slot is present (AU-band selection runs instead).
-    /// </summary>
-    private static BodyClassification? ResolveSubtypeOverride(
-        Godot.Collections.Dictionary body,
-        OrbitalBodyType bodyType,
-        AUProbabilityManager auManager)
-    {
-        if (body.ContainsKey("subtype"))
-        {
-            string id = (String)body["subtype"];
-            if (!string.IsNullOrWhiteSpace(id))
-            {
-                var family = FamilyFor(bodyType);
-                var cls = BiomeIdMapper.IdToBodyClassification(id, family);
-                if (cls != null) return cls;
-
-                // Back-compat: yaml may still carry the legacy enum-name form ("Temperate").
-                return SubtypeParser.ParseClassification(bodyType, id);
-            }
-        }
-
-        if (body.ContainsKey("subtype_weights"))
-        {
-            var raw = (Godot.Collections.Dictionary)body["subtype_weights"];
-            var weights = new Dictionary<string, float>(StringComparer.Ordinal);
-            foreach (var key in raw.Keys)
-            {
-                string id = key.AsString();
-                if (string.IsNullOrEmpty(id)) continue;
-                weights[id] = (float)raw[key];
-            }
-            string chosen = auManager.SelectFromWeights(weights, fallback: "");
-            if (!string.IsNullOrEmpty(chosen))
-            {
-                var family = FamilyFor(bodyType);
-                var cls = BiomeIdMapper.IdToBodyClassification(chosen, family);
-                if (cls != null) return cls;
-                GameLogger.Warning(
-                    $"SystemGenerator: subtype id '{chosen}' did not map to a {family} classification — falling back to AU-band selection"
-                );
-            }
-        }
-
-        return null;
-    }
-
-    private static BodyFamily FamilyFor(OrbitalBodyType bodyType) => bodyType switch
-    {
-        OrbitalBodyType.RockyPlanet => BodyFamily.RockyPlanet,
-        OrbitalBodyType.GasGiant => BodyFamily.GasGiant,
-        OrbitalBodyType.IceGiant => BodyFamily.IceGiant,
-        OrbitalBodyType.DwarfPlanet => BodyFamily.DwarfPlanet,
-        OrbitalBodyType.Star => BodyFamily.Star,
-        OrbitalBodyType.NeutronStar => BodyFamily.NeutronStar,
-        OrbitalBodyType.BlackHole => BodyFamily.BlackHole,
-        _ => BodyFamily.RockyPlanet,
-    };
 
     private void OnBodyGenerationComplete(
         CelestialBody completedBody,
@@ -721,25 +649,19 @@ public partial class SystemGenerator : Node
 
         var mesh = new UnifiedCelestialMesh();
 
-        // Mirror the celestial path: roll a concrete subtype from AU-weighted config so the
-        // satellite carries a non-null subtype for resource and mesh-param lookups.
+        // Subtype is authored per satellite in the system template (subtype / subtype_weights).
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
-        var auManager = new AUProbabilityManager(rng);
         var satType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), (string)sat["type"]);
-        // Cumulative distance (decision #1): parent's cumulative AU plus this satellite's own
-        // distance from its parent (its apogee/perigee average). The immediate parent's subtype id
-        // selects optional per-parent-subtype weight modifiers.
+        // Cumulative distance from the system center, retained for resource/mesh-param lookups:
+        // parent's cumulative AU plus this satellite's own distance from its parent.
         float effectiveAU =
             parentBody.EffectiveAU
             + OrbitalMath.ConvertUnitsToAU((apogee + perigee) / 2f);
-        string? parentSubtypeId = BiomeIdMapper.ClassificationToSubtypeId(parentBody.Classification);
-        var subtype =
-            (auManager.SelectClassification(satType, effectiveAU, parentSubtypeId)
-                as BodyClassification.Satellite)?.Subtype;
+        BodyClassification classification = SubtypeResolver.Resolve(sat, satType, rng);
 
         CelestialBody satBody = new CelestialBody.Builder()
             .FromBodyDict(sat, mesh)
-            .WithClassification(BodyClassification.FromSatelliteType(satType, subtype))
+            .WithClassification(classification)
             .WithDepth(parentBody.Depth + 1)
             .Build();
         satBody.EffectiveAU = effectiveAU;

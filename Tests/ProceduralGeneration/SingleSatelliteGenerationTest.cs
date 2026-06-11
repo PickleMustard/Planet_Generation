@@ -52,23 +52,18 @@ public class SingleSatelliteGenerationTest
         var mesh = AutoFree(new UnifiedCelestialMesh());
 
         var rng = new RandomNumberGenerator { Seed = 1 };
-        var auManager = new AUProbabilityManager(rng);
         var satType = (OrbitalBodyType)Enum.Parse(typeof(OrbitalBodyType), (string)sat["type"]);
-        float effectiveAU = 0.75f + OrbitalMath.ConvertUnitsToAU((apogee + perigee) / 2f);
-        var subtype =
-            (auManager.SelectClassification(satType, effectiveAU)
-                as global::Structures.BodyClassification.Satellite)?.Subtype;
+        // Subtype now resolves from the satellite's own subtype / subtype_weights.
+        var classification = SubtypeResolver.Resolve(sat, satType, rng);
 
         var satBody = AutoFree(
             new CelestialBody.Builder()
                 .FromBodyDict(sat, mesh)
-                .WithClassification(
-                    global::Structures.BodyClassification.FromSatelliteType(satType, subtype)
-                )
+                .WithClassification(classification)
                 .Build()
         );
 
         AssertThat(satBody).IsNotNull();
-        AssertThat(subtype.HasValue).IsTrue();
+        AssertThat(classification).IsInstanceOf<global::Structures.BodyClassification.Satellite>();
     }
 }

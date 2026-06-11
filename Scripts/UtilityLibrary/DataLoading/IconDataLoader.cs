@@ -71,7 +71,11 @@ public static class IconDataLoader
     {
         try
         {
-            var config = GD.Load<IconConfig>(resourcePath);
+            // Use a rooted cache so the shared managed wrapper is never GC-collected.
+            // GD.Load returns the single shared instance for a cached resource; letting it be
+            // orphaned makes its finalizer run on the GC thread (SIGILL), and disposing it
+            // would empty the config for every other consumer that shares it.
+            var config = WrapperResourceCache.Load<IconConfig>(resourcePath);
             if (config?.Texture != null)
             {
                 GameLogger.Debug($"Loaded icon for {context}: {resourcePath}");
@@ -122,6 +126,8 @@ public static class IconDataLoader
 
         var image = new Image();
         image.LoadSvgFromBuffer(svg.ToUtf8Buffer(), pixels);
-        return ImageTexture.CreateFromImage(image);
+        var tex = ImageTexture.CreateFromImage(image);
+        image.Dispose();
+        return tex;
     }
 }

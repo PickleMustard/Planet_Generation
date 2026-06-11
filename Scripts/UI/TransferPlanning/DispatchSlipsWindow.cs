@@ -25,20 +25,12 @@ public partial class DispatchSlipsWindow : Control
 
     private enum ViewKind { Slips, Priority, PickDest, Manifest }
 
-    private const int PanelWidth = 1280;
-    private const int PanelHeight = 760;
-
-    private static readonly Theme? PaperTheme = ResourceLoader.Load<Theme>(
-        "res://UI/Theme/wireframe_paper/wireframe_paper.tres");
-
-    private ColorRect? _backdrop;
-    private PanelContainer? _panel;
-    private TransferTopBar? _topBar;
-    private Control? _viewHost;
-    private SlipsListView? _slipsView;
-    private PriorityEditView? _priorityView;
-    private PickDestinationView? _pickDestView;
-    private ManifestEditorView? _manifestView;
+    [Export] private TransferTopBar? _topBar;
+    [Export] private Control? _viewHost;
+    [Export] private SlipsListView? _slipsView;
+    [Export] private PriorityEditView? _priorityView;
+    [Export] private PickDestinationView? _pickDestView;
+    [Export] private ManifestEditorView? _manifestView;
 
     private Node3D? _currentBody;
     private Continent? _currentContinent;
@@ -67,9 +59,31 @@ public partial class DispatchSlipsWindow : Control
 
     public override void _Ready()
     {
-        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        if (PaperTheme != null) Theme = PaperTheme;
-        BuildLayout();
+        if (_topBar != null)
+        {
+            _topBar.HudCloseRequested += OnHudCloseRequested;
+            _topBar.BackRequested += OnBackRequested;
+        }
+        if (_slipsView != null)
+        {
+            _slipsView.AddRouteRequested += OnAddRouteRequested;
+            _slipsView.EditPriorityRequested += () => SwitchView(ViewKind.Priority);
+            _slipsView.DeleteSlipRequested += OnDeleteSlipRequested;
+            _slipsView.EditSlipRequested += OnEditSlipRequested;
+        }
+        if (_priorityView != null) _priorityView.DoneRequested += OnPriorityDone;
+        if (_pickDestView != null)
+        {
+            _pickDestView.DestinationConfirmed += OnDestinationConfirmed;
+            _pickDestView.Cancelled += () => SwitchView(ViewKind.Slips);
+        }
+        if (_manifestView != null)
+        {
+            _manifestView.BackRequested += () => SwitchView(ViewKind.PickDest);
+            _manifestView.Cancelled += () => SwitchView(ViewKind.Slips);
+            _manifestView.RouteFiled += OnRouteFiled;
+        }
+
         Hide();
 
         if (SignalBus.Instance != null)
@@ -78,72 +92,6 @@ public partial class DispatchSlipsWindow : Control
             SignalBus.Instance.TransferArrived += OnTransferArrived;
             SignalBus.Instance.TransferScheduleStateChanged += OnScheduleStateChanged;
         }
-    }
-
-    private void BuildLayout()
-    {
-        _backdrop = new ColorRect
-        {
-            Color = new Color(0f, 0f, 0f, 0.6f),
-            MouseFilter = MouseFilterEnum.Stop,
-        };
-        _backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _backdrop.GuiInput += OnBackdropInput;
-        AddChild(_backdrop);
-
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(center);
-
-        _panel = new PanelContainer
-        {
-            ThemeTypeVariation = "PaperPanel",
-            CustomMinimumSize = new Vector2(PanelWidth, PanelHeight),
-        };
-        center.AddChild(_panel);
-
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 0);
-        _panel.AddChild(col);
-
-        _topBar = new TransferTopBar();
-        _topBar.HudCloseRequested += OnHudCloseRequested;
-        _topBar.BackRequested += OnBackRequested;
-        col.AddChild(_topBar);
-
-        _viewHost = new Control
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 600),
-        };
-        col.AddChild(_viewHost);
-
-        _slipsView = new SlipsListView { Visible = true };
-        _slipsView.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _slipsView.AddRouteRequested += OnAddRouteRequested;
-        _slipsView.EditPriorityRequested += () => SwitchView(ViewKind.Priority);
-        _slipsView.DeleteSlipRequested += OnDeleteSlipRequested;
-        _slipsView.EditSlipRequested += OnEditSlipRequested;
-        _viewHost.AddChild(_slipsView);
-
-        _priorityView = new PriorityEditView { Visible = false };
-        _priorityView.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _priorityView.DoneRequested += OnPriorityDone;
-        _viewHost.AddChild(_priorityView);
-
-        _pickDestView = new PickDestinationView { Visible = false };
-        _pickDestView.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _pickDestView.DestinationConfirmed += OnDestinationConfirmed;
-        _pickDestView.Cancelled += () => SwitchView(ViewKind.Slips);
-        _viewHost.AddChild(_pickDestView);
-
-        _manifestView = new ManifestEditorView { Visible = false };
-        _manifestView.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _manifestView.BackRequested += () => SwitchView(ViewKind.PickDest);
-        _manifestView.Cancelled += () => SwitchView(ViewKind.Slips);
-        _manifestView.RouteFiled += OnRouteFiled;
-        _viewHost.AddChild(_manifestView);
     }
 
     public void ShowWindow(Building originBuilding, Node3D body, Continent? continent)

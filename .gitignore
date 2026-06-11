@@ -14,5 +14,8 @@
 # Temporary directory
 /temp/
 
+# Blender autosave backups (not versioned)
+*.blend1
+
 # External resources (not committed)
 **/external/

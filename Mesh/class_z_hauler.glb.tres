@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ModelConfig" format=3]
+
+[ext_resource type="PackedScene" path="res://Mesh/class_z_hauler.glb" id="1_gtmjo"]
+[ext_resource type="Script" path="res://Scripts/Registries/ModelConfig.cs" id="2_y5typ"]
+
+[resource]
+script = ExtResource("2_y5typ")
+Id = &"class_z_hauler"
+Model = ExtResource("1_gtmjo")

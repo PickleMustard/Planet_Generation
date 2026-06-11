@@ -599,7 +599,9 @@ public static class BuildingConfigLoader
         {
             try
             {
-                var modelConfig = GD.Load<ModelConfig>(modelPath);
+                // Rooted cache: the shared wrapper must not be orphaned (finalizer-thread
+                // disposal SIGILL) nor disposed (would empty the config for other consumers).
+                var modelConfig = WrapperResourceCache.Load<ModelConfig>(modelPath);
                 visual.ModelPrototype = modelConfig?.Model;
                 if (visual.ModelPrototype != null)
                 {

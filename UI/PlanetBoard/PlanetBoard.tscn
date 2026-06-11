@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://UI/PlanetBoard/PlanetBoardView.tscn" id="2_view"]
 [ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="3_paper_theme"]
 
-[node name="PlanetBoardWindow" type="Control" unique_id=1738769878 node_paths=PackedStringArray("_viewBoard", "_modeSwitcher", "_titleLabel", "_summaryLabel", "_closeButton", "_backButton", "_blockInput", "_infoBar", "_infoContent")]
+[node name="PlanetBoardWindow" type="Control" unique_id=1738769878 node_paths=PackedStringArray("_viewBoard", "_modeSwitcher", "_linkProfilePicker", "_titleLabel", "_summaryLabel", "_closeButton", "_backButton", "_blockInput", "_infoBar", "_infoContent")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -15,6 +15,7 @@ theme = ExtResource("3_paper_theme")
 script = ExtResource("1_window")
 _viewBoard = NodePath("PanelContainer/MarginContainer/MainVBox/BodyHBox/BoardView")
 _modeSwitcher = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/ModeSwitcher")
+_linkProfilePicker = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/LinkProfilePicker")
 _titleLabel = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/TitleLabel")
 _summaryLabel = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/SummaryLabel")
 _closeButton = NodePath("PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox/CloseButton")
@@ -71,6 +72,10 @@ text = "Planet Board"
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"LabelFaint"
+
+[node name="LinkProfilePicker" type="OptionButton" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox" unique_id=1308385250]
+layout_mode = 2
+tooltip_text = "Link type to build"
 
 [node name="ModeSwitcher" type="OptionButton" parent="PanelContainer/MarginContainer/MainVBox/HeaderBar/HBox" unique_id=1308385249]
 layout_mode = 2

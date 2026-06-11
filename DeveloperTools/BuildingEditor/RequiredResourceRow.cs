@@ -21,9 +21,18 @@ public partial class RequiredResourceRow : HBoxContainer
     private string _resourceId = "";
     private int _amount = 1;
 
-    private Button _resourceButton = null!;
-    private SpinBox _amountSpin = null!;
-    private Button _deleteButton = null!;
+    [Export] private Button _resourceButton = null!;
+    [Export] private SpinBox _amountSpin = null!;
+
+    private static PackedScene? _scene;
+
+    public static RequiredResourceRow Create(int slotIndex, BuildingEditorModel.RequiredResourceEdit slot)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/RequiredResourceRow.tscn");
+        var row = _scene.Instantiate<RequiredResourceRow>();
+        row.Configure(slotIndex, slot);
+        return row;
+    }
 
     public void Configure(int slotIndex, BuildingEditorModel.RequiredResourceEdit slot)
     {
@@ -35,39 +44,15 @@ public partial class RequiredResourceRow : HBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        _resourceButton = new Button
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(220, 0),
-            ClipText = true
-        };
-        _resourceButton.Pressed += OnPickResource;
-        AddChild(_resourceButton);
-
-        _amountSpin = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 1000000,
-            Step = 1,
-            Value = _amount,
-            CustomMinimumSize = new Vector2(96, 0),
-            AllowGreater = true
-        };
-        _amountSpin.ValueChanged += OnAmountChanged;
-        AddChild(_amountSpin);
-
-        _deleteButton = new Button { Text = "✕", TooltipText = "Remove required resource" };
-        _deleteButton.Pressed += () => EmitSignal(SignalName.SlotDeleted, _slotIndex);
-        AddChild(_deleteButton);
-
+        _amountSpin.SetValueNoSignal(_amount);
         UpdateResourceButtonText();
     }
 
+    private void OnDeletePressed() => EmitSignal(SignalName.SlotDeleted, _slotIndex);
+
     private void OnPickResource()
     {
-        var popup = new ResourcePickerPopup();
+        var popup = ResourcePickerPopup.Create();
         popup.ResourcePicked += id =>
         {
             _resourceId = id;
@@ -80,7 +65,9 @@ public partial class RequiredResourceRow : HBoxContainer
 
     private void UpdateResourceButtonText()
     {
-        _resourceButton.Text = string.IsNullOrEmpty(_resourceId) ? "(select resource)" : _resourceId;
+        _resourceButton.Text = string.IsNullOrEmpty(_resourceId)
+            ? "(select resource)"
+            : _resourceId;
         _resourceButton.TooltipText = _resourceId;
     }
 

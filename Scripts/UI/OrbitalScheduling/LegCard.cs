@@ -5,10 +5,10 @@ using UI.Wireframe;
 namespace UI.OrbitalScheduling;
 
 /// <summary>
-/// Train-ticket styled card for one leg in the schedule list. Composed of paper
-/// styling, an origin→destination header, manifest/fuel/timing sub-lines, a
-/// validation badge, and reorder / delete / edit controls. Clicking the body of
-/// the card edits the leg.
+/// Train-ticket styled card for one leg in the schedule list. Layout lives in
+/// <c>LegCard.tscn</c>; this script binds data and applies the validity-driven
+/// panel stylebox at runtime. Clicking a control edits / reorders / deletes the
+/// leg. Instantiate via <see cref="Create"/>.
 /// </summary>
 public sealed partial class LegCard : PanelContainer
 {
@@ -17,122 +17,51 @@ public sealed partial class LegCard : PanelContainer
     public event Action<int>? MoveDownRequested;
     public event Action<int>? DeleteRequested;
 
+    [Export] private Label _kicker = null!;
+    [Export] private Label _num = null!;
+    [Export] private Label _route = null!;
+    [Export] private Label _cargo = null!;
+    [Export] private Label _fuel = null!;
+    [Export] private Label _status = null!;
+    [Export] private VBoxContainer _buttonRows = null!;
+    [Export] private Label _note = null!;
+    [Export] private Button _up = null!;
+    [Export] private Button _down = null!;
+    [Export] private Button _edit = null!;
+    [Export] private Button _del = null!;
+
     private LegCardData _data = new();
+
+    private static PackedScene? _scene;
+
+    public static LegCard Create()
+    {
+        _scene ??= GD.Load<PackedScene>("res://UI/OrbitalScheduling/LegCard.tscn");
+        return _scene.Instantiate<LegCard>();
+    }
 
     public void Bind(LegCardData data)
     {
         _data = data;
-        foreach (var c in GetChildren())
-            c.QueueFree();
-        Build();
-    }
-
-    private void Build()
-    {
         AddThemeStyleboxOverride("panel", BuildStyle());
-        MouseFilter = MouseFilterEnum.Stop;
 
-        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        row.AddThemeConstantOverride("separation", 10);
-        AddChild(row);
+        _kicker.Text = data.IsClosingLeg ? "RTN" : "LEG";
+        _num.Text = data.IsClosingLeg ? "↩" : (data.Index + 1).ToString("D2");
+        _route.Text = $"{(data.IsCurrent ? "▶ " : "")}{data.OriginName}  →  {data.DestName}";
+        _cargo.Text = $"CARGO · {data.ManifestSummary}";
+        _fuel.Text = $"FUEL · {data.FuelSummary}    TIME · {data.TimingSummary}";
 
-        // Left: leg index / number stub (the ticket "stub").
-        var stub = new VBoxContainer { CustomMinimumSize = new Vector2(54, 0) };
-        stub.AddThemeConstantOverride("separation", 0);
-        row.AddChild(stub);
-        var kicker = new Label
-        {
-            Text = _data.IsClosingLeg ? "RTN" : $"LEG",
-            ThemeTypeVariation = "LabelMono",
-        };
-        kicker.AddThemeFontSizeOverride("font_size", 9);
-        kicker.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        stub.AddChild(kicker);
-        var num = new Label
-        {
-            Text = _data.IsClosingLeg ? "↩" : (_data.Index + 1).ToString("D2"),
-            ThemeTypeVariation = "LabelHand",
-        };
-        num.AddThemeFontSizeOverride("font_size", 28);
-        stub.AddChild(num);
+        _status.Text = data.IsValid ? $"OK · {data.StateText}" : $"ERROR · {data.InvalidReason}";
+        _status.ThemeTypeVariation = data.IsValid ? "LabelOk" : "LabelAlert";
 
-        // Middle: route + details.
-        var mid = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        mid.AddThemeConstantOverride("separation", 2);
-        row.AddChild(mid);
-
-        var routeLabel = new Label
-        {
-            Text = $"{(_data.IsCurrent ? "▶ " : "")}{_data.OriginName}  →  {_data.DestName}",
-            ThemeTypeVariation = "LabelHand",
-        };
-        routeLabel.AddThemeFontSizeOverride("font_size", 20);
-        mid.AddChild(routeLabel);
-
-        mid.AddChild(SubLine($"CARGO · {_data.ManifestSummary}"));
-        mid.AddChild(SubLine($"FUEL · {_data.FuelSummary}    TIME · {_data.TimingSummary}"));
-
-        var status = new Label
-        {
-            Text = _data.IsValid ? $"OK · {_data.StateText}" : $"ERROR · {_data.InvalidReason}",
-            ThemeTypeVariation = "LabelMono",
-        };
-        status.AddThemeFontSizeOverride("font_size", 10);
-        status.AddThemeColorOverride("font_color", _data.IsValid ? WireColors.Green : WireColors.Red);
-        mid.AddChild(status);
-
-        // Right: controls (closing leg has none — it is auto-managed).
-        var controls = new VBoxContainer();
-        controls.AddThemeConstantOverride("separation", 4);
-        controls.Alignment = BoxContainer.AlignmentMode.Center;
-        row.AddChild(controls);
-
-        if (!_data.IsClosingLeg)
-        {
-            var topRow = new HBoxContainer();
-            topRow.AddThemeConstantOverride("separation", 4);
-            controls.AddChild(topRow);
-
-            var up = new Button { Text = "↑", TooltipText = "Move earlier" };
-            up.Pressed += () => MoveUpRequested?.Invoke(_data.Index);
-            topRow.AddChild(up);
-
-            var down = new Button { Text = "↓", TooltipText = "Move later" };
-            down.Pressed += () => MoveDownRequested?.Invoke(_data.Index);
-            topRow.AddChild(down);
-
-            var bottomRow = new HBoxContainer();
-            bottomRow.AddThemeConstantOverride("separation", 4);
-            controls.AddChild(bottomRow);
-
-            var edit = new Button { Text = "Edit", ThemeTypeVariation = "ButtonPrimary" };
-            edit.Pressed += () => EditRequested?.Invoke(_data.Index);
-            bottomRow.AddChild(edit);
-
-            var del = new Button { Text = "✕", ThemeTypeVariation = "ButtonDanger" };
-            del.Pressed += () => DeleteRequested?.Invoke(_data.Index);
-            bottomRow.AddChild(del);
-        }
-        else
-        {
-            var note = new Label
-            {
-                Text = "auto return",
-                ThemeTypeVariation = "LabelMono",
-            };
-            note.AddThemeFontSizeOverride("font_size", 9);
-            note.AddThemeColorOverride("font_color", WireColors.InkFaint);
-            controls.AddChild(note);
-        }
+        _buttonRows.Visible = !data.IsClosingLeg;
+        _note.Visible = data.IsClosingLeg;
     }
 
-    private static Label SubLine(string text)
-    {
-        var lbl = new Label { Text = text, ThemeTypeVariation = "LabelMono" };
-        lbl.AddThemeFontSizeOverride("font_size", 11);
-        lbl.AddThemeColorOverride("font_color", WireColors.InkSoft);
-        return lbl;
-    }
+    private void OnUpPressed() => MoveUpRequested?.Invoke(_data.Index);
+    private void OnDownPressed() => MoveDownRequested?.Invoke(_data.Index);
+    private void OnEditPressed() => EditRequested?.Invoke(_data.Index);
+    private void OnDelPressed() => DeleteRequested?.Invoke(_data.Index);
 
     private StyleBoxFlat BuildStyle()
     {

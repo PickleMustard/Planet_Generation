@@ -257,8 +257,7 @@ public partial class BuildingEditorModule : BaseDebugModule
 
         for (int i = 0; i < category.Buildings.Count; i++)
         {
-            var card = new BuildingCard();
-            card.Initialize(_model, _selectedCategory, i, category.Buildings[i]);
+            var card = BuildingCard.Create(_model, _selectedCategory, i, category.Buildings[i]);
             card.CardsNeedRebuild += RefreshBuildingList;
             _buildingListContainer.AddChild(card);
         }

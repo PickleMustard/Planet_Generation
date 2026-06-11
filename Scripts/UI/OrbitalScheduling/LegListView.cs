@@ -164,7 +164,7 @@ public sealed partial class LegListView : Control
                 data.InvalidReason = v.Reason;
             }
 
-            var card = new LegCard();
+            var card = LegCard.Create();
             _cardList.AddChild(card);
             card.Bind(data);
             card.EditRequested += OnEditLeg;

@@ -5,12 +5,38 @@
 [ext_resource type="ArrayMesh" uid="uid://ck1odkdr604ba" path="res://Mesh/player_ship.res" id="5_rool1"]
 [ext_resource type="Script" uid="uid://cpsslr8rvet1g" path="res://Scripts/PlayerInteraction/Camera/PlayerCameraController.cs" id="6_pcc"]
 [ext_resource type="Script" uid="uid://jnymh77guo1w" path="res://Scripts/PlayerInteraction/Camera/CameraState.cs" id="7_cst"]
+[ext_resource type="Script" uid="uid://be1fy545u7jrk" path="res://Scripts/PlayerInteraction/ShipSoundEffects.cs" id="8_ssfx"]
+[ext_resource type="Script" uid="uid://c6kcok4dqd8wb" path="res://Scripts/Registries/AudioConfig.cs" id="9_acfg"]
+[ext_resource type="Resource" path="res://Audio/ship_boost.tres" id="9_audboost"]
+[ext_resource type="Resource" path="res://Audio/ship_capture.tres" id="10_audcap"]
+[ext_resource type="Resource" uid="uid://lirrh7ela1kk" path="res://Audio/ship_engine.tres" id="11_audeng"]
+[ext_resource type="Script" uid="uid://dqjwnn5ilwkpu" path="res://Scripts/Registries/SoundEffect.cs" id="12_sfx"]
+
+[sub_resource type="Resource" id="Resource_py262"]
+script = ExtResource("12_sfx")
+Clip = ExtResource("11_audeng")
+metadata/_custom_type_script = "uid://dqjwnn5ilwkpu"
 
 [sub_resource type="SphereMesh" id="SphereMesh_nd1sr"]
+
+[sub_resource type="Resource" id="SfxBoost"]
+script = ExtResource("12_sfx")
+Clip = ExtResource("9_audboost")
+
+[sub_resource type="Resource" id="SfxCapture"]
+script = ExtResource("12_sfx")
+Clip = ExtResource("10_audcap")
+
+[sub_resource type="Resource" id="Resource_m4xh8"]
+script = ExtResource("12_sfx")
+metadata/_custom_type_script = "uid://dqjwnn5ilwkpu"
+
+[sub_resource type="AudioStreamPolyphonic" id="AudioStreamPolyphonic_bc0l8"]
 
 [node name="PlayerShip" type="Node3D" unique_id=1609752387 node_paths=PackedStringArray("Target")]
 top_level = true
 script = ExtResource("1_bc0l8")
+BackgroundRumble = SubResource("Resource_py262")
 ShipTurnSpeed = 0.02
 Target = NodePath("Camera3D/Pointer")
 
@@ -38,9 +64,23 @@ script = ExtResource("3_2llaf")
 MaxSpeed = 100.0
 Acceleration = 4.0
 DecelerationTime = 1.4
+BoostSfx = SubResource("SfxBoost")
+CaptureSfx = SubResource("SfxCapture")
+EngineSfx = SubResource("Resource_m4xh8")
 
 [node name="ShipMesh" type="MeshInstance3D" parent="." unique_id=167466139]
 transform = Transform3D(-1, 8.74228e-08, -3.82137e-15, 0, -4.37114e-08, -1, -8.74228e-08, -1, 4.37114e-08, 0, 0, 0)
 visible = false
 mesh = ExtResource("5_rool1")
 skeleton = NodePath("../..")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=1152274812]
+stream = SubResource("AudioStreamPolyphonic_bc0l8")
+max_polyphony = 32
+bus = &"game_sounds"
+script = ExtResource("8_ssfx")
+Sounds = Dictionary[StringName, ExtResource("9_acfg")]({
+&"ship_boost": ExtResource("9_audboost"),
+&"ship_capture": ExtResource("10_audcap"),
+&"ship_engine": ExtResource("11_audeng")
+})

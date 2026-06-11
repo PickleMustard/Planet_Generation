@@ -1,0 +1,99 @@
+[gd_scene format=3 uid="uid://d00se4bht3tu1"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BuildingEditor/PlacementRequirementsSection.cs" id="1_sec"]
+
+[node name="PlacementRequirementsSection" type="VBoxContainer" node_paths=PackedStringArray("_biomesButton", "_minElevSpin", "_maxElevSpin", "_maxSlopeSpin", "_cellCountSpin", "_requiresAdjacentCheck", "_configurableBehaviorButton", "_behaviorConfigGrid")]
+size_flags_horizontal = 3
+script = ExtResource("1_sec")
+_biomesButton = NodePath("Grid/BiomesButton")
+_minElevSpin = NodePath("Grid/MinElevSpin")
+_maxElevSpin = NodePath("Grid/MaxElevSpin")
+_maxSlopeSpin = NodePath("Grid/MaxSlopeSpin")
+_cellCountSpin = NodePath("Grid/CellCountSpin")
+_requiresAdjacentCheck = NodePath("Grid/RequiresAdjacentCheck")
+_configurableBehaviorButton = NodePath("Grid/ConfigurableBehaviorButton")
+_behaviorConfigGrid = NodePath("BehaviorConfigGrid")
+
+[node name="Grid" type="GridContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="BiomesLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Biomes"
+
+[node name="BiomesButton" type="Button" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MinElevLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Min Elevation"
+
+[node name="MinElevSpin" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+
+[node name="MaxElevLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Max Elevation"
+
+[node name="MaxElevSpin" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+
+[node name="MaxSlopeLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Max Slope"
+
+[node name="MaxSlopeSpin" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 90.0
+step = 0.5
+
+[node name="CellCountLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Cell Count"
+
+[node name="CellCountSpin" type="SpinBox" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 64.0
+
+[node name="RequiresAdjacentLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Requires Adjacent"
+
+[node name="RequiresAdjacentCheck" type="CheckBox" parent="Grid"]
+layout_mode = 2
+
+[node name="ConfigurableBehaviorLabel" type="Label" parent="Grid"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Configurable Behavior"
+
+[node name="ConfigurableBehaviorButton" type="OptionButton" parent="Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BehaviorConfigGrid" type="GridContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[connection signal="pressed" from="Grid/BiomesButton" to="." method="OnBiomesPressed"]
+[connection signal="toggled" from="Grid/RequiresAdjacentCheck" to="." method="OnRequiresAdjacentToggled"]
+[connection signal="item_selected" from="Grid/ConfigurableBehaviorButton" to="." method="OnConfigurableBehaviorSelected"]

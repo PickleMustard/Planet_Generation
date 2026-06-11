@@ -8,13 +8,12 @@ namespace DeveloperTools.RecipeEditor;
 /// <summary>
 /// Row control for one recipe input slot: Kind toggle (Resource | Tag),
 /// key dropdown populated from ResourceDatabase / resource tags, amount, delete.
-/// Built programmatically — no scene file.
+/// Layout lives in <c>InputSlotRow.tscn</c>; instantiate via <see cref="Create"/>.
 /// </summary>
 public partial class InputSlotRow : HBoxContainer
 {
     [Signal]
-    public delegate void SlotChangedEventHandler(int slotIndex,
-        int kind, string key, float amount);
+    public delegate void SlotChangedEventHandler(int slotIndex, int kind, string key, float amount);
 
     [Signal]
     public delegate void SlotDeletedEventHandler(int slotIndex);
@@ -24,11 +23,27 @@ public partial class InputSlotRow : HBoxContainer
     private string _key = "";
     private float _amount;
 
+    [Export]
     private OptionButton _kindButton = null!;
+
+    [Export]
     private Button _resourceButton = null!;
+
+    [Export]
     private OptionButton _tagOption = null!;
+
+    [Export]
     private SpinBox _amountSpin = null!;
-    private Button _deleteButton = null!;
+
+    private static PackedScene? _scene;
+
+    public static InputSlotRow Create(int slotIndex, RecipeEditorModel.InputSlot slot)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/RecipeEditor/InputSlotRow.tscn");
+        var row = _scene.Instantiate<InputSlotRow>();
+        row.Configure(slotIndex, slot);
+        return row;
+    }
 
     public void Configure(int slotIndex, RecipeEditorModel.InputSlot slot)
     {
@@ -41,50 +56,14 @@ public partial class InputSlotRow : HBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        _kindButton = new OptionButton { TooltipText = "Resource = specific item; Tag = any item with this tag" };
         _kindButton.AddItem("Resource", (int)RecipeEditorModel.SlotKind.Resource);
         _kindButton.AddItem("Tag", (int)RecipeEditorModel.SlotKind.Tag);
         _kindButton.Select((int)_kind);
-        _kindButton.ItemSelected += OnKindSelected;
-        AddChild(_kindButton);
-
-        _resourceButton = new Button
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(220, 0),
-            ClipText = true
-        };
-        _resourceButton.Pressed += OnPickResource;
-        AddChild(_resourceButton);
-
-        _tagOption = new OptionButton
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(220, 0)
-        };
-        _tagOption.ItemSelected += OnTagSelected;
-        AddChild(_tagOption);
-
-        _amountSpin = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 1000000,
-            Step = 0.01f,
-            Value = _amount,
-            CustomMinimumSize = new Vector2(96, 0),
-            AllowGreater = true
-        };
-        _amountSpin.ValueChanged += OnAmountChanged;
-        AddChild(_amountSpin);
-
-        _deleteButton = new Button { Text = "✕", TooltipText = "Remove input" };
-        _deleteButton.Pressed += () => EmitSignal(SignalName.SlotDeleted, _slotIndex);
-        AddChild(_deleteButton);
-
+        _amountSpin.SetValueNoSignal(_amount);
         UpdateKeyControl();
     }
+
+    private void OnDeletePressed() => EmitSignal(SignalName.SlotDeleted, _slotIndex);
 
     private void OnKindSelected(long index)
     {
@@ -103,8 +82,13 @@ public partial class InputSlotRow : HBoxContainer
 
     private void OnPickResource()
     {
-        var popup = new ResourcePickerPopup();
-        popup.ResourcePicked += id => { _key = id; UpdateKeyControl(); EmitChange(); };
+        var popup = ResourcePickerPopup.Create();
+        popup.ResourcePicked += id =>
+        {
+            _key = id;
+            UpdateKeyControl();
+            EmitChange();
+        };
         GetTree().Root.AddChild(popup);
         popup.PopupCentered();
     }
@@ -133,7 +117,8 @@ public partial class InputSlotRow : HBoxContainer
             for (int i = 0; i < options.Count; i++)
             {
                 _tagOption.AddItem(options[i], i);
-                if (options[i] == _key) selectedIndex = i;
+                if (options[i] == _key)
+                    selectedIndex = i;
             }
             if (selectedIndex < 0 && options.Count > 0)
             {

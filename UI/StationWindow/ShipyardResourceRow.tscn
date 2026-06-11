@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://chnsgb3firwae"]
+
+[node name="ShipyardResourceRow" type="HBoxContainer"]
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "—"
+
+[node name="MiniBar" type="ProgressBar" parent="."]
+custom_minimum_size = Vector2(50, 12)
+layout_mode = 2
+show_percentage = false

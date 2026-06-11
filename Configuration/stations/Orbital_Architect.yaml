@@ -30,9 +30,9 @@ stations:
         overtime_slots: "2"
         overtime_cost_percent: "0.10"
     required_resources:
-      steel: 1
-      high_tensile_wire: 1
-      motor: 1
+      steel: 150
+      high_tensile_wire: 200
+      motor: 100
     icon:
       resource: "res://Materials/Icons/default_station.tres"
 

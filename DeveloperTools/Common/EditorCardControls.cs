@@ -54,53 +54,10 @@ public static class EditorCardControls
         for (int i = 0; i < resources.Count; i++)
         {
             int index = i;
-            var slot = resources[index];
-            var row = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-
-            var idButton = new Button
-            {
-                Text = string.IsNullOrEmpty(slot.ResourceId) ? "(select resource)" : slot.ResourceId,
-                TooltipText = slot.ResourceId,
-                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-                CustomMinimumSize = new Vector2(220, 0),
-                ClipText = true
-            };
-            idButton.Pressed += () =>
-            {
-                var popup = new ResourcePickerPopup();
-                popup.ResourcePicked += id =>
-                {
-                    slot.ResourceId = id;
-                    idButton.Text = id;
-                    idButton.TooltipText = id;
-                    onChanged();
-                };
-                idButton.GetTree().Root.AddChild(popup);
-                popup.PopupCentered();
-            };
-            row.AddChild(idButton);
-
-            var amount = new SpinBox
-            {
-                MinValue = 1,
-                MaxValue = 1000000,
-                Step = 1,
-                AllowGreater = true,
-                Value = slot.Amount
-            };
-            amount.ValueChanged += v => { slot.Amount = (int)v; onChanged(); };
-            row.AddChild(amount);
-
-            var delete = new Button { Text = "✕", TooltipText = "Remove resource" };
-            delete.Pressed += () =>
-            {
-                resources.RemoveAt(index);
-                onChanged();
-                rebuild();
-            };
-            row.AddChild(delete);
-
-            rows.AddChild(row);
+            rows.AddChild(EditorResourceRow.Create(
+                resources[index],
+                onChanged,
+                () => { resources.RemoveAt(index); onChanged(); rebuild(); }));
         }
     }
 

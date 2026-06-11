@@ -29,6 +29,15 @@ public partial class ResourceLink : Resource, IManufactureTickable
     public LinkProfile? Profile { get; set; }
 
     /// <summary>
+    /// Whether this link is built and carrying resources. Defaults to true so links created
+    /// directly (gameplay shortcuts, tests) behave as before. Links created through the
+    /// construction pipeline start dormant (<c>ConnectNodes(..., activate: false)</c>) and are
+    /// switched on by <see cref="Activate"/> once their <see cref="LinkConstructionJob"/> completes.
+    /// While inactive a link is not tick-registered and refuses to enqueue or advance packages.
+    /// </summary>
+    public bool IsActive { get; private set; } = true;
+
+    /// <summary>
     /// ResourceLinks tick after Buildings (priority 1).
     /// </summary>
     public int TickPriority => 1;
@@ -110,7 +119,7 @@ public partial class ResourceLink : Resource, IManufactureTickable
     /// <exception cref="InvalidOperationException">
     /// Thrown when the nodes cannot be connected per <see cref="CanConnect"/>.
     /// </exception>
-    public void ConnectNodes(ResourceNode source, ResourceNode target)
+    public void ConnectNodes(ResourceNode source, ResourceNode target, bool activate = true)
     {
         if (!CanConnect(source, target))
         {
@@ -132,6 +141,26 @@ public partial class ResourceLink : Resource, IManufactureTickable
 
         RecomputeCellDistance();
 
+        IsActive = activate;
+        if (activate)
+        {
+            ManufactureTickEngine.Instance?.Register(this);
+        }
+    }
+
+    /// <summary>
+    /// Switches a dormant link on: registers it with the <see cref="ManufactureTickEngine"/> so it
+    /// begins ticking and accepting packages. Called by <see cref="LinkConstructionJob"/> when the
+    /// architect finishes building the link. No-op if already active.
+    /// </summary>
+    public void Activate()
+    {
+        if (IsActive)
+        {
+            return;
+        }
+
+        IsActive = true;
         ManufactureTickEngine.Instance?.Register(this);
     }
 
@@ -180,6 +209,12 @@ public partial class ResourceLink : Resource, IManufactureTickable
     public int TryEnqueueAmount(string resourceId, int amount)
     {
         if (Profile == null)
+        {
+            return 0;
+        }
+
+        // Dormant links (under construction) carry nothing yet.
+        if (!IsActive)
         {
             return 0;
         }
@@ -236,7 +271,7 @@ public partial class ResourceLink : Resource, IManufactureTickable
     /// </summary>
     public void OnManufactureTick(float delta)
     {
-        if (Profile == null)
+        if (Profile == null || !IsActive)
         {
             return;
         }

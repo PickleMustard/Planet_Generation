@@ -1,4 +1,5 @@
 using Godot;
+using UtilityLibrary;
 
 namespace UI.StateMachine;
 
@@ -45,6 +46,7 @@ public abstract partial class InGamePanelState : LimboState, IInGamePanel
 
     public virtual void HandleBack()
     {
+        AudioBus.Instance?.Play(MainGameUI.Instance?.GuiBack);
         var resolved = InteractionStack.ResolveBack(Blackboard?.Top());
         // ResolveBack already cleared the stack on the close path; map its
         // "window_closed" sentinel onto this panel's configured CloseEvent.
@@ -53,12 +55,14 @@ public abstract partial class InGamePanelState : LimboState, IInGamePanel
 
     public virtual void HandleClose()
     {
+        AudioBus.Instance?.Play(MainGameUI.Instance?.GuiExit);
         InteractionStack.Clear(Blackboard?.Top());
         Dispatch(CloseEvent);
     }
 
     public void PushAndNavigate(string forwardEvent, string returnEvent, params string[] snapshotVarNames)
     {
+        AudioBus.Instance?.Play(MainGameUI.Instance?.GuiForward);
         var bb = Blackboard?.Top();
         if (bb == null)
         {

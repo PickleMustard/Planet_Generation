@@ -22,11 +22,25 @@ public partial class BehaviorRow : VBoxContainer
     private int _rowIndex;
     private BuildingEditorModel.BehaviorEntryEdit? _entry;
 
-    private OptionButton _behaviorIdButton = null!;
-    private Button _deleteButton = null!;
-    private GridContainer _configGrid = null!;
+    [Export] private OptionButton _behaviorIdButton = null!;
+    [Export] private GridContainer _configGrid = null!;
 
     private List<string> _behaviorChoices = new();
+
+    private static PackedScene? _scene;
+
+    public static BehaviorRow Create(
+        BuildingEditorModel model,
+        string categoryName,
+        int buildingIndex,
+        int rowIndex,
+        BuildingEditorModel.BehaviorEntryEdit entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/BehaviorRow.tscn");
+        var row = _scene.Instantiate<BehaviorRow>();
+        row.Initialize(model, categoryName, buildingIndex, rowIndex, entry);
+        return row;
+    }
 
     public void Initialize(
         BuildingEditorModel model,
@@ -47,35 +61,10 @@ public partial class BehaviorRow : VBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        BuildLayout();
         RefreshControls();
     }
 
-    private void BuildLayout()
-    {
-        var header = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        AddChild(header);
-
-        _behaviorIdButton = new OptionButton
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(260, 0)
-        };
-        _behaviorIdButton.ItemSelected += OnBehaviorIdSelected;
-        header.AddChild(_behaviorIdButton);
-
-        _deleteButton = new Button { Text = "✕", TooltipText = "Remove behavior" };
-        _deleteButton.Pressed += () => EmitSignal(SignalName.RowDeleted, _rowIndex);
-        header.AddChild(_deleteButton);
-
-        _configGrid = new GridContainer
-        {
-            Columns = 2,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        AddChild(_configGrid);
-    }
+    private void OnDeletePressed() => EmitSignal(SignalName.RowDeleted, _rowIndex);
 
     private void RefreshControls()
     {

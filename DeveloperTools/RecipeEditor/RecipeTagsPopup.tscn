@@ -1,0 +1,70 @@
+[gd_scene format=3 uid="uid://7ldkqmq8mabo"]
+
+[ext_resource type="Script" path="res://DeveloperTools/RecipeEditor/RecipeTagsPopup.cs" id="1_popup"]
+
+[node name="RecipeTagsPopup" type="PopupPanel" node_paths=PackedStringArray("_currentTagsFlow", "_allTagsVBox", "_newTagEdit")]
+size = Vector2i(420, 520)
+min_size = Vector2i(420, 520)
+script = ExtResource("1_popup")
+_currentTagsFlow = NodePath("Root/CurrentTagsFlow")
+_allTagsVBox = NodePath("Root/Scroll/AllTagsVBox")
+_newTagEdit = NodePath("Root/AddRow/NewTagEdit")
+
+[node name="Root" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CurrentHeader" type="Label" parent="Root"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+theme_override_font_sizes/font_size = 12
+text = "Current tags"
+
+[node name="CurrentTagsFlow" type="HFlowContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Separator" type="HSeparator" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AllHeader" type="Label" parent="Root"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+theme_override_font_sizes/font_size = 12
+text = "All tags"
+
+[node name="Scroll" type="ScrollContainer" parent="Root"]
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AllTagsVBox" type="VBoxContainer" parent="Root/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AddRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NewTagEdit" type="LineEdit" parent="Root/AddRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "new_tag"
+
+[node name="AddButton" type="Button" parent="Root/AddRow"]
+layout_mode = 2
+text = "Add"
+
+[node name="CloseButton" type="Button" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Close"
+
+[connection signal="text_submitted" from="Root/AddRow/NewTagEdit" to="." method="OnNewTagSubmitted"]
+[connection signal="pressed" from="Root/AddRow/AddButton" to="." method="OnAddPressed"]
+[connection signal="pressed" from="Root/CloseButton" to="." method="OnClosePressed"]

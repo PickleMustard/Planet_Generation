@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://d346pkb4qlvl5"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/TransferTopBar.cs" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="topbar_bg"]
+content_margin_left = 18.0
+content_margin_top = 12.0
+content_margin_right = 18.0
+content_margin_bottom = 12.0
+bg_color = Color(0.957, 0.941, 0.902, 0)
+border_width_bottom = 2
+border_color = Color(0.165, 0.145, 0.125, 1)
+
+[node name="TransferTopBar" type="PanelContainer" node_paths=PackedStringArray("_trailBox", "_foremanLabel")]
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("topbar_bg")
+script = ExtResource("2_script")
+_trailBox = NodePath("Root/LeftCluster/TrailBox")
+_foremanLabel = NodePath("Root/ForemanLabel")
+
+[node name="Root" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="LeftCluster" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="HudButton" type="Button" parent="Root/LeftCluster"]
+layout_mode = 2
+tooltip_text = "Return to HUD"
+text = "✕ HUD"
+
+[node name="BackButton" type="Button" parent="Root/LeftCluster"]
+layout_mode = 2
+tooltip_text = "Back"
+text = "← Back"
+
+[node name="TrailBox" type="HBoxContainer" parent="Root/LeftCluster"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ForemanLabel" type="Label" parent="Root"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+text = "FRM · TRX-04 · LEDGER 1905"
+
+[connection signal="pressed" from="Root/LeftCluster/HudButton" to="." method="OnHudPressed"]
+[connection signal="pressed" from="Root/LeftCluster/BackButton" to="." method="OnBackPressed"]

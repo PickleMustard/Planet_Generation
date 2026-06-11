@@ -1,0 +1,108 @@
+[gd_scene format=3 uid="uid://dt2odu8tn57xs"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/TransferPlanning/SlipsListView.cs" id="2_script"]
+
+[node name="SlipsListView" type="Control" node_paths=PackedStringArray("_summaryLabel", "_sidebarList", "_cardGrid")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+_summaryLabel = NodePath("Split/Sidebar/Col/Summary")
+_sidebarList = NodePath("Split/Sidebar/Col/ListScroll/SidebarList")
+_cardGrid = NodePath("Split/CardArea/Scroll/CardGrid")
+
+[node name="Split" type="HSplitContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+split_offset = 320
+collapsed = true
+
+[node name="Sidebar" type="MarginContainer" parent="Split"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="Col" type="VBoxContainer" parent="Split/Sidebar"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="Kicker" type="Label" parent="Split/Sidebar/Col"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "FOREMAN'S DESK"
+
+[node name="Title" type="Label" parent="Split/Sidebar/Col"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 22
+text = "Outbound Slips"
+
+[node name="Summary" type="Label" parent="Split/Sidebar/Col"]
+layout_mode = 2
+theme_type_variation = &"LabelSub"
+text = "0 on file"
+
+[node name="ListScroll" type="ScrollContainer" parent="Split/Sidebar/Col"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SidebarList" type="VBoxContainer" parent="Split/Sidebar/Col/ListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="Divider" type="HSeparator" parent="Split/Sidebar/Col"]
+layout_mode = 2
+
+[node name="QuickKicker" type="Label" parent="Split/Sidebar/Col"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "QUICK ACTIONS"
+
+[node name="AddButton" type="Button" parent="Split/Sidebar/Col"]
+layout_mode = 2
+theme_type_variation = &"ButtonPrimary"
+text = "＋ Add Route"
+
+[node name="PriButton" type="Button" parent="Split/Sidebar/Col"]
+layout_mode = 2
+text = "≡ Edit Priority"
+
+[node name="CardArea" type="MarginContainer" parent="Split"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="Scroll" type="ScrollContainer" parent="Split/CardArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CardGrid" type="GridContainer" parent="Split/CardArea/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
+
+[connection signal="pressed" from="Split/Sidebar/Col/AddButton" to="." method="OnAddPressed"]
+[connection signal="pressed" from="Split/Sidebar/Col/PriButton" to="." method="OnEditPriorityPressed"]

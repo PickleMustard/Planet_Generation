@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://7xb2ggob456k"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BuildingEditor/BiomesPickerPopup.cs" id="1_popup"]
+
+[node name="BiomesPickerPopup" type="PopupPanel" node_paths=PackedStringArray("_wildcardCheck", "_currentFlow", "_categoryListVBox", "_biomeFlow")]
+size = Vector2i(500, 600)
+script = ExtResource("1_popup")
+_wildcardCheck = NodePath("Root/WildcardCheck")
+_currentFlow = NodePath("Root/CurrentFlow")
+_categoryListVBox = NodePath("Root/Scroll/ScrollBody/CategoryListVBox")
+_biomeFlow = NodePath("Root/Scroll/ScrollBody/BiomeFlow")
+
+[node name="Root" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(480, 580)
+
+[node name="WildcardCheck" type="CheckBox" parent="Root"]
+layout_mode = 2
+text = "Allow any biome (*)"
+
+[node name="CurrentLabel" type="Label" parent="Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.85, 1, 1)
+text = "Current selection:"
+
+[node name="CurrentFlow" type="HFlowContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Separator" type="HSeparator" parent="Root"]
+layout_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Root"]
+custom_minimum_size = Vector2(480, 380)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ScrollBody" type="VBoxContainer" parent="Root/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CatHeader" type="Label" parent="Root/Scroll/ScrollBody"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.6, 1)
+text = "Biome Categories"
+
+[node name="CategoryListVBox" type="VBoxContainer" parent="Root/Scroll/ScrollBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BodySeparator" type="HSeparator" parent="Root/Scroll/ScrollBody"]
+layout_mode = 2
+
+[node name="BiomeHeader" type="Label" parent="Root/Scroll/ScrollBody"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 1, 0.8, 1)
+text = "Individual Biomes"
+
+[node name="BiomeFlow" type="HFlowContainer" parent="Root/Scroll/ScrollBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CloseButton" type="Button" parent="Root"]
+layout_mode = 2
+text = "Close"
+
+[connection signal="toggled" from="Root/WildcardCheck" to="." method="OnWildcardToggled"]
+[connection signal="pressed" from="Root/CloseButton" to="." method="OnClosePressed"]

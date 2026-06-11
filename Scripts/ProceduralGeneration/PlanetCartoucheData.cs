@@ -57,13 +57,16 @@ public static class PlanetCartoucheData
         rows.Add(new CartoucheStat("RADIUS", $"{body.Radius:F0} km"));
         rows.Add(new CartoucheStat("GRAVITY", ComputeGravity(body)));
         rows.Add(new CartoucheStat("DAY", Placeholder));
-        rows.Add(new CartoucheStat("ATMOS", Placeholder));
+        rows.Add(new CartoucheStat("ATMOS", ComputeAtmosphere(body)));
         rows.Add(new CartoucheStat("SURFACE", ComputeSurface(body)));
         rows.Add(new CartoucheStat("CLIMATE", ComputeClimate(body)));
         rows.Add(new CartoucheStat("SETTLED", Placeholder));
 
         return rows;
     }
+
+    private static string ComputeAtmosphere(IOrbitalBody body)
+        => body.Atmosphere <= 0f ? "None" : $"{body.Atmosphere:0.##} atm";
 
     private static string ComputeGravity(IOrbitalBody body)
     {

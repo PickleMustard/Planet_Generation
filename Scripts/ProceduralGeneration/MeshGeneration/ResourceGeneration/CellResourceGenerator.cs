@@ -184,6 +184,44 @@ public static class CellResourceGenerator
         GameLogger.Info(
             $"CellResourceGenerator: {cellsWithResources}/{totalCells} cells have resources"
         );
+
+        LogAbundanceCategoryHistogram(continents);
+    }
+
+    /// <summary>
+    /// Logs how many generated deposits fall into each richness category, for tuning the bands in
+    /// <c>abundance_categories.yaml</c>. The stored abundance % is the source of truth; the
+    /// category is a pure mapping via <see cref="AbundanceCategoryTable"/>.
+    /// </summary>
+    private static void LogAbundanceCategoryHistogram(Dictionary<int, Continent> continents)
+    {
+        var counts = new Dictionary<AbundanceCategory, int>();
+        foreach (var kvp in continents)
+        {
+            if (kvp.Value.cells == null)
+                continue;
+            foreach (var cell in kvp.Value.cells)
+            {
+                if (cell.Resources == null)
+                    continue;
+                foreach (var res in cell.Resources)
+                {
+                    var cat = AbundanceCategoryTable.Categorize(res.Value);
+                    counts[cat] = counts.GetValueOrDefault(cat) + 1;
+                }
+            }
+        }
+
+        GameLogger.Info(
+            "CellResourceGenerator: abundance categories — "
+            + $"Rare {counts.GetValueOrDefault(AbundanceCategory.Rare)}, "
+            + $"Scarce {counts.GetValueOrDefault(AbundanceCategory.Scarce)}, "
+            + $"Uncommon {counts.GetValueOrDefault(AbundanceCategory.Uncommon)}, "
+            + $"Common {counts.GetValueOrDefault(AbundanceCategory.Common)}, "
+            + $"Frequent {counts.GetValueOrDefault(AbundanceCategory.Frequent)}, "
+            + $"Abundant {counts.GetValueOrDefault(AbundanceCategory.Abundant)}, "
+            + $"Plentiful {counts.GetValueOrDefault(AbundanceCategory.Plentiful)}"
+        );
     }
 
     /// <summary>

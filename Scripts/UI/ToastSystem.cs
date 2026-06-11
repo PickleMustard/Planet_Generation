@@ -59,6 +59,7 @@ public partial class ToastSystem : Control
 
     [Export]
     public VBoxContainer _toastContainer = null!;
+    private PackedScene? _toastItemScene;
     private readonly Queue<QueuedToast> _messageQueue = new();
     private readonly List<Control> _visibleToasts = new();
     private readonly Dictionary<ToastPriority, Color> _priorityColors = new();
@@ -93,6 +94,7 @@ public partial class ToastSystem : Control
 
         // Initialize priority colors
         InitializePriorityColors();
+        _toastItemScene = GD.Load<PackedScene>("res://UI/ToastItem.tscn");
     }
 
     private void InitializePriorityColors()
@@ -191,62 +193,21 @@ public partial class ToastSystem : Control
 
     private void CreateAndShowToast(QueuedToast toast)
     {
-        GD.Print("CreateAndShowToast");
-        // Create panel container
-        var panel = new PanelContainer();
+        if (_toastItemScene == null) return;
+        var panel = _toastItemScene.Instantiate<PanelContainer>();
         panel.Name = $"Toast_{Guid.NewGuid():N}";
 
-        // Create style based on priority
-        var style = new StyleBoxFlat
+        // Tint the border per priority on a duplicated stylebox (runtime data).
+        if (panel.GetThemeStylebox("panel") is StyleBoxFlat baseStyle)
         {
-            BgColor = new Color(0.1f, 0.1f, 0.12f, 0.9f),
-            BorderColor = _priorityColors[toast.Priority],
-            BorderWidthLeft = 2,
-            BorderWidthRight = 2,
-            BorderWidthTop = 2,
-            BorderWidthBottom = 2,
-            CornerRadiusTopLeft = 6,
-            CornerRadiusTopRight = 6,
-            CornerRadiusBottomLeft = 6,
-            CornerRadiusBottomRight = 6,
-            ContentMarginLeft = 12,
-            ContentMarginRight = 12,
-            ContentMarginTop = 8,
-            ContentMarginBottom = 8,
-        };
-
-        panel.AddThemeStyleboxOverride("panel", style);
-
-        // Create label (RichTextLabel for BBCode support)
-        if (toast.UseRichText)
-        {
-            var richLabel = new RichTextLabel
-            {
-                Name = "RichTextLabel",
-                FitContent = true,
-                ScrollActive = false,
-                BbcodeEnabled = true,
-                Text = toast.Message,
-                CustomMinimumSize = new Vector2(280, 0),
-            };
-
-            // Configure BBCode - use default theme fonts
-
-            panel.AddChild(richLabel);
+            var style = (StyleBoxFlat)baseStyle.Duplicate();
+            style.BorderColor = _priorityColors[toast.Priority];
+            panel.AddThemeStyleboxOverride("panel", style);
         }
-        else
-        {
-            var label = new Label
-            {
-                Name = "Label",
-                Text = toast.Message,
-                AutowrapMode = TextServer.AutowrapMode.WordSmart,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                CustomMinimumSize = new Vector2(280, 0),
-            };
 
-            panel.AddChild(label);
-        }
+        var richLabel = panel.GetNode<RichTextLabel>("RichTextLabel");
+        richLabel.BbcodeEnabled = toast.UseRichText;
+        richLabel.Text = toast.Message;
 
         // Add to container and visible list
         _toastContainer.AddChild(panel);

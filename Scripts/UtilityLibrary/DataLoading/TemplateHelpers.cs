@@ -223,6 +223,7 @@ public static class TemplateHelpers
                 "amplitude_range"
             );
 
+        CopySubtypeSlots(raw, result);
         return result;
     }
 
@@ -267,6 +268,7 @@ public static class TemplateHelpers
         }
         result["satellite_names"] = satelliteNames;
 
+        CopySubtypeSlots(raw, result);
         return result;
     }
 
@@ -332,6 +334,7 @@ public static class TemplateHelpers
         // Satellites are no longer nested under planetary bodies — they live in a flattened
         // top-level `satellites:` section and declare their parent by name (see LoadSatelliteEntry).
 
+        CopySubtypeSlots(raw, result);
         return result;
     }
 
@@ -391,6 +394,7 @@ public static class TemplateHelpers
         if (raw.TryGetValue("noise_settings", out var noiseVariant))
             result["noise_settings"] = noiseVariant.AsGodotDictionary();
 
+        CopySubtypeSlots(raw, result);
         return result;
     }
 
@@ -1300,6 +1304,27 @@ public static class TemplateHelpers
     }
 
     /// <summary>
+    /// Copies the per-body subtype slots — <c>subtype</c>, <c>subtype_weights</c>, and (for belts)
+    /// <c>member_subtype_weights</c> — from a parsed YAML body dict into the loaded result dict.
+    /// Without this the load helpers would silently drop authored subtype distributions on a
+    /// load → edit → save cycle.
+    /// </summary>
+    private static void CopySubtypeSlots(Dictionary raw, Dictionary result)
+    {
+        if (raw.TryGetValue("subtype", out var subVar))
+        {
+            string id = subVar.AsString();
+            if (!string.IsNullOrEmpty(id))
+                result["subtype"] = id;
+        }
+        foreach (var key in new[] { "subtype_weights", "member_subtype_weights" })
+        {
+            if (raw.TryGetValue(key, out var wVar) && wVar.Obj is Dictionary wd)
+                result[key] = wd;
+        }
+    }
+
+    /// <summary>
     /// Phase 6 slim-shape emitter. Writes <c>subtype</c> (explicit id) or
     /// <c>subtype_weights</c> (id → weight map) into the output dict when the source
     /// body carries either key. No-op when both are absent.
@@ -1325,6 +1350,21 @@ public static class TemplateHelpers
             }
             if (outWeights.Count > 0)
                 outDict["subtype_weights"] = outWeights;
+        }
+
+        // Belts also carry per-member asteroid subtype weights.
+        if (body.ContainsKey("member_subtype_weights"))
+        {
+            var weights = (Dictionary)body["member_subtype_weights"];
+            var outWeights = new SysDict();
+            foreach (var key in weights.Keys)
+            {
+                string id = key.AsString();
+                if (string.IsNullOrEmpty(id)) continue;
+                outWeights[id] = (float)weights[key];
+            }
+            if (outWeights.Count > 0)
+                outDict["member_subtype_weights"] = outWeights;
         }
     }
 

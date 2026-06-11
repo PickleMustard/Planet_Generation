@@ -19,9 +19,9 @@ buildings:
         default_recipe: "surface_mine"
         alternative_recipes: []
         production_speed: 1
-        primary_slots: "2"
-        secondary_slots: "1"
-        secondary_rate_multiplier: "0.5"
+        primary_slots: 1
+        secondary_slots: 0
+        secondary_rate_multiplier: 0.5
       - behavior_id: PowerConsumerBehavior
         base_draw: 1
     visual:
@@ -48,9 +48,11 @@ buildings:
         default_recipe: "clear_cutting"
         alternative_recipes: []
         production_speed: 1
+        primary_slots: 1
       - behavior_id: PowerConsumerBehavior
         base_draw: 1
     visual:
+      model_resource: "res://Mesh/external/factory_g.glb.tres"
       shape_id: small_manufacturing
     icon:
       resource: "res://Materials/Icons/default_building.tres"

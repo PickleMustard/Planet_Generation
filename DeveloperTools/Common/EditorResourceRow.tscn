@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://dls5blbwev0cg"]
+
+[ext_resource type="Script" path="res://DeveloperTools/Common/EditorResourceRow.cs" id="1_row"]
+
+[node name="EditorResourceRow" type="HBoxContainer" node_paths=PackedStringArray("_idButton", "_amount", "_deleteButton")]
+size_flags_horizontal = 3
+script = ExtResource("1_row")
+_idButton = NodePath("IdButton")
+_amount = NodePath("AmountSpin")
+_deleteButton = NodePath("DeleteButton")
+
+[node name="IdButton" type="Button" parent="."]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+text = "(select resource)"
+
+[node name="AmountSpin" type="SpinBox" parent="."]
+layout_mode = 2
+min_value = 1.0
+max_value = 1e+06
+allow_greater = true
+
+[node name="DeleteButton" type="Button" parent="."]
+layout_mode = 2
+tooltip_text = "Remove resource"
+text = "✕"
+
+[connection signal="pressed" from="IdButton" to="." method="OnIdPressed"]
+[connection signal="value_changed" from="AmountSpin" to="." method="OnAmountChanged"]
+[connection signal="pressed" from="DeleteButton" to="." method="OnDeletePressed"]

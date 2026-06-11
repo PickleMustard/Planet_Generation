@@ -15,18 +15,20 @@ namespace Constructables;
 public partial class BuildingConstructionManager : Node
 {
     private readonly List<OrbitalConstructorBehavior> _architects = new();
-    private readonly List<Building> _pendingBuildings = new();
-    private readonly Dictionary<Building, OrbitalConstructorBehavior> _ownership = new();
+    private readonly List<IArchitectConstructable> _pendingBuildings = new();
+    private readonly Dictionary<IArchitectConstructable, OrbitalConstructorBehavior> _ownership = new();
 
     public int ArchitectCount => _architects.Count;
     public int PendingBuildingCount => _pendingBuildings.Count;
 
     public IReadOnlyList<OrbitalConstructorBehavior> GetArchitects() => _architects;
-    public IReadOnlyList<Building> GetPendingBuildings() => _pendingBuildings;
+    public IReadOnlyList<IArchitectConstructable> GetPendingBuildings() => _pendingBuildings;
 
     /// <summary>
     /// Aggregated active-building view across every registered architect, kept for legacy
-    /// UI/tests that previously read from a centralized list.
+    /// UI/tests that previously read from a centralized list. Only true <see cref="Building"/>
+    /// jobs are surfaced — link-construction jobs are filtered out (they aren't cell occupants
+    /// and must not feed the economy/cell scans that consume this list).
     /// </summary>
     public virtual IReadOnlyList<Building> GetActiveBuildings()
     {
@@ -34,9 +36,9 @@ public partial class BuildingConstructionManager : Node
         foreach (var arch in _architects)
         {
             foreach (var slot in arch.RegularSlots)
-                if (slot.Building != null) result.Add(slot.Building);
+                if (slot.Building is Building b) result.Add(b);
             foreach (var slot in arch.OvertimeSlots)
-                if (slot.Building != null) result.Add(slot.Building);
+                if (slot.Building is Building b) result.Add(b);
         }
         return result;
     }
@@ -80,7 +82,7 @@ public partial class BuildingConstructionManager : Node
         if (architect == null) return;
         if (!_architects.Remove(architect)) return;
 
-        var displaced = new List<Building>();
+        var displaced = new List<IArchitectConstructable>();
         foreach (var slot in architect.RegularSlots)
             if (slot.Building != null) displaced.Add(slot.Building);
         foreach (var slot in architect.OvertimeSlots)
@@ -105,10 +107,16 @@ public partial class BuildingConstructionManager : Node
     }
 
     /// <summary>
-    /// Registers a building for construction. Routes to the least-loaded architect if any
-    /// exist; otherwise queues body-wide pending.
+    /// Registers a building for construction. Convenience overload for the common Building path;
+    /// delegates to <see cref="RegisterJob"/>.
     /// </summary>
-    public void RegisterBuilding(Building building)
+    public void RegisterBuilding(Building building) => RegisterJob(building);
+
+    /// <summary>
+    /// Registers any construction job (building or link) for construction. Routes to the
+    /// least-loaded architect if any exist; otherwise queues body-wide pending.
+    /// </summary>
+    public void RegisterJob(IArchitectConstructable building)
     {
         if (building == null) return;
         if (_ownership.ContainsKey(building) || _pendingBuildings.Contains(building))
@@ -118,9 +126,9 @@ public partial class BuildingConstructionManager : Node
     }
 
     /// <summary>
-    /// Removes a building from tracking (on completion or cancellation).
+    /// Removes a job from tracking (on completion or cancellation).
     /// </summary>
-    public void UnregisterBuilding(Building building)
+    public void UnregisterBuilding(IArchitectConstructable building)
     {
         if (building == null) return;
         if (_ownership.TryGetValue(building, out var owner))
@@ -132,8 +140,8 @@ public partial class BuildingConstructionManager : Node
         _pendingBuildings.Remove(building);
     }
 
-    /// <summary>Returns the architect that owns the building, or null if pending/unknown.</summary>
-    public OrbitalConstructorBehavior? GetOwner(Building building)
+    /// <summary>Returns the architect that owns the job, or null if pending/unknown.</summary>
+    public OrbitalConstructorBehavior? GetOwner(IArchitectConstructable building)
     {
         if (building == null) return null;
         _ownership.TryGetValue(building, out var owner);
@@ -157,7 +165,7 @@ public partial class BuildingConstructionManager : Node
         return best;
     }
 
-    private void RouteOrPend(Building building)
+    private void RouteOrPend(IArchitectConstructable building)
     {
         var target = FindLeastLoadedArchitect();
         if (target == null)
@@ -182,7 +190,7 @@ public partial class BuildingConstructionManager : Node
     {
         if (_architects.Count == 0) return;
 
-        var snapshot = new List<Building>(_pendingBuildings);
+        var snapshot = new List<IArchitectConstructable>(_pendingBuildings);
         _pendingBuildings.Clear();
         foreach (var b in snapshot)
             RouteOrPend(b);

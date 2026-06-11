@@ -1,0 +1,98 @@
+[gd_scene format=3 uid="uid://tgn65xsd85mo"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/TransferPlanning/PriorityEditView.cs" id="2_script"]
+[ext_resource type="PackedScene" path="res://UI/Wireframe/TransferActionBar.tscn" id="3_actionbar"]
+
+[sub_resource type="StyleBoxFlat" id="banner_bg"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.769, 0.329, 0.102, 0.1)
+border_width_bottom = 2
+border_color = Color(0.769, 0.329, 0.102, 1)
+
+[node name="PriorityEditView" type="Control" node_paths=PackedStringArray("_titleLabel", "_cardGrid", "_actionBar")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+_titleLabel = NodePath("Col/HeadMargin/Head/Title")
+_cardGrid = NodePath("Col/ScrollMargin/Scroll/CardGrid")
+_actionBar = NodePath("Col/ActionBar")
+
+[node name="Col" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Banner" type="PanelContainer" parent="Col"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("banner_bg")
+
+[node name="BannerRow" type="HBoxContainer" parent="Col/Banner"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BannerTitle" type="Label" parent="Col/Banner/BannerRow"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_colors/font_color = Color(0.769, 0.329, 0.102, 1)
+theme_override_font_sizes/font_size = 20
+text = "PRIORITY EDIT MODE"
+
+[node name="BannerHint" type="Label" parent="Col/Banner/BannerRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelSub"
+theme_override_font_sizes/font_size = 14
+text = "drag slips to reorder — slot 1 dispatches first"
+
+[node name="HeadMargin" type="MarginContainer" parent="Col"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_right = 18
+
+[node name="Head" type="HBoxContainer" parent="Col/HeadMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Col/HeadMargin/Head"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 22
+text = "Route Rank"
+
+[node name="ScrollMargin" type="MarginContainer" parent="Col"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 18
+
+[node name="Scroll" type="ScrollContainer" parent="Col/ScrollMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CardGrid" type="GridContainer" parent="Col/ScrollMargin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="ActionBar" parent="Col" instance=ExtResource("3_actionbar")]
+layout_mode = 2

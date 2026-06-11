@@ -3,6 +3,7 @@ using Constructables;
 using Godot;
 using ProceduralGeneration;
 using Structures.Logistics;
+using Structures.Resources;
 using UI.Components;
 using UI.PlanetBoard.Modes;
 using UtilityLibrary;
@@ -27,6 +28,9 @@ public partial class PlanetBoardWindow : Control
 
     [Export]
     private OptionButton? _modeSwitcher;
+
+    [Export]
+    private OptionButton? _linkProfilePicker;
 
     [Export]
     private Label? _titleLabel;
@@ -58,6 +62,8 @@ public partial class PlanetBoardWindow : Control
     private readonly TransferRoutePlanningMode _routeMode = new();
     private readonly OverviewMode _overviewMode = new();
 
+    private readonly System.Collections.Generic.List<string> _linkProfileIds = new();
+
     private IOrbitalBody? _body;
     private bool _boardEventsBound;
 
@@ -74,6 +80,10 @@ public partial class PlanetBoardWindow : Control
             _modeSwitcher.Selected = 0;
             _modeSwitcher.ItemSelected += OnModeChanged;
         }
+
+        PopulateLinkProfilePicker();
+        UpdateLinkProfilePickerVisibility(_linkMode);
+
         if (_closeButton != null)
             _closeButton.Pressed += Close;
 
@@ -156,6 +166,7 @@ public partial class PlanetBoardWindow : Control
                 OverviewMode => 2,
                 _ => 0,
             };
+        UpdateLinkProfilePickerVisibility(strategy);
     }
 
     private void OnModeChanged(long index)
@@ -167,6 +178,58 @@ public partial class PlanetBoardWindow : Control
             _ => _linkMode,
         };
         _viewBoard?.SetMode(strategy);
+        UpdateLinkProfilePickerVisibility(strategy);
+    }
+
+    // ── Link profile picker ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Fills the picker from the link profile database and seeds the link mode's active profile
+    /// with the first entry. Labels read "{id}  T{tier} · {state}".
+    /// </summary>
+    private void PopulateLinkProfilePicker()
+    {
+        if (_linkProfilePicker == null)
+            return;
+
+        _linkProfilePicker.Clear();
+        _linkProfileIds.Clear();
+
+        var db = LinkProfileDatabase.Instance;
+        if (db != null)
+        {
+            foreach (var kv in db.GetAllProfiles())
+            {
+                var p = kv.Value;
+                _linkProfilePicker.AddItem($"{p.IdName}  T{p.Tier} · {p.StateOfMatter}", _linkProfileIds.Count);
+                _linkProfileIds.Add(p.IdName);
+            }
+        }
+
+        if (_linkProfileIds.Count > 0)
+        {
+            _linkProfilePicker.Selected = 0;
+            _linkMode.ActiveProfileId = _linkProfileIds[0];
+        }
+        else
+        {
+            _linkMode.ActiveProfileId = null;
+        }
+
+        _linkProfilePicker.ItemSelected += OnLinkProfileSelected;
+    }
+
+    private void OnLinkProfileSelected(long index)
+    {
+        if (index < 0 || index >= _linkProfileIds.Count)
+            return;
+        _linkMode.ActiveProfileId = _linkProfileIds[(int)index];
+    }
+
+    private void UpdateLinkProfilePickerVisibility(IPlanetBoardMode strategy)
+    {
+        if (_linkProfilePicker != null)
+            _linkProfilePicker.Visible = strategy is ResourceLinkPlanningMode;
     }
 
     // ── Header summary ──────────────────────────────────────────────────

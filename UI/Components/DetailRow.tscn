@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://24shbg2ppmwu"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+
+[node name="DetailRow" type="HBoxContainer"]
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 8
+size_flags_horizontal = 3
+
+[node name="KeyLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 0
+theme = ExtResource("1_theme")
+theme_type_variation = &"LabelKey"
+text = "Key:"
+
+[node name="Spacer" type="Control" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="ValueLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 8
+theme = ExtResource("1_theme")
+theme_type_variation = &"LabelMono"
+text = "Value"
+horizontal_alignment = 2

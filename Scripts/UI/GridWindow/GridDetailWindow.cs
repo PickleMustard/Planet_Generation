@@ -29,21 +29,23 @@ public partial class GridDetailWindow : Control, IOverlayPanel
     private static readonly Color DotActive = new(0.29f, 0.65f, 0.32f);
     private static readonly Color HighlightYellow = new(1f, 0.85f, 0.4f);
 
-    private PanelContainer? _frame;
-    private Label? _titleLabel;
-    private Label? _statusPill;
-    private Label? _genLabel;
-    private Label? _drawLabel;
-    private Label? _netLabel;
-    private Label? _batteryLabel;
-    private Label? _cellsLabel;
-    private LineChart? _chart;
-    private Label? _producersHeader;
-    private Label? _consumersHeader;
-    private Label? _batteriesHeader;
-    private VBoxContainer? _producersList;
-    private VBoxContainer? _consumersList;
-    private VBoxContainer? _batteriesList;
+    [Export] private Label? _titleLabel;
+    [Export] private Label? _statusPill;
+    [Export] private Label? _genLabel;
+    [Export] private Label? _drawLabel;
+    [Export] private Label? _netLabel;
+    [Export] private Label? _batteryLabel;
+    [Export] private Label? _cellsLabel;
+    [Export] private LineChart? _chart;
+    [Export] private Label? _producersHeader;
+    [Export] private Label? _consumersHeader;
+    [Export] private Label? _batteriesHeader;
+    [Export] private VBoxContainer? _producersList;
+    [Export] private VBoxContainer? _consumersList;
+    [Export] private VBoxContainer? _batteriesList;
+
+    private static readonly PackedScene MemberRowScene =
+        GD.Load<PackedScene>("res://UI/BuildingInfo/GridStatusRow.tscn");
 
     private PowerGrid? _grid;
     private int _refreshCounter;
@@ -54,8 +56,6 @@ public partial class GridDetailWindow : Control, IOverlayPanel
     {
         Instance = this;
         Visible = false;
-        MouseFilter = MouseFilterEnum.Stop;
-        BuildLayout();
     }
 
     public override void _ExitTree()
@@ -111,126 +111,6 @@ public partial class GridDetailWindow : Control, IOverlayPanel
             RequestClose();
             GetViewport().SetInputAsHandled();
         }
-    }
-
-    private void BuildLayout()
-    {
-        // Full-screen overlay; centered frame.
-        AnchorRight = 1f; AnchorBottom = 1f;
-        GrowHorizontal = GrowDirection.Both;
-        GrowVertical = GrowDirection.Both;
-
-        var dim = new ColorRect
-        {
-            Color = new Color(0f, 0f, 0f, 0.45f),
-            AnchorRight = 1f,
-            AnchorBottom = 1f,
-            MouseFilter = MouseFilterEnum.Stop,
-        };
-        AddChild(dim);
-
-        _frame = new PanelContainer
-        {
-            CustomMinimumSize = new Vector2(720, 540),
-            AnchorLeft = 0.5f, AnchorTop = 0.5f, AnchorRight = 0.5f, AnchorBottom = 0.5f,
-            GrowHorizontal = GrowDirection.Both,
-            GrowVertical = GrowDirection.Both,
-            OffsetLeft = -360, OffsetTop = -270, OffsetRight = 360, OffsetBottom = 270,
-        };
-        AddChild(_frame);
-
-        var vbox = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        vbox.AddThemeConstantOverride("separation", 10);
-        _frame.AddChild(vbox);
-
-        // ── Header
-        var headerRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        headerRow.AddThemeConstantOverride("separation", 8);
-        vbox.AddChild(headerRow);
-
-        _titleLabel = new Label { Text = "GRID", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _titleLabel.AddThemeFontSizeOverride("font_size", 18);
-        headerRow.AddChild(_titleLabel);
-
-        _statusPill = new Label { Text = "—" };
-        _statusPill.AddThemeFontSizeOverride("font_size", 12);
-        headerRow.AddChild(_statusPill);
-
-        var closeBtn = new Button { Text = "X", CustomMinimumSize = new Vector2(28, 28) };
-        closeBtn.Pressed += RequestClose;
-        headerRow.AddChild(closeBtn);
-
-        vbox.AddChild(new HSeparator());
-
-        // ── Stat strip
-        var stats = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        stats.AddThemeConstantOverride("separation", 16);
-        vbox.AddChild(stats);
-        _genLabel = AddStatTile(stats, "Generation");
-        _drawLabel = AddStatTile(stats, "Draw");
-        _netLabel = AddStatTile(stats, "Net");
-        _batteryLabel = AddStatTile(stats, "Battery");
-        _cellsLabel = AddStatTile(stats, "Cells");
-
-        // ── Chart
-        _chart = new LineChart
-        {
-            CustomMinimumSize = new Vector2(680, 200),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        vbox.AddChild(_chart);
-
-        // ── Members
-        var membersRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        membersRow.AddThemeConstantOverride("separation", 12);
-        vbox.AddChild(membersRow);
-
-        (_producersHeader, _producersList) = AddMembersColumn(membersRow, "PRODUCERS");
-        (_consumersHeader, _consumersList) = AddMembersColumn(membersRow, "CONSUMERS");
-        (_batteriesHeader, _batteriesList) = AddMembersColumn(membersRow, "BATTERIES");
-    }
-
-    private static Label AddStatTile(Container parent, string caption)
-    {
-        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 2);
-        parent.AddChild(box);
-        var cap = new Label { Text = caption };
-        cap.AddThemeFontSizeOverride("font_size", 10);
-        cap.Modulate = new Color(0.7f, 0.7f, 0.75f);
-        box.AddChild(cap);
-        var val = new Label { Text = "—" };
-        val.AddThemeFontSizeOverride("font_size", 14);
-        box.AddChild(val);
-        return val;
-    }
-
-    private static (Label header, VBoxContainer list) AddMembersColumn(Container parent, string title)
-    {
-        var col = new VBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        col.AddThemeConstantOverride("separation", 4);
-        parent.AddChild(col);
-
-        var header = new Label { Text = title };
-        header.AddThemeFontSizeOverride("font_size", 11);
-        col.AddChild(header);
-
-        var scroll = new ScrollContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        col.AddChild(scroll);
-
-        var list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        list.AddThemeConstantOverride("separation", 2);
-        scroll.AddChild(list);
-
-        return (header, list);
     }
 
     private void Refresh()
@@ -289,23 +169,10 @@ public partial class GridDetailWindow : Control, IOverlayPanel
     private static void AddMemberRow(VBoxContainer? list, Building b, string value, bool active)
     {
         if (list == null) return;
-        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        row.AddThemeConstantOverride("separation", 6);
-
-        var dot = new ColorRect
-        {
-            CustomMinimumSize = new Vector2(8, 8),
-            Color = active ? DotActive : DotIdle,
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        row.AddChild(dot);
-
-        var name = new Label { Text = b.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        row.AddChild(name);
-
-        var val = new Label { Text = value };
-        row.AddChild(val);
-
+        var row = MemberRowScene.Instantiate<HBoxContainer>();
+        row.GetNode<ColorRect>("Dot").Color = active ? DotActive : DotIdle;
+        row.GetNode<Label>("NameLabel").Text = b.Name;
+        row.GetNode<Label>("ValueLabel").Text = value;
         list.AddChild(row);
     }
 

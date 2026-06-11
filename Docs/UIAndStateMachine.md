@@ -94,6 +94,51 @@ The UI system is built around a Hierarchical State Machine (HSM) using LimboHSM.
 - **Location**: `Scripts/UI/` and `Scripts/UI/Components/`
 - **Purpose**: Reusable UI components used across multiple panels.
 
+## GUI Authoring Convention (layout-in-`.tscn` / logic-in-`.cs`)
+
+UI panels separate **layout → `.tscn`**, **logic → `.cs`**, and **styling → shared theme**.
+Building Control trees in C# (`new VBoxContainer()` + `AddChild`) for static layout is an
+**anti-pattern** — it cannot be edited in the Godot editor. All new panels follow the recipe
+below; existing code-built panels are being migrated to it.
+
+### Reference patterns
+- **Window / static panel**: `UI/BuildingInfo/BuildingInfoWindow.tscn` +
+  `Scripts/UI/BuildingInfo/BuildingInfoWindow.cs`. The `.tscn` root declares
+  `node_paths=PackedStringArray("_field",...)` and assigns each `[Export]` field a
+  `NodePath(...)`; the script only wires signals/data in `_Ready()`.
+- **Per-item card factory**: `DeveloperTools/ShipEditor/ShipCard.cs` + `ShipCard.tscn`. A
+  `static Create(...)` loads the PackedScene, `Instantiate<T>()`, then `Initialize()`.
+- **Item rows**: `UI/SatelliteItem.tscn`, `UI/Components/DetailRow.tscn`,
+  `UI/Components/ResourceCostRow.tscn`, `UI/Components/LabeledFieldRow.tscn`.
+
+### Extraction recipe (per panel)
+0. **Classify**: (a) static window → whole tree to one `.tscn`; (b) per-item card built in a
+   loop → item `.tscn` + `Create()` factory; (c) hybrid skeleton + runtime-filled region →
+   skeleton to `.tscn`, export the container nodes, keep `BuildDynamicContent()`.
+1. **Author the `.tscn`** under `UI/<area>/` (in-game) or colocated in `DeveloperTools/<area>/`,
+   mirroring the exact node hierarchy + node names the build method currently creates. Set
+   `theme = wireframe_paper.tres` on top-level window roots; child cards inherit it.
+2. **Add exports to the root**: `node_paths=PackedStringArray(...)` + `_field = NodePath("Path/To/Node")`.
+3. **Convert the script**: each `new`/`AddChild` field becomes `[Export] private SomeControl? _x;`.
+   Delete the construction from `_Ready()`; keep signal wiring + `Bind()`/data binding. Add the
+   `Create()` factory for shape (b)/(c).
+4. **Move styling to the theme**: delete `AddThemeColorOverride`/`AddThemeStyleboxOverride`/
+   `AddThemeFontSizeOverride` for static styling; set `theme_type_variation` in the `.tscn`
+   instead. Layout constants (`separation`, `margin`) may stay as `.tscn`
+   `theme_override_constants/*` (they are layout, not palette).
+5. **Extract list rows**: replace per-item loops with `Instantiate` of a shared/item `.tscn` + `Bind(data)`.
+6. **Fix call sites**: replace every `new <Card>()` with `<Card>.Create(...)`. Anti-pattern
+   reminder: a `new`'d layout-owning Control has null `[Export]` fields and renders blank/crashes.
+7. **Verify**: `dotnet build`, launch the panel, confirm layout + styling unchanged.
+
+### Theme strategy
+Palette, fonts, and styleboxes live in `UI/Theme/wireframe_paper/wireframe_paper.tres`; scripts
+set only `theme_type_variation`. Semantic Label variations: `LabelHand`, `LabelMono`, `LabelSub`,
+`LabelFaint`, `LabelKey`, `LabelMonoTiny`, `LabelOk`/`LabelWarn`/`LabelAlert`, and the
+high-contrast `LabelHighContrast*` set for the debug editors. Pills: `Pill`, `PillOrange`.
+`Scripts/UI/Wireframe/WireColors.cs` is reserved for runtime-computed visuals (`_Draw()`,
+`Modulate`, `ColorRect.Color`) — never for theme overrides.
+
 ## Related Documentation
 - [Player Interaction](PlayerInteraction.md)
 - [Debug System](DebugSystem.md)

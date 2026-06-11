@@ -1,5 +1,6 @@
 dominant:
 - type: Star
+  name: dazzling
   template:
     mass: 500000
     size: 500
@@ -25,44 +26,52 @@ dominant:
     subtype_star_yellow_dwarf: 0.125
 planetary:
 - type: RockyPlanet
+  name: Didier Queloz
   template:
     mass: 1000
     size: 150
   orbital_parameters:
-    apogee: 3000
-    perigee: 3000
-    starting_angle: 0
-    vertical_offset: 0
-    orbital_center_index: -1
-    parent_body: barycenter
+    apogee: 4447.8936
+    perigee: 4447.8936
+    starting_angle: 166.81038
+    vertical_offset: 30
+    orbital_center_index: 0
+    parent_body: dazzling
   subtype_weights:
-    subtype_rocky_cool: 0.1111
-    subtype_rocky_desert: 0.1111
-    subtype_rocky_ice: 0.1111
-    subtype_rocky_ocean: 0.1111
-    subtype_rocky_rusted: 0.1111
-    subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
-    subtype_rocky_volcanic: 0.1111
+    subtype_rocky_cool: 0.3
+    subtype_rocky_temperate: 0.3
+    subtype_rocky_tropical: 0.3
 - type: RockyPlanet
+  name: Caroline Herschel
   template:
     mass: 1000
     size: 150
   orbital_parameters:
-    apogee: 5000
-    perigee: 5000
-    starting_angle: 0
+    apogee: 8097.235
+    perigee: 8097.235
+    starting_angle: 358.31924
     vertical_offset: 0
-    orbital_center_index: -1
-    parent_body: barycenter
+    orbital_center_index: 0
+    parent_body: dazzling
   subtype_weights:
-    subtype_rocky_cool: 0.1111
     subtype_rocky_desert: 0.1111
     subtype_rocky_ice: 0.1111
     subtype_rocky_ocean: 0.1111
     subtype_rocky_rusted: 0.1111
     subtype_rocky_scoured: 0.1111
-    subtype_rocky_temperate: 0.1111
-    subtype_rocky_tropical: 0.1111
     subtype_rocky_volcanic: 0.1111
+satellites:
+- type: Moon
+  parent: Caroline Herschel
+  name: Caroline Herschel_moon_1
+  template:
+    apogee: 1532.1537
+    perigee: 1021.43567
+    starting_angle: 339.3969
+    vertical_offset: 0
+    mass: 80
+    size: 40
+  subtype_weights:
+    subtype_satellite_iron_moon: 0.3
+    subtype_satellite_rocky_moon: 0.3
+    subtype_satellite_icy_moon: 0.3

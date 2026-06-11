@@ -104,8 +104,7 @@ public partial class StationCard : PanelContainer
 
     private void BuildVisualSection()
     {
-        var visualSection = new EditorVisualSection();
-        visualSection.Initialize(_entry.Visual, MarkDirty);
+        var visualSection = EditorVisualSection.Create(_entry.Visual, MarkDirty);
         _cardRoot.AddChild(visualSection);
     }
 

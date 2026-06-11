@@ -1,0 +1,45 @@
+# Abundance Categories — buckets the raw deposit abundance % (0..1) into seven richness tiers,
+# and maps each tier to a fraction-of-a-stack per extraction work cycle.
+#
+#   fraction = numerator / denominator     (common = 1/1; below grows denominator, above grows numerator)
+#   extracted per slot/cycle = fraction * recipe baseVal * (primary ? 1 : secondaryRate)
+#
+# Ranges partition [0,1] and need not be equal width — widths set how likely each tier is
+# (common is widest, so most deposits read as "common"). Edit min/max to retune; the loader
+# clamps the bottom band to 0 and the top band to 1 regardless of what is written here.
+categories:
+  - name: rare
+    min: 0.00
+    max: 0.10
+    numerator: 1
+    denominator: 4
+  - name: scarce
+    min: 0.10
+    max: 0.22
+    numerator: 1
+    denominator: 3
+  - name: uncommon
+    min: 0.22
+    max: 0.40
+    numerator: 1
+    denominator: 2
+  - name: common
+    min: 0.40
+    max: 0.68
+    numerator: 1
+    denominator: 1
+  - name: frequent
+    min: 0.68
+    max: 0.84
+    numerator: 2
+    denominator: 1
+  - name: abundant
+    min: 0.84
+    max: 0.94
+    numerator: 3
+    denominator: 1
+  - name: plentiful
+    min: 0.94
+    max: 1.00
+    numerator: 4
+    denominator: 1

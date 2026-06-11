@@ -74,9 +74,40 @@ public static class LinkConfigLoader
             BundleTime = ReadInt(dict, "bundle_time", 0),
             SlotCapacity = ReadInt(dict, "slot_capacity", 0),
             StateOfMatter = StateOfMatterExtensions.Parse(stateRaw),
+            ConstructionWork = ReadFloat(dict, "construction_work", 0f),
+            CostPerDistance = ReadCostPerDistance(dict, "cost_per_distance"),
         };
 
         return profile;
+    }
+
+    /// <summary>
+    /// Parses a <c>cost_per_distance</c> list of <c>{resource, amount}</c> maps into a
+    /// resourceId → units-per-distance dictionary. Missing/empty yields an empty dict.
+    /// </summary>
+    private static Dictionary<string, int> ReadCostPerDistance(Dictionary<object, object> dict, string key)
+    {
+        var result = new Dictionary<string, int>();
+        if (!dict.ContainsKey(key) || dict[key] is not List<object> entries)
+            return result;
+
+        foreach (var entryObj in entries)
+        {
+            if (entryObj is not Dictionary<object, object> entry)
+                continue;
+
+            string resource = ReadString(entry, "resource", "");
+            if (string.IsNullOrWhiteSpace(resource))
+                continue;
+
+            int amount = ReadInt(entry, "amount", 0);
+            if (amount <= 0)
+                continue;
+
+            result[resource] = amount;
+        }
+
+        return result;
     }
 
     private static string ReadString(Dictionary<object, object> dict, string key, string fallback)

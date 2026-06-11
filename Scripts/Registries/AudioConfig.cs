@@ -25,4 +25,12 @@ public partial class AudioConfig : Resource
     /// <summary>Default pitch scale.</summary>
     [Export]
     public float Pitch { get; set; } = 1.0f;
+
+    /// <summary>
+    /// When true the clip is a sustained loop (played on a dedicated non-polyphonic player and
+    /// re-played on finish) rather than a fire-and-forget one-shot. Driven by
+    /// <c>StartLoopSound</c>/<c>StopLoopSound</c> on the <c>AudioBus</c>.
+    /// </summary>
+    [Export]
+    public bool Loop { get; set; } = false;
 }

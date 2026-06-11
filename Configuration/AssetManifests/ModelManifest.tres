@@ -1,11 +1,15 @@
-[gd_resource type="Resource" script_class="ModelManifest" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="ModelManifest" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Registries/ModelManifest.cs" id="1"]
+[ext_resource type="Script" path="res://Scripts/Registries/ModelConfig.cs" id="1_8hajc"]
 [ext_resource type="Resource" path="res://Mesh/external/building-skyscraper-e.glb.tres" id="2"]
 [ext_resource type="Resource" path="res://Mesh/external/factory_a.glb.tres" id="3"]
 [ext_resource type="Resource" path="res://Mesh/external/factory_d.glb.tres" id="4"]
 [ext_resource type="Resource" path="res://Mesh/external/factory_e.glb.tres" id="5"]
+[ext_resource type="Resource" path="res://Mesh/class_z_hauler.glb.tres" id="6_e3bav"]
+[ext_resource type="Resource" path="res://Mesh/default_station.glb.tres" id="7_e3bav"]
+[ext_resource type="Resource" path="res://Mesh/external/factory_g.glb.tres" id="8_kctja"]
 
 [resource]
 script = ExtResource("1")
-Models = [ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5")]
+Models = Array[ExtResource("1_8hajc")]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6_e3bav"), ExtResource("7_e3bav"), ExtResource("8_kctja")])

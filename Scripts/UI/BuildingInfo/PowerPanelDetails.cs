@@ -57,6 +57,7 @@ public partial class PowerPanelDetails : BaseBuildingDetails
     private VBoxContainer? _batteriesList;
 
     private PackedScene? _resourceRateItemScene;
+    private PackedScene? _gridStatusRowScene;
 
     private static readonly Color StateDotIdle = new(0.55f, 0.55f, 0.6f);
     private static readonly Color StateDotRun = new(0.29f, 0.65f, 0.32f);
@@ -114,6 +115,7 @@ public partial class PowerPanelDetails : BaseBuildingDetails
         _batteriesList = GetNodeOrNull<VBoxContainer>("Layout/Body/RightColumn/SectionsScroll/Sections/Batteries/List");
 
         _resourceRateItemScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/ResourceRateItem.tscn");
+        _gridStatusRowScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/GridStatusRow.tscn");
     }
 
     protected override void UpdateDisplay()
@@ -371,29 +373,17 @@ public partial class PowerPanelDetails : BaseBuildingDetails
 
     private void AddGridRow(VBoxContainer? list, Building b, string value, bool active)
     {
-        if (list == null) return;
-        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        row.AddThemeConstantOverride("separation", 6);
+        if (list == null || _gridStatusRowScene == null) return;
+        var row = _gridStatusRowScene.Instantiate<HBoxContainer>();
 
-        var dot = new ColorRect
-        {
-            CustomMinimumSize = new Vector2(8, 8),
-            Color = active ? StateDotRun : StateDotIdle,
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        row.AddChild(dot);
+        row.GetNode<ColorRect>("Dot").Color = active ? StateDotRun : StateDotIdle;
 
-        var name = new Label { Text = b.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        if (ReferenceEquals(b, _building))
-        {
-            name.Modulate = new Color(1f, 0.85f, 0.4f);
-            name.Text = $"› {b.Name}";
-        }
-        row.AddChild(name);
+        var name = row.GetNode<Label>("NameLabel");
+        bool isCurrent = ReferenceEquals(b, _building);
+        name.Text = isCurrent ? $"› {b.Name}" : b.Name;
+        if (isCurrent) name.Modulate = new Color(1f, 0.85f, 0.4f);
 
-        var val = new Label { Text = value };
-        row.AddChild(val);
-
+        row.GetNode<Label>("ValueLabel").Text = value;
         list.AddChild(row);
     }
 

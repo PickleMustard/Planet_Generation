@@ -25,11 +25,24 @@ public partial class BiomesPickerPopup : PopupPanel
     private int _buildingIndex;
     private BuildingEditorModel.BuildingEditEntry? _entry;
 
-    private CheckBox _wildcardCheck = null!;
-    private HFlowContainer _currentFlow = null!;
-    private VBoxContainer _categoryListVBox = null!;
-    private HFlowContainer _biomeFlow = null!;
-    private Button _closeButton = null!;
+    [Export] private CheckBox _wildcardCheck = null!;
+    [Export] private HFlowContainer _currentFlow = null!;
+    [Export] private VBoxContainer _categoryListVBox = null!;
+    [Export] private HFlowContainer _biomeFlow = null!;
+
+    private static PackedScene? _scene;
+
+    public static BiomesPickerPopup Create(
+        BuildingEditorModel model,
+        string categoryName,
+        int buildingIndex,
+        BuildingEditorModel.BuildingEditEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/BiomesPickerPopup.tscn");
+        var popup = _scene.Instantiate<BiomesPickerPopup>();
+        popup.Initialize(model, categoryName, buildingIndex, entry);
+        return popup;
+    }
 
     public void Initialize(
         BuildingEditorModel model,
@@ -48,62 +61,7 @@ public partial class BiomesPickerPopup : PopupPanel
     public override void _Ready()
     {
         base._Ready();
-        BuildLayout();
         RefreshDisplay();
-    }
-
-    private void BuildLayout()
-    {
-        Size = new Vector2I(500, 600);
-
-        var root = new VBoxContainer { CustomMinimumSize = new Vector2(480, 580) };
-        AddChild(root);
-
-        // Top: wildcard + current selection pills
-        _wildcardCheck = new CheckBox { Text = "Allow any biome (*)" };
-        _wildcardCheck.Toggled += OnWildcardToggled;
-        root.AddChild(_wildcardCheck);
-
-        var currentLabel = new Label { Text = "Current selection:" };
-        currentLabel.AddThemeColorOverride("font_color", new Color(0.8f, 0.85f, 1.0f));
-        root.AddChild(currentLabel);
-
-        _currentFlow = new HFlowContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        root.AddChild(_currentFlow);
-
-        root.AddChild(new HSeparator());
-
-        // Scroll body
-        var scroll = new ScrollContainer
-        {
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(480, 380)
-        };
-        root.AddChild(scroll);
-
-        var scrollBody = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        scroll.AddChild(scrollBody);
-
-        var catHeader = new Label { Text = "Biome Categories" };
-        catHeader.AddThemeColorOverride("font_color", new Color(1.0f, 0.85f, 0.6f));
-        scrollBody.AddChild(catHeader);
-
-        _categoryListVBox = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        scrollBody.AddChild(_categoryListVBox);
-
-        scrollBody.AddChild(new HSeparator());
-
-        var biomeHeader = new Label { Text = "Individual Biomes" };
-        biomeHeader.AddThemeColorOverride("font_color", new Color(0.8f, 1.0f, 0.8f));
-        scrollBody.AddChild(biomeHeader);
-
-        _biomeFlow = new HFlowContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        scrollBody.AddChild(_biomeFlow);
-
-        _closeButton = new Button { Text = "Close" };
-        _closeButton.Pressed += OnClosePressed;
-        root.AddChild(_closeButton);
     }
 
     private void RefreshDisplay()

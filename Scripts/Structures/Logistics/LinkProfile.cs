@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Structures.Enums;
 
 namespace Structures.Logistics;
@@ -43,4 +44,17 @@ public class LinkProfile
     /// Maximum number of packages that may be in flight concurrently.
     /// </summary>
     public int SlotCapacity { get; set; }
+
+    /// <summary>
+    /// Resource cost to construct this link, expressed per unit of link distance
+    /// (<see cref="ResourceLink.CellDistance"/>). Mapped resourceId → units-per-distance;
+    /// total required resources are these amounts summed (ceiled) over the link's distance.
+    /// </summary>
+    public Dictionary<string, int> CostPerDistance { get; set; } = new();
+
+    /// <summary>
+    /// Work units an Orbital Architect must contribute to finish constructing this link,
+    /// mirroring a building's ConstructionState.WorkRequired.
+    /// </summary>
+    public float ConstructionWork { get; set; }
 }

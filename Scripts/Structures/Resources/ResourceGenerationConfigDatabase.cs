@@ -122,6 +122,12 @@ public partial class ResourceGenerationConfigDatabase : ILoadableDatabase
                 throw new InvalidOperationException("Biome resource configuration failed validation");
             }
 
+            // Step 4: Load abundance-category bands/fractions. Missing/invalid config is
+            // non-fatal — AbundanceCategoryTable keeps its built-in defaults.
+            LoadProgress = 0.9f;
+            OnLoadProgressChanged?.Invoke(DatabaseName, LoadProgress);
+            AbundanceCategoryTable.Load(ResourceConfigLoader.LoadAbundanceCategories());
+
             // Done
             LoadProgress = 1.0f;
             IsLoaded = true;

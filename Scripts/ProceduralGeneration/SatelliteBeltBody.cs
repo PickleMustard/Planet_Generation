@@ -21,6 +21,14 @@ public class SatelliteBeltBody
     public SatelliteGroupTypes GroupType { get; private set; }
     public Godot.Collections.Array<string>? SatelliteNames { get; private set; }
 
+    /// <summary>
+    /// Per-member asteroid subtype weights (id → weight) authored on the belt's system-template
+    /// entry. Rolled once per belt member. Empty when the belt declares none, in which case
+    /// members fall back to the satellite type's default subtype.
+    /// </summary>
+    public System.Collections.Generic.Dictionary<string, float> MemberSubtypeWeights { get; private set; }
+        = new();
+
     public class Builder
     {
         internal SatelliteGroupTypes _beltType;
@@ -35,6 +43,7 @@ public class SatelliteBeltBody
         internal int _lowerRange;
         internal int _beltNumber;
         internal Godot.Collections.Array<string>? _satelliteNames;
+        internal System.Collections.Generic.Dictionary<string, float> _memberSubtypeWeights = new();
 
         public Builder WithRingApogee(float ringApogee)
         {
@@ -135,6 +144,14 @@ public class SatelliteBeltBody
                 _satelliteNames = (Godot.Collections.Array<string>)bodyDict["satellite_names"];
             }
 
+            // Per-member asteroid subtype weights (optional; rolled per belt member).
+            if (bodyDict.ContainsKey("member_subtype_weights"))
+            {
+                _memberSubtypeWeights = SubtypeResolver.ReadWeights(
+                    (Godot.Collections.Dictionary)bodyDict["member_subtype_weights"]
+                );
+            }
+
             GD.Print(
                 $"Built belt consisting of {_ringApogee}, {_ringPerigee}, {_ringVelocity}, {_sizeMin}, {_sizeMax}, {_massMin}, {_massMax}, {_upperRange}, {_lowerRange}, {_beltNumber}"
             );
@@ -162,6 +179,7 @@ public class SatelliteBeltBody
         BeltNumber = builder._beltNumber;
         GroupType = builder._beltType;
         SatelliteNames = builder._satelliteNames;
+        MemberSubtypeWeights = builder._memberSubtypeWeights;
     }
 
     public Godot.Collections.Array<CelestialBody> GenerateSatelliteBelt(CelestialBody parent)
@@ -210,23 +228,9 @@ public class SatelliteBeltBody
         var satelliteType = DetermineSatelliteType(GroupType);
         var rng = UtilityLibrary.Randomizer.GetRandomNumberGenerator();
 
-        // Mirror the celestial path: roll a concrete subtype from AU-weighted config so the
-        // belt satellite carries a non-null subtype for resource and mesh-param lookups.
-        float effectiveAU =
-            parent.GetDistanceFromCenterAU()
-            + OrbitalMath.ConvertUnitsToAU((RingApogee + RingPerigee) / 2f);
-        string? parentSubtypeId =
-            ProceduralGeneration.ColorSystem.BiomeIdMapper.ClassificationToSubtypeId(
-                parent.Classification
-            );
-        var subtype =
-            (
-                new AUProbabilityManager(rng).SelectClassification(
-                    satelliteType,
-                    effectiveAU,
-                    parentSubtypeId
-                ) as Structures.BodyClassification.Satellite
-            )?.Subtype;
+        // Roll this member's asteroid subtype from the belt's per-member weights (authored on the
+        // system template). Falls back to the satellite type's default when none are declared.
+        var subtype = SubtypeResolver.ResolveSatelliteSubtype(MemberSubtypeWeights, satelliteType, rng);
 
         var size = rng.RandfRange(SizeMin, SizeMax);
         var mass = rng.RandfRange(MassMin, MassMax);

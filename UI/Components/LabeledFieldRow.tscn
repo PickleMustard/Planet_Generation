@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://c8f0r1xwnxg6y"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/Components/LabeledFieldRow.cs" id="2_script"]
+
+[node name="LabeledFieldRow" type="HBoxContainer" node_paths=PackedStringArray("_kickerLabel", "_mainLabel", "_subLabel")]
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 8
+size_flags_horizontal = 3
+script = ExtResource("2_script")
+_kickerLabel = NodePath("KickerLabel")
+_mainLabel = NodePath("MainLabel")
+_subLabel = NodePath("SubLabel")
+
+[node name="KickerLabel" type="Label" parent="."]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+theme = ExtResource("1_theme")
+theme_type_variation = &"LabelFaint"
+text = "KICKER"
+
+[node name="MainLabel" type="Label" parent="."]
+layout_mode = 2
+theme = ExtResource("1_theme")
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 18
+text = ""
+
+[node name="SubLabel" type="Label" parent="."]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+text = ""

@@ -20,7 +20,7 @@ namespace Constructables;
 /// _Process / _PhysicsProcess pipeline; ticking is driven externally.
 /// A BuildingNode visual proxy in the scene tree owns the model.
 /// </summary>
-public partial class Building : Resource, IConstructable, IManufactureTickable
+public partial class Building : Resource, IConstructable, IManufactureTickable, IArchitectConstructable
 {
     [Signal]
     public delegate void OnCompletionEventHandler();

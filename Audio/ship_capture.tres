@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="AudioConfig" format=3]
+
+[ext_resource type="Script" uid="uid://c6kcok4dqd8wb" path="res://Scripts/Registries/AudioConfig.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = &"ship_capture"
+metadata/_custom_type_script = "uid://c6kcok4dqd8wb"

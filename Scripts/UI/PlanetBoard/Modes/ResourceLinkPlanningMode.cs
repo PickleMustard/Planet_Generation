@@ -15,6 +15,12 @@ public sealed class ResourceLinkPlanningMode : IPlanetBoardMode
 {
     public string DisplayName => "Resource Links";
 
+    /// <summary>
+    /// Link profile id chosen by the player from the planet-board picker. When set and resolvable,
+    /// it overrides the per-building default in <see cref="ResolveLinkProfile"/>.
+    /// </summary>
+    public string? ActiveProfileId { get; set; }
+
     private BoardWorld? _world;
     private IOrbitalBody? _body;
 
@@ -101,12 +107,17 @@ public sealed class ResourceLinkPlanningMode : IPlanetBoardMode
         return null;
     }
 
-    private static LinkProfile? ResolveLinkProfile(ResourceNode? port)
+    private LinkProfile? ResolveLinkProfile(ResourceNode? port)
     {
-        var def = port?.Owner?.Definition;
         var db = LinkProfileDatabase.Instance;
         if (db == null)
             return null;
+        // Player's explicit choice from the planet-board picker wins.
+        if (!string.IsNullOrEmpty(ActiveProfileId)
+            && db.TryGetProfile(ActiveProfileId, out var chosen)
+            && chosen != null)
+            return chosen;
+        var def = port?.Owner?.Definition;
         if (def != null && !string.IsNullOrEmpty(def.DefaultLinkProfile)
             && db.TryGetProfile(def.DefaultLinkProfile, out var profile)
             && profile != null)

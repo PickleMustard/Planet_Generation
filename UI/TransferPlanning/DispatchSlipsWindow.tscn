@@ -1,12 +1,73 @@
 [gd_scene format=3 uid="uid://biy1ok7i4lvqq"]
 
-[ext_resource type="Script" path="res://Scripts/UI/TransferPlanning/DispatchSlipsWindow.cs" id="1_script"]
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/TransferPlanning/DispatchSlipsWindow.cs" id="2_script"]
+[ext_resource type="PackedScene" path="res://UI/Wireframe/TransferTopBar.tscn" id="3_topbar"]
+[ext_resource type="PackedScene" path="res://UI/TransferPlanning/SlipsListView.tscn" id="4_slips"]
+[ext_resource type="PackedScene" path="res://UI/TransferPlanning/PriorityEditView.tscn" id="5_priority"]
+[ext_resource type="PackedScene" path="res://UI/TransferPlanning/PickDestinationView.tscn" id="6_pickdest"]
+[ext_resource type="PackedScene" path="res://UI/TransferPlanning/ManifestEditorView.tscn" id="7_manifest"]
 
-[node name="DispatchSlipsWindow" type="Control"]
+[node name="DispatchSlipsWindow" type="Control" node_paths=PackedStringArray("_topBar", "_viewHost", "_slipsView", "_priorityView", "_pickDestView", "_manifestView")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_script")
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+_topBar = NodePath("Center/Panel/Col/TopBar")
+_viewHost = NodePath("Center/Panel/Col/ViewHost")
+_slipsView = NodePath("Center/Panel/Col/ViewHost/SlipsView")
+_priorityView = NodePath("Center/Panel/Col/ViewHost/PriorityView")
+_pickDestView = NodePath("Center/Panel/Col/ViewHost/PickDestView")
+_manifestView = NodePath("Center/Panel/Col/ViewHost/ManifestView")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(1280, 760)
+layout_mode = 2
+theme_type_variation = &"PaperPanel"
+
+[node name="Col" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TopBar" parent="Center/Panel/Col" instance=ExtResource("3_topbar")]
+layout_mode = 2
+
+[node name="ViewHost" type="Control" parent="Center/Panel/Col"]
+custom_minimum_size = Vector2(0, 600)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SlipsView" parent="Center/Panel/Col/ViewHost" instance=ExtResource("4_slips")]
+layout_mode = 1
+
+[node name="PriorityView" parent="Center/Panel/Col/ViewHost" instance=ExtResource("5_priority")]
+visible = false
+layout_mode = 1
+
+[node name="PickDestView" parent="Center/Panel/Col/ViewHost" instance=ExtResource("6_pickdest")]
+visible = false
+layout_mode = 1
+
+[node name="ManifestView" parent="Center/Panel/Col/ViewHost" instance=ExtResource("7_manifest")]
+visible = false
+layout_mode = 1
+
+[connection signal="gui_input" from="Backdrop" to="." method="OnBackdropInput"]

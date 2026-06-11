@@ -21,11 +21,24 @@ public partial class RecipeTagsPopup : PopupPanel
     private RecipeEditorModel.RecipeEditEntry? _entry;
     private HashSet<string> _allTags = new();
 
-    private HFlowContainer _currentTagsFlow = null!;
-    private VBoxContainer _allTagsVBox = null!;
-    private LineEdit _newTagEdit = null!;
-    private Button _addTagButton = null!;
-    private Button _closeButton = null!;
+    [Export] private HFlowContainer _currentTagsFlow = null!;
+    [Export] private VBoxContainer _allTagsVBox = null!;
+    [Export] private LineEdit _newTagEdit = null!;
+
+    private static PackedScene? _scene;
+
+    public static RecipeTagsPopup Create(
+        RecipeEditorModel model,
+        string categoryName,
+        int recipeIndex,
+        RecipeEditorModel.RecipeEditEntry entry,
+        HashSet<string> allTags)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/RecipeEditor/RecipeTagsPopup.tscn");
+        var popup = _scene.Instantiate<RecipeTagsPopup>();
+        popup.Initialize(model, categoryName, recipeIndex, entry, allTags);
+        return popup;
+    }
 
     public void Initialize(
         RecipeEditorModel model,
@@ -47,72 +60,11 @@ public partial class RecipeTagsPopup : PopupPanel
     public override void _Ready()
     {
         base._Ready();
-        MinSize = new Vector2I(420, 520);
-        Size = new Vector2I(420, 520);
-
-        var root = new VBoxContainer
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill
-        };
-        AddChild(root);
-
-        var currentHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Current tags" };
-        currentHeader.AddThemeFontSizeOverride("font_size", 12);
-        root.AddChild(currentHeader);
-
-        _currentTagsFlow = new HFlowContainer
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        root.AddChild(_currentTagsFlow);
-
-        root.AddChild(new HSeparator { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-
-        var allHeader = new Label { ThemeTypeVariation = "LabelHighContrast", Text = "All tags" };
-        allHeader.AddThemeFontSizeOverride("font_size", 12);
-        root.AddChild(allHeader);
-
-        var scroll = new ScrollContainer
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 240)
-        };
-        _allTagsVBox = new VBoxContainer
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        scroll.AddChild(_allTagsVBox);
-        root.AddChild(scroll);
-
-        var addRow = new HBoxContainer
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        _newTagEdit = new LineEdit
-        {
-            PlaceholderText = "new_tag",
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        _newTagEdit.TextSubmitted += _ => AddNewTag();
-        addRow.AddChild(_newTagEdit);
-
-        _addTagButton = new Button { Text = "Add" };
-        _addTagButton.Pressed += AddNewTag;
-        addRow.AddChild(_addTagButton);
-        root.AddChild(addRow);
-
-        _closeButton = new Button
-        {
-            Text = "Close",
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        _closeButton.Pressed += OnClosePressed;
-        root.AddChild(_closeButton);
-
         RefreshDisplay();
     }
+
+    private void OnNewTagSubmitted(string _) => AddNewTag();
+    private void OnAddPressed() => AddNewTag();
 
     private void RefreshDisplay()
     {

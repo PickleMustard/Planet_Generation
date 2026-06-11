@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://con35e5chgtrk"]
+
+[node name="ContractRow" type="HBoxContainer"]
+
+[node name="Id" type="Label" parent="."]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "CTR-000"
+
+[node name="Client" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Client"
+
+[node name="Qty" type="Label" parent="."]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "×0"
+
+[node name="Due" type="Label" parent="."]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "due —"
+
+[node name="State" type="Label" parent="."]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "idle"

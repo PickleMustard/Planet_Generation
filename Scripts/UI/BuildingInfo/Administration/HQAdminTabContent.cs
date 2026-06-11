@@ -33,6 +33,11 @@ public partial class HQAdminTabContent : BaseBuildingDetails
     [Export]
     public VBoxContainer? HeadlinesList;
 
+    private static readonly PackedScene ContractRowScene =
+        GD.Load<PackedScene>("res://UI/BuildingInfo/Administration/ContractRow.tscn");
+    private static readonly PackedScene HeadlineRowScene =
+        GD.Load<PackedScene>("res://UI/BuildingInfo/Administration/HeadlineRow.tscn");
+
     private static readonly (string Id, string Client, string Resource, int Qty, string Due, string State)[]
         StubContracts =
         {
@@ -80,12 +85,12 @@ public partial class HQAdminTabContent : BaseBuildingDetails
             child.QueueFree();
         foreach (var c in StubContracts)
         {
-            var row = new HBoxContainer();
-            row.AddChild(MakeMonoLabel(c.Id, 10, soft: true));
-            row.AddChild(MakeLabel(c.Client, 12, expand: true));
-            row.AddChild(MakeMonoLabel($"×{c.Qty}", 11));
-            row.AddChild(MakeMonoLabel($"due {c.Due}", 10, soft: true));
-            row.AddChild(MakeMonoLabel(c.State, 10, soft: true));
+            var row = ContractRowScene.Instantiate<HBoxContainer>();
+            row.GetNode<Label>("Id").Text = c.Id;
+            row.GetNode<Label>("Client").Text = c.Client;
+            row.GetNode<Label>("Qty").Text = $"×{c.Qty}";
+            row.GetNode<Label>("Due").Text = $"due {c.Due}";
+            row.GetNode<Label>("State").Text = c.State;
             ContractsList.AddChild(row);
         }
     }
@@ -98,29 +103,11 @@ public partial class HQAdminTabContent : BaseBuildingDetails
             child.QueueFree();
         foreach (var h in StubHeadlines)
         {
-            var row = new HBoxContainer();
-            row.AddChild(MakeMonoLabel(h.Time, 10, soft: true));
-            row.AddChild(MakeLabel(h.Text, 12, expand: true));
+            var row = HeadlineRowScene.Instantiate<HBoxContainer>();
+            row.GetNode<Label>("Time").Text = h.Time;
+            row.GetNode<Label>("Text").Text = h.Text;
             HeadlinesList.AddChild(row);
         }
-    }
-
-    private static Label MakeLabel(string text, int fontSize, bool expand = false)
-    {
-        var l = new Label { Text = text };
-        l.AddThemeFontSizeOverride("font_size", fontSize);
-        if (expand)
-            l.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        return l;
-    }
-
-    private static Label MakeMonoLabel(string text, int fontSize, bool soft = false)
-    {
-        var l = new Label { Text = text };
-        l.AddThemeFontSizeOverride("font_size", fontSize);
-        if (soft)
-            l.Modulate = new Color(0.7f, 0.7f, 0.75f);
-        return l;
     }
 
     public override void Clear()

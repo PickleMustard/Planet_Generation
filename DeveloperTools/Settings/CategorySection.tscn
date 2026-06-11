@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://ct8yuq8owku4w"]
+
+[ext_resource type="Script" path="res://DeveloperTools/Settings/CategorySection.cs" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="header_style"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.15, 0.15, 0.18, 1)
+
+[sub_resource type="StyleBoxFlat" id="content_style"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.1, 0.1, 0.12, 1)
+border_width_left = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2, 0.22, 1)
+
+[node name="CategorySection" type="VBoxContainer" node_paths=PackedStringArray("_headerButton", "_contentPanel", "_contentContainer")]
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+script = ExtResource("1_script")
+_headerButton = NodePath("HeaderPanel/HeaderButton")
+_contentPanel = NodePath("ContentPanel")
+_contentContainer = NodePath("ContentPanel/ContentContainer")
+
+[node name="HeaderPanel" type="PanelContainer" parent="."]
+layout_mode = 2
+theme_override_styles/panel = SubResource("header_style")
+
+[node name="HeaderButton" type="Button" parent="HeaderPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+toggle_mode = true
+button_pressed = true
+text = "Category"
+alignment = 0
+
+[node name="ContentPanel" type="PanelContainer" parent="."]
+layout_mode = 2
+theme_override_styles/panel = SubResource("content_style")
+
+[node name="ContentContainer" type="VBoxContainer" parent="ContentPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6

@@ -47,6 +47,8 @@ public partial class ShipyardPanel : VBoxContainer
 
     [Export]
     private PackedScene? _slotCardScene;
+    private static readonly PackedScene QueueRowScene =
+        GD.Load<PackedScene>("res://UI/StationWindow/ShipyardQueueRow.tscn");
 
     private StationSatellite? _station;
     private ShipyardBehavior? _shipyard;
@@ -205,59 +207,34 @@ public partial class ShipyardPanel : VBoxContainer
 
     private HBoxContainer CreateQueueEntry(LogisticsUnit ship, int index)
     {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
+        var row = QueueRowScene.Instantiate<HBoxContainer>();
+        row.GetNode<Label>("NameLabel").Text = ship.ShipDef?.Name ?? ship.Name;
+        row.GetNode<Label>("StatusLabel").Text = _shipyard?.GetBuildStatus(ship) ?? "Queued";
 
-        var nameLabel = new Label
+        var upButton = row.GetNode<Button>("UpButton");
+        upButton.Visible = index > 0;
+        upButton.Pressed += () =>
         {
-            Text = ship.ShipDef?.Name ?? ship.Name,
-            CustomMinimumSize = new Vector2(140, 0),
+            if (_shipyard == null || !IsInstanceValid(ship)) return;
+            var queue = _shipyard.GetShipBuildQueue();
+            if (index > 0 && index < queue.Count)
+                _shipyard.ReorderQueue(ship, queue[index - 1]);
+            RefreshDisplay();
         };
-        nameLabel.AddThemeFontSizeOverride("font_size", 13);
-        row.AddChild(nameLabel);
 
-        var statusLabel = new Label
-        {
-            Text = _shipyard?.GetBuildStatus(ship) ?? "Queued",
-            CustomMinimumSize = new Vector2(80, 0),
-        };
-        statusLabel.AddThemeFontSizeOverride("font_size", 13);
-        row.AddChild(statusLabel);
-
-        // Move up button
-        if (index > 0)
-        {
-            var upButton = new Button { Text = "▲", CustomMinimumSize = new Vector2(24, 24) };
-            upButton.Pressed += () =>
-            {
-                if (_shipyard == null || !IsInstanceValid(ship)) return;
-                var queue = _shipyard.GetShipBuildQueue();
-                if (index > 0 && index < queue.Count)
-                    _shipyard.ReorderQueue(ship, queue[index - 1]);
-                RefreshDisplay();
-            };
-            row.AddChild(upButton);
-        }
-
-        // Move down button
-        var downButton = new Button { Text = "▼", CustomMinimumSize = new Vector2(24, 24) };
-        downButton.Pressed += () =>
+        row.GetNode<Button>("DownButton").Pressed += () =>
         {
             if (_shipyard == null || !IsInstanceValid(ship)) return;
             _shipyard.ReorderQueue(ship, null); // null = move to end
             RefreshDisplay();
         };
-        row.AddChild(downButton);
 
-        // Cancel button
-        var cancelButton = new Button { Text = "Cancel", CustomMinimumSize = new Vector2(60, 24) };
-        cancelButton.Pressed += () =>
+        row.GetNode<Button>("CancelButton").Pressed += () =>
         {
             if (_shipyard == null || !IsInstanceValid(ship)) return;
             _shipyard.CancelShipConstruction(ship);
             RefreshDisplay();
         };
-        row.AddChild(cancelButton);
 
         return row;
     }

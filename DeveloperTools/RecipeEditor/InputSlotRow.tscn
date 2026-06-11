@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://dw5bugkij7ods"]
+
+[ext_resource type="Script" path="res://DeveloperTools/RecipeEditor/InputSlotRow.cs" id="1_row"]
+
+[node name="InputSlotRow" type="HBoxContainer" node_paths=PackedStringArray("_kindButton", "_resourceButton", "_tagOption", "_amountSpin")]
+size_flags_horizontal = 3
+script = ExtResource("1_row")
+_kindButton = NodePath("KindButton")
+_resourceButton = NodePath("ResourceButton")
+_tagOption = NodePath("TagOption")
+_amountSpin = NodePath("AmountSpin")
+
+[node name="KindButton" type="OptionButton" parent="."]
+layout_mode = 2
+tooltip_text = "Resource = specific item; Tag = any item with this tag"
+
+[node name="ResourceButton" type="Button" parent="."]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+text = "(select resource)"
+
+[node name="TagOption" type="OptionButton" parent="."]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AmountSpin" type="SpinBox" parent="."]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+max_value = 1e+06
+step = 0.01
+allow_greater = true
+
+[node name="DeleteButton" type="Button" parent="."]
+layout_mode = 2
+tooltip_text = "Remove input"
+text = "✕"
+
+[connection signal="item_selected" from="KindButton" to="." method="OnKindSelected"]
+[connection signal="pressed" from="ResourceButton" to="." method="OnPickResource"]
+[connection signal="item_selected" from="TagOption" to="." method="OnTagSelected"]
+[connection signal="value_changed" from="AmountSpin" to="." method="OnAmountChanged"]
+[connection signal="pressed" from="DeleteButton" to="." method="OnDeletePressed"]

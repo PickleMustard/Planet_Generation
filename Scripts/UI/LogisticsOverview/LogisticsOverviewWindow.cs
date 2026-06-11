@@ -65,7 +65,7 @@ public partial class LogisticsOverviewWindow : Control
 
         // System Overview map: a code-built overlay + a sibling button next to
         // "View In-Depth" so no scene edits are needed.
-        _systemOverviewWindow = new UI.SystemBoard.SystemOverviewWindow();
+        _systemOverviewWindow = UI.SystemBoard.SystemOverviewWindow.Create();
         AddChild(_systemOverviewWindow);
         if (_viewInDepthButton?.GetParent() is Node btnParent)
         {
@@ -208,7 +208,7 @@ public partial class LogisticsOverviewWindow : Control
 
     private SidebarListItem BuildRow(LogisticsUnit unit)
     {
-        var row = new SidebarListItem(unit.Id);
+        var row = SidebarListItem.Create(unit.Id);
 
         var nameLabel = new Label
         {

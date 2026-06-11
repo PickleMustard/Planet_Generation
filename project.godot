@@ -23,6 +23,7 @@ config/icon="res://icon.svg"
 
 RuntimeSettings="*res://Scripts/UtilityLibrary/Settings/RuntimeSettings.cs"
 SignalBus="*res://Scripts/UtilityLibrary/SignalBus.cs"
+AudioBus="*res://Scripts/UtilityLibrary/AudioBus.cs"
 ThreadPooler="*uid://db2n014kjjmur"
 TaskTimer="*res://Scripts/UtilityLibrary/TaskTimer.cs"
 DebugMenu="*res://Debug/DebugMenu.tscn"

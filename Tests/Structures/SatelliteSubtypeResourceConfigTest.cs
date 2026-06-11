@@ -1,6 +1,7 @@
 using GdUnit4;
 using Godot;
 using ProceduralGeneration;
+using ProceduralGeneration.ColorSystem;
 using Structures;
 using Structures.Enums;
 using Structures.Resources;
@@ -12,7 +13,8 @@ namespace Tests.Structures;
 /// <summary>
 /// Regression coverage for the "No resource config for satellite classification" warning:
 /// satellites must carry a non-null subtype so resource/mesh-param lookups resolve. Also exercises
-/// the unified 1D subtype selection (cumulative effective AU + per-parent-subtype modifiers).
+/// the per-member subtype roll (<see cref="SubtypeResolver.ResolveSatelliteSubtype"/>) that
+/// replaced the AU-band selection for belt members and satellites.
 /// </summary>
 [TestSuite]
 public class SatelliteSubtypeResourceConfigTest
@@ -54,121 +56,58 @@ public class SatelliteSubtypeResourceConfigTest
         SatelliteSubtype.Metallic, SatelliteSubtype.IceAsteroid,
     };
 
-    [BeforeTest]
-    public void ClearConfigCache() => AUProbabilityLoader.ClearCache();
-
-    // Rolls a concrete satellite subtype from the unified 1D selector. The immediate parent's
-    // subtype id (nullable) selects optional per-parent-subtype weight modifiers.
-    private static SatelliteSubtype Roll(
-        AUProbabilityManager mgr, OrbitalBodyType fam, string? parentSubtypeId, float effectiveAU
-    ) => ((BodyClassification.Satellite)mgr.SelectClassification(fam, effectiveAU, parentSubtypeId))
-        .Subtype!.Value;
-
     [TestCase]
     [RequireGodotRuntime]
-    public void SelectClassification_ReturnsNonNullSatelliteSubtype()
+    public void ResolveSatelliteSubtype_EmptyWeights_FallsBackToTypeDefault()
     {
         var rng = new RandomNumberGenerator { Seed = 4242 };
-        var auManager = new AUProbabilityManager(rng);
+        var empty = new System.Collections.Generic.Dictionary<string, float>();
 
-        var subtype =
-            (auManager.SelectClassification(OrbitalBodyType.Moon, 1.0f)
-                as BodyClassification.Satellite)?.Subtype;
-
-        AssertThat(subtype.HasValue).IsTrue();
+        AssertThat(SubtypeResolver.ResolveSatelliteSubtype(empty, OrbitalBodyType.Moon, rng))
+            .IsEqual(SatelliteSubtype.RockyMoon);
+        AssertThat(SubtypeResolver.ResolveSatelliteSubtype(empty, OrbitalBodyType.Asteroid, rng))
+            .IsEqual(SatelliteSubtype.Carbonaceous);
     }
 
     [TestCase]
     [RequireGodotRuntime]
-    public void SelectClassification_AsteroidNeverRollsMoonSubtype()
+    public void ResolveSatelliteSubtype_RollsOnlyDeclaredSubtypes()
     {
         var rng = new RandomNumberGenerator { Seed = 99 };
-        var mgr = new AUProbabilityManager(rng);
+        var weights = new System.Collections.Generic.Dictionary<string, float>();
+        foreach (var s in _asteroidSubtypes)
+            weights[BiomeIdMapper.SatelliteSubtypeToId(s)] = 1f;
 
         for (int i = 0; i < 500; i++)
         {
-            float effectiveAU = (i % 7) * 2f; // sweep cumulative distance
-            var rolled = Roll(mgr, OrbitalBodyType.Asteroid, null, effectiveAU);
+            var rolled = SubtypeResolver.ResolveSatelliteSubtype(weights, OrbitalBodyType.Asteroid, rng);
             AssertThat(System.Array.IndexOf(_asteroidSubtypes, rolled) >= 0)
-                .OverrideFailureMessage($"Asteroid rolled non-asteroid subtype {rolled}")
+                .OverrideFailureMessage($"Asteroid rolled undeclared subtype {rolled}")
                 .IsTrue();
         }
     }
 
     [TestCase]
     [RequireGodotRuntime]
-    public void SelectClassification_EffectiveAuSelectsDifferentRanges()
+    public void ResolveSatelliteSubtype_HeavyWeightDominates()
     {
         var rng = new RandomNumberGenerator { Seed = 7 };
-        var mgr = new AUProbabilityManager(rng);
-
-        // Inner system (effectiveAU < 3): IronMoon/DesertMoon are inner-only; outer-only subtypes
-        // (SulfurMoon/IcyMoon/CapturedAsteroid/CarbonMoon) must not appear.
-        bool sawInnerExclusive = false;
-        for (int i = 0; i < 400; i++)
+        var weights = new System.Collections.Generic.Dictionary<string, float>
         {
-            var r = Roll(mgr, OrbitalBodyType.Moon, null, 1.0f);
-            AssertThat(
-                    r != SatelliteSubtype.SulfurMoon
-                    && r != SatelliteSubtype.IcyMoon
-                    && r != SatelliteSubtype.CapturedAsteroid
-                    && r != SatelliteSubtype.CarbonMoon)
-                .OverrideFailureMessage($"Inner system yielded outer-only subtype {r}")
-                .IsTrue();
-            if (r == SatelliteSubtype.IronMoon || r == SatelliteSubtype.DesertMoon) sawInnerExclusive = true;
-        }
-        AssertThat(sawInnerExclusive).IsTrue();
+            [BiomeIdMapper.SatelliteSubtypeToId(SatelliteSubtype.Metallic)] = 9f,
+            [BiomeIdMapper.SatelliteSubtypeToId(SatelliteSubtype.Silicate)] = 1f,
+        };
 
-        // Outer system (effectiveAU >= 3): SulfurMoon reachable; inner-only IronMoon/DesertMoon not.
-        bool sawOuterExclusive = false;
-        for (int i = 0; i < 400; i++)
-        {
-            var r = Roll(mgr, OrbitalBodyType.Moon, null, 5.0f);
-            AssertThat(r != SatelliteSubtype.IronMoon && r != SatelliteSubtype.DesertMoon)
-                .OverrideFailureMessage($"Outer system yielded inner-only subtype {r}")
-                .IsTrue();
-            if (r == SatelliteSubtype.SulfurMoon) sawOuterExclusive = true;
-        }
-        AssertThat(sawOuterExclusive).IsTrue();
-    }
+        int metallic = 0;
+        const int trials = 1000;
+        for (int i = 0; i < trials; i++)
+            if (SubtypeResolver.ResolveSatelliteSubtype(weights, OrbitalBodyType.Asteroid, rng)
+                == SatelliteSubtype.Metallic)
+                metallic++;
 
-    [TestCase]
-    [RequireGodotRuntime]
-    public void SelectClassification_ParentSubtypeModifierBoostsVolcanic()
-    {
-        // The ice-giant parent subtype id carries a VolcanicMoon: 2.0 modifier; a null parent
-        // subtype applies no modifier. Same inner-system base range.
-        const string iceGiantParentId = "subtype_ice_giant_standard_neptune";
-
-        int iceVolcanic = 0;
-        var iceRng = new RandomNumberGenerator { Seed = 555 };
-        var iceMgr = new AUProbabilityManager(iceRng);
-        for (int i = 0; i < 2000; i++)
-            if (Roll(iceMgr, OrbitalBodyType.Moon, iceGiantParentId, 1.0f) == SatelliteSubtype.VolcanicMoon)
-                iceVolcanic++;
-
-        int baseVolcanic = 0;
-        var baseRng = new RandomNumberGenerator { Seed = 555 };
-        var baseMgr = new AUProbabilityManager(baseRng);
-        for (int i = 0; i < 2000; i++)
-            if (Roll(baseMgr, OrbitalBodyType.Moon, null, 1.0f) == SatelliteSubtype.VolcanicMoon)
-                baseVolcanic++;
-
-        AssertThat(iceVolcanic > baseVolcanic)
-            .OverrideFailureMessage($"IceGiant-parent volcanic ({iceVolcanic}) not > unmodified ({baseVolcanic})")
+        AssertThat(metallic > 750)
+            .OverrideFailureMessage($"metallic={metallic}/{trials}, expected ~900")
             .IsTrue();
-    }
-
-    [TestCase]
-    [RequireGodotRuntime]
-    public void SelectClassification_FallsBackToDefaultWhenNoRangeMatches()
-    {
-        var rng = new RandomNumberGenerator { Seed = 1 };
-        var mgr = new AUProbabilityManager(rng);
-
-        // Negative effectiveAU matches no range -> family default subtype.
-        var r = Roll(mgr, OrbitalBodyType.Moon, null, -1.0f);
-        AssertThat(r).IsEqual(SatelliteSubtype.RockyMoon);
     }
 
     [TestCase]

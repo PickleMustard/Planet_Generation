@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 using ProceduralGeneration;
+using Structures.GameState;
 using UtilityLibrary;
 
 namespace Constructables.Buildings.Behaviors;
@@ -69,8 +70,9 @@ public sealed class EnvironmentalModifier
     }
 
     /// <summary>
-    /// Computes the scale factor for the given building's environment. Returns 1.0 for
-    /// ModifierType.None, 0 when the required body context is missing.
+    /// Computes the scale factor for a live building's environment. Resolves the owning
+    /// body and footprint cells, then delegates to <see cref="ComputeFactor(IOrbitalBody?, IReadOnlyList{VoronoiCell})"/>.
+    /// Returns 1.0 for ModifierType.None, 0 when the required context is missing.
     /// </summary>
     public float ComputeFactor(Building? owner)
     {
@@ -78,25 +80,34 @@ public sealed class EnvironmentalModifier
             return 1f;
         if (owner == null)
             return 0f;
+        return ComputeFactor(ProducerBodyResolver.FindOwningBody(owner), owner.OccupiedCells);
+    }
 
+    /// <summary>
+    /// Computes the scale factor from raw environment context: <paramref name="body"/> for
+    /// star-distance / atmosphere modifiers, <paramref name="cells"/> for vent presence.
+    /// Used both at build time (via the Building overload) and during placement preview
+    /// (no live Building exists yet). Returns 1.0 for None, 0 when required context is null.
+    /// </summary>
+    public float ComputeFactor(IOrbitalBody? body, IReadOnlyList<VoronoiCell>? cells)
+    {
         switch (Type)
         {
+            case ModifierType.None:
+                return 1f;
             case ModifierType.StarDistanceInverseSquare:
-                return ComputeStarDistance(owner);
+                return body == null ? 0f : ComputeStarDistance(body);
             case ModifierType.AtmosphereLinear:
-                return ComputeAtmosphere(owner);
+                return body == null ? 0f : ComputeAtmosphere(body);
             case ModifierType.VentPresenceBinary:
-                return ComputeVent(owner);
+                return ComputeVent(cells);
             default:
                 return 1f;
         }
     }
 
-    private float ComputeStarDistance(Building owner)
+    private float ComputeStarDistance(IOrbitalBody body)
     {
-        var body = ProducerBodyResolver.FindOwningBody(owner);
-        if (body == null)
-            return 0f;
         float dist = body.DistanceToParentStar();
         if (dist <= 0f)
             return 0f;
@@ -104,18 +115,14 @@ public sealed class EnvironmentalModifier
         return Mathf.Clamp(ratio * ratio, 0f, MaxScale);
     }
 
-    private float ComputeAtmosphere(Building owner)
+    private float ComputeAtmosphere(IOrbitalBody body)
     {
-        var body = ProducerBodyResolver.FindOwningBody(owner);
-        if (body == null)
-            return 0f;
         float refAtm = ReferenceAtmosphere > 0f ? ReferenceAtmosphere : 1f;
         return Mathf.Clamp(body.Atmosphere / refAtm, 0f, MaxScale);
     }
 
-    private static float ComputeVent(Building owner)
+    private static float ComputeVent(IReadOnlyList<VoronoiCell>? cells)
     {
-        var cells = owner.OccupiedCells;
         if (cells == null || cells.Count == 0)
             return 0f;
         foreach (var cell in cells)

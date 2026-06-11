@@ -598,6 +598,57 @@ public static class ResourceConfigLoader
 
 
     /// <summary>
+    /// Loads abundance-category configuration (richness-tier % bands + per-cycle fractions) from
+    /// the standard configuration file. Returns null when the file is missing or fails to parse —
+    /// callers should fall back to <c>AbundanceCategoryTable</c>'s built-in defaults.
+    /// </summary>
+    public static AbundanceCategoryConfig? LoadAbundanceCategories()
+    {
+        return LoadAbundanceCategories(
+            "res://Configuration/ResourceDefinition/abundance_categories.yaml"
+        );
+    }
+
+    /// <summary>
+    /// Loads abundance-category configuration from a YAML file.
+    /// </summary>
+    /// <param name="filePath">Path to the YAML configuration file</param>
+    public static AbundanceCategoryConfig? LoadAbundanceCategories(string filePath)
+    {
+        if (!BaseConfigLoader.ResExists(filePath))
+        {
+            GD.PrintErr($"Abundance categories file not found: {filePath}");
+            return null;
+        }
+
+        try
+        {
+            string text = BaseConfigLoader.ReadAllText(filePath) ?? "";
+
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .IgnoreUnmatchedProperties()
+                .Build();
+
+            var config = deserializer.Deserialize<AbundanceCategoryConfig>(text);
+
+            if (config?.Categories != null)
+            {
+                GD.Print($"Successfully loaded {config.Categories.Count} abundance categories from {filePath}");
+            }
+
+            return config;
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr(
+                $"Error loading abundance categories from {filePath}: {e.Message}\n{e.StackTrace}"
+            );
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Loads resource groups from the standard configuration file.
     /// </summary>
     /// <returns>Dictionary mapping group names to resource ID lists, or null if loading fails</returns>

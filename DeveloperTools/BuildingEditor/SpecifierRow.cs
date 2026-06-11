@@ -25,10 +25,20 @@ public partial class SpecifierRow : HBoxContainer
     private bool _isDefault;
     private ButtonGroup? _defaultGroup;
 
-    private CheckBox _defaultRadio = null!;
-    private SpinBox _valueSpin = null!;
-    private LineEdit _labelEdit = null!;
-    private Button _deleteButton = null!;
+    [Export] private CheckBox _defaultRadio = null!;
+    [Export] private SpinBox _valueSpin = null!;
+    [Export] private LineEdit _labelEdit = null!;
+
+    private static PackedScene? _scene;
+
+    public static SpecifierRow Create(int rowIndex, BuildingEditorModel.SpecifierEntryEdit entry,
+        bool isDefault, ButtonGroup defaultGroup)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/SpecifierRow.tscn");
+        var row = _scene.Instantiate<SpecifierRow>();
+        row.Configure(rowIndex, entry, isDefault, defaultGroup);
+        return row;
+    }
 
     public void Configure(int rowIndex, BuildingEditorModel.SpecifierEntryEdit entry,
         bool isDefault, ButtonGroup defaultGroup)
@@ -43,48 +53,19 @@ public partial class SpecifierRow : HBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        _defaultRadio = new CheckBox
-        {
-            Text = "default",
-            ButtonGroup = _defaultGroup,
-            ButtonPressed = _isDefault,
-            TooltipText = "Mark this value as the default specifier"
-        };
-        _defaultRadio.Pressed += () =>
-        {
-            if (_defaultRadio.ButtonPressed)
-                EmitSignal(SignalName.DefaultSelected, _rowIndex);
-        };
-        AddChild(_defaultRadio);
-
-        _valueSpin = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 1000000,
-            Step = 1,
-            Value = _value,
-            CustomMinimumSize = new Vector2(96, 0),
-            AllowGreater = true
-        };
-        _valueSpin.ValueChanged += OnValueChanged;
-        AddChild(_valueSpin);
-
-        _labelEdit = new LineEdit
-        {
-            Text = _label,
-            PlaceholderText = "Label (optional)",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(160, 0)
-        };
-        _labelEdit.TextChanged += OnLabelChanged;
-        AddChild(_labelEdit);
-
-        _deleteButton = new Button { Text = "✕", TooltipText = "Remove specifier value" };
-        _deleteButton.Pressed += () => EmitSignal(SignalName.RowDeleted, _rowIndex);
-        AddChild(_deleteButton);
+        _defaultRadio.ButtonGroup = _defaultGroup;
+        _defaultRadio.SetPressedNoSignal(_isDefault);
+        _valueSpin.SetValueNoSignal(_value);
+        _labelEdit.Text = _label;
     }
+
+    private void OnDefaultPressed()
+    {
+        if (_defaultRadio.ButtonPressed)
+            EmitSignal(SignalName.DefaultSelected, _rowIndex);
+    }
+
+    private void OnDeletePressed() => EmitSignal(SignalName.RowDeleted, _rowIndex);
 
     private void OnValueChanged(double v)
     {

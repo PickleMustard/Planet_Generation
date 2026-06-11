@@ -19,20 +19,34 @@ public partial class VisualSection : VBoxContainer
     private int _buildingIndex;
     private BuildingEditorModel.BuildingEditEntry? _entry;
 
-    private Button _modelPathButton = null!;
-    private Button _modelPathClearButton = null!;
-    private SpinBox _scaleSpin = null!;
-    private SpinBox _rotX = null!;
-    private SpinBox _rotY = null!;
-    private SpinBox _rotZ = null!;
-    private OptionButton _animationButton = null!;
-    private OptionButton _shapeButton = null!;
-    private SpinBox _shapeSizeSpin = null!;
-    private Label _shapeSummaryLabel = null!;
-    private ModelPreviewPane _preview = null!;
+    [Export] private Button _modelPathButton = null!;
+    [Export] private Button _modelPathClearButton = null!;
+    [Export] private SpinBox _scaleSpin = null!;
+    [Export] private SpinBox _rotX = null!;
+    [Export] private SpinBox _rotY = null!;
+    [Export] private SpinBox _rotZ = null!;
+    [Export] private OptionButton _animationButton = null!;
+    [Export] private OptionButton _shapeButton = null!;
+    [Export] private SpinBox _shapeSizeSpin = null!;
+    [Export] private Label _shapeSummaryLabel = null!;
+    [Export] private ModelPreviewPane _preview = null!;
 
     private List<string> _animationChoices = new();
     private List<string> _shapeChoices = new();
+
+    private static PackedScene? _scene;
+
+    public static VisualSection Create(
+        BuildingEditorModel model,
+        string categoryName,
+        int buildingIndex,
+        BuildingEditorModel.BuildingEditEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/VisualSection.tscn");
+        var section = _scene.Instantiate<VisualSection>();
+        section.Initialize(model, categoryName, buildingIndex, entry);
+        return section;
+    }
 
     public void Initialize(
         BuildingEditorModel model,
@@ -51,93 +65,16 @@ public partial class VisualSection : VBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        BuildLayout();
-        RefreshControls();
-        ApplyToPreview();
-    }
-
-    private void BuildLayout()
-    {
-        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        AddChild(grid);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Model Path" });
-        var modelRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _modelPathButton = new Button
-        {
-            Text = "(none)",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            ClipText = true
-        };
-        _modelPathButton.Pressed += OnModelPathPressed;
-        modelRow.AddChild(_modelPathButton);
-        _modelPathClearButton = new Button { Text = "✕", TooltipText = "Clear model path" };
-        _modelPathClearButton.Pressed += OnModelPathCleared;
-        modelRow.AddChild(_modelPathClearButton);
-        grid.AddChild(modelRow);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Scale" });
-        _scaleSpin = new SpinBox
-        {
-            MinValue = 0.01,
-            MaxValue = 100,
-            Step = 0.05,
-            AllowGreater = true,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _scaleSpin.ValueChanged += v => { OnVisualEdited("Scale", (float)v); ApplyToPreview(); };
-        grid.AddChild(_scaleSpin);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Rotation Offset (deg)" });
-        var rotRow = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _rotX = MakeRot();
-        _rotY = MakeRot();
-        _rotZ = MakeRot();
         _rotX.ValueChanged += _ => OnRotationChanged();
         _rotY.ValueChanged += _ => OnRotationChanged();
         _rotZ.ValueChanged += _ => OnRotationChanged();
-        rotRow.AddChild(_rotX);
-        rotRow.AddChild(_rotY);
-        rotRow.AddChild(_rotZ);
-        grid.AddChild(rotRow);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Animation" });
-        _animationButton = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _animationButton.ItemSelected += OnAnimationSelected;
-        grid.AddChild(_animationButton);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Shape (2D Board)" });
-        _shapeButton = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _shapeButton.ItemSelected += OnShapeSelected;
-        grid.AddChild(_shapeButton);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Shape Size (px)" });
-        _shapeSizeSpin = new SpinBox
-        {
-            MinValue = 8,
-            MaxValue = 512,
-            Step = 1,
-            AllowGreater = true,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
         _shapeSizeSpin.ValueChanged += v => OnVisualEdited("ShapeSize", (float)v);
-        grid.AddChild(_shapeSizeSpin);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Shape Slots" });
-        _shapeSummaryLabel = new Label
-        { ThemeTypeVariation = "LabelHighContrast",
-            Text = "",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        grid.AddChild(_shapeSummaryLabel);
+        _preview.AnimationListChanged += OnAnimationListChanged;
 
         RebuildShapeOptions();
-
-        _preview = new ModelPreviewPane();
-        _preview.AnimationListChanged += OnAnimationListChanged;
-        AddChild(_preview);
+        RefreshControls();
+        ApplyToPreview();
     }
 
     private void RebuildShapeOptions()
@@ -157,18 +94,6 @@ public partial class VisualSection : VBoxContainer
             _shapeChoices.Add("hexagon");
             _shapeButton.AddItem("hexagon", 0);
         }
-    }
-
-    private static SpinBox MakeRot()
-    {
-        return new SpinBox
-        {
-            MinValue = -360,
-            MaxValue = 360,
-            Step = 1,
-            AllowGreater = true,
-            CustomMinimumSize = new Vector2(72, 0)
-        };
     }
 
     private void RefreshControls()
@@ -262,7 +187,7 @@ public partial class VisualSection : VBoxContainer
 
     private void OnModelPathPressed()
     {
-        var popup = new ModelPathPopup();
+        var popup = ModelPathPopup.Create();
         AddChild(popup);
         popup.ModelSelected += path =>
         {

@@ -19,26 +19,57 @@ public partial class SubtypeCard : PanelContainer
     private BiomeEditorModel _model = null!;
     private string _subtypeId = "";
 
-    private LineEdit _displayEdit = null!;
-    private Label _familyLabel = null!;
-    private SpinBox _atmMinSpin = null!;
-    private SpinBox _atmMaxSpin = null!;
-    private SpinBox _hazardSpin = null!;
-    private SpinBox _baseWeightSpin = null!;
-    private OptionButton _moistureModeOpt = null!;
-    private VBoxContainer _rulesList = null!;
-    private LineEdit _groupsEdit = null!;
-    private LineEdit _addResEdit = null!;
-    private LineEdit _remResEdit = null!;
+    [Export] private Label _titleLabel = null!;
+    [Export] private LineEdit _displayEdit = null!;
+    [Export] private Label _familyLabel = null!;
+    [Export] private SpinBox _atmMinSpin = null!;
+    [Export] private SpinBox _atmMaxSpin = null!;
+    [Export] private SpinBox _hazardSpin = null!;
+    [Export] private SpinBox _baseWeightSpin = null!;
+    [Export] private OptionButton _moistureModeOpt = null!;
+    [Export] private VBoxContainer _rulesList = null!;
+    [Export] private LineEdit _groupsEdit = null!;
+    [Export] private LineEdit _addResEdit = null!;
+    [Export] private LineEdit _remResEdit = null!;
+
+    private static PackedScene? _scene;
+
+    public static SubtypeCard Create(BiomeEditorModel model, string subtypeId)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BiomeEditor/Cards/SubtypeCard.tscn");
+        var card = _scene.Instantiate<SubtypeCard>();
+        card.Initialize(model, subtypeId);
+        return card;
+    }
 
     public void Initialize(BiomeEditorModel model, string subtypeId)
     {
         ArgumentNullException.ThrowIfNull(model);
         _model = model;
         _subtypeId = subtypeId;
-        BuildLayout();
-        Refresh();
+    }
+
+    public override void _Ready()
+    {
+        base._Ready();
+        _displayEdit.TextSubmitted += s => CommitDisplay(s);
+        _displayEdit.FocusExited += () => CommitDisplay(_displayEdit.Text);
+        _atmMinSpin.ValueChanged += v => CommitAtmosphere();
+        _atmMaxSpin.ValueChanged += v => CommitAtmosphere();
+        _hazardSpin.ValueChanged += v => CommitHazard((float)v);
+        _baseWeightSpin.ValueChanged += v => CommitBaseWeight((float)v);
+        _moistureModeOpt.AddItem("whittaker");
+        _moistureModeOpt.AddItem("uniform_random");
+        _moistureModeOpt.ItemSelected += _ => CommitMoistureMode();
+        _groupsEdit.TextSubmitted += _ => CommitCsvLists();
+        _groupsEdit.FocusExited += () => CommitCsvLists();
+        _addResEdit.TextSubmitted += _ => CommitCsvLists();
+        _addResEdit.FocusExited += () => CommitCsvLists();
+        _remResEdit.TextSubmitted += _ => CommitCsvLists();
+        _remResEdit.FocusExited += () => CommitCsvLists();
+
         _model.SubtypeDefinitionChanged += OnDefChanged;
+        Refresh();
     }
 
     public override void _ExitTree()
@@ -53,121 +84,10 @@ public partial class SubtypeCard : PanelContainer
         CallDeferred(nameof(Refresh));
     }
 
-    private void BuildLayout()
-    {
-        AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color(0.16f, 0.14f, 0.18f),
-            ContentMarginLeft = 8,
-            ContentMarginRight = 8,
-            ContentMarginTop = 6,
-            ContentMarginBottom = 6,
-        });
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        AddChild(root);
-
-        var header = new HBoxContainer();
-        var title = new Label { Text = _subtypeId, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        title.AddThemeFontSizeOverride("font_size", 14);
-        title.AddThemeColorOverride("font_color", new Color(0.95f, 0.85f, 0.5f));
-        header.AddChild(title);
-        var renameBtn = new Button { Text = "Rename" };
-        renameBtn.Pressed += OnRename;
-        header.AddChild(renameBtn);
-        var delBtn = new Button { Text = "✕ Delete Subtype" };
-        delBtn.Pressed += OnDelete;
-        header.AddChild(delBtn);
-        root.AddChild(header);
-
-        var nameRow = new HBoxContainer();
-        nameRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "display_name:", CustomMinimumSize = new Vector2(150, 0) });
-        _displayEdit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _displayEdit.TextSubmitted += s => CommitDisplay(s);
-        _displayEdit.FocusExited += () => CommitDisplay(_displayEdit.Text);
-        nameRow.AddChild(_displayEdit);
-        root.AddChild(nameRow);
-
-        var familyRow = new HBoxContainer();
-        familyRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "family:", CustomMinimumSize = new Vector2(150, 0) });
-        _familyLabel = new Label { Text = "", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _familyLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.7f, 0.7f));
-        familyRow.AddChild(_familyLabel);
-        root.AddChild(familyRow);
-
-        var atmRow = new HBoxContainer();
-        atmRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "atmosphere [min,max]:", CustomMinimumSize = new Vector2(150, 0) });
-        _atmMinSpin = NewSpin(0.0, 100.0, 0.05);
-        _atmMaxSpin = NewSpin(0.0, 100.0, 0.05);
-        _atmMinSpin.ValueChanged += v => CommitAtmosphere();
-        _atmMaxSpin.ValueChanged += v => CommitAtmosphere();
-        atmRow.AddChild(_atmMinSpin);
-        atmRow.AddChild(_atmMaxSpin);
-        root.AddChild(atmRow);
-
-        var hazardRow = new HBoxContainer();
-        hazardRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "base_hazard:", CustomMinimumSize = new Vector2(150, 0) });
-        _hazardSpin = NewSpin(0.0, 10.0, 0.1);
-        _hazardSpin.ValueChanged += v => CommitHazard((float)v);
-        hazardRow.AddChild(_hazardSpin);
-        root.AddChild(hazardRow);
-
-        var bwRow = new HBoxContainer();
-        bwRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "base_resource_weight:", CustomMinimumSize = new Vector2(150, 0) });
-        _baseWeightSpin = NewSpin(0.0, 10.0, 0.05);
-        _baseWeightSpin.ValueChanged += v => CommitBaseWeight((float)v);
-        bwRow.AddChild(_baseWeightSpin);
-        root.AddChild(bwRow);
-
-        var modeRow = new HBoxContainer();
-        modeRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "moisture_mode:", CustomMinimumSize = new Vector2(150, 0) });
-        _moistureModeOpt = new OptionButton();
-        _moistureModeOpt.AddItem("whittaker");
-        _moistureModeOpt.AddItem("uniform_random");
-        _moistureModeOpt.ItemSelected += _ => CommitMoistureMode();
-        modeRow.AddChild(_moistureModeOpt);
-        root.AddChild(modeRow);
-
-        var rulesHeader = new HBoxContainer();
-        rulesHeader.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "assigner_rules:", SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        var addRule = new Button { Text = "+ Rule" };
-        addRule.Pressed += OnAddRule;
-        rulesHeader.AddChild(addRule);
-        root.AddChild(rulesHeader);
-        _rulesList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_rulesList);
-
-        _groupsEdit = AddCsvRow(root, "resource_groups:");
-        _addResEdit = AddCsvRow(root, "add_resources:");
-        _remResEdit = AddCsvRow(root, "remove_resources:");
-    }
-
-    private LineEdit AddCsvRow(VBoxContainer root, string label)
-    {
-        var row = new HBoxContainer();
-        row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = label, CustomMinimumSize = new Vector2(150, 0) });
-        var edit = new LineEdit { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        edit.TextSubmitted += s => CommitCsvLists();
-        edit.FocusExited += () => CommitCsvLists();
-        row.AddChild(edit);
-        root.AddChild(row);
-        return edit;
-    }
-
-    private static SpinBox NewSpin(double min, double max, double step) => new()
-    {
-        MinValue = min,
-        MaxValue = max,
-        Step = step,
-        AllowGreater = false,
-        AllowLesser = false,
-        CustomMinimumSize = new Vector2(80, 0),
-    };
-
     private void Refresh()
     {
         if (!_model.Subtypes.TryGetValue(_subtypeId, out var s)) return;
+        _titleLabel.Text = _subtypeId;
         _displayEdit.Text = s.DisplayName;
         _familyLabel.Text = s.Family.ToString();
         _atmMinSpin.SetValueNoSignal(s.AtmosphereMin);

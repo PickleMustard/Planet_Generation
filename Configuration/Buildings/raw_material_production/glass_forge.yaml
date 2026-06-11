@@ -10,6 +10,9 @@ buildings:
       max_elevation: 1
       max_slope: 45
       cell_count: 1
+    required_resources:
+      concrete: 20
+      steel: 25
     behaviors:
       - behavior_id: ManufacturingBehavior
         default_recipe: "glass_smelting"

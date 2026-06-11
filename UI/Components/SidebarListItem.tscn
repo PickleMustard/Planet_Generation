@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://ctuh0tuxwxswo"]
+
+[ext_resource type="Script" path="res://Scripts/UI/Components/SidebarListItem.cs" id="1_script"]
+
+[sub_resource type="StyleBoxEmpty" id="empty"]
+
+[node name="SidebarListItem" type="PanelContainer" node_paths=PackedStringArray("_hoverOverlay", "_content")]
+custom_minimum_size = Vector2(0, 28)
+size_flags_horizontal = 3
+mouse_filter = 0
+theme_override_styles/panel = SubResource("empty")
+script = ExtResource("1_script")
+_hoverOverlay = NodePath("HoverOverlay")
+_content = NodePath("Content")
+
+[node name="HoverOverlay" type="ColorRect" parent="."]
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.165, 0.145, 0.125, 0)
+
+[node name="Content" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8

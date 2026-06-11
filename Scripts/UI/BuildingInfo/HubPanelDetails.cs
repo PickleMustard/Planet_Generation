@@ -42,6 +42,10 @@ public partial class HubPanelDetails : BaseBuildingDetails
     private Button? _manageRoutesButton;
 
     private PackedScene? _resourceSlotItemScene;
+    private PackedScene? _transferStatusRowScene;
+
+    private static readonly Color StateColorIdle = new(0.6f, 0.6f, 0.65f);
+    private static readonly Color StateColorActive = new(0.29f, 0.65f, 0.32f);
 
     private IOrbitalBody? _cachedBody;
     private Building? _bodyResolvedFor;
@@ -77,6 +81,18 @@ public partial class HubPanelDetails : BaseBuildingDetails
         if (_manageRoutesButton != null) _manageRoutesButton.Pressed += OnManageRoutesPressed;
 
         _resourceSlotItemScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/ResourceSlotItem.tscn");
+        _transferStatusRowScene = ResourceLoader.Load<PackedScene>("res://UI/BuildingInfo/TransferStatusRow.tscn");
+    }
+
+    private void AddTransferRow(string name, string state, Color stateColor)
+    {
+        if (_transferStatusRowScene == null || _transfersList == null) return;
+        var row = _transferStatusRowScene.Instantiate<HBoxContainer>();
+        row.GetNode<Label>("NameLabel").Text = name;
+        var stateLabel = row.GetNode<Label>("StateLabel");
+        stateLabel.Text = state;
+        stateLabel.Modulate = stateColor;
+        _transfersList.AddChild(row);
     }
 
     protected override void UpdateDisplay()
@@ -279,22 +295,13 @@ public partial class HubPanelDetails : BaseBuildingDetails
 
         foreach (var schedule in schedules)
         {
-            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             string originShort = schedule.OriginBuildingId.Length >= 6
                 ? schedule.OriginBuildingId[..6]
                 : schedule.OriginBuildingId;
-            var name = new Label
-            {
-                Text = $"hub {originShort} → {schedule.Destination}",
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            };
-            row.AddChild(name);
-            var state = new Label { Text = schedule.State.ToString() };
-            state.Modulate = schedule.State == TransferScheduleState.Idle
-                ? new Color(0.6f, 0.6f, 0.65f)
-                : new Color(0.29f, 0.65f, 0.32f);
-            row.AddChild(state);
-            _transfersList!.AddChild(row);
+            AddTransferRow(
+                $"hub {originShort} → {schedule.Destination}",
+                schedule.State.ToString(),
+                schedule.State == TransferScheduleState.Idle ? StateColorIdle : StateColorActive);
         }
     }
 
@@ -310,36 +317,18 @@ public partial class HubPanelDetails : BaseBuildingDetails
         {
             var order = transfer.Order;
             if (order == null) continue;
-            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            string originLabel = FormatOriginLabel(order.OriginBuildingId, body);
-            var name = new Label
-            {
-                Text = $"from {originLabel}",
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            };
-            row.AddChild(name);
-            var state = new Label { Text = order.State.ToString() };
-            state.Modulate = new Color(0.29f, 0.65f, 0.32f);
-            row.AddChild(state);
-            _transfersList!.AddChild(row);
+            AddTransferRow(
+                $"from {FormatOriginLabel(order.OriginBuildingId, body)}",
+                order.State.ToString(),
+                StateColorActive);
         }
 
         foreach (var schedule in schedules)
         {
-            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            string originLabel = FormatOriginLabel(schedule.OriginBuildingId, body);
-            var name = new Label
-            {
-                Text = $"from {originLabel}",
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            };
-            row.AddChild(name);
-            var state = new Label { Text = schedule.State.ToString() };
-            state.Modulate = schedule.State == TransferScheduleState.Idle
-                ? new Color(0.6f, 0.6f, 0.65f)
-                : new Color(0.29f, 0.65f, 0.32f);
-            row.AddChild(state);
-            _transfersList!.AddChild(row);
+            AddTransferRow(
+                $"from {FormatOriginLabel(schedule.OriginBuildingId, body)}",
+                schedule.State.ToString(),
+                schedule.State == TransferScheduleState.Idle ? StateColorIdle : StateColorActive);
         }
     }
 

@@ -4,83 +4,42 @@ using Godot;
 
 namespace DeveloperTools.Settings;
 
+/// <summary>
+/// Collapsible settings category. Layout lives in <c>CategorySection.tscn</c>;
+/// this script wires the header toggle and manages contained <see cref="SettingRow"/>s.
+/// Instantiate via <see cref="Create"/>.
+/// </summary>
 public partial class CategorySection : VBoxContainer
 {
     private string? _categoryName;
-    private Button? _headerButton;
-    private VBoxContainer? _contentContainer;
-    private PanelContainer? _contentPanel;
+    [Export] private Button? _headerButton;
+    [Export] private VBoxContainer? _contentContainer;
+    [Export] private PanelContainer? _contentPanel;
     private readonly Dictionary<string, SettingRow> _rows = new();
     private bool _isExpanded = true;
 
     public string? CategoryName => _categoryName;
     public bool IsExpanded => _isExpanded;
 
+    private static PackedScene? _scene;
+
+    public static CategorySection Create(string categoryName)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/Settings/CategorySection.tscn");
+        var section = _scene.Instantiate<CategorySection>();
+        section.Setup(categoryName);
+        return section;
+    }
+
     public void Setup(string categoryName)
     {
         _categoryName = categoryName;
-        BuildUI();
-    }
-
-    private void BuildUI()
-    {
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        AddThemeConstantOverride("separation", 0);
-
-        var headerPanel = new PanelContainer
+        if (_headerButton != null)
         {
-            Name = "HeaderPanel"
-        };
-        var headerStyle = new StyleBoxFlat
-        {
-            BgColor = new Color(0.15f, 0.15f, 0.18f),
-            ContentMarginLeft = 8,
-            ContentMarginTop = 4,
-            ContentMarginRight = 8,
-            ContentMarginBottom = 4
-        };
-        headerPanel.AddThemeStyleboxOverride("panel", headerStyle);
-        AddChild(headerPanel);
-
-        _headerButton = new Button
-        {
-            Text = $"📁 {FormatCategoryName(_categoryName!)}",
-            ToggleMode = true,
-            ButtonPressed = _isExpanded,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            Alignment = HorizontalAlignment.Left
-        };
-        _headerButton.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
-        _headerButton.AddThemeColorOverride("font_hover_color", new Color(1f, 1f, 1f));
-        _headerButton.Pressed += OnHeaderPressed;
-        headerPanel.AddChild(_headerButton);
-
-        _contentPanel = new PanelContainer
-        {
-            Name = "ContentPanel"
-        };
-        var contentStyle = new StyleBoxFlat
-        {
-            BgColor = new Color(0.1f, 0.1f, 0.12f),
-            BorderColor = new Color(0.2f, 0.2f, 0.22f),
-            BorderWidthLeft = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            ContentMarginLeft = 12,
-            ContentMarginTop = 8,
-            ContentMarginRight = 12,
-            ContentMarginBottom = 8
-        };
-        _contentPanel.AddThemeStyleboxOverride("panel", contentStyle);
-        AddChild(_contentPanel);
-
-        _contentContainer = new VBoxContainer
-        {
-            Name = "ContentContainer",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        _contentContainer.AddThemeConstantOverride("separation", 6);
-        _contentPanel.AddChild(_contentContainer);
+            _headerButton.Text = $"📁 {FormatCategoryName(_categoryName)}";
+            _headerButton.ButtonPressed = _isExpanded;
+            _headerButton.Pressed += OnHeaderPressed;
+        }
     }
 
     public void AddSettingRow(SettingRow row)

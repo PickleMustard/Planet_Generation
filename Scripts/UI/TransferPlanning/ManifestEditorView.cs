@@ -16,6 +16,12 @@ public enum TransferMode
     OneTime,
 }
 
+public enum ManifestUnitMode
+{
+    Tonnage,
+    Percent,
+}
+
 /// <summary>
 /// View 4 — Manifest Editor. Drag a resource from the right-hand stockpile palette
 /// onto an empty manifest row; tweak units; pick a condition; press Finish to
@@ -37,25 +43,74 @@ public partial class ManifestEditorView : Control
     private readonly Dictionary<string, float> _proportions = new();
     private ConditionOption _condition = ConditionOption.Default;
     private TransferMode _mode = TransferMode.Recurring;
+    private ManifestUnitMode _unitMode = ManifestUnitMode.Tonnage;
 
-    private VBoxContainer? _manifestRows;
-    private VBoxContainer? _stockpileList;
-    private OptionButton? _conditionDropdown;
-    private Label? _conditionDescription;
-    private VBoxContainer? _watchedExtras;
-    private ScaleStrip? _scale;
-    private Label? _itemSummary;
+    [Export] private VBoxContainer? _manifestRows;
+    [Export] private VBoxContainer? _stockpileList;
+    [Export] private OptionButton? _conditionDropdown;
+    [Export] private Label? _conditionDescription;
+    [Export] private VBoxContainer? _watchedExtras;
+    [Export] private ScaleStrip? _scale;
+    [Export] private Label? _itemSummary;
     private Button? _finishBtn;
-    private Label? _destLabel;
-    private Control? _conditionPanel;
-    private Button? _modeRecurringBtn;
-    private Button? _modeOneTimeBtn;
-    private StepIndicator? _steps;
+    [Export] private Label? _destLabel;
+    [Export] private Control? _conditionPanel;
+    [Export] private Button? _modeRecurringBtn;
+    [Export] private Button? _modeOneTimeBtn;
+    [Export] private Button? _unitTonnageBtn;
+    [Export] private Button? _unitPercentBtn;
+    [Export] private LedgerColumnHead? _manifestHead;
+    [Export] private StepIndicator? _steps;
+    [Export] private PanelContainer? _manifestPanel;
+    [Export] private TransferActionBar? _actionBar;
+
+    private static PackedScene? _scene;
+
+    public static ManifestEditorView Create()
+    {
+        _scene ??= GD.Load<PackedScene>("res://UI/TransferPlanning/ManifestEditorView.tscn");
+        return _scene.Instantiate<ManifestEditorView>();
+    }
 
     public override void _Ready()
     {
-        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        BuildLayout();
+        if (_modeRecurringBtn != null) _modeRecurringBtn.Pressed += () => SetMode(TransferMode.Recurring);
+        if (_modeOneTimeBtn != null) _modeOneTimeBtn.Pressed += () => SetMode(TransferMode.OneTime);
+        if (_unitTonnageBtn != null) _unitTonnageBtn.Pressed += () => SetUnitMode(ManifestUnitMode.Tonnage);
+        if (_unitPercentBtn != null) _unitPercentBtn.Pressed += () => SetUnitMode(ManifestUnitMode.Percent);
+
+        if (_conditionDropdown != null)
+        {
+            for (int i = 0; i < ConditionOption.All.Length; i++)
+                _conditionDropdown.AddItem(ConditionOption.All[i].Label, i);
+            _conditionDropdown.ItemSelected += OnConditionSelected;
+        }
+
+        // Drop target on the manifest table itself so empty drops still register.
+        _manifestPanel?.SetDragForwarding(
+            new Callable(this, MethodName.OnGetDragData),
+            new Callable(this, MethodName.OnCanDropData),
+            new Callable(this, MethodName.OnDropData));
+
+        if (_scale != null) _scale.Limit = 1200f;
+
+        UpdateSteps();
+        RefreshManifestHead();
+
+        if (_actionBar != null)
+        {
+            var backBtn = new Button { Text = "← Back to destination" };
+            backBtn.Pressed += () => EmitSignal(SignalName.BackRequested);
+            _actionBar.LeftSlot.AddChild(backBtn);
+
+            var cancelBtn = new Button { Text = "Cancel" };
+            cancelBtn.Pressed += () => EmitSignal(SignalName.Cancelled);
+            _actionBar.RightSlot.AddChild(cancelBtn);
+
+            _finishBtn = new Button { Text = "Finish & File Route ✓", ThemeTypeVariation = "ButtonPrimary" };
+            _finishBtn.Pressed += OnFinish;
+            _actionBar.RightSlot.AddChild(_finishBtn);
+        }
     }
 
     public void Bind(TransferStationBehavior? behavior, string originBuildingId, Theme? _)
@@ -111,189 +166,6 @@ public partial class ManifestEditorView : Control
         if (_modeOneTimeBtn != null) _modeOneTimeBtn.Disabled = !enabled;
     }
 
-    private void BuildLayout()
-    {
-        var col = new VBoxContainer();
-        col.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        col.AddThemeConstantOverride("separation", 0);
-        AddChild(col);
-
-        var stepBar = new MarginContainer();
-        stepBar.AddThemeConstantOverride("margin_left", 18);
-        stepBar.AddThemeConstantOverride("margin_right", 18);
-        stepBar.AddThemeConstantOverride("margin_top", 6);
-        stepBar.AddThemeConstantOverride("margin_bottom", 6);
-        col.AddChild(stepBar);
-        var stepRow = new HBoxContainer();
-        stepRow.AddThemeConstantOverride("separation", 14);
-        stepBar.AddChild(stepRow);
-        _steps = new StepIndicator { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        stepRow.AddChild(_steps);
-        UpdateSteps();
-        _destLabel = new Label
-        {
-            Text = "DEST · —",
-            ThemeTypeVariation = "LabelMono",
-        };
-        _destLabel.AddThemeFontSizeOverride("font_size", 10);
-        _destLabel.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        stepRow.AddChild(_destLabel);
-
-        var split = new HSplitContainer
-        {
-            SplitOffset = -320,
-            Collapsed = true,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        col.AddChild(split);
-
-        split.AddChild(BuildLeftColumn());
-        split.AddChild(BuildStockpileColumn());
-
-        var actionBar = new TransferActionBar();
-        col.AddChild(actionBar);
-
-        var backBtn = new Button { Text = "← Back to destination" };
-        backBtn.Pressed += () => EmitSignal(SignalName.BackRequested);
-        actionBar.LeftSlot.AddChild(backBtn);
-
-        var cancelBtn = new Button { Text = "Cancel" };
-        cancelBtn.Pressed += () => EmitSignal(SignalName.Cancelled);
-        actionBar.RightSlot.AddChild(cancelBtn);
-
-        _finishBtn = new Button { Text = "Finish & File Route ✓", ThemeTypeVariation = "ButtonPrimary" };
-        _finishBtn.Pressed += OnFinish;
-        actionBar.RightSlot.AddChild(_finishBtn);
-    }
-
-    private Control BuildLeftColumn()
-    {
-        var margin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        margin.AddThemeConstantOverride("margin_left", 16);
-        margin.AddThemeConstantOverride("margin_right", 16);
-        margin.AddThemeConstantOverride("margin_top", 12);
-        margin.AddThemeConstantOverride("margin_bottom", 12);
-
-        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        box.AddThemeConstantOverride("separation", 10);
-        margin.AddChild(box);
-
-        box.AddChild(BuildModeToggleRow());
-
-        var titleRow = new HBoxContainer();
-        titleRow.AddThemeConstantOverride("separation", 8);
-        box.AddChild(titleRow);
-        var title = new Label
-        {
-            Text = "Cargo Manifest",
-            ThemeTypeVariation = "LabelHand",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        title.AddThemeFontSizeOverride("font_size", 24);
-        titleRow.AddChild(title);
-        _itemSummary = new Label
-        {
-            ThemeTypeVariation = "LabelMono",
-        };
-        _itemSummary.AddThemeFontSizeOverride("font_size", 12);
-        _itemSummary.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        titleRow.AddChild(_itemSummary);
-
-        var manifestPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        manifestPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color(1f, 1f, 1f, 0.3f),
-            BorderColor = WireColors.Ink,
-            BorderWidthLeft = 2,
-            BorderWidthTop = 2,
-            BorderWidthRight = 2,
-            BorderWidthBottom = 2,
-            CornerRadiusBottomLeft = 3,
-            CornerRadiusBottomRight = 3,
-            CornerRadiusTopLeft = 3,
-            CornerRadiusTopRight = 3,
-        });
-        box.AddChild(manifestPanel);
-
-        var manifestCol = new VBoxContainer();
-        manifestPanel.AddChild(manifestCol);
-
-        var head = new LedgerColumnHead();
-        manifestCol.AddChild(head);
-        head.SetColumns(
-        [
-            new LedgerColumnHead.Col { Title = "Resource", StretchRatio = 1f },
-            new LedgerColumnHead.Col { Title = "Wt/u", WidthPx = 60, Align = HorizontalAlignment.Center },
-            new LedgerColumnHead.Col { Title = "Share %", WidthPx = 110, Align = HorizontalAlignment.Center },
-            new LedgerColumnHead.Col { Title = "Total Wt", WidthPx = 80, Align = HorizontalAlignment.Center },
-            new LedgerColumnHead.Col { Title = "", WidthPx = 60, Align = HorizontalAlignment.Center },
-        ]);
-
-        var scroll = new ScrollContainer
-        {
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            CustomMinimumSize = new Vector2(0, 220),
-        };
-        manifestCol.AddChild(scroll);
-
-        _manifestRows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _manifestRows.AddThemeConstantOverride("separation", 0);
-        scroll.AddChild(_manifestRows);
-
-        // Drop target on the table itself so empty drops still register.
-        manifestPanel.SetDragForwarding(
-            new Callable(this, MethodName.OnGetDragData),
-            new Callable(this, MethodName.OnCanDropData),
-            new Callable(this, MethodName.OnDropData));
-
-        _conditionPanel = BuildConditionPanel();
-        box.AddChild(_conditionPanel);
-
-        var spacer = new Control { SizeFlagsVertical = SizeFlags.ExpandFill };
-        box.AddChild(spacer);
-
-        _scale = new ScaleStrip { Limit = 1200f };
-        box.AddChild(_scale);
-
-        return margin;
-    }
-
-    private Control BuildModeToggleRow()
-    {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 6);
-
-        var kicker = new Label
-        {
-            Text = "TRANSFER TYPE",
-            ThemeTypeVariation = "LabelMono",
-            CustomMinimumSize = new Vector2(140f, 0f),
-        };
-        kicker.AddThemeFontSizeOverride("font_size", 10);
-        kicker.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        row.AddChild(kicker);
-
-        _modeRecurringBtn = new Button
-        {
-            Text = "Recurring Schedule",
-            ToggleMode = true,
-            ButtonPressed = true,
-        };
-        _modeRecurringBtn.Pressed += () => SetMode(TransferMode.Recurring);
-        row.AddChild(_modeRecurringBtn);
-
-        _modeOneTimeBtn = new Button
-        {
-            Text = "One-Time Order",
-            ToggleMode = true,
-            ButtonPressed = false,
-        };
-        _modeOneTimeBtn.Pressed += () => SetMode(TransferMode.OneTime);
-        row.AddChild(_modeOneTimeBtn);
-
-        return row;
-    }
-
     private void SetMode(TransferMode mode)
     {
         if (_mode == mode)
@@ -317,6 +189,29 @@ public partial class ManifestEditorView : Control
         UpdateSteps();
     }
 
+    private void SetUnitMode(ManifestUnitMode mode)
+    {
+        _unitMode = mode;
+        if (_unitTonnageBtn != null) _unitTonnageBtn.ButtonPressed = mode == ManifestUnitMode.Tonnage;
+        if (_unitPercentBtn != null) _unitPercentBtn.ButtonPressed = mode == ManifestUnitMode.Percent;
+        RefreshManifestHead();
+        RebuildManifestRows();
+    }
+
+    private void RefreshManifestHead()
+    {
+        if (_manifestHead == null) return;
+        bool tonnage = _unitMode == ManifestUnitMode.Tonnage;
+        _manifestHead.SetColumns(
+        [
+            new LedgerColumnHead.Col { Title = "Resource", StretchRatio = 1f },
+            new LedgerColumnHead.Col { Title = "Wt/u", WidthPx = 60, Align = HorizontalAlignment.Center },
+            new LedgerColumnHead.Col { Title = tonnage ? "Tons" : "Share %", WidthPx = 110, Align = HorizontalAlignment.Center },
+            new LedgerColumnHead.Col { Title = tonnage ? "Share %" : "Total Wt", WidthPx = 80, Align = HorizontalAlignment.Center },
+            new LedgerColumnHead.Col { Title = "", WidthPx = 60, Align = HorizontalAlignment.Center },
+        ]);
+    }
+
     private void UpdateSteps()
     {
         if (_steps == null) return;
@@ -328,114 +223,6 @@ public partial class ManifestEditorView : Control
             new() { Label = oneTime ? "Review" : "Set condition", State = StepIndicator.StepState.Active },
             new() { Label = oneTime ? "Dispatch" : "Confirm", State = StepIndicator.StepState.Pending },
         });
-    }
-
-    private Control BuildConditionPanel()
-    {
-        var panel = new PanelContainer();
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color(1f, 1f, 1f, 0.3f),
-            BorderColor = WireColors.Ink,
-            BorderWidthLeft = 2,
-            BorderWidthTop = 2,
-            BorderWidthRight = 2,
-            BorderWidthBottom = 2,
-            CornerRadiusBottomLeft = 3,
-            CornerRadiusBottomRight = 3,
-            CornerRadiusTopLeft = 3,
-            CornerRadiusTopRight = 3,
-            ContentMarginLeft = 10,
-            ContentMarginTop = 10,
-            ContentMarginRight = 10,
-            ContentMarginBottom = 10,
-        });
-
-        var stack = new VBoxContainer();
-        stack.AddThemeConstantOverride("separation", 8);
-        panel.AddChild(stack);
-
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
-        stack.AddChild(row);
-
-        var labelStack = new VBoxContainer();
-        labelStack.AddThemeConstantOverride("separation", 0);
-        row.AddChild(labelStack);
-        var labelKicker = new Label
-        {
-            Text = "DISPATCH WHEN",
-            ThemeTypeVariation = "LabelMono",
-        };
-        labelKicker.AddThemeFontSizeOverride("font_size", 9);
-        labelKicker.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        labelStack.AddChild(labelKicker);
-        var labelValue = new Label
-        {
-            Text = "Condition",
-            ThemeTypeVariation = "LabelHand",
-        };
-        labelValue.AddThemeFontSizeOverride("font_size", 18);
-        labelStack.AddChild(labelValue);
-
-        _conditionDropdown = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        for (int i = 0; i < ConditionOption.All.Length; i++)
-            _conditionDropdown.AddItem(ConditionOption.All[i].Label, i);
-        _conditionDropdown.ItemSelected += OnConditionSelected;
-        row.AddChild(_conditionDropdown);
-
-        var description = new VBoxContainer();
-        description.AddThemeConstantOverride("separation", 4);
-        stack.AddChild(description);
-        _conditionDescription = new Label { ThemeTypeVariation = "LabelSub" };
-        _conditionDescription.AddThemeFontSizeOverride("font_size", 13);
-        _conditionDescription.AddThemeColorOverride("font_color", WireColors.InkSoft);
-        description.AddChild(_conditionDescription);
-        _watchedExtras = new VBoxContainer { Visible = false };
-        description.AddChild(_watchedExtras);
-        return panel;
-    }
-
-    private Control BuildStockpileColumn()
-    {
-        var margin = new MarginContainer { CustomMinimumSize = new Vector2(320, 0) };
-        margin.AddThemeConstantOverride("margin_left", 14);
-        margin.AddThemeConstantOverride("margin_right", 14);
-        margin.AddThemeConstantOverride("margin_top", 12);
-        margin.AddThemeConstantOverride("margin_bottom", 12);
-
-        var col = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        col.AddThemeConstantOverride("separation", 10);
-        margin.AddChild(col);
-
-        var title = new Label
-        {
-            Text = "Stockpile",
-            ThemeTypeVariation = "LabelHand",
-        };
-        title.AddThemeFontSizeOverride("font_size", 22);
-        col.AddChild(title);
-
-        var hint = new Label
-        {
-            Text = "DRAG INTO MANIFEST",
-            ThemeTypeVariation = "LabelMono",
-        };
-        hint.AddThemeFontSizeOverride("font_size", 10);
-        hint.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        col.AddChild(hint);
-
-        var scroll = new ScrollContainer
-        {
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        col.AddChild(scroll);
-        _stockpileList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _stockpileList.AddThemeConstantOverride("separation", 5);
-        scroll.AddChild(_stockpileList);
-
-        return margin;
     }
 
     private void RebuildStockpile()
@@ -669,17 +456,57 @@ public partial class ManifestEditorView : Control
         RebuildManifestRows();
     }
 
-    internal void AdjustProportion(string resourceId, float delta)
+    private static int CurrentStepMagnitude()
+    {
+        bool ctrl = Input.IsKeyPressed(Key.Ctrl);
+        bool shift = Input.IsKeyPressed(Key.Shift);
+        if (ctrl && shift) return 100;
+        if (shift) return 20;
+        if (ctrl) return 5;
+        return 1;
+    }
+
+    internal float GetCapacityOrDefault()
+    {
+        float capacity = _behavior?.GetCapacity(_originBuildingId) ?? 1200f;
+        return capacity <= 0f ? 1200f : capacity;
+    }
+
+    private float SumOtherProportions(string excludeId)
+    {
+        float sum = 0f;
+        foreach (var kvp in _proportions)
+            if (kvp.Key != excludeId)
+                sum += kvp.Value;
+        return sum;
+    }
+
+    internal void AdjustEntry(string resourceId, int sign)
     {
         if (!_proportions.TryGetValue(resourceId, out var current))
             return;
-        float updated = Mathf.Clamp(current + delta, 0.05f, 1f);
+
+        float capacity = GetCapacityOrDefault();
+        int mag = CurrentStepMagnitude();
+
+        float deltaProp = _unitMode == ManifestUnitMode.Tonnage
+            ? sign * mag / capacity
+            : sign * mag / 100f;
+
+        // Floor: keep at least 1 ton / 1% in the active unit (use ✕ to remove).
+        float minProp = _unitMode == ManifestUnitMode.Tonnage
+            ? 1f / capacity
+            : 0.01f;
+
+        // Hard cap: total allocation cannot exceed full capacity.
+        float headroom = 1f - SumOtherProportions(resourceId);
+        if (headroom < minProp) headroom = minProp;
+
+        float updated = Mathf.Clamp(current + deltaProp, minProp, headroom);
         _proportions[resourceId] = updated;
         UpdateScale();
 
         if (_manifestRows == null) return;
-        float capacity = _behavior?.GetCapacity(_originBuildingId) ?? 1200f;
-        if (capacity <= 0f) capacity = 1200f;
         foreach (var child in _manifestRows.GetChildren())
         {
             if (child is ManifestRow row && row.ResourceId == resourceId)
@@ -763,8 +590,8 @@ public partial class ManifestEditorView : Control
         public string ResourceId = "";
         public ManifestEditorView? Owner;
         private bool _ghost;
-        private Label? _shareLabel;
-        private Label? _weightLabel;
+        private Label? _counterLabel;
+        private Label? _columnLabel;
 
         public override void _Ready()
         {
@@ -845,30 +672,31 @@ public partial class ManifestEditorView : Control
             counter.Alignment = BoxContainer.AlignmentMode.Center;
             row.AddChild(counter);
 
+            float capacity = Owner?.GetCapacityOrDefault() ?? 1200f;
+
             var minus = new Button { Text = "−" };
-            minus.Pressed += () => Owner?.AdjustProportion(ResourceId, -0.05f);
+            minus.Pressed += () => Owner?.AdjustEntry(ResourceId, -1);
             counter.AddChild(minus);
-            _shareLabel = new Label
+            _counterLabel = new Label
             {
-                Text = $"{(int)(proportion * 100)}%",
+                Text = FormatCounter(proportion, capacity),
                 ThemeTypeVariation = "LabelMono",
             };
-            _shareLabel.AddThemeFontSizeOverride("font_size", 14);
-            counter.AddChild(_shareLabel);
+            _counterLabel.AddThemeFontSizeOverride("font_size", 14);
+            counter.AddChild(_counterLabel);
             var plus = new Button { Text = "+" };
-            plus.Pressed += () => Owner?.AdjustProportion(ResourceId, 0.05f);
+            plus.Pressed += () => Owner?.AdjustEntry(ResourceId, +1);
             counter.AddChild(plus);
 
-            float capacity = Owner?._behavior?.GetCapacity(Owner._originBuildingId) ?? 1200f;
-            _weightLabel = new Label
+            _columnLabel = new Label
             {
-                Text = $"{capacity * proportion:0.#} t",
+                Text = FormatColumn(proportion, capacity),
                 ThemeTypeVariation = "LabelMono",
                 CustomMinimumSize = new Vector2(80, 0),
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
-            _weightLabel.AddThemeFontSizeOverride("font_size", 12);
-            row.AddChild(_weightLabel);
+            _columnLabel.AddThemeFontSizeOverride("font_size", 12);
+            row.AddChild(_columnLabel);
 
             var remove = new Button { Text = "✕", ThemeTypeVariation = "ButtonDanger" };
             remove.Pressed += () => Owner?.RemoveFromManifest(ResourceId);
@@ -877,10 +705,27 @@ public partial class ManifestEditorView : Control
 
         public void RefreshValues(float proportion, float capacity)
         {
-            if (_shareLabel != null)
-                _shareLabel.Text = $"{(int)(proportion * 100)}%";
-            if (_weightLabel != null)
-                _weightLabel.Text = $"{capacity * proportion:0.#} t";
+            if (_counterLabel != null)
+                _counterLabel.Text = FormatCounter(proportion, capacity);
+            if (_columnLabel != null)
+                _columnLabel.Text = FormatColumn(proportion, capacity);
+        }
+
+        // Counter shows the editable value in the active unit; column shows the converse.
+        private string FormatCounter(float proportion, float capacity)
+        {
+            bool tonnage = Owner?._unitMode != ManifestUnitMode.Percent;
+            return tonnage
+                ? $"{capacity * proportion:0.#} t"
+                : $"{(int)Mathf.Round(proportion * 100)}%";
+        }
+
+        private string FormatColumn(float proportion, float capacity)
+        {
+            bool tonnage = Owner?._unitMode != ManifestUnitMode.Percent;
+            return tonnage
+                ? $"{(int)Mathf.Round(proportion * 100)}%"
+                : $"{capacity * proportion:0.#} t";
         }
 
         private void ClearChildren()

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Constructables;
+using Constructables.Buildings.Behaviors;
+using ProceduralGeneration;
 using ProceduralGeneration.PlanetGeneration;
 using Structures.Resources;
 using UtilityLibrary;
@@ -95,18 +97,39 @@ public sealed class BuildingLinkService
         else
             (source, target) = (a, b);
 
+        // Create the link dormant; an Orbital Architect builds it before it carries anything.
         var newLink = new ResourceLink { Profile = profile };
-        newLink.ConnectNodes(source, target);
+        newLink.ConnectNodes(source, target, activate: false);
 
         var body = ResolveBody(a) ?? ResolveBody(b);
-        if (body != null)
+
+        // Queue construction with the body's architect router — the same pipeline buildings use.
+        // The job draws distance-scaled resources and work; on completion it activates the link.
+        var requiredResources = ComputeConstructionCost(profile, newLink.CellDistance);
+        var job = new LinkConstructionJob(newLink, profile.ConstructionWork, requiredResources);
+        var constructionMgr = body?.BuildingConstructionMgr;
+        if (constructionMgr != null)
+        {
+            constructionMgr.RegisterJob(job);
+        }
+        else
+        {
+            // No architect manager resolvable (e.g. a test harness without a full body): fall back
+            // to an immediately-active link so the connection still functions.
+            GameLogger.Warning(
+                "BuildingLinkService: no BuildingConstructionManager for link endpoints; "
+                + "activating link without construction.");
+            newLink.Activate();
+        }
+
+        if (body is CelestialBody celestialBody)
         {
             lock (_lock)
             {
-                if (!_linksByBody.TryGetValue(body, out var list))
+                if (!_linksByBody.TryGetValue(celestialBody, out var list))
                 {
                     list = new List<ResourceLink>();
-                    _linksByBody[body] = list;
+                    _linksByBody[celestialBody] = list;
                 }
                 list.Add(newLink);
             }
@@ -114,6 +137,25 @@ public sealed class BuildingLinkService
 
         link = newLink;
         return true;
+    }
+
+    /// <summary>
+    /// Sums a profile's per-distance resource cost over the link's
+    /// <see cref="ResourceLink.CellDistance"/>, ceiling each entry. Empty when the profile
+    /// declares no cost.
+    /// </summary>
+    private static Dictionary<string, int> ComputeConstructionCost(LinkProfile profile, float distance)
+    {
+        var result = new Dictionary<string, int>();
+        if (profile.CostPerDistance == null)
+            return result;
+        foreach (var kvp in profile.CostPerDistance)
+        {
+            int amount = (int)System.Math.Ceiling(kvp.Value * (double)distance);
+            if (amount > 0)
+                result[kvp.Key] = amount;
+        }
+        return result;
     }
 
     /// <summary>
@@ -125,12 +167,11 @@ public sealed class BuildingLinkService
         if (link == null)
             return;
 
-        var body = ResolveBody(link.Source) ?? ResolveBody(link.Target);
-        if (body != null)
+        if ((ResolveBody(link.Source) ?? ResolveBody(link.Target)) is CelestialBody celestialBody)
         {
             lock (_lock)
             {
-                if (_linksByBody.TryGetValue(body, out var list))
+                if (_linksByBody.TryGetValue(celestialBody, out var list))
                     list.Remove(link);
             }
         }
@@ -152,12 +193,11 @@ public sealed class BuildingLinkService
         }
     }
 
-    private static CelestialBody? ResolveBody(ResourceNode? node)
+    private static IOrbitalBody? ResolveBody(ResourceNode? node)
     {
-        // Walk Owner.PrimaryCell → Continent → CelestialBody. Continent has no body backref;
-        // for now, return null when unresolvable so callers fall through to the other endpoint.
-        // This is best-effort tracking; correctness still rests on ResourceLink itself.
-        _ = node?.Owner?.PrimaryCell; // placeholder until cell→body lookup is wired
-        return null;
+        // Resolve the node's owning building up to its celestial body via the shared resolver
+        // (the same path ProducerBodyResolver uses for atmosphere lookups). Returns null for
+        // unplaced/test buildings, in which case the link falls back to immediate activation.
+        return ProducerBodyResolver.FindOwningBody(node?.Owner);
     }
 }

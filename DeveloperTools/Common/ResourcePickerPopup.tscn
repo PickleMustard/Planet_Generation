@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://chk0lwu84xon7"]
+
+[ext_resource type="Script" uid="uid://mew10eimowvy" path="res://DeveloperTools/Common/ResourcePickerPopup.cs" id="1_5qrfc"]
+
+[node name="EntityPickerPopup" type="PopupPanel" unique_id=788694153 node_paths=PackedStringArray("_search", "_filtersBar", "_resultsBox")]
+oversampling_override = 1.0
+size = Vector2i(900, 600)
+visible = true
+script = ExtResource("1_5qrfc")
+_search = NodePath("Root/SearchEdit")
+_filtersBar = NodePath("Root/FiltersBar")
+_resultsBox = NodePath("Root/Scroll/ResultsBox")
+
+[node name="Root" type="VBoxContainer" parent="." unique_id=225271010]
+custom_minimum_size = Vector2(880, 580)
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 896.0
+offset_bottom = 596.0
+
+[node name="SearchEdit" type="LineEdit" parent="Root" unique_id=1658762573]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FiltersBar" type="HBoxContainer" parent="Root" unique_id=1367661907]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Root" unique_id=2054721915]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ResultsBox" type="VBoxContainer" parent="Root/Scroll" unique_id=618234813]
+layout_mode = 2
+size_flags_horizontal = 3

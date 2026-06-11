@@ -16,6 +16,8 @@ stations:
       aluminum: 100
       ceramics: 80
       low_voltage_wire: 32
+    visual:
+      model_resource: "res://Mesh/default_station.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_station.tres"
 

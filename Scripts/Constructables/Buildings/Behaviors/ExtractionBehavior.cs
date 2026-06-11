@@ -358,7 +358,8 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
 
     /// <summary>
     /// Per-cycle output contribution of slot <paramref name="slotIndex"/> for UI display:
-    /// <c>baseValue × abundance × envScale × (primary ? 1 : SecondaryRateMultiplier)</c>.
+    /// <c>baseValue × fractionWeight × (primary ? 1 : SecondaryRateMultiplier)</c>, where
+    /// fractionWeight is the summed richness-tier fraction across occupied cells (stacks/cycle).
     /// Returns 0 for empty/out-of-range slots. Thread-safe.
     /// </summary>
     public float GetSlotRate(int slotIndex)
@@ -376,7 +377,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                 return 0f;
             float weight = AvailableDeposits.GetValueOrDefault(slot.ResourceId);
             float rate = slot.Kind == ExtractionSlotKind.Primary ? 1f : SecondaryRateMultiplier;
-            return baseVal * weight * EnvScaleFactor * rate;
+            return baseVal * weight * rate;
         }
     }
 
@@ -540,8 +541,9 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
         var db = ResourceDatabase.Instance;
 
         // Tag-driven outputs come from the player-assigned extraction slots: each filled slot
-        // produces its chosen resource at baseValue × abundance × envScale × (primary ? 1 :
-        // secondaryRate). Slots sharing a resource sum into one output entry.
+        // produces its chosen resource at baseValue × fractionWeight × (primary ? 1 :
+        // secondaryRate), where fractionWeight is the summed richness-tier fraction across the
+        // building's cells. Slots sharing a resource sum into one output entry.
         List<(string Resource, bool Primary)> filledSlots = new();
         lock (_slotLock)
         {
@@ -557,7 +559,7 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                 continue;
             float weight = AvailableDeposits.GetValueOrDefault(resourceId);
             float rate = primary ? 1f : SecondaryRateMultiplier;
-            float contribution = baseVal * weight * EnvScaleFactor * rate;
+            float contribution = baseVal * weight * rate;
             ExpectedOutputs[resourceId] = ExpectedOutputs.GetValueOrDefault(resourceId) + contribution;
         }
 
@@ -941,7 +943,10 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
             }
             if (!matches) continue;
 
-            into[kvp.Key] = into.GetValueOrDefault(kvp.Key) + kvp.Value;
+            // Bucket each cell's raw abundance % into its richness-tier fraction-of-a-stack,
+            // then sum across occupied cells. The stored deposit "weight" is therefore the
+            // summed per-cycle fraction, not a raw abundance — extraction reads it directly.
+            into[kvp.Key] = into.GetValueOrDefault(kvp.Key) + AbundanceCategoryTable.FractionFor(kvp.Value);
         }
     }
 
@@ -1061,7 +1066,8 @@ public partial class ExtractionBehavior : RefCounted, IBuildingBehavior, IBehavi
                     $"ExtractionBehavior: conditional tag output '{key}' could not be resolved on recipe '{_currentRecipe?.RecipeId}'");
                 return;
             }
-            float scaled = amount * weight * EnvScaleFactor;
+            // weight is the summed richness-tier fraction (stacks/cycle), env no longer applied.
+            float scaled = amount * weight;
             ExpectedOutputs[resourceId] = ExpectedOutputs.GetValueOrDefault(resourceId) + scaled;
             return;
         }

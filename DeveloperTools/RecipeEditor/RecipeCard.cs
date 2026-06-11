@@ -12,8 +12,8 @@ namespace DeveloperTools.RecipeEditor;
 
 /// <summary>
 /// Per-recipe card with inline editing for recipe fields and input/output slots.
-/// Built programmatically — no scene file. Instantiated via `new RecipeCard()`
-/// then Initialize() then AddChild().
+/// Layout lives in <c>RecipeCard.tscn</c>; this script wires field edits and
+/// rebuilds the slot lists. Instantiate via <see cref="Create"/>.
 /// </summary>
 public partial class RecipeCard : PanelContainer
 {
@@ -25,24 +25,38 @@ public partial class RecipeCard : PanelContainer
     private int _recipeIndex;
     private RecipeEditorModel.RecipeEditEntry? _entry;
 
-    private TextureRect _iconRect = null!;
-    private LineEdit _recipeIdEdit = null!;
-    private LineEdit _displayNameEdit = null!;
-    private TextEdit _descriptionEdit = null!;
-    private LineEdit _categoryEdit = null!;
-    private SpinBox _workRequiredSpin = null!;
-    private Button _tagsButton = null!;
-    private VBoxContainer _inputsContainer = null!;
-    private VBoxContainer _outputsContainer = null!;
-    private VBoxContainer _conditionalsContainer = null!;
-    private Button _addInputButton = null!;
-    private Button _addOutputButton = null!;
-    private Button _addConditionalButton = null!;
-    private Button _moveUpButton = null!;
-    private Button _moveDownButton = null!;
-    private Button _deleteButton = null!;
+    [Export] private TextureRect _iconRect = null!;
+    [Export] private LineEdit _recipeIdEdit = null!;
+    [Export] private LineEdit _displayNameEdit = null!;
+    [Export] private TextEdit _descriptionEdit = null!;
+    [Export] private LineEdit _categoryEdit = null!;
+    [Export] private SpinBox _workRequiredSpin = null!;
+    [Export] private Button _tagsButton = null!;
+    [Export] private VBoxContainer _inputsContainer = null!;
+    [Export] private VBoxContainer _outputsContainer = null!;
+    [Export] private VBoxContainer _conditionalsContainer = null!;
+    [Export] private Button _addInputButton = null!;
+    [Export] private Button _addOutputButton = null!;
+    [Export] private Button _addConditionalButton = null!;
+    [Export] private Button _moveUpButton = null!;
+    [Export] private Button _moveDownButton = null!;
+    [Export] private Button _deleteButton = null!;
 
     private PackedScene? _iconPickerScene;
+
+    private static PackedScene? _scene;
+
+    public static RecipeCard Create(
+        RecipeEditorModel model,
+        string categoryName,
+        int recipeIndex,
+        RecipeEditorModel.RecipeEditEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/RecipeEditor/RecipeCard.tscn");
+        var card = _scene.Instantiate<RecipeCard>();
+        card.Initialize(model, categoryName, recipeIndex, entry);
+        return card;
+    }
 
     public void Initialize(
         RecipeEditorModel model,
@@ -62,165 +76,23 @@ public partial class RecipeCard : PanelContainer
     public override void _Ready()
     {
         base._Ready();
-        BuildLayout();
+        _iconRect.GuiInput += OnIconInput;
+        _recipeIdEdit.TextChanged += text => OnFieldEdited("RecipeId", text);
+        _displayNameEdit.TextChanged += text => OnFieldEdited("DisplayName", text);
+        _categoryEdit.TextChanged += text => OnFieldEdited("Category", text);
+        _workRequiredSpin.ValueChanged += value => OnFieldEdited("WorkRequired", (float)value);
+        _descriptionEdit.TextChanged += () => OnFieldEdited("Description", _descriptionEdit.Text);
+        _tagsButton.Pressed += OnTagsPressed;
+        _addInputButton.Pressed += OnAddInputPressed;
+        _addOutputButton.Pressed += OnAddOutputPressed;
+        _addConditionalButton.Pressed += OnAddConditionalPressed;
+        _moveUpButton.Pressed += OnMoveUpPressed;
+        _moveDownButton.Pressed += OnMoveDownPressed;
+        _deleteButton.Pressed += OnDeletePressed;
+
         _iconPickerScene = GD.Load<PackedScene>(
             "res://DeveloperTools/ResourceEditor/IconPickerPopup.tscn");
         RefreshControls();
-    }
-
-    private void BuildLayout()
-    {
-        var styleBox = new StyleBoxFlat
-        {
-            BgColor = new Color(0.16f, 0.16f, 0.19f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            BorderColor = new Color(0.3f, 0.3f, 0.35f),
-            ContentMarginLeft = 8,
-            ContentMarginTop = 6,
-            ContentMarginRight = 8,
-            ContentMarginBottom = 6,
-            CornerRadiusTopLeft = 3,
-            CornerRadiusTopRight = 3,
-            CornerRadiusBottomRight = 3,
-            CornerRadiusBottomLeft = 3
-        };
-        AddThemeStyleboxOverride("panel", styleBox);
-
-        var root = new VBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        AddChild(root);
-
-        // ── Header row: icon + recipe_id + actions ─────────────────────────
-        var header = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(header);
-
-        _iconRect = new TextureRect
-        {
-            CustomMinimumSize = new Vector2(48, 48),
-            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            TooltipText = "Click to choose icon"
-        };
-        _iconRect.GuiInput += OnIconInput;
-        header.AddChild(_iconRect);
-
-        var headerFields = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        header.AddChild(headerFields);
-
-        _recipeIdEdit = new LineEdit { PlaceholderText = "recipe_id", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _recipeIdEdit.TextChanged += text => OnFieldEdited("RecipeId", text);
-        headerFields.AddChild(_recipeIdEdit);
-
-        _displayNameEdit = new LineEdit { PlaceholderText = "Display Name", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _displayNameEdit.TextChanged += text => OnFieldEdited("DisplayName", text);
-        headerFields.AddChild(_displayNameEdit);
-
-        var actions = new VBoxContainer();
-        _moveUpButton = new Button { Text = "▲", TooltipText = "Move up" };
-        _moveUpButton.Pressed += OnMoveUpPressed;
-        actions.AddChild(_moveUpButton);
-
-        _moveDownButton = new Button { Text = "▼", TooltipText = "Move down" };
-        _moveDownButton.Pressed += OnMoveDownPressed;
-        actions.AddChild(_moveDownButton);
-
-        _deleteButton = new Button { Text = "✕", TooltipText = "Delete recipe" };
-        _deleteButton.Pressed += OnDeletePressed;
-        actions.AddChild(_deleteButton);
-        header.AddChild(actions);
-
-        // ── Fields grid ────────────────────────────────────────────────────
-        var fields = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(fields);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Category" });
-        _categoryEdit = new LineEdit
-        {
-            PlaceholderText = "extraction / agriculture / power / ...",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        _categoryEdit.TextChanged += text => OnFieldEdited("Category", text);
-        fields.AddChild(_categoryEdit);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Work" });
-        _workRequiredSpin = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 100000,
-            Step = 0.1f,
-            AllowGreater = true,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        _workRequiredSpin.ValueChanged += value => OnFieldEdited("WorkRequired", (float)value);
-        fields.AddChild(_workRequiredSpin);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Description" });
-        _descriptionEdit = new TextEdit
-        {
-            PlaceholderText = "Recipe description",
-            CustomMinimumSize = new Vector2(0, 60),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            WrapMode = TextEdit.LineWrappingMode.Boundary
-        };
-        _descriptionEdit.TextChanged += () => OnFieldEdited("Description", _descriptionEdit.Text);
-        fields.AddChild(_descriptionEdit);
-
-        fields.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Tags" });
-        _tagsButton = new Button { Text = "Tags (0)" };
-        _tagsButton.Pressed += OnTagsPressed;
-        fields.AddChild(_tagsButton);
-
-        // ── Inputs ─────────────────────────────────────────────────────────
-        var inputsHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var inputsLabel = new Label { Text = "Inputs", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        inputsLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 1.0f));
-        inputsHeader.AddChild(inputsLabel);
-
-        _addInputButton = new Button { Text = "+ Input" };
-        _addInputButton.Pressed += OnAddInputPressed;
-        inputsHeader.AddChild(_addInputButton);
-        root.AddChild(inputsHeader);
-
-        _inputsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_inputsContainer);
-
-        // ── Outputs ────────────────────────────────────────────────────────
-        var outputsHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var outputsLabel = new Label { Text = "Outputs", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        outputsLabel.AddThemeColorOverride("font_color", new Color(0.7f, 1.0f, 0.7f));
-        outputsHeader.AddChild(outputsLabel);
-
-        _addOutputButton = new Button { Text = "+ Output" };
-        _addOutputButton.Pressed += OnAddOutputPressed;
-        outputsHeader.AddChild(_addOutputButton);
-        root.AddChild(outputsHeader);
-
-        _outputsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_outputsContainer);
-
-        // ── Conditional Outputs ────────────────────────────────────────────
-        var conditionalsHeader = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var conditionalsLabel = new Label
-        {
-            Text = "Conditional Outputs",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            TooltipText = "Additional outputs gated by a boolean expression. Stack on top of regular outputs."
-        };
-        conditionalsLabel.AddThemeColorOverride("font_color", new Color(1.0f, 0.9f, 0.6f));
-        conditionalsHeader.AddChild(conditionalsLabel);
-
-        _addConditionalButton = new Button { Text = "+ Conditional" };
-        _addConditionalButton.Pressed += OnAddConditionalPressed;
-        conditionalsHeader.AddChild(_addConditionalButton);
-        root.AddChild(conditionalsHeader);
-
-        _conditionalsContainer = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        root.AddChild(_conditionalsContainer);
     }
 
     public void Refresh(RecipeEditorModel.RecipeEditEntry entry, int newIndex)
@@ -269,8 +141,7 @@ public partial class RecipeCard : PanelContainer
 
         for (int i = 0; i < _entry.Inputs.Count; i++)
         {
-            var row = new InputSlotRow();
-            row.Configure(i, _entry.Inputs[i]);
+            var row = InputSlotRow.Create(i, _entry.Inputs[i]);
             row.SlotChanged += OnInputSlotChanged;
             row.SlotDeleted += OnInputSlotDeleted;
             _inputsContainer.AddChild(row);
@@ -285,8 +156,7 @@ public partial class RecipeCard : PanelContainer
 
         for (int i = 0; i < _entry.Outputs.Count; i++)
         {
-            var row = new OutputSlotRow();
-            row.Configure(i, _entry.Outputs[i]);
+            var row = OutputSlotRow.Create(i, _entry.Outputs[i]);
             row.SlotChanged += OnOutputSlotChanged;
             row.SlotDeleted += OnOutputSlotDeleted;
             _outputsContainer.AddChild(row);
@@ -301,8 +171,7 @@ public partial class RecipeCard : PanelContainer
 
         for (int i = 0; i < _entry.ConditionalOutputs.Count; i++)
         {
-            var row = new ConditionalOutputRow();
-            row.Configure(i, _entry.ConditionalOutputs[i]);
+            var row = ConditionalOutputRow.Create(i, _entry.ConditionalOutputs[i]);
             row.SlotChanged += OnConditionalSlotChanged;
             row.SlotDeleted += OnConditionalSlotDeleted;
             _conditionalsContainer.AddChild(row);
@@ -361,8 +230,7 @@ public partial class RecipeCard : PanelContainer
         var allTags = new HashSet<string>(_model.GetAllRecipeTags());
         allTags.UnionWith(RecipeEditorModel.GetAllResourceTags());
 
-        var popup = new RecipeTagsPopup();
-        popup.Initialize(_model, _categoryName, _recipeIndex, _entry, allTags);
+        var popup = RecipeTagsPopup.Create(_model, _categoryName, _recipeIndex, _entry, allTags);
         AddChild(popup);
 
         var rect = _tagsButton.GetGlobalRect();

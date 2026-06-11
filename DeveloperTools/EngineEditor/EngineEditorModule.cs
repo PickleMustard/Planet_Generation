@@ -209,8 +209,7 @@ public partial class EngineEditorModule : BaseDebugModule
         _categoryHeaderLabel.Text = category.CategoryName;
         for (int i = 0; i < category.Engines.Count; i++)
         {
-            var card = new EngineCard();
-            card.Initialize(_model, _selectedCategory, i, category.Engines[i]);
+            var card = EngineCard.Create(_model, _selectedCategory, i, category.Engines[i]);
             card.CardsNeedRebuild += RefreshEngineList;
             _engineListContainer.AddChild(card);
         }

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AudioConfig" format=3]
+
+[ext_resource type="Script" uid="uid://c6kcok4dqd8wb" path="res://Scripts/Registries/AudioConfig.cs" id="1"]
+[ext_resource type="AudioStream" uid="uid://dq4e0bapl6byx" path="res://Sound/gui_close.mp3" id="2"]
+
+[resource]
+script = ExtResource("1")
+Id = &"gui_close"
+Stream = ExtResource("2")
+metadata/_custom_type_script = "uid://c6kcok4dqd8wb"

@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://b1kacxe35314c"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BuildingEditor/RequiredResourceRow.cs" id="1_row"]
+
+[node name="RequiredResourceRow" type="HBoxContainer" node_paths=PackedStringArray("_resourceButton", "_amountSpin")]
+size_flags_horizontal = 3
+script = ExtResource("1_row")
+_resourceButton = NodePath("ResourceButton")
+_amountSpin = NodePath("AmountSpin")
+
+[node name="ResourceButton" type="Button" parent="."]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+text = "(select resource)"
+
+[node name="AmountSpin" type="SpinBox" parent="."]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+max_value = 1e+06
+allow_greater = true
+
+[node name="DeleteButton" type="Button" parent="."]
+layout_mode = 2
+tooltip_text = "Remove required resource"
+text = "✕"
+
+[connection signal="pressed" from="ResourceButton" to="." method="OnPickResource"]
+[connection signal="value_changed" from="AmountSpin" to="." method="OnAmountChanged"]
+[connection signal="pressed" from="DeleteButton" to="." method="OnDeletePressed"]

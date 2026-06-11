@@ -1,5 +1,7 @@
 using Godot;
+using Registries;
 using UI.Construction;
+using UtilityLibrary;
 
 namespace UI.CommandLayer;
 
@@ -21,6 +23,9 @@ public partial class CommandLayerController : Control
     [Export]
     public PlacementOverlayController? _overlay;
 
+    [Export]
+    public SoundEffect? ClickSfx { get; set; }
+
     public override void _Ready()
     {
         _menu!.CardActivated += OnCardActivated;
@@ -28,7 +33,11 @@ public partial class CommandLayerController : Control
         _constructButton!.Pressed += OnConstructPressed;
     }
 
-    private void OnConstructPressed() => _menu?.Toggle();
+    private void OnConstructPressed()
+    {
+        AudioBus.Instance?.Play(ClickSfx);
+        _menu?.Toggle();
+    }
 
     private void OnCardActivated(string itemType, string definitionName)
     {

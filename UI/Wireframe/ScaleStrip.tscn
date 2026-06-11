@@ -1,0 +1,57 @@
+[gd_scene format=3 uid="uid://4cbpcv64pel1"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/ScaleStrip.cs" id="2_script"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/ScaleBalance.cs" id="3_balance"]
+
+[node name="ScaleStrip" type="HBoxContainer" node_paths=PackedStringArray("_balance", "_readout", "_bar", "_overLabel")]
+custom_minimum_size = Vector2(0, 86)
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 14
+script = ExtResource("2_script")
+_balance = NodePath("Balance")
+_readout = NodePath("Right/TopRow/Readout")
+_bar = NodePath("Right/Bar")
+_overLabel = NodePath("Right/OverLabel")
+
+[node name="Balance" type="Control" parent="."]
+custom_minimum_size = Vector2(170, 86)
+layout_mode = 2
+script = ExtResource("3_balance")
+
+[node name="Right" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="TopRow" type="HBoxContainer" parent="Right"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="Right/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.165, 0.145, 0.125, 0.45)
+theme_override_font_sizes/font_size = 11
+text = "TOTAL WEIGHT"
+
+[node name="Readout" type="Label" parent="Right/TopRow"]
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_font_sizes/font_size = 13
+
+[node name="Bar" type="ProgressBar" parent="Right"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+max_value = 1.0
+step = 0.001
+show_percentage = false
+
+[node name="OverLabel" type="Label" parent="Right"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.69, 0.227, 0.122, 1)
+theme_override_font_sizes/font_size = 10
+text = "OVER LIMIT"

@@ -64,7 +64,7 @@ public class ExtractionBehaviorTest
 
     [TestCase]
     [RequireGodotRuntime]
-    public void AvailableDeposits_FiltersByRecipeOutputTags_SumsAbundance()
+    public void AvailableDeposits_FiltersByRecipeOutputTags_SumsCategoryFractions()
     {
         var db = ResourceDatabase.Instance;
         if (!db.IsLoaded) db.LoadData();
@@ -80,7 +80,9 @@ public class ExtractionBehaviorTest
         AssertThat(ext.AvailableDeposits.ContainsKey("iron_ore")).IsTrue();
         AssertThat(ext.AvailableDeposits.ContainsKey("copper_ore")).IsTrue();
         AssertThat(ext.AvailableDeposits.ContainsKey("clay")).IsFalse();
-        AssertThat(ext.AvailableDeposits["iron_ore"]).IsEqual(0.7f);
+        // Deposit weight is the summed per-cycle fraction, not the raw abundance:
+        // 0.7 → "frequent" → 2/1.
+        AssertThat(ext.AvailableDeposits["iron_ore"]).IsEqual(2f);
     }
 
     [TestCase]
@@ -137,7 +139,8 @@ public class ExtractionBehaviorTest
         bool ok = ext.TryResolveOutput("ore", out var id, out var weight);
         AssertThat(ok).IsTrue();
         AssertThat(id).IsEqual("copper_ore");
-        AssertThat(weight).IsEqual(0.9f);
+        // weight is the category fraction: 0.9 → "abundant" → 3/1.
+        AssertThat(weight).IsEqual(3f);
     }
 
     [TestCase]
@@ -178,7 +181,8 @@ public class ExtractionBehaviorTest
         bool ok = ext.TryResolveOutput("ore", out var id, out var weight);
         AssertThat(ok).IsTrue();
         AssertThat(id).IsEqual("iron_ore");
-        AssertThat(weight).IsEqual(0.2f);
+        // weight is the category fraction: 0.2 → "scarce" → 1/3.
+        AssertThat(weight).IsEqual(1f / 3f);
     }
 
     [TestCase]
@@ -417,9 +421,10 @@ public class ExtractionBehaviorTest
 
         ext.StartCycle(TagOreRecipe(10f), productionSpeed: 1f);
 
-        // 10*0.8*1 (primary) + 10*0.8*0.5 (secondary) = 8 + 4 = 12
+        // iron_ore 0.8 → "frequent" → fraction 2/1. baseVal=10. EnvScale dropped.
+        // primary 10*2*1 + secondary 10*2*0.5 = 20 + 10 = 30
         AssertThat(ext.ExpectedOutputs.ContainsKey("iron_ore")).IsTrue();
-        AssertThat(ext.ExpectedOutputs["iron_ore"]).IsEqual(12f);
+        AssertThat(ext.ExpectedOutputs["iron_ore"]).IsEqual(30f);
     }
 
     [TestCase]
@@ -435,8 +440,48 @@ public class ExtractionBehaviorTest
 
         ext.StartCycle(TagOreRecipe(10f), productionSpeed: 1f);
 
-        AssertThat(ext.ExpectedOutputs["iron_ore"]).IsEqual(5f);
-        AssertThat(ext.ExpectedOutputs["copper_ore"]).IsEqual(4f);
+        // Both 0.5 and 0.4 fall in "common" → fraction 1/1. baseVal=10 → 10 each.
+        AssertThat(ext.ExpectedOutputs["iron_ore"]).IsEqual(10f);
+        AssertThat(ext.ExpectedOutputs["copper_ore"]).IsEqual(10f);
+    }
+
+    [TestCase]
+    [RequireGodotRuntime]
+    public void AvailableDeposits_MultiCell_SumsCategoryFractions()
+    {
+        var db = ResourceDatabase.Instance;
+        if (!db.IsLoaded) db.LoadData();
+        var rdb = RecipeDatabase.Instance;
+        if (!rdb.IsLoaded) rdb.LoadData();
+
+        // Building spans two cells: iron_ore 0.5 ("common" → 1/1) + 0.3 ("uncommon" → 1/2).
+        var cellA = MakeCellWithResources(new Dictionary<string, float> { ["iron_ore"] = 0.5f });
+        var cellB = MakeCellWithResources(new Dictionary<string, float> { ["iron_ore"] = 0.3f });
+
+        var def = new BuildingDefinition
+        {
+            IdName = "test_mine",
+            DisplayName = "Test Mine",
+            WorkRequired = 0f,
+            MaxResourceTier = 99,
+        };
+        var building = new Building();
+        building.ApplyDefinition(def);
+        building.SetPlacement(cellA, new List<VoronoiCell> { cellB });
+
+        var ext = new ExtractionBehavior();
+        ext.Configure(new Dictionary<string, object> { ["default_recipe"] = "surface_mine" });
+        ext.OnAttach(building);
+        building.Behaviors.Add(ext);
+        building.ActiveRecipeId = "surface_mine";
+        ext.OnRegister();
+
+        // Summed fraction across cells: 1/1 + 1/2 = 1.5
+        AssertThat(ext.AvailableDeposits["iron_ore"]).IsEqual(1.5f);
+
+        ext.StartCycle(TagOreRecipe(10f), productionSpeed: 1f);
+        // baseVal 10 * 1.5 (summed fraction) * 1 (primary) = 15
+        AssertThat(ext.ExpectedOutputs["iron_ore"]).IsEqual(15f);
     }
 
     [TestCase]

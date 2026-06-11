@@ -254,7 +254,8 @@ public partial class BuildingPlacementMode : Node
             }
 
             // Refresh the cursor label content for the newly hovered cell.
-            _cursorLabel?.SetRows(PlacementLabelResolver.Resolve(_definition, cell));
+            _cursorLabel?.SetRows(
+                PlacementLabelResolver.Resolve(_definition, cell, _hoveredBody as IOrbitalBody));
         }
 
         UpdateGhostPosition(_selectedCells, bodyNode);

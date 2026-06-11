@@ -26,7 +26,17 @@ public partial class ResourceGroupCard : PanelContainer
 
     private void BuildLayout()
     {
-        AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.14f, 0.14f, 0.18f), ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 6, ContentMarginBottom = 6 });
+        AddThemeStyleboxOverride(
+            "panel",
+            new StyleBoxFlat
+            {
+                BgColor = new Color(0.14f, 0.14f, 0.18f),
+                ContentMarginLeft = 8,
+                ContentMarginRight = 8,
+                ContentMarginTop = 6,
+                ContentMarginBottom = 6,
+            }
+        );
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
 
         var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -52,18 +62,28 @@ public partial class ResourceGroupCard : PanelContainer
     private void Refresh()
     {
         var group = _model.ResourceGroups.Find(g => g.GroupName == _groupName);
-        if (group == null) return;
-        foreach (var c in _idList.GetChildren()) c.QueueFree();
+        if (group == null)
+            return;
+        foreach (var c in _idList.GetChildren())
+            c.QueueFree();
         foreach (var id in group.ResourceIds)
         {
             string captured = id;
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(
+                new Label
+                {
+                    ThemeTypeVariation = "LabelHighContrast",
+                    Text = id,
+                    SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                }
+            );
             var del = new Button { Text = "✕" };
             del.Pressed += () =>
             {
                 var g = _model.ResourceGroups.Find(x => x.GroupName == _groupName);
-                if (g == null) return;
+                if (g == null)
+                    return;
                 var next = new List<string>(g.ResourceIds);
                 next.Remove(captured);
                 _model.UpdateResourceGroup(_groupName, next);
@@ -76,12 +96,14 @@ public partial class ResourceGroupCard : PanelContainer
 
     private void OnAddResource()
     {
-        var popup = new ResourcePickerPopup();
+        var popup = ResourcePickerPopup.Create();
         popup.ResourcePicked += id =>
         {
             var g = _model.ResourceGroups.Find(x => x.GroupName == _groupName);
-            if (g == null) return;
-            if (g.ResourceIds.Contains(id)) return;
+            if (g == null)
+                return;
+            if (g.ResourceIds.Contains(id))
+                return;
             var next = new List<string>(g.ResourceIds) { id };
             _model.UpdateResourceGroup(_groupName, next);
             CallDeferred(nameof(Refresh));

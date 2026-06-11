@@ -2,20 +2,19 @@ using Godot;
 
 namespace UI.Components;
 
+/// <summary>
+/// Builds key/value detail rows for info panels. Layout lives in
+/// <c>UI/Components/DetailRow.tscn</c>; styling comes from the shared
+/// wireframe_paper theme via type variations (LabelKey / LabelMono / LabelAlert).
+/// This helper only instantiates the row scene and binds text — it sets no
+/// colors or font sizes in code.
+/// </summary>
 public static class DetailRowBuilder
 {
-    // Paper-theme palette (wireframe_paper.tres):
-    //   ink        #2a2520
-    //   ink-faint  #2a2520 @ 45%
-    //   alert      #b03a1f
-    private static readonly Color KeyColor = new Color(0.165f, 0.145f, 0.125f, 0.45f);
-    private static readonly Color ValueColor = new Color(0.165f, 0.145f, 0.125f);
-    private static readonly Color HeaderColor = new Color(0.165f, 0.145f, 0.125f);
-    private static readonly Color AlertColor = new Color(0.69f, 0.227f, 0.122f);
-
-    private const int RowFontSize = 13;
-    private const int HeaderFontSize = 18;
     private const int DonutPx = 20;
+
+    private static readonly PackedScene RowScene =
+        GD.Load<PackedScene>("res://UI/Components/DetailRow.tscn");
 
     private static readonly PackedScene DonutChartScene =
         GD.Load<PackedScene>("res://UI/Components/DonutChart.tscn");
@@ -23,8 +22,7 @@ public static class DetailRowBuilder
     public static void AddRow(VBoxContainer? container, string key, string value)
     {
         if (container == null) return;
-        var row = BuildKeyValueRow(key, value);
-        container.AddChild(row);
+        container.AddChild(BuildKeyValueRow(key, value));
     }
 
     public static void AddPercentRow(
@@ -85,20 +83,13 @@ public static class DetailRowBuilder
 
     public static void AddHeader(VBoxContainer? container, string text)
     {
-        if (container == null) return;
-        var header = new Label { Text = text };
-        header.AddThemeColorOverride("font_color", HeaderColor);
-        header.AddThemeFontSizeOverride("font_size", HeaderFontSize);
-        container.AddChild(header);
+        // Default Label theme (ink, Caveat-Bold, size 18) is the header style.
+        container?.AddChild(new Label { Text = text });
     }
 
     public static void AddAlert(VBoxContainer? container, string message)
     {
-        if (container == null) return;
-        var label = new Label { Text = $"[!] {message}" };
-        label.AddThemeColorOverride("font_color", AlertColor);
-        label.AddThemeFontSizeOverride("font_size", RowFontSize);
-        container.AddChild(label);
+        container?.AddChild(new Label { Text = $"[!] {message}", ThemeTypeVariation = "LabelAlert" });
     }
 
     public static void AddSeparator(VBoxContainer? container)
@@ -115,28 +106,9 @@ public static class DetailRowBuilder
 
     private static HBoxContainer BuildKeyValueRow(string key, string value)
     {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
-        row.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-
-        var keyLabel = new Label { Text = key + ":" };
-        keyLabel.AddThemeColorOverride("font_color", KeyColor);
-        keyLabel.AddThemeFontSizeOverride("font_size", RowFontSize);
-        keyLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-        row.AddChild(keyLabel);
-
-        var spacer = new Control();
-        spacer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        spacer.MouseFilter = Control.MouseFilterEnum.Ignore;
-        row.AddChild(spacer);
-
-        var valLabel = new Label { Text = value };
-        valLabel.AddThemeColorOverride("font_color", ValueColor);
-        valLabel.AddThemeFontSizeOverride("font_size", RowFontSize);
-        valLabel.SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd;
-        valLabel.HorizontalAlignment = HorizontalAlignment.Right;
-        row.AddChild(valLabel);
-
+        var row = RowScene.Instantiate<HBoxContainer>();
+        row.GetNode<Label>("KeyLabel").Text = key + ":";
+        row.GetNode<Label>("ValueLabel").Text = value;
         return row;
     }
 

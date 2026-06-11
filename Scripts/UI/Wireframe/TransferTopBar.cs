@@ -16,45 +16,24 @@ public partial class TransferTopBar : PanelContainer
 
     [Export] public string ForemanTag { get; set; } = "FRM · TRX-04 · LEDGER 1905";
 
-    private HBoxContainer? _trailBox;
-    private Label? _foremanLabel;
+    [Export] private HBoxContainer? _trailBox;
+    [Export] private Label? _foremanLabel;
+
+    private static PackedScene? _scene;
+
+    public static TransferTopBar Create()
+    {
+        _scene ??= GD.Load<PackedScene>("res://UI/Wireframe/TransferTopBar.tscn");
+        return _scene.Instantiate<TransferTopBar>();
+    }
 
     public override void _Ready()
     {
-        AddThemeStyleboxOverride("panel", BuildBg());
-        var root = new HBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        root.AddThemeConstantOverride("separation", 12);
-        AddChild(root);
-
-        var leftCluster = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        leftCluster.AddThemeConstantOverride("separation", 10);
-        root.AddChild(leftCluster);
-
-        var hud = new Button { Text = "✕ HUD", TooltipText = "Return to HUD" };
-        hud.Pressed += () => EmitSignal(SignalName.HudCloseRequested);
-        leftCluster.AddChild(hud);
-
-        var back = new Button { Text = "← Back", TooltipText = "Back" };
-        back.Pressed += () => EmitSignal(SignalName.BackRequested);
-        leftCluster.AddChild(back);
-
-        _trailBox = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _trailBox.AddThemeConstantOverride("separation", 8);
-        leftCluster.AddChild(_trailBox);
-
-        _foremanLabel = new Label
-        {
-            Text = ForemanTag,
-            ThemeTypeVariation = "LabelMono",
-        };
-        _foremanLabel.AddThemeFontSizeOverride("font_size", 10);
-        _foremanLabel.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        root.AddChild(_foremanLabel);
+        if (_foremanLabel != null) _foremanLabel.Text = ForemanTag;
     }
+
+    private void OnHudPressed() => EmitSignal(SignalName.HudCloseRequested);
+    private void OnBackPressed() => EmitSignal(SignalName.BackRequested);
 
     public void SetTrail(IReadOnlyList<string> trail)
     {
@@ -69,13 +48,11 @@ public partial class TransferTopBar : PanelContainer
                 ThemeTypeVariation = isLast ? "LabelHand" : "LabelSub",
             };
             lbl.AddThemeFontSizeOverride("font_size", isLast ? 22 : 17);
-            lbl.AddThemeColorOverride("font_color", isLast ? WireColors.Ink : WireColors.InkSoft);
             _trailBox.AddChild(lbl);
             if (!isLast)
             {
-                var sep = new Label { Text = "›", ThemeTypeVariation = "LabelMono" };
+                var sep = new Label { Text = "›", ThemeTypeVariation = "LabelFaint" };
                 sep.AddThemeFontSizeOverride("font_size", 14);
-                sep.AddThemeColorOverride("font_color", WireColors.InkFaint);
                 _trailBox.AddChild(sep);
             }
         }
@@ -85,19 +62,5 @@ public partial class TransferTopBar : PanelContainer
     {
         ForemanTag = tag;
         if (_foremanLabel != null) _foremanLabel.Text = tag;
-    }
-
-    private static StyleBoxFlat BuildBg()
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = new Color(WireColors.Paper.R, WireColors.Paper.G, WireColors.Paper.B, 0f),
-            BorderColor = WireColors.Ink,
-            BorderWidthBottom = 2,
-            ContentMarginLeft = 18,
-            ContentMarginTop = 12,
-            ContentMarginRight = 18,
-            ContentMarginBottom = 12,
-        };
     }
 }

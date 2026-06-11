@@ -20,9 +20,9 @@ public partial class SlipsListView : Control
     [Signal] public delegate void EditSlipRequestedEventHandler(string scheduleId);
     [Signal] public delegate void DeleteSlipRequestedEventHandler(string scheduleId);
 
-    private VBoxContainer? _sidebarList;
-    private GridContainer? _cardGrid;
-    private Label? _summaryLabel;
+    [Export] private VBoxContainer? _sidebarList;
+    [Export] private GridContainer? _cardGrid;
+    [Export] private Label? _summaryLabel;
     private TransferStationBehavior? _behavior;
     private string _originBuildingId = "";
     private const float RuntimeTickSeconds = 0.25f;
@@ -35,11 +35,21 @@ public partial class SlipsListView : Control
     private readonly Dictionary<string, SlipCardData> _activeOneTimeData = new();
     private readonly List<SlipCardData> _completedOneTimeHistory = new();
 
+    private static PackedScene? _scene;
+    private static readonly PackedScene IndexRowScene =
+        GD.Load<PackedScene>("res://UI/TransferPlanning/SlipIndexRow.tscn");
+
+    public static SlipsListView Create()
+    {
+        _scene ??= GD.Load<PackedScene>("res://UI/TransferPlanning/SlipsListView.tscn");
+        return _scene.Instantiate<SlipsListView>();
+    }
+
+    private void OnAddPressed() => EmitSignal(SignalName.AddRouteRequested);
+    private void OnEditPriorityPressed() => EmitSignal(SignalName.EditPriorityRequested);
+
     public override void _Ready()
     {
-        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        BuildLayout();
-
         _runtimeTimer = new Timer
         {
             WaitTime = RuntimeTickSeconds,
@@ -99,125 +109,6 @@ public partial class SlipsListView : Control
         }
     }
 
-    private void BuildLayout()
-    {
-        var split = new HSplitContainer
-        {
-            SplitOffset = 320,
-            Collapsed = true,
-        };
-        split.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(split);
-
-        var sidebar = BuildSidebar();
-        split.AddChild(sidebar);
-
-        var cardArea = BuildCardArea();
-        split.AddChild(cardArea);
-    }
-
-    private Control BuildSidebar()
-    {
-        var sidebar = new MarginContainer
-        {
-            CustomMinimumSize = new Vector2(320, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        sidebar.AddThemeConstantOverride("margin_left", 14);
-        sidebar.AddThemeConstantOverride("margin_right", 14);
-        sidebar.AddThemeConstantOverride("margin_top", 14);
-        sidebar.AddThemeConstantOverride("margin_bottom", 14);
-
-        var col = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        col.AddThemeConstantOverride("separation", 10);
-        sidebar.AddChild(col);
-
-        var kicker = new Label
-        {
-            Text = "FOREMAN'S DESK",
-            ThemeTypeVariation = "LabelMono",
-        };
-        kicker.AddThemeFontSizeOverride("font_size", 9);
-        kicker.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        col.AddChild(kicker);
-
-        var title = new Label
-        {
-            Text = "Outbound Slips",
-            ThemeTypeVariation = "LabelHand",
-        };
-        title.AddThemeFontSizeOverride("font_size", 22);
-        col.AddChild(title);
-
-        _summaryLabel = new Label
-        {
-            Text = "0 on file",
-            ThemeTypeVariation = "LabelSub",
-        };
-        col.AddChild(_summaryLabel);
-
-        var listScroll = new ScrollContainer
-        {
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        col.AddChild(listScroll);
-
-        _sidebarList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _sidebarList.AddThemeConstantOverride("separation", 5);
-        listScroll.AddChild(_sidebarList);
-
-        var divider = new HSeparator();
-        col.AddChild(divider);
-
-        var quickKicker = new Label
-        {
-            Text = "QUICK ACTIONS",
-            ThemeTypeVariation = "LabelMono",
-        };
-        quickKicker.AddThemeFontSizeOverride("font_size", 9);
-        quickKicker.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        col.AddChild(quickKicker);
-
-        var addBtn = new Button { Text = "＋ Add Route", ThemeTypeVariation = "ButtonPrimary" };
-        addBtn.Pressed += () => EmitSignal(SignalName.AddRouteRequested);
-        col.AddChild(addBtn);
-
-        var priBtn = new Button { Text = "≡ Edit Priority" };
-        priBtn.Pressed += () => EmitSignal(SignalName.EditPriorityRequested);
-        col.AddChild(priBtn);
-
-        return sidebar;
-    }
-
-    private Control BuildCardArea()
-    {
-        var area = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        area.AddThemeConstantOverride("margin_left", 16);
-        area.AddThemeConstantOverride("margin_right", 16);
-        area.AddThemeConstantOverride("margin_top", 14);
-        area.AddThemeConstantOverride("margin_bottom", 14);
-
-        var scroll = new ScrollContainer
-        {
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        area.AddChild(scroll);
-
-        _cardGrid = new GridContainer
-        {
-            Columns = 2,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        _cardGrid.AddThemeConstantOverride("h_separation", 12);
-        _cardGrid.AddThemeConstantOverride("v_separation", 12);
-        scroll.AddChild(_cardGrid);
-
-        return area;
-    }
-
     public void Bind(TransferStationBehavior? behavior, string originBuildingId)
     {
         _behavior = behavior;
@@ -256,7 +147,8 @@ public partial class SlipsListView : Control
             schedule.Priority = i + 1;
             var data = SlipDataBuilder.BuildFromSchedule(schedule, _behavior, resourceDb);
 
-            var card = new SlipCard { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var card = SlipCard.Create();
+            card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             card.EditRequested += id => EmitSignal(SignalName.EditSlipRequested, id);
             card.DeleteRequested += id => EmitSignal(SignalName.DeleteSlipRequested, id);
             _cardGrid!.AddChild(card);
@@ -275,7 +167,8 @@ public partial class SlipsListView : Control
             var data = SlipDataBuilder.BuildFromOrder(order, _behavior, resourceDb, completed: false, displayPriority: oneTimeIndex);
             _activeOneTimeData[order.OrderId] = data;
 
-            var card = new SlipCard { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var card = SlipCard.Create();
+            card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             _cardGrid!.AddChild(card);
             card.Bind(data);
 
@@ -288,7 +181,8 @@ public partial class SlipsListView : Control
         foreach (var data in _completedOneTimeHistory)
         {
             data.Priority = oneTimeIndex;
-            var card = new SlipCard { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var card = SlipCard.Create();
+            card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             _cardGrid!.AddChild(card);
             card.Bind(data);
             _sidebarList!.AddChild(BuildIndexRow(data));
@@ -348,58 +242,24 @@ public partial class SlipsListView : Control
 
     private Control BuildIndexRow(SlipCardData data)
     {
-        var row = new PanelContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        var stylebox = new StyleBoxFlat
+        var row = IndexRowScene.Instantiate<PanelContainer>();
+        // Priority-1 slip gets an orange-tinted runtime stylebox; others a faint paper card.
+        row.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
             BgColor = data.Priority == 1
                 ? new Color(WireColors.Orange.R, WireColors.Orange.G, WireColors.Orange.B, 0.10f)
                 : new Color(1f, 1f, 1f, 0.4f),
             BorderColor = data.Priority == 1 ? WireColors.Orange : new Color(WireColors.Ink, 0.5f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusBottomLeft = 3,
-            CornerRadiusBottomRight = 3,
-            CornerRadiusTopLeft = 3,
-            CornerRadiusTopRight = 3,
-            ContentMarginLeft = 8,
-            ContentMarginRight = 8,
-            ContentMarginTop = 5,
-            ContentMarginBottom = 5,
-        };
-        row.AddThemeStyleboxOverride("panel", stylebox);
-
-        var rowBox = new HBoxContainer();
-        rowBox.AddThemeConstantOverride("separation", 8);
-        row.AddChild(rowBox);
+            BorderWidthLeft = 1, BorderWidthTop = 1, BorderWidthRight = 1, BorderWidthBottom = 1,
+            CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3,
+            CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3,
+            ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 5, ContentMarginBottom = 5,
+        });
 
         string prefix = data.IsOneTime ? "OT" : "RT";
-        var num = new Label
-        {
-            Text = $"{prefix}-{data.Priority:D3}",
-            ThemeTypeVariation = "LabelMono",
-        };
-        num.AddThemeFontSizeOverride("font_size", 10);
-        num.AddThemeColorOverride("font_color", WireColors.InkFaint);
-        rowBox.AddChild(num);
-
-        var name = new Label
-        {
-            Text = data.DestinationName,
-            ThemeTypeVariation = "LabelHand",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            ClipText = true,
-        };
-        name.AddThemeFontSizeOverride("font_size", 15);
-        rowBox.AddChild(name);
-
-        var dot = new StateDot { State = data.State, Radius = 3.5f };
-        rowBox.AddChild(dot);
-
+        row.GetNode<Label>("RowBox/Num").Text = $"{prefix}-{data.Priority:D3}";
+        row.GetNode<Label>("RowBox/Name").Text = data.DestinationName;
+        row.GetNode<StateDot>("RowBox/Dot").State = data.State;
         return row;
     }
 

@@ -102,8 +102,7 @@ public partial class ShipCard : PanelContainer
         RebuildRequiredResources();
 
         // Visual (full 3D preview parity) + Icon
-        var visualSection = new EditorVisualSection();
-        visualSection.Initialize(_entry.Visual, MarkDirty);
+        var visualSection = EditorVisualSection.Create(_entry.Visual, MarkDirty);
         Root.AddChild(visualSection);
         EditorCardControls.BuildIcon(Root, _entry.Icon, MarkDirty);
 

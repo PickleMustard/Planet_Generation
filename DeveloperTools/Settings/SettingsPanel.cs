@@ -200,15 +200,13 @@ public partial class SettingsPanel : BaseDebugModule
             string category = kvp.Key;
             var entries = kvp.Value;
 
-            var section = new CategorySection();
-            section.Setup(category);
+            var section = CategorySection.Create(category);
             _settingsContainer!.AddChild(section);
             _categories[category] = section;
 
             foreach (var entry in entries)
             {
-                var row = new SettingRow();
-                row.Setup(category, entry);
+                var row = SettingRow.Create(category, entry);
                 section.AddSettingRow(row);
             }
         }

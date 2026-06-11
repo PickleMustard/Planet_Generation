@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AudioConfig" format=3 uid="uid://lirrh7ela1kk"]
+
+[ext_resource type="Script" uid="uid://c6kcok4dqd8wb" path="res://Scripts/Registries/AudioConfig.cs" id="1"]
+[ext_resource type="AudioStream" uid="uid://cnekcjv7mqwkl" path="res://Sound/generator_loop.mp3" id="2"]
+
+[resource]
+script = ExtResource("1")
+Id = &"ship_engine"
+Stream = ExtResource("2")
+VolumeDb = -5.0
+Loop = true
+metadata/_custom_type_script = "uid://c6kcok4dqd8wb"

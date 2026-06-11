@@ -78,7 +78,7 @@ public sealed partial class OrbitalScheduleWindow : Control, IOverlayPanel
         col.AddThemeConstantOverride("separation", 0);
         panel.AddChild(col);
 
-        _topBar = new TransferTopBar();
+        _topBar = TransferTopBar.Create();
         _topBar.HudCloseRequested += RequestClose;
         _topBar.BackRequested += RequestBack;
         col.AddChild(_topBar);
@@ -97,7 +97,8 @@ public sealed partial class OrbitalScheduleWindow : Control, IOverlayPanel
         _listView.EditLegRequested += OnEditLeg;
         _viewHost.AddChild(_listView);
 
-        _wizardView = new LegWizardView { Visible = false };
+        _wizardView = LegWizardView.Create();
+        _wizardView.Visible = false;
         _wizardView.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _wizardView.Committed += OnWizardCommitted;
         _wizardView.Cancelled += OnWizardCancelled;

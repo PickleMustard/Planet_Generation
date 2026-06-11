@@ -272,8 +272,7 @@ public partial class RecipeEditorModule : BaseDebugModule
 
         for (int i = 0; i < category.Recipes.Count; i++)
         {
-            var card = new RecipeCard();
-            card.Initialize(_model, _selectedCategory, i, category.Recipes[i]);
+            var card = RecipeCard.Create(_model, _selectedCategory, i, category.Recipes[i]);
             card.CardsNeedRebuild += RefreshRecipeList;
             _recipeListContainer.AddChild(card);
         }

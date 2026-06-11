@@ -1,0 +1,63 @@
+[gd_scene format=3 uid="uid://c6xc6g12ioe0s"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/OrbitalScheduling/LegWizardView.cs" id="2_script"]
+[ext_resource type="Script" path="res://Scripts/UI/Wireframe/StepIndicator.cs" id="3_steps"]
+[ext_resource type="PackedScene" path="res://UI/Wireframe/TransferActionBar.tscn" id="4_actionbar"]
+
+[node name="LegWizardView" type="Control" node_paths=PackedStringArray("_steps", "_originLabel", "_content", "_actionBar")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+_steps = NodePath("Col/StepBar/StepRow/Steps")
+_originLabel = NodePath("Col/StepBar/StepRow/OriginLabel")
+_content = NodePath("Col/Content")
+_actionBar = NodePath("Col/ActionBar")
+
+[node name="Col" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="StepBar" type="MarginContainer" parent="Col"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 8
+
+[node name="StepRow" type="HBoxContainer" parent="Col/StepBar"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Steps" type="HBoxContainer" parent="Col/StepBar/StepRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("3_steps")
+
+[node name="OriginLabel" type="Label" parent="Col/StepBar/StepRow"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+theme_override_font_sizes/font_size = 10
+text = "ORIGIN · —"
+
+[node name="Content" type="MarginContainer" parent="Col"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 6
+
+[node name="ActionBar" parent="Col" instance=ExtResource("4_actionbar")]
+layout_mode = 2

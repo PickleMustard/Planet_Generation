@@ -11,5 +11,7 @@ stations:
         regular_slots: "1"
         overtime_slots: "0"
         overtime_cost_percent: "0.10"
+    visual:
+      model_resource: "res://Mesh/default_station.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_station.tres"

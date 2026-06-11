@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://be2p62nuqf51u"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BuildingEditor/BehaviorRow.cs" id="1_row"]
+
+[node name="BehaviorRow" type="VBoxContainer" node_paths=PackedStringArray("_behaviorIdButton", "_configGrid")]
+size_flags_horizontal = 3
+script = ExtResource("1_row")
+_behaviorIdButton = NodePath("Header/BehaviorIdButton")
+_configGrid = NodePath("ConfigGrid")
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BehaviorIdButton" type="OptionButton" parent="Header"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DeleteButton" type="Button" parent="Header"]
+layout_mode = 2
+tooltip_text = "Remove behavior"
+text = "✕"
+
+[node name="ConfigGrid" type="GridContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[connection signal="item_selected" from="Header/BehaviorIdButton" to="." method="OnBehaviorIdSelected"]
+[connection signal="pressed" from="Header/DeleteButton" to="." method="OnDeletePressed"]

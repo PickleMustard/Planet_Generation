@@ -37,9 +37,32 @@ public partial class ConditionalOutputRow : VBoxContainer
     public string Resource => _resource;
     public float Amount => _amount;
 
+    [Export]
     private VBoxContainer _rulesContainer = null!;
+
+    [Export]
+    private Button _addRuleButton = null!;
+
+    [Export]
     private Button _resourceButton = null!;
+
+    [Export]
     private SpinBox _amountSpin = null!;
+
+    private static PackedScene? _scene;
+
+    public static ConditionalOutputRow Create(
+        int slotIndex,
+        RecipeEditorModel.ConditionalOutputSlot slot
+    )
+    {
+        _scene ??= GD.Load<PackedScene>(
+            "res://DeveloperTools/RecipeEditor/ConditionalOutputRow.tscn"
+        );
+        var row = _scene.Instantiate<ConditionalOutputRow>();
+        row.Configure(slotIndex, slot);
+        return row;
+    }
 
     public void Configure(int slotIndex, RecipeEditorModel.ConditionalOutputSlot slot)
     {
@@ -48,13 +71,15 @@ public partial class ConditionalOutputRow : VBoxContainer
         _rules = new List<ConditionRule>();
         foreach (var rule in slot.Rules)
         {
-            _rules.Add(new ConditionRule
-            {
-                Join = rule.Join,
-                Variable = rule.Variable,
-                Operator = rule.Operator,
-                Value = rule.Value,
-            });
+            _rules.Add(
+                new ConditionRule
+                {
+                    Join = rule.Join,
+                    Variable = rule.Variable,
+                    Operator = rule.Operator,
+                    Value = rule.Value,
+                }
+            );
         }
         _resource = slot.Resource;
         _amount = slot.Amount;
@@ -63,59 +88,13 @@ public partial class ConditionalOutputRow : VBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        _rulesContainer = new VBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        AddChild(_rulesContainer);
-
-        var footer = new HBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        AddChild(footer);
-
-        if (string.IsNullOrEmpty(_legacyCondition))
-        {
-            var addRuleBtn = new Button
-            {
-                Text = "+ rule",
-                TooltipText = "Add a comparison clause to this condition",
-            };
-            addRuleBtn.Pressed += OnAddRulePressed;
-            footer.AddChild(addRuleBtn);
-        }
-
-        _resourceButton = new Button
-        {
-            CustomMinimumSize = new Vector2(180, 0),
-            ClipText = true,
-            TooltipText = "Resource produced when condition is true",
-        };
-        _resourceButton.Pressed += OnPickResource;
-        footer.AddChild(_resourceButton);
-
-        _amountSpin = new SpinBox
-        {
-            MinValue = 0,
-            MaxValue = 1000000,
-            Step = 0.01f,
-            Value = _amount,
-            CustomMinimumSize = new Vector2(96, 0),
-            AllowGreater = true,
-        };
-        _amountSpin.ValueChanged += OnAmountChanged;
-        footer.AddChild(_amountSpin);
-
-        var deleteBtn = new Button { Text = "✕", TooltipText = "Remove this conditional output" };
-        deleteBtn.Pressed += () => EmitSignal(SignalName.SlotDeleted, _slotIndex);
-        footer.AddChild(deleteBtn);
-
+        _addRuleButton.Visible = string.IsNullOrEmpty(_legacyCondition);
+        _amountSpin.SetValueNoSignal(_amount);
         UpdateResourceButton();
         RebuildRulesUI();
     }
+
+    private void OnDeletePressed() => EmitSignal(SignalName.SlotDeleted, _slotIndex);
 
     private void RebuildRulesUI()
     {
@@ -129,7 +108,8 @@ public partial class ConditionalOutputRow : VBoxContainer
                 Text = _legacyCondition,
                 Editable = false,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                TooltipText = "Legacy expression — delete the row and re-add it to use the rule builder.",
+                TooltipText =
+                    "Legacy expression — delete the row and re-add it to use the rule builder.",
             };
             _rulesContainer.AddChild(legacyEdit);
             return;
@@ -138,13 +118,15 @@ public partial class ConditionalOutputRow : VBoxContainer
         if (_rules.Count == 0)
         {
             // Seed an empty first rule so the UI is never blank.
-            _rules.Add(new ConditionRule
-            {
-                Join = ConditionJoin.And,
-                Variable = RecipeExpressionEvaluator.AllowedVariables[0],
-                Operator = ConditionOperator.Eq,
-                Value = 0f,
-            });
+            _rules.Add(
+                new ConditionRule
+                {
+                    Join = ConditionJoin.And,
+                    Variable = RecipeExpressionEvaluator.AllowedVariables[0],
+                    Operator = ConditionOperator.Eq,
+                    Value = 0f,
+                }
+            );
         }
 
         for (int i = 0; i < _rules.Count; i++)
@@ -167,7 +149,8 @@ public partial class ConditionalOutputRow : VBoxContainer
                 _rules[capturedIndex].Join = idx == 1 ? ConditionJoin.Or : ConditionJoin.And;
                 EmitChange();
             };
-            if (i == 0) joinButton.Visible = false;
+            if (i == 0)
+                joinButton.Visible = false;
             row.AddChild(joinButton);
 
             // Variable dropdown.
@@ -186,16 +169,20 @@ public partial class ConditionalOutputRow : VBoxContainer
             var opSymbols = new[] { "==", "!=", "<", "<=", ">", ">=" };
             var opEnums = new[]
             {
-                ConditionOperator.Eq, ConditionOperator.NotEq,
-                ConditionOperator.Lt, ConditionOperator.Lte,
-                ConditionOperator.Gt, ConditionOperator.Gte,
+                ConditionOperator.Eq,
+                ConditionOperator.NotEq,
+                ConditionOperator.Lt,
+                ConditionOperator.Lte,
+                ConditionOperator.Gt,
+                ConditionOperator.Gte,
             };
             var opButton = new OptionButton { CustomMinimumSize = new Vector2(64, 0) };
             int opSelectIdx = 0;
             for (int k = 0; k < opSymbols.Length; k++)
             {
                 opButton.AddItem(opSymbols[k], k);
-                if (opEnums[k] == rule.Operator) opSelectIdx = k;
+                if (opEnums[k] == rule.Operator)
+                    opSelectIdx = k;
             }
             opButton.Select(opSelectIdx);
             opButton.ItemSelected += idx =>
@@ -233,7 +220,8 @@ public partial class ConditionalOutputRow : VBoxContainer
             var deleteRuleBtn = new Button { Text = "✕", TooltipText = "Remove this rule" };
             deleteRuleBtn.Pressed += () =>
             {
-                if (_rules.Count <= 1) return; // never leave zero rules
+                if (_rules.Count <= 1)
+                    return; // never leave zero rules
                 _rules.RemoveAt(capturedIndex);
                 RebuildRulesUI();
                 EmitChange();
@@ -265,21 +253,28 @@ public partial class ConditionalOutputRow : VBoxContainer
 
     private void OnAddRulePressed()
     {
-        _rules.Add(new ConditionRule
-        {
-            Join = ConditionJoin.And,
-            Variable = RecipeExpressionEvaluator.AllowedVariables[0],
-            Operator = ConditionOperator.Eq,
-            Value = 0f,
-        });
+        _rules.Add(
+            new ConditionRule
+            {
+                Join = ConditionJoin.And,
+                Variable = RecipeExpressionEvaluator.AllowedVariables[0],
+                Operator = ConditionOperator.Eq,
+                Value = 0f,
+            }
+        );
         RebuildRulesUI();
         EmitChange();
     }
 
     private void OnPickResource()
     {
-        var popup = new ResourcePickerPopup();
-        popup.ResourcePicked += id => { _resource = id; UpdateResourceButton(); EmitChange(); };
+        var popup = ResourcePickerPopup.Create();
+        popup.ResourcePicked += id =>
+        {
+            _resource = id;
+            UpdateResourceButton();
+            EmitChange();
+        };
         GetTree().Root.AddChild(popup);
         popup.PopupCentered();
     }

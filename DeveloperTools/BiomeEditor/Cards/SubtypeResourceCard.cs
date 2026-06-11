@@ -41,13 +41,24 @@ public partial class SubtypeResourceCard : PanelContainer
 
     private void OnChanged(RockyPlanetSubtype subtype)
     {
-        if (subtype != _subtype) return;
+        if (subtype != _subtype)
+            return;
         CallDeferred(nameof(Refresh));
     }
 
     private void BuildLayout()
     {
-        AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.14f, 0.14f, 0.18f), ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 6, ContentMarginBottom = 6 });
+        AddThemeStyleboxOverride(
+            "panel",
+            new StyleBoxFlat
+            {
+                BgColor = new Color(0.14f, 0.14f, 0.18f),
+                ContentMarginLeft = 8,
+                ContentMarginRight = 8,
+                ContentMarginTop = 6,
+                ContentMarginBottom = 6,
+            }
+        );
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
 
         var root = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -59,25 +70,38 @@ public partial class SubtypeResourceCard : PanelContainer
         root.AddChild(title);
 
         var baseRow = new HBoxContainer();
-        baseRow.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "base_resource_weight:", CustomMinimumSize = new Vector2(180, 0) });
+        baseRow.AddChild(
+            new Label
+            {
+                ThemeTypeVariation = "LabelHighContrast",
+                Text = "base_resource_weight:",
+                CustomMinimumSize = new Vector2(180, 0),
+            }
+        );
         _baseWeightEdit = new LineEdit { CustomMinimumSize = new Vector2(80, 0) };
         _baseWeightEdit.TextSubmitted += s => CommitBaseWeight(s);
         _baseWeightEdit.FocusExited += () => CommitBaseWeight(_baseWeightEdit.Text);
         baseRow.AddChild(_baseWeightEdit);
         root.AddChild(baseRow);
 
-        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Resource Groups:" });
+        root.AddChild(
+            new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Resource Groups:" }
+        );
         _groupFlow = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_groupFlow);
 
-        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Add Resources:" });
+        root.AddChild(
+            new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Add Resources:" }
+        );
         _addList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_addList);
         var addAddBtn = new Button { Text = "+ Add Resource" };
         addAddBtn.Pressed += () => OnPickResource(true);
         root.AddChild(addAddBtn);
 
-        root.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Remove Resources:" });
+        root.AddChild(
+            new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Remove Resources:" }
+        );
         _removeList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         root.AddChild(_removeList);
         var addRemBtn = new Button { Text = "+ Remove Resource" };
@@ -87,12 +111,19 @@ public partial class SubtypeResourceCard : PanelContainer
 
     private void Refresh()
     {
-        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry)) return;
+        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry))
+            return;
 
-        _baseWeightEdit.Text = entry.BaseResourceWeight.ToString("0.##", CultureInfo.InvariantCulture);
+        _baseWeightEdit.Text = entry.BaseResourceWeight.ToString(
+            "0.##",
+            CultureInfo.InvariantCulture
+        );
 
-        foreach (var c in _groupFlow.GetChildren()) c.QueueFree();
-        var allGroups = _model.ResourceGroups.Select(g => g.GroupName).OrderBy(s => s, StringComparer.Ordinal);
+        foreach (var c in _groupFlow.GetChildren())
+            c.QueueFree();
+        var allGroups = _model
+            .ResourceGroups.Select(g => g.GroupName)
+            .OrderBy(s => s, StringComparer.Ordinal);
         foreach (var name in allGroups)
         {
             string captured = name;
@@ -111,12 +142,20 @@ public partial class SubtypeResourceCard : PanelContainer
 
     private void BuildIdRows(VBoxContainer list, List<string> ids, bool isAdd)
     {
-        foreach (var c in list.GetChildren()) c.QueueFree();
+        foreach (var c in list.GetChildren())
+            c.QueueFree();
         for (int i = 0; i < ids.Count; i++)
         {
             string id = ids[i];
             var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            row.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = id, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+            row.AddChild(
+                new Label
+                {
+                    ThemeTypeVariation = "LabelHighContrast",
+                    Text = id,
+                    SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                }
+            );
             var del = new Button { Text = "✕" };
             del.Pressed += () => RemoveIdAt(isAdd, id);
             row.AddChild(del);
@@ -126,26 +165,34 @@ public partial class SubtypeResourceCard : PanelContainer
 
     private void RemoveIdAt(bool isAdd, string id)
     {
-        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry)) return;
+        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry))
+            return;
         var clone = CloneEntry(entry);
-        if (isAdd) clone.AddResources.Remove(id);
-        else clone.RemoveResources.Remove(id);
+        if (isAdd)
+            clone.AddResources.Remove(id);
+        else
+            clone.RemoveResources.Remove(id);
         _model.UpdateSubtypeResource(_subtype, clone);
     }
 
     private void ToggleGroup(string groupName, bool pressed)
     {
-        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry)) return;
+        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry))
+            return;
         var clone = CloneEntry(entry);
-        if (pressed && !clone.ResourceGroups.Contains(groupName)) clone.ResourceGroups.Add(groupName);
-        else if (!pressed) clone.ResourceGroups.Remove(groupName);
+        if (pressed && !clone.ResourceGroups.Contains(groupName))
+            clone.ResourceGroups.Add(groupName);
+        else if (!pressed)
+            clone.ResourceGroups.Remove(groupName);
         _model.UpdateSubtypeResource(_subtype, clone);
     }
 
     private void CommitBaseWeight(string s)
     {
-        if (!float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) return;
-        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry)) return;
+        if (!float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+            return;
+        if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry))
+            return;
         var clone = CloneEntry(entry);
         clone.BaseResourceWeight = v;
         _model.UpdateSubtypeResource(_subtype, clone);
@@ -153,26 +200,32 @@ public partial class SubtypeResourceCard : PanelContainer
 
     private void OnPickResource(bool isAdd)
     {
-        var popup = new ResourcePickerPopup();
+        var popup = ResourcePickerPopup.Create();
         popup.ResourcePicked += id =>
         {
-            if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry)) return;
+            if (!_model.SubtypeResources.TryGetValue(_subtype, out var entry))
+                return;
             var clone = CloneEntry(entry);
-            if (isAdd && !clone.AddResources.Contains(id)) clone.AddResources.Add(id);
-            else if (!isAdd && !clone.RemoveResources.Contains(id)) clone.RemoveResources.Add(id);
+            if (isAdd && !clone.AddResources.Contains(id))
+                clone.AddResources.Add(id);
+            else if (!isAdd && !clone.RemoveResources.Contains(id))
+                clone.RemoveResources.Add(id);
             _model.UpdateSubtypeResource(_subtype, clone);
         };
         GetTree().Root.AddChild(popup);
         popup.PopupCentered();
     }
 
-    private static BiomeEditorModel.SubtypeResourceEdit CloneEntry(BiomeEditorModel.SubtypeResourceEdit e) => new()
-    {
-        Subtype = e.Subtype,
-        BaseResourceWeight = e.BaseResourceWeight,
-        ResourceGroups = new List<string>(e.ResourceGroups),
-        AddResources = new List<string>(e.AddResources),
-        RemoveResources = new List<string>(e.RemoveResources),
-    };
+    private static BiomeEditorModel.SubtypeResourceEdit CloneEntry(
+        BiomeEditorModel.SubtypeResourceEdit e
+    ) =>
+        new()
+        {
+            Subtype = e.Subtype,
+            BaseResourceWeight = e.BaseResourceWeight,
+            ResourceGroups = new List<string>(e.ResourceGroups),
+            AddResources = new List<string>(e.AddResources),
+            RemoveResources = new List<string>(e.RemoveResources),
+        };
 }
 #endif

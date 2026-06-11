@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://b7lpna8hb4qrk"]
+
+[ext_resource type="Script" path="res://DeveloperTools/RecipeEditor/ConditionalOutputRow.cs" id="1_row"]
+
+[node name="ConditionalOutputRow" type="VBoxContainer" node_paths=PackedStringArray("_rulesContainer", "_addRuleButton", "_resourceButton", "_amountSpin")]
+size_flags_horizontal = 3
+script = ExtResource("1_row")
+_rulesContainer = NodePath("RulesContainer")
+_addRuleButton = NodePath("Footer/AddRuleButton")
+_resourceButton = NodePath("Footer/ResourceButton")
+_amountSpin = NodePath("Footer/AmountSpin")
+
+[node name="RulesContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Footer" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AddRuleButton" type="Button" parent="Footer"]
+layout_mode = 2
+tooltip_text = "Add a comparison clause to this condition"
+text = "+ rule"
+
+[node name="ResourceButton" type="Button" parent="Footer"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+clip_text = true
+tooltip_text = "Resource produced when condition is true"
+text = "(select resource)"
+
+[node name="AmountSpin" type="SpinBox" parent="Footer"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+max_value = 1e+06
+step = 0.01
+allow_greater = true
+
+[node name="DeleteButton" type="Button" parent="Footer"]
+layout_mode = 2
+tooltip_text = "Remove this conditional output"
+text = "✕"
+
+[connection signal="pressed" from="Footer/AddRuleButton" to="." method="OnAddRulePressed"]
+[connection signal="pressed" from="Footer/ResourceButton" to="." method="OnPickResource"]
+[connection signal="value_changed" from="Footer/AmountSpin" to="." method="OnAmountChanged"]
+[connection signal="pressed" from="Footer/DeleteButton" to="." method="OnDeletePressed"]

@@ -117,7 +117,13 @@ public partial class ModelPreviewPane : SubViewportContainer
         }
 
         PackedScene? packed = null;
-        try { packed = GD.Load<Registries.ModelConfig>(modelPath)?.Model; }
+        try
+        {
+            // Rooted cache: the shared wrapper must not be orphaned (finalizer-thread
+            // disposal SIGILL) nor disposed (would empty the config for other consumers).
+            packed = UtilityLibrary.DataLoading.WrapperResourceCache
+                .Load<Registries.ModelConfig>(modelPath)?.Model;
+        }
         catch (System.Exception ex)
         {
             GameLogger.Warning($"ModelPreviewPane: failed to load '{modelPath}': {ex.Message}");

@@ -1,0 +1,189 @@
+[gd_scene format=3 uid="uid://3afxpgmtjcjw"]
+
+[ext_resource type="Script" path="res://DeveloperTools/RecipeEditor/RecipeCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.16, 0.16, 0.19, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.35, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="RecipeCard" type="PanelContainer" node_paths=PackedStringArray("_iconRect", "_recipeIdEdit", "_displayNameEdit", "_descriptionEdit", "_categoryEdit", "_workRequiredSpin", "_tagsButton", "_inputsContainer", "_outputsContainer", "_conditionalsContainer", "_addInputButton", "_addOutputButton", "_addConditionalButton", "_moveUpButton", "_moveDownButton", "_deleteButton")]
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("1_card")
+_iconRect = NodePath("Root/Header/IconRect")
+_recipeIdEdit = NodePath("Root/Header/HeaderFields/RecipeIdEdit")
+_displayNameEdit = NodePath("Root/Header/HeaderFields/DisplayNameEdit")
+_descriptionEdit = NodePath("Root/Fields/DescriptionEdit")
+_categoryEdit = NodePath("Root/Fields/CategoryEdit")
+_workRequiredSpin = NodePath("Root/Fields/WorkSpin")
+_tagsButton = NodePath("Root/Fields/TagsButton")
+_inputsContainer = NodePath("Root/InputsContainer")
+_outputsContainer = NodePath("Root/OutputsContainer")
+_conditionalsContainer = NodePath("Root/ConditionalsContainer")
+_addInputButton = NodePath("Root/InputsHeader/AddInputButton")
+_addOutputButton = NodePath("Root/OutputsHeader/AddOutputButton")
+_addConditionalButton = NodePath("Root/ConditionalsHeader/AddConditionalButton")
+_moveUpButton = NodePath("Root/Header/Actions/MoveUpButton")
+_moveDownButton = NodePath("Root/Header/Actions/MoveDownButton")
+_deleteButton = NodePath("Root/Header/Actions/DeleteButton")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="IconRect" type="TextureRect" parent="Root/Header"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+tooltip_text = "Click to choose icon"
+expand_mode = 3
+stretch_mode = 5
+
+[node name="HeaderFields" type="VBoxContainer" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RecipeIdEdit" type="LineEdit" parent="Root/Header/HeaderFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "recipe_id"
+
+[node name="DisplayNameEdit" type="LineEdit" parent="Root/Header/HeaderFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Display Name"
+
+[node name="Actions" type="VBoxContainer" parent="Root/Header"]
+layout_mode = 2
+
+[node name="MoveUpButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Move up"
+text = "▲"
+
+[node name="MoveDownButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Move down"
+text = "▼"
+
+[node name="DeleteButton" type="Button" parent="Root/Header/Actions"]
+layout_mode = 2
+tooltip_text = "Delete recipe"
+text = "✕"
+
+[node name="Fields" type="GridContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="CategoryLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Category"
+
+[node name="CategoryEdit" type="LineEdit" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "extraction / agriculture / power / ..."
+
+[node name="WorkLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Work"
+
+[node name="WorkSpin" type="SpinBox" parent="Root/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100000.0
+step = 0.1
+allow_greater = true
+
+[node name="DescriptionLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Description"
+
+[node name="DescriptionEdit" type="TextEdit" parent="Root/Fields"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Recipe description"
+wrap_mode = 1
+
+[node name="TagsLabel" type="Label" parent="Root/Fields"]
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "Tags"
+
+[node name="TagsButton" type="Button" parent="Root/Fields"]
+layout_mode = 2
+text = "Tags (0)"
+
+[node name="InputsHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InputsLabel" type="Label" parent="Root/InputsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.8, 1, 1)
+text = "Inputs"
+
+[node name="AddInputButton" type="Button" parent="Root/InputsHeader"]
+layout_mode = 2
+text = "+ Input"
+
+[node name="InputsContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OutputsHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OutputsLabel" type="Label" parent="Root/OutputsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 1, 0.7, 1)
+text = "Outputs"
+
+[node name="AddOutputButton" type="Button" parent="Root/OutputsHeader"]
+layout_mode = 2
+text = "+ Output"
+
+[node name="OutputsContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ConditionalsHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ConditionalsLabel" type="Label" parent="Root/ConditionalsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.9, 0.6, 1)
+tooltip_text = "Additional outputs gated by a boolean expression. Stack on top of regular outputs."
+text = "Conditional Outputs"
+
+[node name="AddConditionalButton" type="Button" parent="Root/ConditionalsHeader"]
+layout_mode = 2
+text = "+ Conditional"
+
+[node name="ConditionalsContainer" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3

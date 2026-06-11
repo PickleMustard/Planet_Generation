@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://cxhuugqb63pga"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BuildingEditor/SpecifierRow.cs" id="1_row"]
+
+[node name="SpecifierRow" type="HBoxContainer" node_paths=PackedStringArray("_defaultRadio", "_valueSpin", "_labelEdit")]
+size_flags_horizontal = 3
+script = ExtResource("1_row")
+_defaultRadio = NodePath("DefaultRadio")
+_valueSpin = NodePath("ValueSpin")
+_labelEdit = NodePath("LabelEdit")
+
+[node name="DefaultRadio" type="CheckBox" parent="."]
+layout_mode = 2
+tooltip_text = "Mark this value as the default specifier"
+text = "default"
+
+[node name="ValueSpin" type="SpinBox" parent="."]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+max_value = 1e+06
+allow_greater = true
+
+[node name="LabelEdit" type="LineEdit" parent="."]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Label (optional)"
+
+[node name="DeleteButton" type="Button" parent="."]
+layout_mode = 2
+tooltip_text = "Remove specifier value"
+text = "✕"
+
+[connection signal="pressed" from="DefaultRadio" to="." method="OnDefaultPressed"]
+[connection signal="value_changed" from="ValueSpin" to="." method="OnValueChanged"]
+[connection signal="text_changed" from="LabelEdit" to="." method="OnLabelChanged"]
+[connection signal="pressed" from="DeleteButton" to="." method="OnDeletePressed"]

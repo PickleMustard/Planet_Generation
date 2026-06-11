@@ -43,20 +43,14 @@ public abstract partial class StationDetailPanel : Control
         target.AddChild(new HSeparator());
     }
 
+    private static readonly PackedScene InfoRowScene =
+        GD.Load<PackedScene>("res://UI/StationWindow/StationInfoRow.tscn");
+
     protected static void AddInfoRow(Container target, string key, string value)
     {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 12);
-
-        var keyLabel = new Label { Text = key + ":", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        keyLabel.AddThemeColorOverride("font_color", new Color(0.6f, 0.6f, 0.65f));
-        keyLabel.AddThemeFontSizeOverride("font_size", 13);
-        row.AddChild(keyLabel);
-
-        var valLabel = new Label { Text = value };
-        valLabel.AddThemeFontSizeOverride("font_size", 13);
-        row.AddChild(valLabel);
-
+        var row = InfoRowScene.Instantiate<HBoxContainer>();
+        row.GetNode<Label>("KeyLabel").Text = key + ":";
+        row.GetNode<Label>("ValueLabel").Text = value;
         target.AddChild(row);
     }
 

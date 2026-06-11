@@ -12,7 +12,7 @@
 [ext_resource type="Script" uid="uid://cyek4t1kwifs2" path="res://Scripts/UI/StateMachine/States/CellOverviewState.cs" id="12_2pbdv"]
 [ext_resource type="Script" uid="uid://p4boopojuw0l" path="res://Scripts/UI/StateMachine/OrbitalBodyHSM.cs" id="12_4wovb"]
 [ext_resource type="Script" uid="uid://2r1sf770dr74" path="res://Scripts/UI/StateMachine/States/BuildingDetailsState.cs" id="14_5pu0e"]
-[ext_resource type="PackedScene" path="res://UI/TransferPlanning/DispatchSlipsWindow.tscn" id="23_31frm"]
+[ext_resource type="PackedScene" uid="uid://biy1ok7i4lvqq" path="res://UI/TransferPlanning/DispatchSlipsWindow.tscn" id="23_31frm"]
 [ext_resource type="Script" uid="uid://dekhdf7pg8e54" path="res://Scripts/UI/StateMachine/StationHSM.cs" id="24_stationhsm"]
 [ext_resource type="Script" uid="uid://b55cjis1f7gix" path="res://Scripts/UI/StateMachine/States/StationViewState.cs" id="25_stationview"]
 [ext_resource type="PackedScene" uid="uid://tejc44gqclpv" path="res://UI/StationWindow/StationWindow.tscn" id="27_stationwindow"]
@@ -29,9 +29,33 @@
 [ext_resource type="Script" uid="uid://dtkrbokppau21" path="res://Scripts/UI/WorldInputController.cs" id="38_worldinput"]
 [ext_resource type="Script" uid="uid://64tb3ewa24i8" path="res://Scripts/UI/StateMachine/States/PlanetBoardState.cs" id="39_pbstate"]
 [ext_resource type="PackedScene" uid="uid://dy1aabv8ypa5q" path="res://UI/GridWindow/GridDetailWindow.tscn" id="40_gridwindow"]
-[ext_resource type="Script" path="res://Scripts/UI/StateMachine/ShipsOverviewHSM.cs" id="41_shipshsm"]
-[ext_resource type="Script" path="res://Scripts/UI/StateMachine/States/ShipsOverviewState.cs" id="42_shipsstate"]
+[ext_resource type="Script" uid="uid://c0nxp7m500eaa" path="res://Scripts/UI/StateMachine/ShipsOverviewHSM.cs" id="41_shipshsm"]
+[ext_resource type="Script" uid="uid://y4m0wurdj0jk" path="res://Scripts/UI/StateMachine/States/ShipsOverviewState.cs" id="42_shipsstate"]
 [ext_resource type="PackedScene" path="res://UI/LogisticsOverview/LogisticsOverviewWindow.tscn" id="43_overviewwin"]
+[ext_resource type="Script" uid="uid://cv5h4i834pger" path="res://Scripts/UI/GUISoundEffects.cs" id="44_guisfx"]
+[ext_resource type="Resource" path="res://Audio/click.tres" id="45_audclick"]
+[ext_resource type="Resource" path="res://Audio/page_forward.tres" id="46_audpf"]
+[ext_resource type="Resource" path="res://Audio/page_back.tres" id="47_audpb"]
+[ext_resource type="Resource" path="res://Audio/gui_close.tres" id="48_audgc"]
+[ext_resource type="Script" path="res://Scripts/Registries/SoundEffect.cs" id="49_sfx"]
+
+[sub_resource type="AudioStreamPolyphonic" id="AudioStreamPolyphonic_a8410"]
+
+[sub_resource type="Resource" id="SfxGuiClick"]
+script = ExtResource("49_sfx")
+Clip = ExtResource("45_audclick")
+
+[sub_resource type="Resource" id="SfxGuiForward"]
+script = ExtResource("49_sfx")
+Clip = ExtResource("46_audpf")
+
+[sub_resource type="Resource" id="SfxGuiBack"]
+script = ExtResource("49_sfx")
+Clip = ExtResource("47_audpb")
+
+[sub_resource type="Resource" id="SfxGuiExit"]
+script = ExtResource("49_sfx")
+Clip = ExtResource("48_audgc")
 
 [sub_resource type="BlackboardPlan" id="BlackboardPlan_bstsa"]
 resource_name = "guiBlackboard"
@@ -46,6 +70,21 @@ grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("1_p5rbu")
 ToastSystem = NodePath("ToastSystem")
+GuiClick = SubResource("SfxGuiClick")
+GuiForward = SubResource("SfxGuiForward")
+GuiBack = SubResource("SfxGuiBack")
+GuiExit = SubResource("SfxGuiExit")
+
+[node name="GUISoundEffects" type="AudioStreamPlayer" parent="." unique_id=628042392]
+stream = SubResource("AudioStreamPolyphonic_a8410")
+bus = &"gui_sound"
+script = ExtResource("44_guisfx")
+Sounds = {
+&"click": ExtResource("45_audclick"),
+&"page_forward": ExtResource("46_audpf"),
+&"page_back": ExtResource("47_audpb"),
+&"gui_close": ExtResource("48_audgc")
+}
 
 [node name="WorldInputController" type="Node" parent="." unique_id=958879589]
 script = ExtResource("38_worldinput")
@@ -96,9 +135,6 @@ window = NodePath("OrbitalBodyWindow")
 
 [node name="OrbitalBodyWindow" parent="GUIController/OrbitalBody/OrbitalBodyWindow" unique_id=481503733 instance=ExtResource("8_orbitalbodywindow")]
 visible = false
-
-[node name="ReticleOverlay" parent="GUIController/OrbitalBody/OrbitalBodyWindow/OrbitalBodyWindow" index="1"]
-anchors_preset = 0
 
 [node name="Station" type="LimboHSM" parent="GUIController" unique_id=453021329 node_paths=PackedStringArray("StationView")]
 blackboard_plan = SubResource("BlackboardPlan_bstsa")

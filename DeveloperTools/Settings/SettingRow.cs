@@ -5,18 +5,36 @@ using UtilityLibrary;
 
 namespace DeveloperTools.Settings;
 
+/// <summary>
+/// One editable settings row. Chrome (name, value slot, value readout, reset
+/// button, restart warning) lives in <c>SettingRow.tscn</c>; the type-specific
+/// value control is built at runtime into the exported value slot. Instantiate
+/// via <see cref="Create"/>.
+/// </summary>
 public partial class SettingRow : HBoxContainer
 {
     private ConfigEntry? _entry;
     private string? _category;
     private Control? _valueControl;
-    private Label? _valueLabel;
-    private Button? _resetButton;
-    private Label? _restartWarning;
+    [Export] private Label? _nameLabel;
+    [Export] private HBoxContainer? _valueSlot;
+    [Export] private Label? _valueLabel;
+    [Export] private Button? _resetButton;
+    [Export] private Label? _restartWarning;
     private bool _isUpdating;
 
     public ConfigEntry? Entry => _entry;
     public string? Category => _category;
+
+    private static PackedScene? _scene;
+
+    public static SettingRow Create(string category, ConfigEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/Settings/SettingRow.tscn");
+        var row = _scene.Instantiate<SettingRow>();
+        row.Setup(category, entry);
+        return row;
+    }
 
     public void Setup(string category, ConfigEntry entry)
     {
@@ -30,58 +48,17 @@ public partial class SettingRow : HBoxContainer
 
     private void BuildUI()
     {
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        AddThemeConstantOverride("separation", 8);
-
-        var nameLabel = new Label
-        {
-            Text = FormatLabel(_entry!.Key!),
-            CustomMinimumSize = new Vector2(150, 0),
-            SizeFlagsHorizontal = SizeFlags.Fill,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        nameLabel.AddThemeColorOverride("font_color", new Color(0.8f, 0.8f, 0.8f));
-        AddChild(nameLabel);
-
-        TooltipText = _entry.Description;
+        if (_nameLabel != null) _nameLabel.Text = FormatLabel(_entry!.Key!);
+        TooltipText = _entry!.Description;
 
         _valueControl = CreateValueControl();
-        if (_valueControl != null)
-        {
-            AddChild(_valueControl);
-        }
+        if (_valueControl != null) _valueSlot?.AddChild(_valueControl);
 
-        if (_entry!.ValueType == typeof(float) && _entry.MinValue != null && _entry.MaxValue != null)
-        {
-            _valueLabel = new Label
-            {
-                CustomMinimumSize = new Vector2(60, 0),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            _valueLabel.AddThemeColorOverride("font_color", new Color(0.6f, 0.8f, 0.6f));
-            AddChild(_valueLabel);
-        }
+        if (_valueLabel != null)
+            _valueLabel.Visible = _entry.ValueType == typeof(float)
+                && _entry.MinValue != null && _entry.MaxValue != null;
 
-        _resetButton = new Button
-        {
-            Text = "R",
-            TooltipText = "Reset to default",
-            CustomMinimumSize = new Vector2(28, 28)
-        };
-        AddChild(_resetButton);
-
-        if (_entry.RequiresRestart)
-        {
-            _restartWarning = new Label
-            {
-                Text = "⚠",
-                TooltipText = "Requires restart to take effect",
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            _restartWarning.AddThemeColorOverride("font_color", new Color(1f, 0.8f, 0.2f));
-            AddChild(_restartWarning);
-        }
+        if (_restartWarning != null) _restartWarning.Visible = _entry.RequiresRestart;
     }
 
     private Control CreateValueControl()

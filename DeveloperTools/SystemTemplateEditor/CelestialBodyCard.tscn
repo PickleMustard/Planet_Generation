@@ -1,0 +1,73 @@
+[gd_scene format=3 uid="uid://b6ekqhabfvpr6"]
+
+[ext_resource type="Script" path="res://DeveloperTools/SystemTemplateEditor/CelestialBodyCard.cs" id="1_card"]
+
+[node name="CelestialBodyCard" type="PanelContainer" node_paths=PackedStringArray("_toggleButton", "_nameEdit", "_upButton", "_downButton", "_upLevelButton", "_addChildButton", "_deleteButton", "_body")]
+script = ExtResource("1_card")
+_toggleButton = NodePath("Root/Header/ToggleButton")
+_nameEdit = NodePath("Root/Header/NameEdit")
+_upButton = NodePath("Root/Header/UpButton")
+_downButton = NodePath("Root/Header/DownButton")
+_upLevelButton = NodePath("Root/Header/UpLevelButton")
+_addChildButton = NodePath("Root/Header/AddChildButton")
+_deleteButton = NodePath("Root/Header/DeleteButton")
+_body = NodePath("Root/Body")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ToggleButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+tooltip_text = "Click to expand / collapse · select · drag to reparent"
+flat = true
+clip_text = true
+alignment = 0
+
+[node name="NameEdit" type="LineEdit" parent="Root/Header"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+placeholder_text = "name"
+
+[node name="UpButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+tooltip_text = "Move up among siblings"
+text = "▲"
+
+[node name="DownButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+tooltip_text = "Move down among siblings"
+text = "▼"
+
+[node name="UpLevelButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+tooltip_text = "Promote one level (sibling of parent)"
+text = "↰"
+
+[node name="AddChildButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+tooltip_text = "Add child body"
+text = "＋"
+
+[node name="DeleteButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+tooltip_text = "Delete body and its children"
+text = "✕"
+
+[node name="Body" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="pressed" from="Root/Header/ToggleButton" to="." method="OnHeaderPressed"]
+[connection signal="text_changed" from="Root/Header/NameEdit" to="." method="OnNameChanged"]
+[connection signal="pressed" from="Root/Header/UpButton" to="." method="OnMoveUp"]
+[connection signal="pressed" from="Root/Header/DownButton" to="." method="OnMoveDown"]
+[connection signal="pressed" from="Root/Header/UpLevelButton" to="." method="OnUpLevel"]
+[connection signal="pressed" from="Root/Header/AddChildButton" to="." method="OnAddChild"]
+[connection signal="pressed" from="Root/Header/DeleteButton" to="." method="OnDelete"]

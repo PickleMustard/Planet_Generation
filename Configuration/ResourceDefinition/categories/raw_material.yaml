@@ -18,7 +18,7 @@ resources:
     icon:
       resource: "res://Materials/Icons/ingot.tres"
   - id_name: gold
-    resource_tier: 0
+    resource_tier: 2
     base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
@@ -27,7 +27,7 @@ resources:
     icon:
       resource: "res://Materials/Icons/ingot.tres"
   - id_name: nickel
-    resource_tier: 0
+    resource_tier: 1
     base_price: 1000
     state_of_matter: solid
     max_stack_size: 500
@@ -48,8 +48,9 @@ resources:
     resource_tier: 0
     base_price: 1000
     state_of_matter: solid
-    max_stack_size: 500
+    max_stack_size: 499
     transport_weight: 0.8
+    tags: [earth]
     icon:
       resource: "res://Materials/Icons/water.tres"
   - id_name: plastic
@@ -106,7 +107,7 @@ resources:
     icon:
       resource: "res://Materials/Icons/wood.tres"
   - id_name: lead
-    resource_tier: 1
+    resource_tier: 2
     base_price: 2000
     state_of_matter: solid
     max_stack_size: 300
@@ -120,6 +121,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 500
     transport_weight: 1.8
+    tags: [earth]
     icon:
       resource: "res://Materials/Icons/water.tres"
   - id_name: gravel
@@ -128,6 +130,7 @@ resources:
     state_of_matter: solid
     max_stack_size: 499
     transport_weight: 2
+    tags: [earth]
     icon:
       resource: "res://Materials/Icons/gravel.tres"
   - id_name: fiber

@@ -154,7 +154,7 @@ public partial class StationArchitectPanel : StationDetailPanel
 
     private void AppendArchitectRow(
         OrbitalConstructorBehavior architect,
-        Building building,
+        IArchitectConstructable building,
         int index,
         string itemType,
         string text)
@@ -189,7 +189,7 @@ public partial class StationArchitectPanel : StationDetailPanel
 
     private void ShowTransferPopup(
         OrbitalConstructorBehavior source,
-        Building building,
+        IArchitectConstructable building,
         Vector2 globalMousePos)
     {
         var mgr = _station?.ParentBody?.BuildingConstructionMgr;

@@ -1,0 +1,121 @@
+[gd_scene format=3 uid="uid://b8legcard000001"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/OrbitalScheduling/LegCard.cs" id="2_script"]
+
+[node name="LegCard" type="PanelContainer" node_paths=PackedStringArray("_kicker", "_num", "_route", "_cargo", "_fuel", "_status", "_buttonRows", "_note", "_up", "_down", "_edit", "_del")]
+theme = ExtResource("1_theme")
+mouse_filter = 0
+script = ExtResource("2_script")
+_kicker = NodePath("Row/Stub/Kicker")
+_num = NodePath("Row/Stub/Num")
+_route = NodePath("Row/Mid/Route")
+_cargo = NodePath("Row/Mid/Cargo")
+_fuel = NodePath("Row/Mid/Fuel")
+_status = NodePath("Row/Mid/Status")
+_buttonRows = NodePath("Row/Controls/ButtonRows")
+_note = NodePath("Row/Controls/Note")
+_up = NodePath("Row/Controls/ButtonRows/TopRow/Up")
+_down = NodePath("Row/Controls/ButtonRows/TopRow/Down")
+_edit = NodePath("Row/Controls/ButtonRows/BottomRow/Edit")
+_del = NodePath("Row/Controls/ButtonRows/BottomRow/Del")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Stub" type="VBoxContainer" parent="Row"]
+custom_minimum_size = Vector2(54, 0)
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Kicker" type="Label" parent="Row/Stub"]
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "LEG"
+
+[node name="Num" type="Label" parent="Row/Stub"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 28
+text = "01"
+
+[node name="Mid" type="VBoxContainer" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Route" type="Label" parent="Row/Mid"]
+layout_mode = 2
+theme_type_variation = &"LabelHand"
+theme_override_font_sizes/font_size = 20
+text = "Origin  →  Dest"
+
+[node name="Cargo" type="Label" parent="Row/Mid"]
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.353, 0.314, 0.282, 1)
+theme_override_font_sizes/font_size = 11
+text = "CARGO · —"
+
+[node name="Fuel" type="Label" parent="Row/Mid"]
+layout_mode = 2
+theme_type_variation = &"LabelMono"
+theme_override_colors/font_color = Color(0.353, 0.314, 0.282, 1)
+theme_override_font_sizes/font_size = 11
+text = "FUEL · —    TIME · —"
+
+[node name="Status" type="Label" parent="Row/Mid"]
+layout_mode = 2
+theme_type_variation = &"LabelOk"
+theme_override_font_sizes/font_size = 10
+text = "OK"
+
+[node name="Controls" type="VBoxContainer" parent="Row"]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="ButtonRows" type="VBoxContainer" parent="Row/Controls"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TopRow" type="HBoxContainer" parent="Row/Controls/ButtonRows"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Up" type="Button" parent="Row/Controls/ButtonRows/TopRow"]
+layout_mode = 2
+tooltip_text = "Move earlier"
+text = "↑"
+
+[node name="Down" type="Button" parent="Row/Controls/ButtonRows/TopRow"]
+layout_mode = 2
+tooltip_text = "Move later"
+text = "↓"
+
+[node name="BottomRow" type="HBoxContainer" parent="Row/Controls/ButtonRows"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Edit" type="Button" parent="Row/Controls/ButtonRows/BottomRow"]
+layout_mode = 2
+theme_type_variation = &"ButtonPrimary"
+text = "Edit"
+
+[node name="Del" type="Button" parent="Row/Controls/ButtonRows/BottomRow"]
+layout_mode = 2
+theme_type_variation = &"ButtonDanger"
+text = "✕"
+
+[node name="Note" type="Label" parent="Row/Controls"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"LabelFaint"
+text = "auto return"
+
+[connection signal="pressed" from="Row/Controls/ButtonRows/TopRow/Up" to="." method="OnUpPressed"]
+[connection signal="pressed" from="Row/Controls/ButtonRows/TopRow/Down" to="." method="OnDownPressed"]
+[connection signal="pressed" from="Row/Controls/ButtonRows/BottomRow/Edit" to="." method="OnEditPressed"]
+[connection signal="pressed" from="Row/Controls/ButtonRows/BottomRow/Del" to="." method="OnDelPressed"]

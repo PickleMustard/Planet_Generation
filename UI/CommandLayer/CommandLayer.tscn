@@ -4,6 +4,12 @@
 [ext_resource type="PackedScene" uid="uid://daut5m8r6t28a" path="res://UI/Components/ChamferedPanel.tscn" id="2_chmf"]
 [ext_resource type="PackedScene" uid="uid://b8cnstmenu01a" path="res://UI/Construction/ConstructionMenu.tscn" id="3_menu"]
 [ext_resource type="PackedScene" uid="uid://b8plcovly01a" path="res://UI/Construction/PlacementOverlay.tscn" id="4_ovly"]
+[ext_resource type="Script" path="res://Scripts/Registries/SoundEffect.cs" id="5_sfx"]
+[ext_resource type="Resource" path="res://Audio/click.tres" id="6_audclick"]
+
+[sub_resource type="Resource" id="SfxClick"]
+script = ExtResource("5_sfx")
+Clip = ExtResource("6_audclick")
 
 [node name="CommandLayer" type="Control" unique_id=900100001 node_paths=PackedStringArray("_constructButton", "_menu", "_overlay")]
 layout_mode = 3
@@ -17,6 +23,7 @@ script = ExtResource("1_clc")
 _constructButton = NodePath("CommandPanel/MarginContainer/CommandContainer/ConstructionCommandsContainer/ConstructButton")
 _menu = NodePath("ConstructionMenu")
 _overlay = NodePath("PlacementOverlay")
+ClickSfx = SubResource("SfxClick")
 
 [node name="CommandPanel" parent="." unique_id=1438371074 instance=ExtResource("2_chmf")]
 layout_mode = 1

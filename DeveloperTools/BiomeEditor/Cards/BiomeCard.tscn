@@ -1,0 +1,154 @@
+[gd_scene format=3 uid="uid://dwvip7bcdmwiq"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BiomeEditor/Cards/BiomeCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="card_bg"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.14, 0.14, 0.18, 1)
+
+[node name="BiomeCard" type="PanelContainer" node_paths=PackedStringArray("_titleLabel", "_displayEdit", "_defaultColorBtn", "_overridesList", "_hazardSpin", "_ventSpin", "_tagsEdit", "_weightsList")]
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("card_bg")
+script = ExtResource("1_card")
+_titleLabel = NodePath("Root/Header/Title")
+_displayEdit = NodePath("Root/NameRow/DisplayEdit")
+_defaultColorBtn = NodePath("Root/ColorRow/DefaultColorBtn")
+_overridesList = NodePath("Root/OverridesList")
+_hazardSpin = NodePath("Root/HazardRow/HazardSpin")
+_ventSpin = NodePath("Root/VentRow/VentSpin")
+_tagsEdit = NodePath("Root/TagsRow/TagsEdit")
+_weightsList = NodePath("Root/WeightsList")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 1, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+text = "biome_id"
+
+[node name="RenameButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+text = "Rename"
+
+[node name="DeleteButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+text = "✕ Delete Biome"
+
+[node name="NameRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="Root/NameRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "display_name:"
+
+[node name="DisplayEdit" type="LineEdit" parent="Root/NameRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ColorRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="ColorLabel" type="Label" parent="Root/ColorRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "default_color:"
+
+[node name="DefaultColorBtn" type="ColorPickerButton" parent="Root/ColorRow"]
+custom_minimum_size = Vector2(120, 24)
+layout_mode = 2
+edit_alpha = false
+
+[node name="OvHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="OvLabel" type="Label" parent="Root/OvHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHighContrast"
+text = "color_overrides:"
+
+[node name="AddOverrideButton" type="Button" parent="Root/OvHeader"]
+layout_mode = 2
+text = "+ Add Override"
+
+[node name="OverridesList" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HazardRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="HazardLabel" type="Label" parent="Root/HazardRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "hazard_weight:"
+
+[node name="HazardSpin" type="SpinBox" parent="Root/HazardRow"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+max_value = 10.0
+step = 0.1
+
+[node name="VentRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="VentLabel" type="Label" parent="Root/VentRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "vent_probability:"
+
+[node name="VentSpin" type="SpinBox" parent="Root/VentRow"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+
+[node name="TagsRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="TagsLabel" type="Label" parent="Root/TagsRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "tags (csv):"
+
+[node name="TagsEdit" type="LineEdit" parent="Root/TagsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="WLabel" type="Label" parent="Root/WHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHighContrast"
+text = "resource_weight_modifiers:"
+
+[node name="AddResourceButton" type="Button" parent="Root/WHeader"]
+layout_mode = 2
+text = "+ Resource"
+
+[node name="WeightsList" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="pressed" from="Root/Header/RenameButton" to="." method="OnRename"]
+[connection signal="pressed" from="Root/Header/DeleteButton" to="." method="OnDelete"]
+[connection signal="pressed" from="Root/OvHeader/AddOverrideButton" to="." method="OnAddOverride"]
+[connection signal="pressed" from="Root/WHeader/AddResourceButton" to="." method="OnAddWeight"]

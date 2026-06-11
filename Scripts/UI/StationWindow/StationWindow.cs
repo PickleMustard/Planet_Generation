@@ -213,7 +213,7 @@ public partial class StationWindow : Control
 
             // Whole row is clickable — no per-item button. Capturing `id` per
             // iteration is correct (foreach declares a fresh variable each pass).
-            var row = new SidebarListItem(id);
+            var row = SidebarListItem.Create(id);
 
             var nameLabel = new Label
             {

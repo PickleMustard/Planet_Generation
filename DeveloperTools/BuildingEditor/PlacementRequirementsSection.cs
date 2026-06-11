@@ -18,16 +18,30 @@ public partial class PlacementRequirementsSection : VBoxContainer
     private int _buildingIndex;
     private BuildingEditorModel.BuildingEditEntry? _entry;
 
-    private Button _biomesButton = null!;
-    private SpinBox _minElevSpin = null!;
-    private SpinBox _maxElevSpin = null!;
-    private SpinBox _maxSlopeSpin = null!;
-    private SpinBox _cellCountSpin = null!;
-    private CheckBox _requiresAdjacentCheck = null!;
-    private OptionButton _configurableBehaviorButton = null!;
-    private GridContainer _behaviorConfigGrid = null!;
+    [Export] private Button _biomesButton = null!;
+    [Export] private SpinBox _minElevSpin = null!;
+    [Export] private SpinBox _maxElevSpin = null!;
+    [Export] private SpinBox _maxSlopeSpin = null!;
+    [Export] private SpinBox _cellCountSpin = null!;
+    [Export] private CheckBox _requiresAdjacentCheck = null!;
+    [Export] private OptionButton _configurableBehaviorButton = null!;
+    [Export] private GridContainer _behaviorConfigGrid = null!;
 
     private List<string> _behaviorChoices = new();
+
+    private static PackedScene? _scene;
+
+    public static PlacementRequirementsSection Create(
+        BuildingEditorModel model,
+        string categoryName,
+        int buildingIndex,
+        BuildingEditorModel.BuildingEditEntry entry)
+    {
+        _scene ??= GD.Load<PackedScene>("res://DeveloperTools/BuildingEditor/PlacementRequirementsSection.tscn");
+        var section = _scene.Instantiate<PlacementRequirementsSection>();
+        section.Initialize(model, categoryName, buildingIndex, entry);
+        return section;
+    }
 
     public void Initialize(
         BuildingEditorModel model,
@@ -46,70 +60,14 @@ public partial class PlacementRequirementsSection : VBoxContainer
     public override void _Ready()
     {
         base._Ready();
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        BuildLayout();
+        _minElevSpin.ValueChanged += v => OnFieldEdited("MinElevation", (float)v);
+        _maxElevSpin.ValueChanged += v => OnFieldEdited("MaxElevation", (float)v);
+        _maxSlopeSpin.ValueChanged += v => OnFieldEdited("MaxSlope", (float)v);
+        _cellCountSpin.ValueChanged += v => OnFieldEdited("CellCount", (int)v);
         RefreshControls();
     }
 
-    private void BuildLayout()
-    {
-        var grid = new GridContainer { Columns = 2, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        AddChild(grid);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Biomes" });
-        _biomesButton = new Button { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _biomesButton.Pressed += OnBiomesPressed;
-        grid.AddChild(_biomesButton);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Min Elevation" });
-        _minElevSpin = MakeSpin(0, 1, 0.01f);
-        _minElevSpin.ValueChanged += v => OnFieldEdited("MinElevation", (float)v);
-        grid.AddChild(_minElevSpin);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Max Elevation" });
-        _maxElevSpin = MakeSpin(0, 1, 0.01f);
-        _maxElevSpin.ValueChanged += v => OnFieldEdited("MaxElevation", (float)v);
-        grid.AddChild(_maxElevSpin);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Max Slope" });
-        _maxSlopeSpin = MakeSpin(0, 90, 0.5f);
-        _maxSlopeSpin.ValueChanged += v => OnFieldEdited("MaxSlope", (float)v);
-        grid.AddChild(_maxSlopeSpin);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Cell Count" });
-        _cellCountSpin = MakeSpin(1, 64, 1);
-        _cellCountSpin.ValueChanged += v => OnFieldEdited("CellCount", (int)v);
-        grid.AddChild(_cellCountSpin);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Requires Adjacent" });
-        _requiresAdjacentCheck = new CheckBox();
-        _requiresAdjacentCheck.Toggled += b => OnFieldEdited("RequiresAdjacent", b);
-        grid.AddChild(_requiresAdjacentCheck);
-
-        grid.AddChild(new Label { ThemeTypeVariation = "LabelHighContrast", Text = "Configurable Behavior" });
-        _configurableBehaviorButton = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        _configurableBehaviorButton.ItemSelected += OnConfigurableBehaviorSelected;
-        grid.AddChild(_configurableBehaviorButton);
-
-        _behaviorConfigGrid = new GridContainer
-        {
-            Columns = 2,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        AddChild(_behaviorConfigGrid);
-    }
-
-    private static SpinBox MakeSpin(double min, double max, double step)
-    {
-        return new SpinBox
-        {
-            MinValue = min,
-            MaxValue = max,
-            Step = step,
-            AllowGreater = false,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-    }
+    private void OnRequiresAdjacentToggled(bool pressed) => OnFieldEdited("RequiresAdjacent", pressed);
 
     private void RefreshControls()
     {
@@ -178,8 +136,7 @@ public partial class PlacementRequirementsSection : VBoxContainer
     private void OnBiomesPressed()
     {
         if (_model == null || _entry == null) return;
-        var popup = new BiomesPickerPopup();
-        popup.Initialize(_model, _categoryName, _buildingIndex, _entry);
+        var popup = BiomesPickerPopup.Create(_model, _categoryName, _buildingIndex, _entry);
         AddChild(popup);
         popup.BiomesChanged += () =>
         {

@@ -1,6 +1,7 @@
 using Godot;
 using PlayerInteraction.CellSelection;
 using ProceduralGeneration.PlanetGeneration;
+using Registries;
 using UtilityLibrary;
 
 namespace UI;
@@ -21,6 +22,20 @@ public partial class MainGameUI : Control
     /// </summary>
     [Export]
     public ToastSystem? ToastSystem { get; private set; }
+
+    // Shared GUI sound effects, triggered by HSM states (which aren't individually
+    // editor-configurable) via MainGameUI.Instance. Point each Clip at a res://Audio clip.
+    [Export]
+    public SoundEffect? GuiClick { get; set; }
+
+    [Export]
+    public SoundEffect? GuiForward { get; set; }
+
+    [Export]
+    public SoundEffect? GuiBack { get; set; }
+
+    [Export]
+    public SoundEffect? GuiExit { get; set; }
 
     public override void _EnterTree()
     {

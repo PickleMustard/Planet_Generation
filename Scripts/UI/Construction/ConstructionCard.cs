@@ -8,27 +8,41 @@ namespace UI.Construction;
 
 /// <summary>
 /// A single clickable constructable entry in the docked construction menu.
-/// Renders icon, display name, description, and build-cost rows. Built entirely
-/// in code via the <see cref="CreateForBuilding"/> / <see cref="CreateForStation"/>
-/// factories so it needs no .tscn. Emits <see cref="Clicked"/> on left-click
-/// unless disabled (e.g. a building that has hit its global build limit).
+/// Renders icon, display name, description, and build-cost rows. Layout lives in
+/// <c>ConstructionCard.tscn</c>; build via the <see cref="CreateForBuilding"/> /
+/// <see cref="CreateForStation"/> factories. Emits <see cref="Clicked"/> on
+/// left-click unless disabled (e.g. a building that has hit its global build limit).
 /// </summary>
 public partial class ConstructionCard : PanelContainer
 {
     [Signal]
     public delegate void ClickedEventHandler(string itemType, string definitionName);
 
+    [Export] private TextureRect _icon = null!;
+    [Export] private Label _nameLabel = null!;
+    [Export] private Label _descLabel = null!;
+    [Export] private HFlowContainer _costFlow = null!;
+
     private string _itemType = "";
     private string _definitionName = "";
     private bool _disabled;
 
+    private static PackedScene? _scene;
+    private static readonly PackedScene CostEntryScene =
+        GD.Load<PackedScene>("res://UI/Construction/ConstructionCostEntry.tscn");
+
+    private static ConstructionCard Instantiate(string itemType, string definitionName)
+    {
+        _scene ??= GD.Load<PackedScene>("res://UI/Construction/ConstructionCard.tscn");
+        var card = _scene.Instantiate<ConstructionCard>();
+        card._itemType = itemType;
+        card._definitionName = definitionName;
+        return card;
+    }
+
     public static ConstructionCard CreateForBuilding(BuildingDefinition def)
     {
-        var card = new ConstructionCard
-        {
-            _itemType = "Building",
-            _definitionName = def.IdName ?? "",
-        };
+        var card = Instantiate("Building", def.IdName ?? "");
 
         bool enabled = BuildingDatabase.Instance.ValidateGlobalPlacement(def.IdName ?? "");
         string desc = def.Description ?? "";
@@ -40,7 +54,7 @@ public partial class ConstructionCard : PanelContainer
                 desc += "  (limit reached)";
         }
 
-        card.Build(
+        card.Populate(
             def.DisplayName ?? def.IdName ?? "Unknown",
             desc,
             ResolveIcon(def.Icon, def.Visual),
@@ -52,14 +66,10 @@ public partial class ConstructionCard : PanelContainer
 
     public static ConstructionCard CreateForStation(StationDefinition def)
     {
-        var card = new ConstructionCard
-        {
-            _itemType = "Station",
-            _definitionName = def.Name,
-        };
+        var card = Instantiate("Station", def.Name);
 
         string desc = $"{def.StationType}  •  Build time: {def.ConstructionTime:0}s";
-        card.Build(
+        card.Populate(
             def.Name,
             desc,
             ResolveIcon(def.Icon, def.Visual),
@@ -77,7 +87,14 @@ public partial class ConstructionCard : PanelContainer
         return fromVisual ?? IconDataLoader.GetFallbackIcon();
     }
 
-    private void Build(
+    public override void _Ready()
+    {
+        GuiInput += OnGuiInput;
+        MouseEntered += OnMouseEntered;
+        MouseExited += OnMouseExited;
+    }
+
+    private void Populate(
         string displayName,
         string description,
         Texture2D icon,
@@ -86,103 +103,33 @@ public partial class ConstructionCard : PanelContainer
         bool disabled)
     {
         _disabled = disabled;
-
-        CustomMinimumSize = new Vector2(0, 84);
-        MouseFilter = MouseFilterEnum.Stop;
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
         TooltipText = displayName;
 
-        var margin = new MarginContainer();
-        margin.AddThemeConstantOverride("margin_left", 6);
-        margin.AddThemeConstantOverride("margin_right", 6);
-        margin.AddThemeConstantOverride("margin_top", 4);
-        margin.AddThemeConstantOverride("margin_bottom", 4);
-        AddChild(margin);
+        _icon.Texture = icon;
+        _icon.Modulate = iconTint;
 
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 8);
-        margin.AddChild(row);
+        _nameLabel.Text = displayName;
 
-        var iconRect = new TextureRect
+        _descLabel.Text = description;
+        _descLabel.Visible = !string.IsNullOrWhiteSpace(description);
+
+        if (costs != null)
         {
-            Texture = icon,
-            CustomMinimumSize = new Vector2(48, 48),
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            Modulate = iconTint,
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        row.AddChild(iconRect);
-
-        var info = new VBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        info.AddThemeConstantOverride("separation", 2);
-        row.AddChild(info);
-
-        var nameLabel = new Label
-        {
-            Text = displayName,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        nameLabel.AddThemeFontSizeOverride("font_size", 15);
-        info.AddChild(nameLabel);
-
-        if (!string.IsNullOrWhiteSpace(description))
-        {
-            var descLabel = new Label
+            foreach (var kvp in costs)
             {
-                Text = description,
-                AutowrapMode = TextServer.AutowrapMode.WordSmart,
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            };
-            descLabel.AddThemeFontSizeOverride("font_size", 10);
-            info.AddChild(descLabel);
+                var entry = CostEntryScene.Instantiate<HBoxContainer>();
+                var costIcon = entry.GetNode<TextureRect>("Icon");
+                costIcon.Texture = ResourceDatabase.Instance.GetResourceIcon(kvp.Key);
+                costIcon.Modulate = ResourceDatabase.Instance.GetResourceIconTint(kvp.Key);
+                costIcon.TooltipText = kvp.Key;
+                entry.GetNode<Label>("Amount").Text = $"x{kvp.Value}";
+                _costFlow.AddChild(entry);
+            }
         }
-
-        if (costs != null && costs.Count > 0)
-            info.AddChild(BuildCostRow(costs));
-
-        GuiInput += OnGuiInput;
-        MouseEntered += OnMouseEntered;
-        MouseExited += OnMouseExited;
+        _costFlow.Visible = costs != null && costs.Count > 0;
 
         if (_disabled)
             Modulate = new Color(1f, 1f, 1f, 0.45f);
-    }
-
-    private static Control BuildCostRow(Dictionary<string, int> costs)
-    {
-        var flow = new HFlowContainer();
-        flow.AddThemeConstantOverride("h_separation", 10);
-        flow.AddThemeConstantOverride("v_separation", 2);
-
-        foreach (var kvp in costs)
-        {
-            var entry = new HBoxContainer();
-            entry.AddThemeConstantOverride("separation", 2);
-
-            var costIcon = new TextureRect
-            {
-                Texture = ResourceDatabase.Instance.GetResourceIcon(kvp.Key),
-                Modulate = ResourceDatabase.Instance.GetResourceIconTint(kvp.Key),
-                CustomMinimumSize = new Vector2(18, 18),
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                SizeFlagsVertical = SizeFlags.ShrinkCenter,
-                TooltipText = kvp.Key,
-            };
-            entry.AddChild(costIcon);
-
-            var amount = new Label { Text = $"x{kvp.Value}" };
-            amount.AddThemeFontSizeOverride("font_size", 11);
-            entry.AddChild(amount);
-
-            flow.AddChild(entry);
-        }
-
-        return flow;
     }
 
     private void OnGuiInput(InputEvent @event)

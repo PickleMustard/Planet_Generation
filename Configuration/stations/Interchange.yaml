@@ -10,3 +10,5 @@ stations:
       aluminum: 20
       solar_cell: 5
       glass: 10
+    visual:
+      model_resource: "res://Mesh/default_station.glb.tres"

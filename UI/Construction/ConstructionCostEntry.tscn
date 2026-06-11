@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://k1uuy5m8e5ly"]
+
+[node name="ConstructionCostEntry" type="HBoxContainer"]
+theme_override_constants/separation = 2
+
+[node name="Icon" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Amount" type="Label" parent="."]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "x0"

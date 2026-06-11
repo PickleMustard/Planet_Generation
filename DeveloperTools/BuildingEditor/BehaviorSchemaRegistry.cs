@@ -63,6 +63,12 @@ public static class BehaviorSchemaRegistry
                 Tooltip: "Selectable alternative recipes"),
             new("production_speed", BehaviorFieldType.Float, 1f, 0f, 100f,
                 "Multiplier on recipe work duration"),
+            new("primary_slots", BehaviorFieldType.Int, -1, -1, 16,
+                "Primary extraction slots. -1 = auto (distinct output-tag count of recipe)"),
+            new("secondary_slots", BehaviorFieldType.Int, 0, 0, 16,
+                "Secondary extraction slots (lower output rate)"),
+            new("secondary_rate_multiplier", BehaviorFieldType.Float, 0.5f, 0f, 10f,
+                "Output multiplier applied to secondary slots"),
         },
         ["PowerConsumerBehavior"] = new()
         {

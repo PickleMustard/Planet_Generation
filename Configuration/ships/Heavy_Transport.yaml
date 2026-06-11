@@ -10,6 +10,8 @@ ships:
       Electronics: 1000
       Composites: 500
       Machinery: 400
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"
 
@@ -24,6 +26,8 @@ ships:
       Electronics: 5000
       Composites: 3000
       Machinery: 2000
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"
 
@@ -38,6 +42,8 @@ ships:
       Electronics: 25000
       Composites: 15000
       Machinery: 10000
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"
 
@@ -52,5 +58,7 @@ ships:
       Electronics: 15000
       Composites: 8000
       Machinery: 8000
+    visual:
+      model_resource: "res://Mesh/class_z_hauler.glb.tres"
     icon:
       resource: "res://Materials/Icons/default_ship.tres"

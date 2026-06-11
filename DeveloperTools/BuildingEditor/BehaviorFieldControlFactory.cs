@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Godot;
+using DeveloperTools.Common;
 
 namespace DeveloperTools.BuildingEditor;
 
@@ -28,17 +29,21 @@ public static class BehaviorFieldControlFactory
             case BehaviorFieldType.String:
                 return MakeLineEdit(currentValue, onValueChanged);
             case BehaviorFieldType.ResourceId:
-                return MakeDropdown(BuildingEditorModel.GetAllResourceIds(),
+                return MakePickerButton("(select resource)", EntityPickers.Resource,
                     currentValue, onValueChanged);
             case BehaviorFieldType.RecipeId:
-                return MakeDropdown(BuildingEditorModel.GetAllRecipeIds(),
+                return MakePickerButton("(select recipe)", () => EntityPickers.Recipe(),
                     currentValue, onValueChanged);
             case BehaviorFieldType.StringList:
                 return MakeStringListEditor(currentValue, onValueChanged,
-                    BuildingEditorModel.GetAllResourceIds(), allowFreeText: true);
+                    new List<string>(), allowFreeText: true,
+                    pickerOpener: (btn, add) => OpenEntityPicker(btn, EntityPickers.Resource, add),
+                    addButtonLabel: "Add resource…");
             case BehaviorFieldType.RecipeIdList:
                 return MakeStringListEditor(currentValue, onValueChanged,
-                    BuildingEditorModel.GetAllRecipeIds(), allowFreeText: false);
+                    new List<string>(), allowFreeText: false,
+                    pickerOpener: (btn, add) => OpenEntityPicker(btn, () => EntityPickers.Recipe(), add),
+                    addButtonLabel: "Add recipe…");
             case BehaviorFieldType.SlotFiltersDict:
             case BehaviorFieldType.StringIntDict:
                 return MakeStringIntDictEditor(currentValue, onValueChanged);
@@ -98,42 +103,9 @@ public static class BehaviorFieldControlFactory
         return le;
     }
 
-    private static Control MakeDropdown(List<string> options, object? current, Action<object?> set)
-    {
-        var hb = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        var ob = new OptionButton
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
-        };
-        ob.AddItem("(none)", 0);
-        for (int i = 0; i < options.Count; i++)
-            ob.AddItem(options[i], i + 1);
-
-        string currentStr = current?.ToString() ?? "";
-        int idx = options.IndexOf(currentStr);
-        if (idx < 0 && !string.IsNullOrEmpty(currentStr))
-        {
-            ob.AddItem($"{currentStr} (unknown)", options.Count + 1);
-            ob.Select(options.Count + 1);
-        }
-        else
-        {
-            ob.Select(idx + 1);
-        }
-
-        ob.ItemSelected += i =>
-        {
-            string s = ob.GetItemText((int)i);
-            if (s == "(none)") set("");
-            else if (s.EndsWith(" (unknown)")) set(s[..(s.Length - " (unknown)".Length)]);
-            else set(s);
-        };
-        hb.AddChild(ob);
-        return hb;
-    }
-
     private static Control MakeStringListEditor(object? current, Action<object?> set,
-        List<string> suggestions, bool allowFreeText)
+        List<string> suggestions, bool allowFreeText,
+        Action<Button, Action<string>>? pickerOpener = null, string addButtonLabel = "Add…")
     {
         var vb = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         var currentList = ToStringList(current);
@@ -162,24 +134,39 @@ public static class BehaviorFieldControlFactory
             }
         }
 
-        var addRow = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        var picker = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        picker.AddItem("(select to add)", 0);
-        for (int i = 0; i < suggestions.Count; i++)
-            picker.AddItem(suggestions[i], i + 1);
-        picker.ItemSelected += i =>
+        void AddOne(string s)
         {
-            string s = picker.GetItemText((int)i);
-            if (s == "(select to add)") return;
+            if (string.IsNullOrWhiteSpace(s)) return;
             if (!currentList.Contains(s))
             {
                 currentList.Add(s);
                 set(new List<string>(currentList));
                 Refresh();
             }
-            picker.Select(0);
-        };
-        addRow.AddChild(picker);
+        }
+
+        var addRow = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        if (pickerOpener != null)
+        {
+            var addBtn = new Button { Text = addButtonLabel, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            addBtn.Pressed += () => pickerOpener(addBtn, AddOne);
+            addRow.AddChild(addBtn);
+        }
+        else
+        {
+            var picker = new OptionButton { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            picker.AddItem("(select to add)", 0);
+            for (int i = 0; i < suggestions.Count; i++)
+                picker.AddItem(suggestions[i], i + 1);
+            picker.ItemSelected += i =>
+            {
+                string s = picker.GetItemText((int)i);
+                if (s == "(select to add)") return;
+                AddOne(s);
+                picker.Select(0);
+            };
+            addRow.AddChild(picker);
+        }
 
         if (allowFreeText)
         {
@@ -190,13 +177,7 @@ public static class BehaviorFieldControlFactory
             };
             le.TextSubmitted += s =>
             {
-                if (string.IsNullOrWhiteSpace(s)) return;
-                if (!currentList.Contains(s))
-                {
-                    currentList.Add(s);
-                    set(new List<string>(currentList));
-                    Refresh();
-                }
+                AddOne(s);
                 le.Text = "";
             };
             addRow.AddChild(le);
@@ -205,6 +186,40 @@ public static class BehaviorFieldControlFactory
 
         Refresh();
         return vb;
+    }
+
+    /// <summary>
+    /// Button that opens a single-select card picker and writes the chosen id via <paramref name="set"/>.
+    /// Replaces the legacy alphabetical OptionButton for ResourceId/RecipeId fields.
+    /// </summary>
+    private static Control MakePickerButton(string placeholder, Func<EntityPickerPopup> makePopup,
+        object? current, Action<object?> set)
+    {
+        string currentId = current?.ToString() ?? "";
+        var hb = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        var btn = new Button
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            Text = string.IsNullOrEmpty(currentId) ? placeholder : currentId,
+            TooltipText = currentId,
+        };
+        btn.Pressed += () => OpenEntityPicker(btn, makePopup, id =>
+        {
+            btn.Text = id;
+            btn.TooltipText = id;
+            set(id);
+        });
+        hb.AddChild(btn);
+        return hb;
+    }
+
+    /// <summary>Opens a picker (added to the tree root) and forwards the pick to <paramref name="onPick"/>.</summary>
+    private static void OpenEntityPicker(Button anchor, Func<EntityPickerPopup> makePopup, Action<string> onPick)
+    {
+        var popup = makePopup();
+        popup.Picked += id => onPick(id);
+        anchor.GetTree().Root.AddChild(popup);
+        popup.PopupCentered();
     }
 
     private static Control MakeStringIntDictEditor(object? current, Action<object?> set)

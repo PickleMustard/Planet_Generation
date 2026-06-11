@@ -7,47 +7,45 @@ using static GdUnit4.Assertions;
 namespace Tests.ProceduralGeneration;
 
 /// <summary>
-/// Phase 7 unit coverage for <see cref="AUProbabilityManager.SelectFromWeights"/>.
+/// Unit coverage for <see cref="SubtypeResolver.SelectFromWeights"/> — the per-body weighted
+/// subtype roll that replaced the global AU-band probability system.
 /// </summary>
 [TestSuite]
 [RequireGodotRuntime]
 public class SubtypeWeightedRollTest
 {
-    private AUProbabilityManager New(ulong seed = 42UL)
-    {
-        var rng = new RandomNumberGenerator { Seed = seed };
-        return new AUProbabilityManager(rng);
-    }
+    private RandomNumberGenerator New(ulong seed = 42UL) =>
+        new RandomNumberGenerator { Seed = seed };
 
     [TestCase]
     public void EmptyMap_ReturnsFallback()
     {
-        var sel = New();
-        AssertThat(sel.SelectFromWeights(new Dictionary<string, float>(), "fallback"))
+        var rng = New();
+        AssertThat(SubtypeResolver.SelectFromWeights(new Dictionary<string, float>(), rng, "fallback"))
             .IsEqual("fallback");
     }
 
     [TestCase]
     public void AllZeroWeights_ReturnsFallback()
     {
-        var sel = New();
+        var rng = New();
         var weights = new Dictionary<string, float> { ["a"] = 0f, ["b"] = 0f };
-        AssertThat(sel.SelectFromWeights(weights, "fallback")).IsEqual("fallback");
+        AssertThat(SubtypeResolver.SelectFromWeights(weights, rng, "fallback")).IsEqual("fallback");
     }
 
     [TestCase]
     public void SingleWeight_AlwaysSelected()
     {
-        var sel = New();
+        var rng = New();
         var weights = new Dictionary<string, float> { ["only"] = 1f };
         for (int i = 0; i < 50; i++)
-            AssertThat(sel.SelectFromWeights(weights, "fb")).IsEqual("only");
+            AssertThat(SubtypeResolver.SelectFromWeights(weights, rng, "fb")).IsEqual("only");
     }
 
     [TestCase]
     public void RollWithinDeclaredKeys()
     {
-        var sel = New();
+        var rng = New();
         var weights = new Dictionary<string, float>
         {
             ["subtype_rocky_temperate"] = 0.5f,
@@ -55,7 +53,7 @@ public class SubtypeWeightedRollTest
         };
         var seen = new HashSet<string>();
         for (int i = 0; i < 200; i++)
-            seen.Add(sel.SelectFromWeights(weights, "fb"));
+            seen.Add(SubtypeResolver.SelectFromWeights(weights, rng, "fb"));
 
         AssertThat(seen.Contains("subtype_rocky_temperate")).IsTrue();
         AssertThat(seen.Contains("subtype_rocky_desert")).IsTrue();
@@ -65,7 +63,7 @@ public class SubtypeWeightedRollTest
     [TestCase]
     public void HeavyWeight_SkewsDistribution()
     {
-        var sel = New();
+        var rng = New();
         var weights = new Dictionary<string, float>
         {
             ["heavy"] = 9f,
@@ -75,7 +73,7 @@ public class SubtypeWeightedRollTest
         int heavy = 0;
         const int trials = 1000;
         for (int i = 0; i < trials; i++)
-            if (sel.SelectFromWeights(weights, "") == "heavy") heavy++;
+            if (SubtypeResolver.SelectFromWeights(weights, rng, "") == "heavy") heavy++;
 
         // expected ~900, allow ±100 slack for 1k-trial variance
         AssertThat(heavy > 750)
@@ -86,13 +84,13 @@ public class SubtypeWeightedRollTest
     [TestCase]
     public void NegativeWeights_AreIgnored()
     {
-        var sel = New();
+        var rng = New();
         var weights = new Dictionary<string, float>
         {
             ["valid"] = 1f,
             ["broken"] = -1f,
         };
         for (int i = 0; i < 30; i++)
-            AssertThat(sel.SelectFromWeights(weights, "fb")).IsEqual("valid");
+            AssertThat(SubtypeResolver.SelectFromWeights(weights, rng, "fb")).IsEqual("valid");
     }
 }

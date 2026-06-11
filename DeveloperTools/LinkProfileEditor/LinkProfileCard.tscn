@@ -100,14 +100,15 @@ max_value = 9999.0
 [node name="BundleTimeLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
-text = "Bundle Time:"
+text = "Bundle Time (ms):"
 
 [node name="BundleTimeSpin" type="SpinBox" parent="CardMainVBox/FieldsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.0
-max_value = 999.0
+max_value = 20000.0
+step = 17.0
 
 [node name="SlotCapacityLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
 layout_mode = 2
@@ -120,3 +121,37 @@ layout_mode = 2
 size_flags_horizontal = 3
 min_value = 1.0
 max_value = 999.0
+
+[node name="ConstructionWorkLabel" type="Label" parent="CardMainVBox/FieldsGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Construction Work:"
+
+[node name="ConstructionWorkSpin" type="SpinBox" parent="CardMainVBox/FieldsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 100000.0
+step = 1.0
+
+[node name="CostHeaderHBox" type="HBoxContainer" parent="CardMainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CostLabel" type="Label" parent="CardMainVBox/CostHeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Cost / Distance:"
+
+[node name="AddCostButton" type="Button" parent="CardMainVBox/CostHeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+ Resource"
+
+[node name="CostList" type="VBoxContainer" parent="CardMainVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4

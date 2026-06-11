@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://l2v6kfdilokw"]
 
 [ext_resource type="Script" uid="uid://dqxd78vpnkrgj" path="res://Scripts/UtilityLibrary/DataLoading/DataLoadingScene.cs" id="1_ljjnp"]
-[ext_resource type="Script" path="res://Scripts/Registries/AssetManifests.cs" id="2_assetmanifests"]
+[ext_resource type="Script" uid="uid://ddraju8e8e1gs" path="res://Scripts/Registries/AssetManifests.cs" id="2_assetmanifests"]
 [ext_resource type="Resource" path="res://Configuration/AssetManifests/IconManifest.tres" id="3_iconmanifest"]
 [ext_resource type="Resource" path="res://Configuration/AssetManifests/ModelManifest.tres" id="4_modelmanifest"]
 [ext_resource type="Resource" path="res://Configuration/AssetManifests/AudioManifest.tres" id="5_audiomanifest"]
@@ -86,7 +86,7 @@ text = "Skip"
 
 [node name="DataLoader" type="Node" parent="." unique_id=502138]
 
-[node name="AssetManifests" type="Node" parent="."]
+[node name="AssetManifests" type="Node" parent="." unique_id=1357017328]
 script = ExtResource("2_assetmanifests")
 Icons = ExtResource("3_iconmanifest")
 Models = ExtResource("4_modelmanifest")

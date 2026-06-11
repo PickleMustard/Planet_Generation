@@ -1,8 +1,9 @@
 [gd_scene format=3 uid="uid://dy1aabv8ypa5q"]
 
-[ext_resource type="Script" uid="uid://cf1opp1ynly57" path="res://Scripts/UI/GridWindow/GridDetailWindow.cs" id="1_grid"]
+[ext_resource type="Script" path="res://Scripts/UI/GridWindow/GridDetailWindow.cs" id="1_grid"]
+[ext_resource type="Script" path="res://Scripts/UI/Components/LineChart.cs" id="2_chart"]
 
-[node name="GridDetailWindow" type="Control" unique_id=2063515805]
+[node name="GridDetailWindow" type="Control" node_paths=PackedStringArray("_titleLabel", "_statusPill", "_genLabel", "_drawLabel", "_netLabel", "_batteryLabel", "_cellsLabel", "_chart", "_producersHeader", "_consumersHeader", "_batteriesHeader", "_producersList", "_consumersList", "_batteriesList")]
 visible = false
 layout_mode = 3
 anchors_preset = 15
@@ -10,4 +11,232 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 0
 script = ExtResource("1_grid")
+_titleLabel = NodePath("Frame/VBox/HeaderRow/Title")
+_statusPill = NodePath("Frame/VBox/HeaderRow/StatusPill")
+_genLabel = NodePath("Frame/VBox/Stats/GenTile/Value")
+_drawLabel = NodePath("Frame/VBox/Stats/DrawTile/Value")
+_netLabel = NodePath("Frame/VBox/Stats/NetTile/Value")
+_batteryLabel = NodePath("Frame/VBox/Stats/BatteryTile/Value")
+_cellsLabel = NodePath("Frame/VBox/Stats/CellsTile/Value")
+_chart = NodePath("Frame/VBox/Chart")
+_producersHeader = NodePath("Frame/VBox/MembersRow/Producers/Header")
+_consumersHeader = NodePath("Frame/VBox/MembersRow/Consumers/Header")
+_batteriesHeader = NodePath("Frame/VBox/MembersRow/Batteries/Header")
+_producersList = NodePath("Frame/VBox/MembersRow/Producers/Scroll/List")
+_consumersList = NodePath("Frame/VBox/MembersRow/Consumers/Scroll/List")
+_batteriesList = NodePath("Frame/VBox/MembersRow/Batteries/Scroll/List")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.45)
+
+[node name="Frame" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(720, 540)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -270.0
+offset_right = 360.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Frame"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="HeaderRow" type="HBoxContainer" parent="Frame/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Frame/VBox/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "GRID"
+
+[node name="StatusPill" type="Label" parent="Frame/VBox/HeaderRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "—"
+
+[node name="CloseButton" type="Button" parent="Frame/VBox/HeaderRow"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "X"
+
+[node name="HSep" type="HSeparator" parent="Frame/VBox"]
+layout_mode = 2
+
+[node name="Stats" type="HBoxContainer" parent="Frame/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="GenTile" type="VBoxContainer" parent="Frame/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Frame/VBox/Stats/GenTile"]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Generation"
+
+[node name="Value" type="Label" parent="Frame/VBox/Stats/GenTile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "—"
+
+[node name="DrawTile" type="VBoxContainer" parent="Frame/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Frame/VBox/Stats/DrawTile"]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Draw"
+
+[node name="Value" type="Label" parent="Frame/VBox/Stats/DrawTile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "—"
+
+[node name="NetTile" type="VBoxContainer" parent="Frame/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Frame/VBox/Stats/NetTile"]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Net"
+
+[node name="Value" type="Label" parent="Frame/VBox/Stats/NetTile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "—"
+
+[node name="BatteryTile" type="VBoxContainer" parent="Frame/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Frame/VBox/Stats/BatteryTile"]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Battery"
+
+[node name="Value" type="Label" parent="Frame/VBox/Stats/BatteryTile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "—"
+
+[node name="CellsTile" type="VBoxContainer" parent="Frame/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="Frame/VBox/Stats/CellsTile"]
+modulate = Color(0.7, 0.7, 0.75, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Cells"
+
+[node name="Value" type="Label" parent="Frame/VBox/Stats/CellsTile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "—"
+
+[node name="Chart" type="Control" parent="Frame/VBox"]
+custom_minimum_size = Vector2(680, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_chart")
+
+[node name="MembersRow" type="HBoxContainer" parent="Frame/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Producers" type="VBoxContainer" parent="Frame/VBox/MembersRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="Frame/VBox/MembersRow/Producers"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "PRODUCERS"
+
+[node name="Scroll" type="ScrollContainer" parent="Frame/VBox/MembersRow/Producers"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="List" type="VBoxContainer" parent="Frame/VBox/MembersRow/Producers/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Consumers" type="VBoxContainer" parent="Frame/VBox/MembersRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="Frame/VBox/MembersRow/Consumers"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "CONSUMERS"
+
+[node name="Scroll" type="ScrollContainer" parent="Frame/VBox/MembersRow/Consumers"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="List" type="VBoxContainer" parent="Frame/VBox/MembersRow/Consumers/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Batteries" type="VBoxContainer" parent="Frame/VBox/MembersRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="Frame/VBox/MembersRow/Batteries"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "BATTERIES"
+
+[node name="Scroll" type="ScrollContainer" parent="Frame/VBox/MembersRow/Batteries"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="List" type="VBoxContainer" parent="Frame/VBox/MembersRow/Batteries/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[connection signal="pressed" from="Frame/VBox/HeaderRow/CloseButton" to="." method="RequestClose"]

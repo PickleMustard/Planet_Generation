@@ -1,0 +1,199 @@
+[gd_scene format=3 uid="uid://bigxaquos1mg3"]
+
+[ext_resource type="Script" path="res://DeveloperTools/BiomeEditor/Cards/SubtypeCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="card_bg"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.16, 0.14, 0.18, 1)
+
+[node name="SubtypeCard" type="PanelContainer" node_paths=PackedStringArray("_titleLabel", "_displayEdit", "_familyLabel", "_atmMinSpin", "_atmMaxSpin", "_hazardSpin", "_baseWeightSpin", "_moistureModeOpt", "_rulesList", "_groupsEdit", "_addResEdit", "_remResEdit")]
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("card_bg")
+script = ExtResource("1_card")
+_titleLabel = NodePath("Root/Header/Title")
+_displayEdit = NodePath("Root/NameRow/DisplayEdit")
+_familyLabel = NodePath("Root/FamilyRow/FamilyLabel")
+_atmMinSpin = NodePath("Root/AtmRow/AtmMinSpin")
+_atmMaxSpin = NodePath("Root/AtmRow/AtmMaxSpin")
+_hazardSpin = NodePath("Root/HazardRow/HazardSpin")
+_baseWeightSpin = NodePath("Root/BwRow/BaseWeightSpin")
+_moistureModeOpt = NodePath("Root/ModeRow/MoistureModeOpt")
+_rulesList = NodePath("Root/RulesList")
+_groupsEdit = NodePath("Root/GroupsRow/GroupsEdit")
+_addResEdit = NodePath("Root/AddResRow/AddResEdit")
+_remResEdit = NodePath("Root/RemResRow/RemResEdit")
+
+[node name="Root" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Header" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.85, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+text = "subtype_id"
+
+[node name="RenameButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+text = "Rename"
+
+[node name="DeleteButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+text = "✕ Delete Subtype"
+
+[node name="NameRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="Root/NameRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "display_name:"
+
+[node name="DisplayEdit" type="LineEdit" parent="Root/NameRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FamilyRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="FamilyTitleLabel" type="Label" parent="Root/FamilyRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "family:"
+
+[node name="FamilyLabel" type="Label" parent="Root/FamilyRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+
+[node name="AtmRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="AtmLabel" type="Label" parent="Root/AtmRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "atmosphere [min,max]:"
+
+[node name="AtmMinSpin" type="SpinBox" parent="Root/AtmRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+max_value = 100.0
+step = 0.05
+
+[node name="AtmMaxSpin" type="SpinBox" parent="Root/AtmRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+max_value = 100.0
+step = 0.05
+
+[node name="HazardRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="HazardLabel" type="Label" parent="Root/HazardRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "base_hazard:"
+
+[node name="HazardSpin" type="SpinBox" parent="Root/HazardRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+max_value = 10.0
+step = 0.1
+
+[node name="BwRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="BwLabel" type="Label" parent="Root/BwRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "base_resource_weight:"
+
+[node name="BaseWeightSpin" type="SpinBox" parent="Root/BwRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+max_value = 10.0
+step = 0.05
+
+[node name="ModeRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="ModeLabel" type="Label" parent="Root/ModeRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "moisture_mode:"
+
+[node name="MoistureModeOpt" type="OptionButton" parent="Root/ModeRow"]
+layout_mode = 2
+
+[node name="RulesHeader" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="RulesLabel" type="Label" parent="Root/RulesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LabelHighContrast"
+text = "assigner_rules:"
+
+[node name="AddRuleButton" type="Button" parent="Root/RulesHeader"]
+layout_mode = 2
+text = "+ Rule"
+
+[node name="RulesList" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GroupsRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="GroupsLabel" type="Label" parent="Root/GroupsRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "resource_groups:"
+
+[node name="GroupsEdit" type="LineEdit" parent="Root/GroupsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AddResRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="AddResLabel" type="Label" parent="Root/AddResRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "add_resources:"
+
+[node name="AddResEdit" type="LineEdit" parent="Root/AddResRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RemResRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+
+[node name="RemResLabel" type="Label" parent="Root/RemResRow"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"LabelHighContrast"
+text = "remove_resources:"
+
+[node name="RemResEdit" type="LineEdit" parent="Root/RemResRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="pressed" from="Root/Header/RenameButton" to="." method="OnRename"]
+[connection signal="pressed" from="Root/Header/DeleteButton" to="." method="OnDelete"]
+[connection signal="pressed" from="Root/RulesHeader/AddRuleButton" to="." method="OnAddRule"]

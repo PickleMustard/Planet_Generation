@@ -6,7 +6,7 @@ namespace UI.CellInfo;
 
 /// <summary>
 /// A reusable UI element that displays a single resource entry with an icon,
-/// resource name, and abundance percentage.
+/// resource name, and its richness category (Rare … Plentiful).
 /// </summary>
 public partial class ResourceListItem : HBoxContainer
 {
@@ -57,10 +57,12 @@ public partial class ResourceListItem : HBoxContainer
             }
         }
 
-        // Format abundance as percentage
+        // Show the richness category rather than the raw percentage — the category is what
+        // determines extraction output, so it is the player-meaningful value.
         if (_abundanceLabel != null)
         {
-            _abundanceLabel.Text = $"{abundance:P0}";
+            _abundanceLabel.Text = AbundanceCategoryTable.DisplayName(
+                AbundanceCategoryTable.Categorize(abundance));
         }
     }
 

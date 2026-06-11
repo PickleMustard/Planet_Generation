@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://cj1awly26xsv3"]
+
+[ext_resource type="Theme" uid="uid://cxflqpudaju80" path="res://UI/Theme/wireframe_paper/wireframe_paper.tres" id="1_theme"]
+[ext_resource type="Script" path="res://Scripts/UI/Components/ResourceCostRow.cs" id="2_script"]
+
+[node name="ResourceCostRow" type="HBoxContainer" node_paths=PackedStringArray("_icon", "_nameLabel", "_qtyLabel")]
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 6
+size_flags_horizontal = 3
+script = ExtResource("2_script")
+_icon = NodePath("Icon")
+_nameLabel = NodePath("NameLabel")
+_qtyLabel = NodePath("QtyLabel")
+
+[node name="Icon" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+theme_type_variation = &"LabelHand"
+text = "Resource"
+vertical_alignment = 1
+
+[node name="QtyLabel" type="Label" parent="."]
+layout_mode = 2
+theme = ExtResource("1_theme")
+theme_type_variation = &"LabelMono"
+text = "×0"
+horizontal_alignment = 2
+vertical_alignment = 1
