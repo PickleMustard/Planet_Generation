@@ -8,12 +8,9 @@
 *.bmp   filter=lfs diff=lfs merge=lfs -text
 *.mp3   filter=lfs diff=lfs merge=lfs -text
 *.res   filter=lfs diff=lfs merge=lfs -text
-# Doc screenshots stay in normal git so they render inline in markdown
-.github/**/*.png !filter !diff !merge text=auto
-*.glb filter=lfs diff=lfs merge=lfs -text
-*.png filter=lfs diff=lfs merge=lfs -text
-*.bmp filter=lfs diff=lfs merge=lfs -text
-*.mp3 filter=lfs diff=lfs merge=lfs -text
-*.res filter=lfs diff=lfs merge=lfs -text
-.github/** !text -filter -merge -diff
-*.blend1 !text -filter -merge -diff
+
+# Keep these OUT of LFS — rules below must follow the LFS rules above (last match wins).
+# Doc screenshots stay in normal git so they render inline in markdown.
+.github/** !filter !diff !merge text=auto
+# Blender autosave backups are gitignored, never LFS.
+*.blend1 !filter !diff !merge
