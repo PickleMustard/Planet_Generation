@@ -19,3 +19,6 @@
 
 # External resources (not committed)
 **/external/
+
+# Build output: Godot executables and export templates (regenerable, never versioned)
+/Export/
